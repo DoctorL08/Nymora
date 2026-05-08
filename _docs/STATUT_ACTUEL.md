@@ -11,8 +11,8 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 1 — Netcode + Backend  
-**Brique en cours :** **1.4 — Backend Node.js : init du projet**  
-**Statut brique :** À démarrer (XS — 1/2 jour, dans un repo séparé)
+**Brique en cours :** **1.6 — Schéma DB v1 (users, profiles) avec Prisma**  
+**Statut brique :** À démarrer
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -139,23 +139,36 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 1.4** — Backend Node.js init (validée 8 mai 2026)
+  - Repo séparé `github.com/DoctorL08/nymora-backend` (privé, branche `main`)
+  - Local : `C:\Users\Lorenzo\Documents\Unity\Nymora\backend\`
+  - Stack : Node 20 + TS 5.5 + Express 4 + nodemon + ESLint + Prettier (253 packages)
+  - `GET /` → `{"status":"ok"}` testé OK sur localhost:3000
+  - Premier commit `250ce72 — chore: phase 1.4 - initial backend setup`
+
+---
+
+- **Brique 1.5** — PostgreSQL + Redis en local Docker (validée 8 mai 2026)
+  - `backend/docker-compose.yml` : Postgres 16-alpine + Redis 7-alpine, healthchecks, volumes nommés
+  - `backend/.env.example` avec valeurs dev par défaut (DATABASE_URL, REDIS_URL)
+  - Deps `pg` ^8.13 et `redis` ^4.7 ajoutées + types `@types/pg`
+  - Scripts npm : `docker:up`, `docker:down`, `docker:logs`, `test:db`
+  - Script `src/scripts/test-connections.ts` : connexion + ping + roundtrip set/get/del
+  - Test `npm run test:db` → "All connections OK." ✅
+
+---
+
 ## 🔄 BRIQUE EN COURS
 
-### Brique 1.4 — Backend Node.js : init du projet (REPO SÉPARÉ)
+### Brique 1.6 — Schéma DB v1 (users, profiles) avec Prisma
 
-**Objectifs :**
-1. Créer un repo GitHub séparé `nymora-backend` (privé)
-2. Choisir l'emplacement local du projet backend (sibling du projet Unity)
-3. Init Node.js + TypeScript + Express
-4. Premier endpoint `GET /` → `{"status":"ok"}`
-5. Tooling : ESLint + Prettier + nodemon
-6. Premier commit + push
+**Objectifs (à détailler en début de brique) :**
+1. Installer Prisma + générer le client
+2. Modéliser `User` (auth) + `Profile` (display name, MMR placeholder, etc.)
+3. Première migration `init`
+4. Script de smoke test qui crée/lit un user de test
 
-**Ce qui CHANGE par rapport aux briques précédentes :**
-- Plus dans le repo Unity. **Nouveau repo Git séparé** pour le backend.
-- Plus dans Unity. On bosse en terminal + VS Code (ou VS 2022).
-
-**Prochaine étape après validation :** Brique 1.5 — PostgreSQL + Redis Docker
+**Prochaine étape après validation :** Brique 1.7 — Auth JWT + bcrypt
 
 ---
 
@@ -237,6 +250,13 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
 
+### 8 mai 2026 — Brique 1.5 (Docker stack)
+- Reprise de session après restart de Docker Desktop
+- Validation que `docker-compose.yml` (Postgres 16 + Redis 7) tournait correctement
+- Fix npm : il faut `cd backend` avant `npm run test:db` (sinon npm cherche un package.json dans le home)
+- Test connexions OK → Brique 1.5 validée
+- `STATUT_ACTUEL.md` à jour, Brique 1.6 (Prisma) en attente
+
 ### 8 mai 2026 — Session de cadrage initiale
 - Refonte complète Bible V6.1 → V7.0 → V7.1 (combat, classes, ressources, signatures)
 - Choix d'architecture validés (Quantum + Fusion split, Node.js backend, F2P éthique)
@@ -256,7 +276,7 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 🎯 PROCHAINE ACTION POUR LORENZO
 
-> 1. Suivre la **Brique 0.1** (instructions détaillées dans le dernier message Claude ou dans `05_Roadmap_V2_Novice.md`)
-> 2. Cocher la checklist validation ci-dessus au fur et à mesure
-> 3. Au début de la prochaine session Claude, dire : **"Brique 0.1 validée chef"** + montrer une capture du projet Unity ouvert
-> 4. Si bug : coller le texte de l'erreur console
+> 1. À la prochaine session, dire : **"On démarre la Brique 1.6 chef"**
+> 2. Vérifier que Docker Desktop tourne et que les 2 conteneurs Nymora sont up (`docker compose ps` depuis `backend/`)
+> 3. Si Docker était stoppé : `cd backend && docker compose up -d` avant tout
+> 4. Claude lancera la Brique 1.6 — Schéma DB v1 avec Prisma
