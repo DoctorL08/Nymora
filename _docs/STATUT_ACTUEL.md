@@ -11,7 +11,7 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 0 — Fondations projet (étendue avec scan auto)  
-**Brique en cours :** **0.6 — Enums et data containers de base**  
+**Brique en cours :** **0.7 — ScriptableObject NymoraClassDefinition**  
 **Statut brique :** À démarrer (S — 1 jour)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
@@ -69,19 +69,23 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 0.6** — Enums et data containers (validée 8 mai 2026)
+  - 4 enums sous `Scripts/Core/Enums/` : `NymoraClass`, `ResourceType`, `DamageType` (renommé depuis `Element` car la Bible V7.1 n'a pas d'éléments magiques), `SpellCategory`
+  - 3 structs `readonly` sous `Scripts/Core/Data/` : `Damage`, `Position2D` (int-only pour Quantum), `ResourceCost`
+  - 1 static `GameVersion` : `Current = "0.1.0"`, `CombatRulesVersion = 1`, `BibleVersion = "V7.1"`
+
+---
+
 ## 🔄 BRIQUE EN COURS
 
-### Brique 0.6 — Enums et data containers de base
+### Brique 0.7 — ScriptableObject NymoraClassDefinition
 
-**Démarrera après :** commit + push de la 0.5 + lecture Bible V7.1 pour les bons noms
+**Objectifs :**
+1. Créer le ScriptableObject `NymoraClassDefinition` (HP, PA, PM, ressource, passif, signature, accent color)
+2. Editor Tool `CreateAllClassDefinitionsTool` (menu `Nymora > Setup > Create All Class Definitions`) pour générer les 5 assets remplis depuis Bible V7.1
+3. Placement : `Assets/_Nymora/ScriptableObjects/Classes/`
 
-**Objectifs (selon roadmap V2 + CLAUDE.md) :**
-1. Enums fondamentaux : `NymoraClass`, `ResourceType`, `Element`, `SpellCategory`
-2. Structs : `Damage`, `Position2D`, `ResourceCost`
-3. Classe statique `GameVersion` (semver "0.1.0") + `CombatRulesVersion`
-4. Tous dans `Nymora.Core` asmdef (sous `Scripts/Core/Enums/` et `Scripts/Core/Data/`)
-
-**Prochaine étape après validation :** Brique 0.7 — ScriptableObject NymoraClassDefinition
+**Prochaine étape après validation :** Brique 0.8 — ScriptableObject SpellDefinition (template)
 
 ---
 
