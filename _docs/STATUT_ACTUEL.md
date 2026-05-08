@@ -11,8 +11,8 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 0 — Fondations projet (étendue avec scan auto)  
-**Brique en cours :** **0.2 — Configuration Editor et structure dossiers**  
-**Statut brique :** SETUP en cours — attente choix Lorenzo (manuel vs script auto)
+**Brique en cours :** **0.5 — Assembly Definitions (asmdef) + console filter**  
+**Statut brique :** À démarrer (S — 1 jour)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -46,22 +46,35 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - **Brique 0.1** — Installation Unity et création du projet (validée 8 mai 2026)
   - Projet Unity Nymora créé, Universal 2D, Unity 2022.3.62f3
   - Force Text + Visible Meta Files OK
-  - Workload VS 2022 OK, console clean
   - Localisation : `C:\Users\Lorenzo\Documents\Unity\Nymora\Nymora\`
+- **Brique 0.2** — Configuration Editor et structure dossiers (validée 8 mai 2026)
+  - 20 sous-dossiers créés sous `Assets/_Nymora/`
+  - `README.md` à la racine, `.meta` générées
+- **Brique 0.3** — Git + Git LFS + .gitignore + pre-commit hook (validée 8 mai 2026)
+  - Repo Git isolé, branche `main`, LFS local actif
+  - `.gitignore` + `.gitattributes` complets, hooks versionnés
+  - Remote HTTPS, commit `6f25d0e` poussé sur `github.com/DoctorL08/Nymora`
+- **Brique 0.4** — IDE et auto-complétion (validée 8 mai 2026)
+  - VS 2022 bien sélectionné comme External Script Editor
+  - `.editorconfig` à la racine (LF, indent 4 spaces, conventions C# Allman style + naming)
+  - Autocomplétion `Debug.Log` testée OK dans VS
+  - Script test `HelloNymora.cs` supprimé après validation
 
 ---
 
 ## 🔄 BRIQUE EN COURS
 
-### Brique 0.2 — Configuration Editor et structure dossiers
+### Brique 0.5 — Assembly Definitions (asmdef) + console filter
 
-**Démarrée le :** 8 mai 2026
+**Démarrera après :** commit + push de la 0.4
 
-**Ce qui reste à faire (Force Text + Visible Meta Files déjà actés en 0.1) :**
-1. Créer la structure de dossiers `Assets/_Nymora/` avec tous les sous-dossiers
-2. Créer un `README.md` à la racine du projet
+**Objectifs :**
+1. Créer 5 asmdef : `Nymora.Core`, `Nymora.Combat`, `Nymora.Hub`, `Nymora.UI`, `Nymora.Network`
+2. Configurer les dépendances (Combat → Core, UI → Core+Hub+Combat, etc.)
+3. Vérifier que la compilation est partitionnée (modifier un script Combat ne recompile que Combat)
+4. Mettre en place un console filter Nymora basique (filtre les warnings/erreurs des packages tiers)
 
-**Prochaine étape après validation :** Brique 0.3 — Git + Git LFS + .gitignore + pre-commit hook
+**Prochaine étape après validation :** Brique 0.6 — Enums et data containers de base
 
 ---
 
