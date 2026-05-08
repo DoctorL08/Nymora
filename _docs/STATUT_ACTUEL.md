@@ -11,8 +11,8 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 1 — Netcode + Backend  
-**Brique en cours :** **1.2 — Installation Photon Quantum 3 SDK**  
-**Statut brique :** À démarrer (S — 1 jour, gros download SDK)
+**Brique en cours :** **1.4 — Backend Node.js : init du projet**  
+**Statut brique :** À démarrer (XS — 1/2 jour, dans un repo séparé)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -121,21 +121,41 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 1.2** — Installation Photon Quantum 3 SDK (validée 8 mai 2026)
+  - `Assets/Photon/` (PhotonLibs + Realtime + Quantum + QuantumMenu) — 46 MB, 8 asmdef Photon
+  - `Assets/QuantumUser/` — dossier user pour notre code de simulation Quantum (Editor / Resources / Scenes / Simulation / View)
+  - `Tools > Quantum > Quantum Hub` accessible
+  - `.gitignore` mis à jour : `Assets/QuantumUser/Resources/PhotonServerSettings.asset` exclu (contient l'AppId, jamais commit)
+  - 76 nouveaux fichiers LFS (DLLs, fonts, audio Photon) — 8.8 MB
+
+---
+
+- **Brique 1.3** — Premier projet Quantum vide (validée 8 mai 2026)
+  - SDK a posé tout le scaffolding sous `Assets/QuantumUser/` (Simulation, Editor, Scenes, Resources, View)
+  - 6 fichiers `.User.cs` points d'extension (CommandSetup, Frame, RuntimeConfig, etc.)
+  - Scène démo `Assets/QuantumUser/Scenes/QuantumGameScene.unity` testée Play mode
+  - GraphProfiler en vert pendant 30s → checksum déterministe stable
+  - Tick rate à calibrer en Phase 2 (par défaut Quantum pour l'instant)
+
+---
+
 ## 🔄 BRIQUE EN COURS
 
-### Brique 1.2 — Installation Photon Quantum 3 SDK
-
-**Démarrée le :** 8 mai 2026
+### Brique 1.4 — Backend Node.js : init du projet (REPO SÉPARÉ)
 
 **Objectifs :**
-1. Télécharger le SDK Quantum 3 depuis le dashboard Photon
-2. Importer le `.unitypackage` dans Unity
-3. Configurer Quantum avec le `QuantumAppId` du SO `PhotonAppSettings`
-4. Lancer un sample Quantum pour valider l'install
+1. Créer un repo GitHub séparé `nymora-backend` (privé)
+2. Choisir l'emplacement local du projet backend (sibling du projet Unity)
+3. Init Node.js + TypeScript + Express
+4. Premier endpoint `GET /` → `{"status":"ok"}`
+5. Tooling : ESLint + Prettier + nodemon
+6. Premier commit + push
 
-**À gérer côté Claude :** mettre à jour `.gitignore` pour les Photon caches/packages éventuellement, et préparer un wrapper qui lit l'AppId depuis le SO Nymora pour le passer à Quantum.
+**Ce qui CHANGE par rapport aux briques précédentes :**
+- Plus dans le repo Unity. **Nouveau repo Git séparé** pour le backend.
+- Plus dans Unity. On bosse en terminal + VS Code (ou VS 2022).
 
-**Prochaine étape après validation :** Brique 1.3 — Premier projet Quantum vide
+**Prochaine étape après validation :** Brique 1.5 — PostgreSQL + Redis Docker
 
 ---
 
