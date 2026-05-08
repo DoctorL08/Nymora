@@ -11,7 +11,7 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 0 — Fondations projet (étendue avec scan auto)  
-**Brique en cours :** **0.8 — ScriptableObject SpellDefinition (template)**  
+**Brique en cours :** **0.9 — Roslyn Analyzers + ruleset custom Nymora**  
 **Statut brique :** À démarrer (S — 1 jour)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
@@ -85,18 +85,28 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 0.8** — SpellDefinition template (validée 8 mai 2026)
+  - 3 enums sous `Scripts/Core/Enums/` : `SpellEffectType` (Damage/Heal/ApplyMark/Push/Pull/Spawn... ), `TargetingShape` (Single/Cross/Square/Line/Cone/Circle), `TargetingFilter` (Self/Ally/Enemy/EmptyTile/...)
+  - 1 struct `SpellEffect` sérialisable sous `Scripts/Core/Data/`
+  - SO `SpellDefinition` sous `Scripts/Core/ScriptableObjects/` avec sections Identity/Cost/Targeting/Effects/Versioning
+  - Editor Tool `CreateSpellTemplateTool` (menu `Nymora > Setup > Create Spell Template`)
+  - Asset `_Template_Spell.asset` créé dans `ScriptableObjects/Spells/`
+
+---
+
 ## 🔄 BRIQUE EN COURS
 
-### Brique 0.8 — ScriptableObject SpellDefinition (template vide)
+### Brique 0.9 — Roslyn Analyzers + ruleset custom Nymora
 
 **Objectifs :**
-1. Créer la structure complète de `SpellDefinition` (identity, cost, targeting, effects, versioning)
-2. Enums supports : `SpellEffectType`, `TargetingShape`, `TargetingFilter`
-3. Struct `SpellEffect` (sérialisable, list dans SpellDefinition)
-4. Editor Tool pour générer un `_Template_Spell.asset` vide
-5. **PAS** de remplissage des 75 sorts à ce stade — juste la structure
+1. Enrichir `.editorconfig` avec règles Roslyn natives (allocations, readonly, deprecated, etc.)
+2. Créer `Assets/_Nymora/AnalyzerConfig/Nymora.ruleset` (XML — sévérités centralisées)
+3. Installer **Microsoft.Unity.Analyzers** (DLL) via script PowerShell qui télécharge depuis NuGet
+4. Tester : un script foireux génère un warning/erreur Roslyn dans VS
 
-**Prochaine étape après validation :** Brique 0.9 — Roslyn Analyzers + ruleset custom
+**Note technique :** la règle "Random.Range dans Combat = erreur" est déjà honorée par le pre-commit hook (0.3). Un vrai blocage compile-time arrivera plus tard via un asmdef `Nymora.Combat.Simulation` séparé qui ne référencera pas UnityEngine.
+
+**Prochaine étape après validation :** Brique 0.10 — Editor Script Nymora_HealthCheck
 
 ---
 

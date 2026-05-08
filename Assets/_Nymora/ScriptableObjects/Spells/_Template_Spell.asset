@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aba95c56a3cbcba4c800386de42103ed, type: 3}
+  m_Name: _Template_Spell
+  m_EditorClassIdentifier: 
+  SpellId: _template
+  DisplayName: Template Spell (do not use in match)
+  ClassId: 0
+  Category: 0
+  IconSprite: {fileID: 0}
+  Description: Template vide. Duppliquer (Ctrl+D) puis remplir pour creer un sort
+    reel.
+  LoreFlavor: 
+  ActionPointCost: 0
+  MovementPointCost: 0
+  ClassResourceCost: 0
+  CooldownTurns: 0
+  MinRange: 1
+  MaxRange: 1
+  RequiresLineOfSight: 1
+  Shape: 1
+  Filter: 4
+  Effects: []
+  CombatRulesVersion: 1
