@@ -82,6 +82,10 @@ PhotonServerSettings_local.asset
 Assets/_Nymora/Settings/PhotonAppSettings.asset
 Assets/_Nymora/Settings/PhotonAppSettings.asset.meta
 
+# Photon Quantum SDK — PhotonServerSettings contient l'AppId Quantum, JAMAIS commit
+Assets/QuantumUser/Resources/PhotonServerSettings.asset
+Assets/QuantumUser/Resources/PhotonServerSettings.asset.meta
+
 # -----------------------------------------------------------------------------
 # OS-specific
 # -----------------------------------------------------------------------------
