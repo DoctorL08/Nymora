@@ -10,9 +10,9 @@
 
 ## 🎯 OÙ ON EN EST
 
-**Phase actuelle :** Phase 0 — Fondations projet (étendue avec scan auto)  
-**Brique en cours :** **0.10 — Editor Script Nymora_HealthCheck**  
-**Statut brique :** À démarrer (S — 1 jour, dernière brique Phase 0)
+**Phase actuelle :** ✅ **PHASE 0 COMPLÈTE** — prêt pour Phase 1  
+**Prochaine brique :** **1.1 — Compte Photon + dashboard**  
+**Statut :** Phase 0 (10/10 briques validées) — début Phase 1 quand Lorenzo décide
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -103,21 +103,34 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
-## 🔄 BRIQUE EN COURS
+- **Brique 0.10** — Nymora_HealthCheck (validée 8 mai 2026)
+  - `Assets/_Nymora/Editor/Tools/NymoraHealthCheck.cs` (menu `Nymora > Validation > Project Health Check`, raccourci Ctrl+Alt+H)
+  - 4 checks : Quantum violations, Missing scripts (prefabs + scène active), ClassDefinitions integrity, Project version
+  - Output console + `_docs/healthcheck_report.md` horodaté + emojis
+  - Hook `IPreprocessBuildWithReport` : fail le build si erreurs critiques détectées
+  - Test fonctionnel OK (BaseHP=0 sur Soulrender → erreur détectée)
 
-### Brique 0.10 — Editor Script Nymora_HealthCheck (DERNIÈRE de Phase 0)
+---
 
-**Objectifs :**
-1. Créer `Assets/_Nymora/Editor/Tools/HealthCheckTool.cs` (menu `Nymora > Validation > Project Health Check`)
-2. Scans implémentés :
-   - **Quantum violations** : `Random.Range`/`Time.time`/`DateTime.Now` dans `Scripts/Combat/`
-   - **Missing scripts** dans les scènes (GameObjects avec script perdu)
-   - **ClassDefinitions integrity** : 5 classes présentes, champs critiques remplis
-   - **Project version** : cohérence GameVersion / Bible
-3. Output : console Unity + `_docs/healthcheck_report.md` horodaté
-4. Lancement auto avant build via `IPreprocessBuildWithReport`
+## 🚀 PHASE 1 — Netcode Quantum + Backend de base
 
-**Prochaine étape après validation :** **FIN PHASE 0** → commit `feat(phase0): foundations complete` + transition Phase 1
+**Démarrera quand :** Lorenzo dit "go phase 1" (ou similaire).
+**Durée prévue :** ~2 mois (14 briques).
+**Objectif :** Photon Quantum opérationnel, backend Node.js minimal sur Hetzner, auth JWT, premier match Quantum vide en multi.
+
+**Première brique :**
+
+### Brique 1.1 — Compte Photon + dashboard (XS, 1/2 jour)
+
+**Ce que Lorenzo fera :**
+1. S'inscrire sur https://dashboard.photonengine.com
+2. Créer une App **Quantum 3** (noter l'AppId)
+3. Créer une App **Fusion 2** (noter l'AppId)
+4. Configurer les régions (EU / US / Asia)
+
+**Ce que Claude fera :**
+1. Stocker les AppIds dans un fichier de config Unity (probablement un `PhotonAppSettings` ScriptableObject avec `_local` suffix dans `.gitignore` pour ne PAS les versionner)
+2. Préparer la structure pour la 1.2 (Quantum SDK install)
 
 ---
 
