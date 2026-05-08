@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RuleSet Name="Nymora Ruleset" Description="Severity rules for Nymora project (Microsoft.CodeAnalysis + Microsoft.Unity.Analyzers)" ToolsVersion="16.0">
+
+  <!-- Default: every diagnostic uses its own default severity -->
+  <IncludeAll Action="Default" />
+
+  <!-- ============================================================
+       Microsoft.CodeAnalysis.NetAnalyzers — built-in CA rules
+       ============================================================ -->
+  <Rules AnalyzerId="Microsoft.CodeAnalysis.NetAnalyzers" RuleNamespace="Microsoft.CodeAnalysis.NetAnalyzers">
+    <!-- Memory / allocations / perf -->
+    <Rule Id="CA1825" Action="Warning" /> <!-- Avoid zero-length array allocations -->
+    <Rule Id="CA1827" Action="Warning" /> <!-- Don't use Count/LongCount when Any can be used -->
+    <Rule Id="CA1828" Action="Warning" /> <!-- Don't use CountAsync when AnyAsync -->
+    <Rule Id="CA1841" Action="Warning" /> <!-- Prefer Dictionary Contains methods -->
+    <Rule Id="CA1854" Action="Warning" /> <!-- Prefer TryGetValue over ContainsKey + indexer -->
+
+    <!-- Code quality -->
+    <Rule Id="CA1822" Action="Info" />    <!-- Member can be marked static -->
+    <Rule Id="CA1815" Action="Info" />    <!-- Override Equals on value types -->
+    <Rule Id="CA2208" Action="Warning" /> <!-- Instantiate argument exceptions correctly -->
+    <Rule Id="CA2245" Action="Warning" /> <!-- Don't assign a property to itself -->
+
+    <!-- Désactivés volontairement (trop bruyants pour un solo dev) -->
+    <Rule Id="CA1707" Action="None" /> <!-- Identifiers shouldn't have underscores -->
+    <Rule Id="CA1305" Action="None" /> <!-- Specify IFormatProvider -->
+    <Rule Id="CA2007" Action="None" /> <!-- ConfigureAwait — pas applicable Unity -->
+  </Rules>
+
+  <!-- ============================================================
+       Microsoft.Unity.Analyzers — anti-patterns Unity
+       ============================================================ -->
+  <Rules AnalyzerId="Microsoft.Unity.Analyzers" RuleNamespace="Microsoft.Unity.Analyzers">
+    <Rule Id="UNT0001" Action="Warning" /> <!-- Empty Unity message -->
+    <Rule Id="UNT0002" Action="Warning" /> <!-- Inefficient tag comparison -->
+    <Rule Id="UNT0003" Action="Warning" /> <!-- Use generic form of GetComponent -->
+    <Rule Id="UNT0004" Action="Error" />   <!-- Time.fixedDeltaTime used with Update -->
+    <Rule Id="UNT0005" Action="Error" />   <!-- Time.deltaTime used with FixedUpdate -->
+    <Rule Id="UNT0006" Action="Warning" /> <!-- Incorrect message signature -->
+    <Rule Id="UNT0007" Action="Warning" /> <!-- Null comparison against Unity object -->
+    <Rule Id="UNT0008" Action="Warning" /> <!-- Null propagation on Unity object -->
+    <Rule Id="UNT0014" Action="Warning" /> <!-- GetComponent called with non-Component or non-Interface -->
+    <Rule Id="UNT0017" Action="Warning" /> <!-- SetPixels invocation is slow -->
+    <Rule Id="UNT0023" Action="Warning" /> <!-- Coroutine using non-yieldable type -->
+  </Rules>
+
+</RuleSet>

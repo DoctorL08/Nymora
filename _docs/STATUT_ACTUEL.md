@@ -11,8 +11,8 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 0 — Fondations projet (étendue avec scan auto)  
-**Brique en cours :** **0.9 — Roslyn Analyzers + ruleset custom Nymora**  
-**Statut brique :** À démarrer (S — 1 jour)
+**Brique en cours :** **0.10 — Editor Script Nymora_HealthCheck**  
+**Statut brique :** À démarrer (S — 1 jour, dernière brique Phase 0)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -94,19 +94,30 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 0.9** — Roslyn Analyzers + ruleset Nymora (validée 8 mai 2026)
+  - `Assets/_Nymora/AnalyzerConfig/Nymora.ruleset` (XML — sévérités centralisées CA + UNT)
+  - `.editorconfig` enrichi avec règles `dotnet_diagnostic.UNT*` et `CA*`
+  - Microsoft.Unity.Analyzers v1.26.0 installé : `Assets/Plugins/Analyzers/Microsoft.Unity.Analyzers.dll` + `.meta` avec label `RoslynAnalyzer`
+  - Script auto `tools/install-unity-analyzers.ps1` pour réinstall future
+  - UNT0001 (`Update()` vide) testé OK dans VS
+
+---
+
 ## 🔄 BRIQUE EN COURS
 
-### Brique 0.9 — Roslyn Analyzers + ruleset custom Nymora
+### Brique 0.10 — Editor Script Nymora_HealthCheck (DERNIÈRE de Phase 0)
 
 **Objectifs :**
-1. Enrichir `.editorconfig` avec règles Roslyn natives (allocations, readonly, deprecated, etc.)
-2. Créer `Assets/_Nymora/AnalyzerConfig/Nymora.ruleset` (XML — sévérités centralisées)
-3. Installer **Microsoft.Unity.Analyzers** (DLL) via script PowerShell qui télécharge depuis NuGet
-4. Tester : un script foireux génère un warning/erreur Roslyn dans VS
+1. Créer `Assets/_Nymora/Editor/Tools/HealthCheckTool.cs` (menu `Nymora > Validation > Project Health Check`)
+2. Scans implémentés :
+   - **Quantum violations** : `Random.Range`/`Time.time`/`DateTime.Now` dans `Scripts/Combat/`
+   - **Missing scripts** dans les scènes (GameObjects avec script perdu)
+   - **ClassDefinitions integrity** : 5 classes présentes, champs critiques remplis
+   - **Project version** : cohérence GameVersion / Bible
+3. Output : console Unity + `_docs/healthcheck_report.md` horodaté
+4. Lancement auto avant build via `IPreprocessBuildWithReport`
 
-**Note technique :** la règle "Random.Range dans Combat = erreur" est déjà honorée par le pre-commit hook (0.3). Un vrai blocage compile-time arrivera plus tard via un asmdef `Nymora.Combat.Simulation` séparé qui ne référencera pas UnityEngine.
-
-**Prochaine étape après validation :** Brique 0.10 — Editor Script Nymora_HealthCheck
+**Prochaine étape après validation :** **FIN PHASE 0** → commit `feat(phase0): foundations complete` + transition Phase 1
 
 ---
 

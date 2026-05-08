@@ -95,3 +95,37 @@ csharp_preferred_modifier_order = public,private,protected,internal,static,exter
 # Unused parameters / variables
 dotnet_diagnostic.IDE0060.severity = suggestion
 dotnet_code_quality_unused_parameters = all:suggestion
+
+# -----------------------------------------------------------------------------
+# Roslyn Analyzers — Microsoft.CodeAnalysis.NetAnalyzers (CA*)
+# Voir aussi : Assets/_Nymora/AnalyzerConfig/Nymora.ruleset
+# -----------------------------------------------------------------------------
+dotnet_diagnostic.CA1825.severity = warning  # Avoid zero-length array allocations
+dotnet_diagnostic.CA1827.severity = warning  # Don't use Count/LongCount when Any can be used
+dotnet_diagnostic.CA1828.severity = warning  # Don't use CountAsync when AnyAsync
+dotnet_diagnostic.CA1841.severity = warning  # Prefer Dictionary Contains methods
+dotnet_diagnostic.CA1854.severity = warning  # Prefer TryGetValue over ContainsKey + indexer
+dotnet_diagnostic.CA1822.severity = suggestion  # Member can be marked static
+dotnet_diagnostic.CA2208.severity = warning  # Instantiate argument exceptions correctly
+dotnet_diagnostic.CA2245.severity = warning  # Don't assign a property to itself
+
+dotnet_diagnostic.CA1707.severity = none  # Identifiers shouldn't have underscores (FALSE friend Unity)
+dotnet_diagnostic.CA1305.severity = none  # Specify IFormatProvider (trop verbeux)
+dotnet_diagnostic.CA2007.severity = none  # ConfigureAwait — pas applicable Unity
+
+# -----------------------------------------------------------------------------
+# Microsoft.Unity.Analyzers (UNT*)
+# Activé une fois le DLL installé dans Assets/Plugins/Analyzers/
+# Voir tools/install-unity-analyzers.ps1
+# -----------------------------------------------------------------------------
+dotnet_diagnostic.UNT0001.severity = warning  # Empty Unity message
+dotnet_diagnostic.UNT0002.severity = warning  # Inefficient tag comparison (use CompareTag)
+dotnet_diagnostic.UNT0003.severity = warning  # Use generic form of GetComponent
+dotnet_diagnostic.UNT0004.severity = error    # Time.fixedDeltaTime used with Update (anti-déterminisme)
+dotnet_diagnostic.UNT0005.severity = error    # Time.deltaTime used with FixedUpdate (anti-déterminisme)
+dotnet_diagnostic.UNT0006.severity = warning  # Incorrect message signature
+dotnet_diagnostic.UNT0007.severity = warning  # Null comparison against Unity object
+dotnet_diagnostic.UNT0008.severity = warning  # Null propagation on Unity object
+dotnet_diagnostic.UNT0014.severity = warning  # GetComponent called with non-Component
+dotnet_diagnostic.UNT0017.severity = warning  # SetPixels invocation is slow
+dotnet_diagnostic.UNT0023.severity = warning  # Coroutine using non-yieldable type
