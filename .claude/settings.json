@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Read(_docs/**)",
+      "Read(Assets/_Nymora/**)",
+      "Read(Packages/**)",
+      "Read(ProjectSettings/**)",
+      "Read(.gitignore)",
+      "Read(README.md)",
+      "Read(CLAUDE.md)",
+      "Edit(_docs/STATUT_ACTUEL.md)",
+      "Edit(_docs/05_Roadmap_V2_Novice.md)",
+      "Edit(Assets/_Nymora/**)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)"
+    ],
+    "ask": [
+      "Edit(_docs/00_README_CLAUDE.md)",
+      "Edit(_docs/01_BIBLE_V7.1_Combat.md)",
+      "Edit(_docs/02_Architecture_Technique.md)",
+      "Edit(_docs/03_GDD_Features.md)",
+      "Edit(_docs/04_Roadmap_14_mois.md)",
+      "Edit(CLAUDE.md)",
+      "Edit(.gitignore)",
+      "Edit(ProjectSettings/**)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git pull:*)",
+      "Bash(git merge:*)",
+      "Bash(npm install:*)",
+      "Bash(dotnet:*)"
+    ],
+    "deny": [
+      "Read(Library/**)",
+      "Read(Temp/**)",
+      "Read(Logs/**)",
+      "Read(obj/**)",
+      "Read(Build/**)",
+      "Read(Builds/**)",
+      "Read(MemoryCaptures/**)",
+      "Read(UserSettings/**)",
+      "Edit(Library/**)",
+      "Edit(Temp/**)",
+      "Edit(Logs/**)",
+      "Edit(*.csproj)",
+      "Edit(*.sln)",
+      "Bash(git push --force:*)",
+      "Bash(rm -rf:*)"
+    ]
+  },
+  "model": "claude-opus-4-7",
+  "env": {
+    "PROJECT_NAME": "Nymora",
+    "PROJECT_PHASE": "Phase 0 - Fondations"
+  }
+}

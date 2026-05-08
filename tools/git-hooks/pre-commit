@@ -1,0 +1,49 @@
+#!/bin/sh
+# =============================================================================
+# Nymora — pre-commit hook
+# Bloque les commits qui violent les regles Photon Quantum (determinisme).
+# Toute reference a Random.Range, UnityEngine.Random, Time.time, Time.deltaTime,
+# Time.fixedDeltaTime, DateTime.Now, DateTime.UtcNow dans Assets/_Nymora/Scripts/Combat/
+# fait echouer le commit.
+#
+# La version riche (HealthCheck, valeurs hardcodees, etc.) viendra en Brique 0.10.
+# =============================================================================
+
+# Liste des .cs stages sous Assets/_Nymora/Scripts/Combat/
+staged=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^Assets/_Nymora/Scripts/Combat/.*\.cs$' || true)
+
+if [ -z "$staged" ]; then
+  exit 0
+fi
+
+# Patterns interdits dans le code Combat (anti-determinisme Quantum)
+forbidden='Random\.Range|UnityEngine\.Random|Time\.time|Time\.deltaTime|Time\.fixedDeltaTime|Time\.realtimeSinceStartup|DateTime\.Now|DateTime\.UtcNow'
+
+violations=""
+for f in $staged; do
+  if [ -f "$f" ]; then
+    matches=$(grep -nE "$forbidden" "$f" || true)
+    if [ -n "$matches" ]; then
+      violations="${violations}\n--- $f ---\n$matches"
+    fi
+  fi
+done
+
+if [ -n "$violations" ]; then
+  echo ""
+  echo "[Nymora hook] Commit BLOQUE : violations de determinisme Quantum detectees."
+  echo ""
+  printf "%b\n" "$violations"
+  echo ""
+  echo "Le code de combat doit etre 100% deterministe (Photon Quantum)."
+  echo "Interdits dans Assets/_Nymora/Scripts/Combat/ :"
+  echo "  - Random.Range / UnityEngine.Random  -> utiliser le RNG deterministe Quantum"
+  echo "  - Time.time / Time.deltaTime / Time.fixedDeltaTime  -> utiliser Frame.DeltaTime de Quantum"
+  echo "  - DateTime.Now / DateTime.UtcNow  -> n'a pas sa place dans la simulation"
+  echo ""
+  echo "Pour bypasser temporairement (a tes risques) : git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+exit 0

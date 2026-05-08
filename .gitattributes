@@ -1,0 +1,105 @@
+# =============================================================================
+# Nymora — .gitattributes
+# Force LF pour les fichiers texte (anti-CRLF Windows) + Git LFS pour binaires
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# Auto-detect text files, force LF on commit (cross-platform Win/Mac/Linux)
+# -----------------------------------------------------------------------------
+* text=auto eol=lf
+
+# -----------------------------------------------------------------------------
+# Code source : LF strict
+# -----------------------------------------------------------------------------
+*.cs        text eol=lf diff=csharp
+*.shader    text eol=lf
+*.cginc     text eol=lf
+*.hlsl      text eol=lf
+*.compute   text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.txt       text eol=lf
+*.xml       text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.editorconfig text eol=lf
+*.gitignore    text eol=lf
+*.gitattributes text eol=lf
+
+# -----------------------------------------------------------------------------
+# Unity meta + assets texte (Force Text mode oblige)
+# -----------------------------------------------------------------------------
+*.meta      text eol=lf
+*.unity     text eol=lf merge=unityyamlmerge
+*.prefab    text eol=lf merge=unityyamlmerge
+*.asset     text eol=lf merge=unityyamlmerge
+*.mat       text eol=lf merge=unityyamlmerge
+*.anim      text eol=lf merge=unityyamlmerge
+*.controller text eol=lf merge=unityyamlmerge
+*.physicMaterial text eol=lf merge=unityyamlmerge
+*.physicsMaterial2D text eol=lf merge=unityyamlmerge
+*.guiskin   text eol=lf merge=unityyamlmerge
+*.spriteatlas text eol=lf merge=unityyamlmerge
+*.flare     text eol=lf merge=unityyamlmerge
+*.fontsettings text eol=lf merge=unityyamlmerge
+*.giparams  text eol=lf merge=unityyamlmerge
+*.lighting  text eol=lf merge=unityyamlmerge
+*.preset    text eol=lf merge=unityyamlmerge
+*.terrainlayer text eol=lf merge=unityyamlmerge
+
+# -----------------------------------------------------------------------------
+# Git LFS — Images
+# -----------------------------------------------------------------------------
+*.psd       filter=lfs diff=lfs merge=lfs -text
+*.psb       filter=lfs diff=lfs merge=lfs -text
+*.tif       filter=lfs diff=lfs merge=lfs -text
+*.tiff      filter=lfs diff=lfs merge=lfs -text
+*.exr       filter=lfs diff=lfs merge=lfs -text
+*.hdr       filter=lfs diff=lfs merge=lfs -text
+*.bmp       filter=lfs diff=lfs merge=lfs -text
+# PNG/JPG : seulement si > 100KB en pratique. On track tout pour simplifier.
+*.png       filter=lfs diff=lfs merge=lfs -text
+*.jpg       filter=lfs diff=lfs merge=lfs -text
+*.jpeg      filter=lfs diff=lfs merge=lfs -text
+*.gif       filter=lfs diff=lfs merge=lfs -text
+
+# -----------------------------------------------------------------------------
+# Git LFS — Modèles 3D (peu utilisés en 2D mais on prépare)
+# -----------------------------------------------------------------------------
+*.fbx       filter=lfs diff=lfs merge=lfs -text
+*.obj       filter=lfs diff=lfs merge=lfs -text
+*.blend     filter=lfs diff=lfs merge=lfs -text
+*.dae       filter=lfs diff=lfs merge=lfs -text
+*.3ds       filter=lfs diff=lfs merge=lfs -text
+*.max       filter=lfs diff=lfs merge=lfs -text
+
+# -----------------------------------------------------------------------------
+# Git LFS — Audio
+# -----------------------------------------------------------------------------
+*.wav       filter=lfs diff=lfs merge=lfs -text
+*.mp3       filter=lfs diff=lfs merge=lfs -text
+*.ogg       filter=lfs diff=lfs merge=lfs -text
+*.aif       filter=lfs diff=lfs merge=lfs -text
+*.aiff      filter=lfs diff=lfs merge=lfs -text
+*.flac      filter=lfs diff=lfs merge=lfs -text
+
+# -----------------------------------------------------------------------------
+# Git LFS — Vidéo
+# -----------------------------------------------------------------------------
+*.mp4       filter=lfs diff=lfs merge=lfs -text
+*.mov       filter=lfs diff=lfs merge=lfs -text
+*.webm      filter=lfs diff=lfs merge=lfs -text
+*.avi       filter=lfs diff=lfs merge=lfs -text
+
+# -----------------------------------------------------------------------------
+# Git LFS — Polices
+# -----------------------------------------------------------------------------
+*.ttf       filter=lfs diff=lfs merge=lfs -text
+*.otf       filter=lfs diff=lfs merge=lfs -text
+
+# -----------------------------------------------------------------------------
+# Git LFS — Binaires Unity
+# -----------------------------------------------------------------------------
+*.dll       filter=lfs diff=lfs merge=lfs -text
+*.so        filter=lfs diff=lfs merge=lfs -text
+*.dylib     filter=lfs diff=lfs merge=lfs -text

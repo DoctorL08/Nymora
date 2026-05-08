@@ -1,0 +1,71 @@
+# ==================================================================
+# .claudeignore — Exclusions pour Claude Code sur le projet Nymora
+# ==================================================================
+# Ces fichiers/dossiers ne seront PAS lus par Claude Code automatiquement.
+# Ça évite de saturer le contexte avec du bruit Unity.
+# ==================================================================
+
+# ---------- Dossiers Unity générés automatiquement ----------
+Library/
+Temp/
+Logs/
+obj/
+MemoryCaptures/
+UserSettings/
+
+# ---------- Builds et exports ----------
+Build/
+Builds/
+*.app/
+*.apk
+*.aab
+*.ipa
+*.exe
+
+# ---------- Assets binaires lourds (Claude ne peut pas les lire utilement) ----------
+*.psd
+*.psb
+*.tga
+*.fbx
+*.blend
+*.wav
+*.mp3
+*.ogg
+*.mp4
+*.mov
+*.unitypackage
+
+# ---------- IDE / Generated ----------
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+.vs/
+.vscode/
+.idea/
+
+# ---------- OS ----------
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ---------- Backups et fichiers temporaires ----------
+*.bak
+*.tmp
+*~
+*.swp
+
+# ---------- Node modules (si backend dans le même repo plus tard) ----------
+node_modules/
+.pnpm-store/
+
+# ---------- Photon (artefacts) ----------
+PhotonUnityNetworking/Demos/
+PhotonChat/Demos/
+
+# ---------- Crashlytics / analytics dumps ----------
+crashlytics-build.properties
+google-services.json
+GoogleService-Info.plist

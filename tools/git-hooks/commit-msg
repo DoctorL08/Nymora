@@ -1,0 +1,41 @@
+#!/bin/sh
+# =============================================================================
+# Nymora — commit-msg hook
+# Verifie que le message suit la convention "Conventional Commits"
+# Format : <type>(<scope optionnel>): <description>
+# Types autorises : feat, fix, chore, refactor, docs, test, perf, style, build, ci, revert
+# Exemples :
+#   feat(combat): add soulrender hemoglyph resource
+#   fix(ui): deck builder save button
+#   chore: phase 0 - initial unity project setup
+# =============================================================================
+
+msg_file="$1"
+msg=$(head -n1 "$msg_file")
+
+# Ignorer les merge commits et revert auto
+case "$msg" in
+  "Merge "*|"Revert \""*) exit 0 ;;
+esac
+
+pattern='^(feat|fix|chore|refactor|docs|test|perf|style|build|ci|revert)(\([a-z0-9._-]+\))?!?: .{1,}$'
+
+if ! echo "$msg" | grep -Eq "$pattern"; then
+  echo ""
+  echo "[Nymora hook] Message de commit non-conforme."
+  echo ""
+  echo "Format attendu : <type>(<scope>): <description>"
+  echo "Types : feat | fix | chore | refactor | docs | test | perf | style | build | ci | revert"
+  echo ""
+  echo "Exemples :"
+  echo "  feat(combat): add soulrender hemoglyph resource"
+  echo "  fix(ui): deck builder save button not responding"
+  echo "  chore: phase 0 - initial unity project setup"
+  echo ""
+  echo "Ton message actuel :"
+  echo "  \"$msg\""
+  echo ""
+  exit 1
+fi
+
+exit 0
