@@ -11,7 +11,7 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 0 — Fondations projet (étendue avec scan auto)  
-**Brique en cours :** **0.7 — ScriptableObject NymoraClassDefinition**  
+**Brique en cours :** **0.8 — ScriptableObject SpellDefinition (template)**  
 **Statut brique :** À démarrer (S — 1 jour)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
@@ -76,16 +76,27 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 0.7** — NymoraClassDefinition (validée 8 mai 2026)
+  - SO `NymoraClassDefinition.cs` sous `Scripts/Core/ScriptableObjects/` (CreateAssetMenu : `Nymora/Class Definition`)
+  - Editor Tool `CreateAllClassDefinitionsTool` (menus `Create All` et `Force Recreate All`)
+  - 5 assets générés dans `ScriptableObjects/Classes/` : Soulrender, Nightseer, Colossar, Necram, Ghostra
+  - Stats Bible V7.1 : 1500 HP / 8 PA / 3 PM, ressources cap (HG 5, PR 4, FD 3, PT 6, RM 3 leurres)
+  - Accent colors : `#B22222`, `#6A4FB6`, `#7A6B5C`, `#5A8B3E`, `#6F8FA8`
+
+---
+
 ## 🔄 BRIQUE EN COURS
 
-### Brique 0.7 — ScriptableObject NymoraClassDefinition
+### Brique 0.8 — ScriptableObject SpellDefinition (template vide)
 
 **Objectifs :**
-1. Créer le ScriptableObject `NymoraClassDefinition` (HP, PA, PM, ressource, passif, signature, accent color)
-2. Editor Tool `CreateAllClassDefinitionsTool` (menu `Nymora > Setup > Create All Class Definitions`) pour générer les 5 assets remplis depuis Bible V7.1
-3. Placement : `Assets/_Nymora/ScriptableObjects/Classes/`
+1. Créer la structure complète de `SpellDefinition` (identity, cost, targeting, effects, versioning)
+2. Enums supports : `SpellEffectType`, `TargetingShape`, `TargetingFilter`
+3. Struct `SpellEffect` (sérialisable, list dans SpellDefinition)
+4. Editor Tool pour générer un `_Template_Spell.asset` vide
+5. **PAS** de remplissage des 75 sorts à ce stade — juste la structure
 
-**Prochaine étape après validation :** Brique 0.8 — ScriptableObject SpellDefinition (template)
+**Prochaine étape après validation :** Brique 0.9 — Roslyn Analyzers + ruleset custom
 
 ---
 

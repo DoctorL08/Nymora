@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e8e35098b59b5942ab43cd2124cafb4, type: 3}
+  m_Name: Necram
+  m_EditorClassIdentifier: 
+  ClassId: 4
+  DisplayName: Necram
+  AccentColor: {r: 0.3529412, g: 0.54509807, b: 0.24313726, a: 1}
+  Tagline: Mage poison. Densite toxique progressive. Le DoT ignore les reductions.
+  BaseHP: 1500
+  BaseActionPoints: 8
+  BaseMovementPoints: 3
+  ResourceKind: 4
+  ResourceCap: 6
+  ResourceDescription: "PUTREFACTION \u2014 densite toxique. Generee par les ticks
+    venin sur les ennemis et les marques actives. Cap 6."
+  PassiveName: La Floraison
+  PassiveDescription: Suit le nombre de marques de venin actives dans le match (toutes
+    cibles confondues). Plus de marques = ticks plus puissants, regen Necram, zones
+    toxiques autour de lui.
+  SignatureName: Virus Fatal
+  SignatureCooldownTurns: 4
+  SignatureDescription: Sort signature debloque a 6 PT. Detone tous les ticks. Cooldown
+    4 tours.
+  IconSprite: {fileID: 0}
+  PortraitSprite: {fileID: 0}

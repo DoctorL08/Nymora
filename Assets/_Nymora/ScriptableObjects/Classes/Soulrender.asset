@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e8e35098b59b5942ab43cd2124cafb4, type: 3}
+  m_Name: Soulrender
+  m_EditorClassIdentifier: 
+  ClassId: 1
+  DisplayName: Soulrender
+  AccentColor: {r: 0.69803923, g: 0.13333334, b: 0.13333334, a: 1}
+  Tagline: Berserker melee. Subir = generer. Plus on le frappe, plus il s'arme.
+  BaseHP: 1500
+  BaseActionPoints: 8
+  BaseMovementPoints: 3
+  ResourceKind: 1
+  ResourceCap: 5
+  ResourceDescription: "HEMOGLYPHE \u2014 ressource bilaterale : subir des degats
+    ET en infliger en melee genere de la ressource. Aura rouge progressive, fissures
+    ecarlates a 5/5."
+  PassiveName: L'Appel du Sang
+  PassiveDescription: 'Pas de paliers fixes. Montee NON-LINEAIRE indexee sur les
+    seuils HP de la cible : plus la cible est basse, plus la generation d''Hemoglyphe
+    acceleree.'
+  SignatureName: "Ame Lac\xE9r\xE9ee"
+  SignatureCooldownTurns: 4
+  SignatureDescription: Sort signature debloque a 5 HG. Cooldown 4 tours apres usage.
+  IconSprite: {fileID: 0}
+  PortraitSprite: {fileID: 0}

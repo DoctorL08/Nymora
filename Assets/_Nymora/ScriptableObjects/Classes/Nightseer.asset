@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e8e35098b59b5942ab43cd2124cafb4, type: 3}
+  m_Name: Nightseer
+  m_EditorClassIdentifier: 
+  ClassId: 2
+  DisplayName: Nightseer
+  AccentColor: {r: 0.41568628, g: 0.30980393, b: 0.7137255, a: 1}
+  Tagline: Piegeur mid-range. Pose des marques sur la grille et l'adversaire.
+  BaseHP: 1500
+  BaseActionPoints: 8
+  BaseMovementPoints: 3
+  ResourceKind: 2
+  ResourceCap: 4
+  ResourceDescription: "PRESCIENCE \u2014 generee par la pose et la consommation
+    de marques (Traque, Voile, Empreinte). Cap 4."
+  PassiveName: L'Oeil qui n'est pas
+  PassiveDescription: 'La puissance du Nightseer depend du nombre de marques actives
+    : sur la grille, sur l''adversaire, ou les deux. Pas de palier de jauge classique.'
+  SignatureName: Traquenard
+  SignatureCooldownTurns: 4
+  SignatureDescription: Sort signature debloque a 4 PR. Cooldown 4 tours apres usage.
+  IconSprite: {fileID: 0}
+  PortraitSprite: {fileID: 0}
