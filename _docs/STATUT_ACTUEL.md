@@ -11,7 +11,7 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 0 — Fondations projet (étendue avec scan auto)  
-**Brique en cours :** **0.5 — Assembly Definitions (asmdef) + console filter**  
+**Brique en cours :** **0.6 — Enums et data containers de base**  
 **Statut brique :** À démarrer (S — 1 jour)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
@@ -55,26 +55,33 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
   - `.gitignore` + `.gitattributes` complets, hooks versionnés
   - Remote HTTPS, commit `6f25d0e` poussé sur `github.com/DoctorL08/Nymora`
 - **Brique 0.4** — IDE et auto-complétion (validée 8 mai 2026)
-  - VS 2022 bien sélectionné comme External Script Editor
-  - `.editorconfig` à la racine (LF, indent 4 spaces, conventions C# Allman style + naming)
-  - Autocomplétion `Debug.Log` testée OK dans VS
-  - Script test `HelloNymora.cs` supprimé après validation
+  - VS 2022 sélectionné comme External Script Editor
+  - `.editorconfig` à la racine (LF, indent 4 spaces, Allman style)
+  - Autocomplétion `Debug.Log` testée OK
+- **Brique 0.5** — Assembly Definitions + Console Filter (validée 8 mai 2026)
+  - 6 asmdef créés (CLAUDE.md ajoute Nymora.Editor à la roadmap V2 qui en prévoyait 5)
+    - `Nymora.Core` (sans dépendance) → base
+    - `Nymora.Combat`, `Nymora.Hub`, `Nymora.Network` → dépendent de Core
+    - `Nymora.UI` → dépend de Core + Hub + Combat
+    - `Nymora.Editor` → dépend de tous, Editor-only (`includePlatforms: ["Editor"]`)
+  - `NymoraConsoleWindow` Editor Window (menu `Nymora > Console > Nymora Logs`) qui filtre les logs par stack trace contenant `Nymora.`
+  - Hooks `Application.logMessageReceivedThreaded` avec lock thread-safe + max 1000 entries
 
 ---
 
 ## 🔄 BRIQUE EN COURS
 
-### Brique 0.5 — Assembly Definitions (asmdef) + console filter
+### Brique 0.6 — Enums et data containers de base
 
-**Démarrera après :** commit + push de la 0.4
+**Démarrera après :** commit + push de la 0.5 + lecture Bible V7.1 pour les bons noms
 
-**Objectifs :**
-1. Créer 5 asmdef : `Nymora.Core`, `Nymora.Combat`, `Nymora.Hub`, `Nymora.UI`, `Nymora.Network`
-2. Configurer les dépendances (Combat → Core, UI → Core+Hub+Combat, etc.)
-3. Vérifier que la compilation est partitionnée (modifier un script Combat ne recompile que Combat)
-4. Mettre en place un console filter Nymora basique (filtre les warnings/erreurs des packages tiers)
+**Objectifs (selon roadmap V2 + CLAUDE.md) :**
+1. Enums fondamentaux : `NymoraClass`, `ResourceType`, `Element`, `SpellCategory`
+2. Structs : `Damage`, `Position2D`, `ResourceCost`
+3. Classe statique `GameVersion` (semver "0.1.0") + `CombatRulesVersion`
+4. Tous dans `Nymora.Core` asmdef (sous `Scripts/Core/Enums/` et `Scripts/Core/Data/`)
 
-**Prochaine étape après validation :** Brique 0.6 — Enums et data containers de base
+**Prochaine étape après validation :** Brique 0.7 — ScriptableObject NymoraClassDefinition
 
 ---
 

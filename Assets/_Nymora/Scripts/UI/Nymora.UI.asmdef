@@ -1,0 +1,18 @@
+{
+    "name": "Nymora.UI",
+    "rootNamespace": "Nymora.UI",
+    "references": [
+        "Nymora.Core",
+        "Nymora.Hub",
+        "Nymora.Combat"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

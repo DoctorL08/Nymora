@@ -1,0 +1,22 @@
+{
+    "name": "Nymora.Editor",
+    "rootNamespace": "Nymora.Editor",
+    "references": [
+        "Nymora.Core",
+        "Nymora.Combat",
+        "Nymora.Hub",
+        "Nymora.UI",
+        "Nymora.Network"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -1,0 +1,16 @@
+{
+    "name": "Nymora.Combat",
+    "rootNamespace": "Nymora.Combat",
+    "references": [
+        "Nymora.Core"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
