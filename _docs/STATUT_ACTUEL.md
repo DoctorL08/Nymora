@@ -10,9 +10,9 @@
 
 ## 🎯 OÙ ON EN EST
 
-**Phase actuelle :** ✅ **PHASE 0 COMPLÈTE** — prêt pour Phase 1  
-**Prochaine brique :** **1.1 — Compte Photon + dashboard**  
-**Statut :** Phase 0 (10/10 briques validées) — début Phase 1 quand Lorenzo décide
+**Phase actuelle :** Phase 1 — Netcode + Backend  
+**Brique en cours :** **1.2 — Installation Photon Quantum 3 SDK**  
+**Statut brique :** À démarrer (S — 1 jour, gros download SDK)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -112,25 +112,30 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
-## 🚀 PHASE 1 — Netcode Quantum + Backend de base
+- **Brique 1.1** — Compte Photon + dashboard (validée 8 mai 2026)
+  - 2 apps créées sur dashboard.photonengine.com : "Nymora Quantum" (Quantum 3) + "Nymora Fusion" (Fusion 2)
+  - SO `PhotonAppSettings` sous `Scripts/Network/` (asmdef `Nymora.Network`)
+  - Editor Tool `Nymora > Setup > Create Photon App Settings`
+  - Asset `Assets/_Nymora/Settings/PhotonAppSettings.asset` rempli localement, **git-ignored** (les 2 AppIds restent chez Lorenzo)
+  - Fix bonus : warning CS0162 unreachable code dans NymoraHealthCheck (constant folding sur GameVersion.* → checks runtime supprimés)
 
-**Démarrera quand :** Lorenzo dit "go phase 1" (ou similaire).
-**Durée prévue :** ~2 mois (14 briques).
-**Objectif :** Photon Quantum opérationnel, backend Node.js minimal sur Hetzner, auth JWT, premier match Quantum vide en multi.
+---
 
-**Première brique :**
+## 🔄 BRIQUE EN COURS
 
-### Brique 1.1 — Compte Photon + dashboard (XS, 1/2 jour)
+### Brique 1.2 — Installation Photon Quantum 3 SDK
 
-**Ce que Lorenzo fera :**
-1. S'inscrire sur https://dashboard.photonengine.com
-2. Créer une App **Quantum 3** (noter l'AppId)
-3. Créer une App **Fusion 2** (noter l'AppId)
-4. Configurer les régions (EU / US / Asia)
+**Démarrée le :** 8 mai 2026
 
-**Ce que Claude fera :**
-1. Stocker les AppIds dans un fichier de config Unity (probablement un `PhotonAppSettings` ScriptableObject avec `_local` suffix dans `.gitignore` pour ne PAS les versionner)
-2. Préparer la structure pour la 1.2 (Quantum SDK install)
+**Objectifs :**
+1. Télécharger le SDK Quantum 3 depuis le dashboard Photon
+2. Importer le `.unitypackage` dans Unity
+3. Configurer Quantum avec le `QuantumAppId` du SO `PhotonAppSettings`
+4. Lancer un sample Quantum pour valider l'install
+
+**À gérer côté Claude :** mettre à jour `.gitignore` pour les Photon caches/packages éventuellement, et préparer un wrapper qui lit l'AppId depuis le SO Nymora pour le passer à Quantum.
+
+**Prochaine étape après validation :** Brique 1.3 — Premier projet Quantum vide
 
 ---
 

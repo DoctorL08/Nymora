@@ -78,6 +78,10 @@ secrets.json
 *.key
 PhotonServerSettings_local.asset
 
+# Photon AppIds — chaque dev/machine a son propre asset rempli localement
+Assets/_Nymora/Settings/PhotonAppSettings.asset
+Assets/_Nymora/Settings/PhotonAppSettings.asset.meta
+
 # -----------------------------------------------------------------------------
 # OS-specific
 # -----------------------------------------------------------------------------

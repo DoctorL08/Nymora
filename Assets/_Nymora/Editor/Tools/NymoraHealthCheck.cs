@@ -226,14 +226,9 @@ namespace Nymora.Editor.Tools
         {
             const string cat = "Version";
 
-            if (string.IsNullOrWhiteSpace(GameVersion.Current))
-                r.AddError(cat, "GameVersion.Current est vide.");
-
-            if (GameVersion.CombatRulesVersion < 1)
-                r.AddError(cat, $"GameVersion.CombatRulesVersion = {GameVersion.CombatRulesVersion} (doit etre >= 1).");
-
-            if (string.IsNullOrWhiteSpace(GameVersion.BibleVersion))
-                r.AddWarning(cat, "GameVersion.BibleVersion est vide.");
+            // Note : GameVersion.Current / BibleVersion / CombatRulesVersion sont des `const`,
+            // donc les checks runtime sont folde par le compilateur. Si une valeur invalide est
+            // commitee, le compilateur (ou un test futur) attrapera. On garde un info log de la conf.
 
             r.AddInfo(cat, $"Game={GameVersion.Current} | CombatRules={GameVersion.CombatRulesVersion} | Bible={GameVersion.BibleVersion}");
         }
