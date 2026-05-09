@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 8 mai 2026  
+**Dernière mise à jour :** 9 mai 2026  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,7 +11,7 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 1 — Netcode + Backend  
-**Brique en cours :** **1.6 — Schéma DB v1 (users, profiles) avec Prisma**  
+**Brique en cours :** **1.7 — Auth JWT + bcrypt**  
 **Statut brique :** À démarrer
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
@@ -158,17 +158,40 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 1.6** — Schéma DB v1 avec Prisma 7 (validée 9 mai 2026)
+  - **Upgrade Node** : v20.16 → v22 LTS (Prisma 7 demande ≥20.19/22.12/24.0)
+  - Stack Prisma 7 (architecture nouvelle) :
+    - `@prisma/client` 7.8 + `prisma` 7.8 (devDep) + `@prisma/adapter-pg` + `dotenv`
+    - `prisma/schema.prisma` : provider `prisma-client` (nouveau, plus `prisma-client-js`), `output = "../src/generated/prisma"`, **plus de `url` dans datasource** (interdit en P7)
+    - `prisma.config.ts` à la racine `backend/` : `defineConfig` + `datasource.url` + `migrations.adapter` (PrismaPg)
+    - `src/db/prisma.ts` : singleton client avec adapter PrismaPg + `dotenv/config`
+    - Client généré dans `src/generated/prisma/` (gitignored, regen via `prisma generate`)
+  - Modèles :
+    - `User` : id (uuid), email (unique), passwordHash, emailVerifiedAt?, lastLoginAt?, timestamps. Table `users`.
+    - `Profile` : id (uuid), userId (1-1 FK cascade), displayName (unique global), mmr (default 1000), timestamps. Table `profiles`.
+  - Migration `prisma/migrations/20260509211604_init/migration.sql` créée et appliquée
+  - Smoke test `npm run test:prisma` (create+read+delete cascade) → "Prisma smoke test PASSED." ✅
+  - Scripts npm ajoutés : `test:prisma`, `prisma:migrate`, `prisma:studio`, `prisma:generate`
+  - Pièges traversés (à retenir) :
+    - Prisma 7 a refondu le générateur (`prisma-client-js` deprecated → `prisma-client` avec `output` obligatoire)
+    - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
+    - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
+    - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
 ## 🔄 BRIQUE EN COURS
 
-### Brique 1.6 — Schéma DB v1 (users, profiles) avec Prisma
+### Brique 1.7 — Auth JWT + bcrypt
 
 **Objectifs (à détailler en début de brique) :**
-1. Installer Prisma + générer le client
-2. Modéliser `User` (auth) + `Profile` (display name, MMR placeholder, etc.)
-3. Première migration `init`
-4. Script de smoke test qui crée/lit un user de test
+1. Installer `bcrypt` (cost 12 cf. CLAUDE.md), `jsonwebtoken`, types associés
+2. Service auth : hash password à la création, compare au login
+3. Génération JWT (access + refresh ?) + middleware Express de vérif
+4. Routes `POST /auth/register`, `POST /auth/login`, `GET /auth/me` (protégée)
+5. Smoke test register → login → request authentifié
 
-**Prochaine étape après validation :** Brique 1.7 — Auth JWT + bcrypt
+**Prochaine étape après validation :** Brique 1.8 (à confirmer dans la roadmap V2)
 
 ---
 
@@ -250,6 +273,17 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
 
+### 9 mai 2026 — Brique 1.6 (Prisma)
+- Reprise de session, validation que la stack Docker était toujours opérationnelle (Postgres + Redis Up)
+- Tentative install Prisma → blocage : Node 20.16 < 20.19 requis par Prisma 7 → upgrade Node 22 LTS via MSI
+- Plusieurs adaptations forcées par Prisma 7 (sortie 2025, breaking changes vs Prisma 6) :
+  1. `prisma-client-js` (legacy) → `prisma-client` avec `output` explicite
+  2. `url` dans `datasource` interdit → tout passe par `prisma.config.ts`
+  3. `prisma.config.ts` doit avoir `datasource.url` (CLI) ET `migrations.adapter` (runtime PrismaPg)
+  4. `dotenv` n'est plus chargé auto, faut `import 'dotenv/config'`
+- Migration `init` appliquée, smoke test PASSED → Brique 1.6 validée
+- Brique 1.7 (Auth JWT + bcrypt) en attente
+
 ### 8 mai 2026 — Brique 1.5 (Docker stack)
 - Reprise de session après restart de Docker Desktop
 - Validation que `docker-compose.yml` (Postgres 16 + Redis 7) tournait correctement
@@ -276,7 +310,7 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 🎯 PROCHAINE ACTION POUR LORENZO
 
-> 1. À la prochaine session, dire : **"On démarre la Brique 1.6 chef"**
-> 2. Vérifier que Docker Desktop tourne et que les 2 conteneurs Nymora sont up (`docker compose ps` depuis `backend/`)
-> 3. Si Docker était stoppé : `cd backend && docker compose up -d` avant tout
-> 4. Claude lancera la Brique 1.6 — Schéma DB v1 avec Prisma
+> 1. À la prochaine session, dire : **"On démarre la Brique 1.7 chef"**
+> 2. Vérifier que Docker Desktop tourne (`docker compose ps` depuis `backend/`) — Postgres + Redis Up
+> 3. Si Docker stoppé : `cd backend && docker compose up -d` avant tout
+> 4. Claude lancera la Brique 1.7 — Auth JWT + bcrypt
