@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 9 mai 2026  
+**Dernière mise à jour :** 10 mai 2026  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,7 +11,7 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 1 — Netcode + Backend  
-**Brique en cours :** **1.7 — Auth JWT + bcrypt**  
+**Brique en cours :** **1.8 — À confirmer dans la roadmap V2**  
 **Statut brique :** À démarrer
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
@@ -180,18 +180,37 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 1.7** — Auth JWT + bcrypt (validée 10 mai 2026)
+  - Stack : `bcrypt@6` (cost 12) + `jsonwebtoken@9` + `zod@4` + types associés
+  - Architecture séparée services / middlewares / routes :
+    - `src/services/auth.service.ts` : `hashPassword` / `verifyPassword` / `signAccessToken` / `verifyAccessToken`
+    - `src/middlewares/auth.middleware.ts` : `requireAuth` (Bearer) + augmentation globale `Request.user`
+    - `src/routes/auth.ts` : `POST /auth/register`, `POST /auth/login`, `GET /auth/me`
+  - Validation zod (email + password 8-128 + displayName 3-20 [a-zA-Z0-9_-])
+  - Stratégie JWT : **access only, durée 24h** (refresh token = brique dédiée plus tard si l'UX le demande)
+  - JWT_SECRET 512 bits (hex) + JWT_EXPIRES_IN dans `.env` (jamais commit), placeholder + commande de génération dans `.env.example`
+  - Erreur unique Prisma `P2002` distinguée (email vs displayName) → 409 avec message clair
+  - `lastLoginAt` mis à jour à chaque login réussi
+  - `src/index.ts` charge `dotenv/config` au démarrage (avant tout import qui lit `process.env`)
+  - Smoke test `npm run test:auth` (7 checks : register, dup register 409, login, wrong pw 401, /me OK, /me sans token 401, /me token bidon 401) → "Auth smoke test PASSED." ✅
+  - Test démarre Express in-process sur port random + cleanup auto (avant + après) → pas besoin de serveur externe
+  - ESLint vert (warning cosmétique TS 5.9 vs typescript-eslint 7 → upgrade toolchain à planifier en fin de Phase 1, voir section Maintenance plus bas)
+
+---
+
 ## 🔄 BRIQUE EN COURS
 
-### Brique 1.7 — Auth JWT + bcrypt
+### Brique 1.8 — À confirmer dans la roadmap V2
 
-**Objectifs (à détailler en début de brique) :**
-1. Installer `bcrypt` (cost 12 cf. CLAUDE.md), `jsonwebtoken`, types associés
-2. Service auth : hash password à la création, compare au login
-3. Génération JWT (access + refresh ?) + middleware Express de vérif
-4. Routes `POST /auth/register`, `POST /auth/login`, `GET /auth/me` (protégée)
-5. Smoke test register → login → request authentifié
+À détailler en début de brique. Hypothèses à confirmer dans `_docs/05_Roadmap_V2_Novice.md` : peut-être Custom Auth Photon (lien JWT backend ↔ Photon), ou route `/profile` (update displayName, etc.), ou setup CI GitHub Actions, ou tests unitaires Vitest. Lorenzo tranchera au début de la prochaine session.
 
-**Prochaine étape après validation :** Brique 1.8 (à confirmer dans la roadmap V2)
+**Prochaine étape après validation :** Brique 1.9 (à définir)
+
+---
+
+## 🔧 MAINTENANCE PLANIFIÉE
+
+- **Fin de Phase 1** : upgrade toolchain ESLint (`eslint@8` → `eslint@9`, `@typescript-eslint/*@7` → `@8`) pour couvrir TS 5.9. Aujourd'hui ça marche, juste un warning au lancement de `npm run lint`. ~30 min de churn estimé (config flat-eslint à migrer).
 
 ---
 
@@ -273,6 +292,18 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
 
+### 10 mai 2026 — Brique 1.7 (Auth JWT + bcrypt)
+- Reprise de session, push des restes de la 1.6 (backend Prisma + STATUT_ACTUEL maj) sur les 2 repos GitHub
+- Brique 1.7 : 3 décisions techniques tranchées avant livraison
+  - Stratégie JWT → access only 24h (refresh = brique dédiée plus tard)
+  - Register exige email + password + displayName (transaction User+Profile)
+  - Validation zod (email format / password 8-128 / displayName regex)
+- Livraison de 4 nouveaux fichiers (auth.service / auth.middleware / routes/auth / scripts/test-auth) + 4 modifs (server / index / .env / package.json) + install bcrypt jsonwebtoken zod (et types)
+- Piège traversé : `Prisma` namespace exporté depuis `generated/prisma/client.ts` (pas `generated/prisma/index.ts`) → import à corriger
+- `npm run test:auth` → 7/7 PASSED
+- `npm run lint` → 0 erreur (warning cosmétique TS 5.9 noté pour upgrade toolchain en fin de Phase 1)
+- Brique 1.7 validée → 1.8 à définir au début de la prochaine session
+
 ### 9 mai 2026 — Brique 1.6 (Prisma)
 - Reprise de session, validation que la stack Docker était toujours opérationnelle (Postgres + Redis Up)
 - Tentative install Prisma → blocage : Node 20.16 < 20.19 requis par Prisma 7 → upgrade Node 22 LTS via MSI
@@ -310,7 +341,7 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 🎯 PROCHAINE ACTION POUR LORENZO
 
-> 1. À la prochaine session, dire : **"On démarre la Brique 1.7 chef"**
+> 1. À la prochaine session, dire : **"Quelle est la Brique 1.8 chef ?"** — Claude relira `_docs/05_Roadmap_V2_Novice.md` pour confirmer le contenu de la 1.8 avant de la cadrer
 > 2. Vérifier que Docker Desktop tourne (`docker compose ps` depuis `backend/`) — Postgres + Redis Up
 > 3. Si Docker stoppé : `cd backend && docker compose up -d` avant tout
-> 4. Claude lancera la Brique 1.7 — Auth JWT + bcrypt
+> 4. Smoke test rapide pour vérifier que tout part bien : `npm run test:auth` depuis `backend/` doit afficher "Auth smoke test PASSED."
