@@ -11,7 +11,7 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 1 — Netcode + Backend  
-**Brique en cours :** **1.9 — Client Unity : intégration Photon Quantum + Auth (Custom Auth)**  
+**Brique en cours :** **1.10 — Système de versioning runtime**  
 **Statut brique :** À démarrer
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
@@ -180,6 +180,34 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 1.9** — Client Unity : intégration Photon Quantum + Auth (Custom Auth) (validée 10 mai 2026)
+  - Architecture end-to-end Custom Auth :
+    - Client Unity envoie son JWT à Photon Cloud via `AuthenticationValues.SetAuthPostData({"token": jwt})` (Custom auth type)
+    - Photon Cloud appelle le webhook backend `POST /auth/photon-webhook` (URL configurée dans le dashboard)
+    - Backend valide le JWT (`verifyAccessToken`) + check anti-révocation en DB → réponse `{ResultCode: 1/2/3, UserId, Nickname, AuthCookie}`
+    - Si ResultCode=1 : Photon valide la connexion, sinon refus
+  - Backend (commit côté `nymora-backend`) :
+    - Nouveau endpoint `POST /auth/photon-webhook` dans `src/routes/auth.ts` : accepte le token en POST body OU en query string, distingue 3 ResultCodes (OK / InvalidAuth / BadParams)
+    - Nouveau smoke test `npm run test:photon-webhook` (6 cas : body OK, query OK, missing token, fake JWT, user supprimé, AuthCookie correct avec mmr=1000)
+    - Constants ResultCodes nommées (PHOTON_RESULT_OK = 1, _INVALID_AUTH = 2, _BAD_PARAMS = 3) pour lisibilité
+  - Unity (commit côté `Nymora`) sous `Assets/_Nymora/Scripts/Network/Backend/` :
+    - `PhotonAuthBridge.cs` : helper static `BuildAuthValues(jwt)` qui construit l'`AuthenticationValues` Photon
+    - `PhotonConnectionTester.cs` : MonoBehaviour qui implémente `IConnectionCallbacks`, lance un test connect au Master Server avec UniTask (`TestConnectAsync(jwt)` → `PhotonConnectResult` succès/échec), Service() en Update, cleanup propre qui attend `ClientState.Disconnected` avant de relâcher le RealtimeClient (évite warning Photon "DispatchIncomingCommands wasn't called")
+  - Modifs `LoginScreenController.cs` : 4ème bouton "Connect Photon" + handler async, vérifie `_auth.IsLoggedIn` avant de tester
+  - Modifs `CreateLoginSceneTool.cs` : ajout du 4ème bouton sur ligne 2, `PhotonConnectionTester` ajouté en component sur le GameObject `LoginScreenController`, câblage SerializedObject
+  - Asmdef `Nymora.Network` ref `Photon.Realtime` + `Quantum.Unity`
+  - Photon Dashboard : Custom Authentication activée pour app Quantum, URL = `https://<ngrok-id>.ngrok-free.dev/auth/photon-webhook`, "Reject all clients if not available" coché (fail-closed)
+  - Tunnel HTTPS public : ngrok-free utilisé pour cette session de dev (URL temporaire, change à chaque relance ngrok)
+  - Pièges traversés en 1.9 :
+    1. Backend webhook URL incomplète dans le dashboard Photon (sans path `/auth/photon-webhook`) → Photon tape la racine → Express renvoie page HTML d'erreur "Cannot POST /" → Photon parse JSON → crash `Unexpected character: <`. Diagnostic via comparaison côté client (erreur explicite "deserialization failed: <") + reproduction `curl POST /` qui montre le HTML
+    2. Faux suspect au début : warning page ngrok-free. Écarté en testant un POST sans header `ngrok-skip-browser-warning` qui forwardait correctement le JSON
+    3. Warning Photon "DispatchIncomingCommands() wasn't called for >5000s" après Disconnect : Cleanup() était trop rapide → fix avec wait `ClientState.Disconnected` + timeout 2s en boucle UniTask.Yield
+  - Validation manuelle (via ngrok tunnel actif) : Login → Click "Connect Photon" → Status "Photon OK ! Region=eu UserId=<UUID Postgres>" → confirmation que Photon Cloud a appelé notre webhook et reçu UserId du backend
+  - Healthcheck Unity : 0 erreur, 0 warning
+  - Smoke tests backend post-1.9 : `npm run test:auth` 7/7 PASSED + `npm run test:photon-webhook` 6/6 PASSED
+
+---
+
 - **Brique 1.8** — Client Unity : connexion HTTP au backend (validée 10 mai 2026)
   - Décisions techniques : JsonUtility natif (pas Newtonsoft) + UniTask 2.5.10 (async/await sur UnityWebRequest) + Editor Script de génération de scène
   - Dep ajoutée dans `Packages/manifest.json` : `com.cysharp.unitask` via git URL pinnée au tag `#2.5.10`
@@ -224,16 +252,17 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ## 🔄 BRIQUE EN COURS
 
-### Brique 1.9 — Client Unity : intégration Photon Quantum + Auth (Custom Auth)
+### Brique 1.10 — Système de versioning runtime
 
 **Objectifs (extraits de `05_Roadmap_V2_Novice.md`) :**
-1. Lier l'authentification backend avec la connexion Photon (Custom Auth)
-2. Le client envoie le JWT à Photon, Photon valide via webhook backend
-3. Si JWT invalide, connexion Photon refusée
+1. Implémenter `GameVersion` (semver) côté client (déjà partiellement présent dans `Scripts/Core/GameVersion.cs`)
+2. Implémenter `CombatRulesVersion` (incrémentée à chaque modif gameplay)
+3. Côté backend : endpoint `/version` qui renvoie les versions supportées
+4. Bloquer la connexion si client trop vieux (rejection côté backend ou côté webhook Photon)
 
-**Validation attendue :** connexion Photon Quantum uniquement avec un JWT valide ; le backend logge la validation à chaque connexion.
+**Validation attendue :** si on fake une vieille version client, le serveur refuse la connexion ; le client affiche un message "Mise à jour requise".
 
-**Prochaine étape après validation :** Brique 1.10 — Système de versioning runtime (GameVersion + CombatRulesVersion + endpoint /version)
+**Prochaine étape après validation :** Brique 1.11 — Logger structuré (NymoraLog client + Pino serveur, prep pour Loki en Phase 7+)
 
 ---
 
@@ -321,6 +350,21 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
 
+### 10 mai 2026 — Brique 1.9 (Custom Auth Photon ↔ JWT backend) — session marathon
+- Lorenzo a voulu enchaîner direct sur la 1.9 (3ème brique de la soirée après 1.7 et 1.8, mode warrior)
+- Setup ngrok-free pour exposer le backend localhost via URL HTTPS publique (`*.ngrok-free.dev`)
+- Backend : webhook `POST /auth/photon-webhook` + smoke test 6 cas (token body/query, fake JWT, user supprimé, AuthCookie)
+- Unity : `PhotonAuthBridge` (helper AuthValues from JWT) + `PhotonConnectionTester` (MonoBehaviour avec UniTask + IConnectionCallbacks + cleanup propre)
+- Modifs scène 00_Login : 4ème bouton "Connect Photon" + component PhotonConnectionTester sur le LoginScreenController
+- Photon Dashboard : Custom Authentication activée + URL webhook configurée + fail-closed
+- 3 bugs traversés en cours de test E2E :
+  1. URL Photon Dashboard sans path → Photon tapait la racine → page HTML Express → "Unexpected character: <" → fix : URL complète avec `/auth/photon-webhook`
+  2. Faux suspect "warning page ngrok" écarté par debug ciblé (test curl avec/sans header skip-warning)
+  3. Warning Photon cleanup fix par wait sur ClientState.Disconnected
+- Validation E2E réussie : Status Unity "Photon OK ! Region=eu UserId=<UUID Postgres>"
+- Healthcheck Unity 0/0, smoke tests backend 13/13 (auth + photon-webhook)
+- Brique 1.9 validée → 1.10 (Versioning runtime) en attente
+
 ### 10 mai 2026 — Brique 1.8 (Unity client HTTP → backend) — même soirée
 - Lorenzo a voulu enchaîner direct sur la 1.8 après la validation de la 1.7 (pas de pause)
 - Lecture de `05_Roadmap_V2_Novice.md` pour cadrer la 1.8 officielle (= Client Unity HTTP au backend)
@@ -383,12 +427,13 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 🎯 PROCHAINE ACTION POUR LORENZO
 
-> 1. À la prochaine session, dire : **"On démarre la Brique 1.9 chef"** (Custom Auth Photon)
-> 2. **Avoir 3 fenêtres prêtes** :
+> 1. À la prochaine session, dire : **"On démarre la Brique 1.10 chef"** (Versioning runtime)
+> 2. **Avoir 3 fenêtres prêtes** (la 1.10 ne nécessite plus ngrok, tunnel facultatif) :
 >    - Docker Desktop allumé (`docker compose ps` depuis `backend/` doit montrer Postgres + Redis Up)
->    - Backend Express : `cd backend && npm run dev` dans une fenêtre cmd (laisser ouverte)
->    - Unity Editor avec le projet Nymora ouvert
-> 3. Smoke test rapide :
->    - `cd backend && npm run test:auth` doit afficher "Auth smoke test PASSED."
->    - Lancer Unity sur la scène 00_Login → Press Play → si déjà connecté, status "Connecte : DoctorL08"
-> 4. Claude relira `05_Roadmap_V2_Novice.md` pour cadrer la 1.9 (intégration JWT ↔ Photon Custom Auth via webhook backend)
+>    - Backend Express : `cd backend && npm run dev` dans une fenêtre cmd
+>    - Unity Editor avec le projet Nymora ouvert sur la scène 00_Login
+> 3. Si tu veux retester la 1.9 (Custom Auth Photon) avant de démarrer la 1.10 : il faudra **relancer ngrok** car son URL est temporaire (`*.ngrok-free.dev` change à chaque relance), puis **mettre à jour l'URL dans le dashboard Photon** avec la nouvelle. Sinon Photon tapera l'ancienne URL morte.
+> 4. Smoke tests rapides :
+>    - `cd backend && npm run test:auth` → "Auth smoke test PASSED."
+>    - `cd backend && npm run test:photon-webhook` → "Photon webhook smoke test PASSED."
+> 5. Claude relira `05_Roadmap_V2_Novice.md` pour cadrer la 1.10 (GameVersion + CombatRulesVersion + endpoint `/version` + blocage client trop vieux)

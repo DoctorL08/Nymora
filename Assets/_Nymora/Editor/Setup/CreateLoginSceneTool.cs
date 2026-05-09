@@ -96,6 +96,9 @@ namespace Nymora.Editor.Setup
             var registerBtn = CreateButton(canvasGo, "RegisterButton", "Register", 0f, -160f);
             var logoutBtn = CreateButton(canvasGo, "LogoutButton", "Logout", 220f, -160f);
 
+            // 4eme bouton sur une 2eme ligne (Photon Custom Auth test)
+            var connectPhotonBtn = CreateButton(canvasGo, "ConnectPhotonButton", "Connect Photon", 0f, -250f, width: 320f);
+
             // Statut
             var statusGo = CreateUIChild(canvasGo, "StatusText", typeof(TextMeshProUGUI));
             var statusText = statusGo.GetComponent<TextMeshProUGUI>();
@@ -103,13 +106,16 @@ namespace Nymora.Editor.Setup
             statusText.fontSize = 28;
             statusText.alignment = TextAlignmentOptions.Center;
             statusText.color = new Color(0.78f, 0.85f, 0.95f);
-            PositionAbsolute(statusGo.GetComponent<RectTransform>(), 0f, -340f, 1400f, 60f);
+            PositionAbsolute(statusGo.GetComponent<RectTransform>(), 0f, -360f, 1700f, 60f);
 
-            // Controller (pas un enfant du Canvas car ce n'est pas un element UI)
-            var controllerGo = new GameObject("LoginScreenController", typeof(LoginScreenController));
+            // Controller + PhotonConnectionTester (sur le meme GameObject pour simplicite)
+            var controllerGo = new GameObject("LoginScreenController",
+                typeof(LoginScreenController),
+                typeof(Nymora.Network.Backend.PhotonConnectionTester));
             SceneManager.MoveGameObjectToScene(controllerGo, scene);
             controllerGo.transform.SetSiblingIndex(0);
             var controller = controllerGo.GetComponent<LoginScreenController>();
+            var photonTester = controllerGo.GetComponent<Nymora.Network.Backend.PhotonConnectionTester>();
 
             // Cablage des references via SerializedObject
             var so = new SerializedObject(controller);
@@ -120,6 +126,8 @@ namespace Nymora.Editor.Setup
             so.FindProperty("_loginButton").objectReferenceValue = loginBtn;
             so.FindProperty("_registerButton").objectReferenceValue = registerBtn;
             so.FindProperty("_logoutButton").objectReferenceValue = logoutBtn;
+            so.FindProperty("_connectPhotonButton").objectReferenceValue = connectPhotonBtn;
+            so.FindProperty("_photonTester").objectReferenceValue = photonTester;
             so.FindProperty("_statusText").objectReferenceValue = statusText;
             so.ApplyModifiedPropertiesWithoutUndo();
 
@@ -188,12 +196,12 @@ namespace Nymora.Editor.Setup
             return input;
         }
 
-        private static Button CreateButton(GameObject parent, string name, string label, float x, float y)
+        private static Button CreateButton(GameObject parent, string name, string label, float x, float y, float width = 200f)
         {
             var btnGo = CreateUIChild(parent, name, typeof(Image), typeof(Button));
             var img = btnGo.GetComponent<Image>();
             img.color = new Color(0.25f, 0.35f, 0.55f, 1f);
-            PositionAbsolute(btnGo.GetComponent<RectTransform>(), x, y, 200f, 70f);
+            PositionAbsolute(btnGo.GetComponent<RectTransform>(), x, y, width, 70f);
 
             var labelGo = CreateUIChild(btnGo, "Label", typeof(TextMeshProUGUI));
             var labelText = labelGo.GetComponent<TextMeshProUGUI>();

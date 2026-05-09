@@ -3,7 +3,9 @@
     "rootNamespace": "Nymora.Network",
     "references": [
         "Nymora.Core",
-        "UniTask"
+        "UniTask",
+        "Photon.Realtime",
+        "Quantum.Unity"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

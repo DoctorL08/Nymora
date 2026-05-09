@@ -27,6 +27,10 @@ namespace Nymora.UI.Login
         [SerializeField] private Button _loginButton;
         [SerializeField] private Button _registerButton;
         [SerializeField] private Button _logoutButton;
+        [SerializeField] private Button _connectPhotonButton;
+
+        [Header("Photon")]
+        [SerializeField] private PhotonConnectionTester _photonTester;
 
         [Header("Status")]
         [SerializeField] private TMP_Text _statusText;
@@ -54,6 +58,7 @@ namespace Nymora.UI.Login
             if (_loginButton != null) _loginButton.onClick.AddListener(OnLoginClicked);
             if (_registerButton != null) _registerButton.onClick.AddListener(OnRegisterClicked);
             if (_logoutButton != null) _logoutButton.onClick.AddListener(OnLogoutClicked);
+            if (_connectPhotonButton != null) _connectPhotonButton.onClick.AddListener(OnConnectPhotonClicked);
         }
 
         private void OnDisable()
@@ -61,6 +66,7 @@ namespace Nymora.UI.Login
             if (_loginButton != null) _loginButton.onClick.RemoveListener(OnLoginClicked);
             if (_registerButton != null) _registerButton.onClick.RemoveListener(OnRegisterClicked);
             if (_logoutButton != null) _logoutButton.onClick.RemoveListener(OnLogoutClicked);
+            if (_connectPhotonButton != null) _connectPhotonButton.onClick.RemoveListener(OnConnectPhotonClicked);
         }
 
         private async void Start()
@@ -130,6 +136,34 @@ namespace Nymora.UI.Login
         {
             _auth.Logout();
             SetStatus("Deconnecte.");
+        }
+
+        private async void OnConnectPhotonClicked()
+        {
+            if (!_auth.IsLoggedIn)
+            {
+                SetStatus("Connecte-toi (Login ou Register) avant de tester Photon.");
+                return;
+            }
+            if (_photonTester == null)
+            {
+                SetStatus("PhotonConnectionTester non assigne dans l'Inspector.");
+                return;
+            }
+
+            SetStatus("Connexion Photon (Custom Auth via webhook backend)...");
+            var result = await _photonTester.TestConnectAsync(_auth.Token, _cts.Token);
+
+            if (result.IsSuccess)
+            {
+                SetStatus($"Photon OK ! Region={result.Region} UserId={result.UserId}");
+                Debug.Log($"[Nymora.Login] Photon Custom Auth validee. Region={result.Region}, UserId={result.UserId}");
+            }
+            else
+            {
+                SetStatus($"Photon refuse : {result.FailureMessage}");
+                Debug.LogWarning($"[Nymora.Login] Photon connection failed: {result.FailureMessage}");
+            }
         }
 
         private void SetStatus(string s)
