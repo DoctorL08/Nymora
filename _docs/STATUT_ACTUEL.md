@@ -11,7 +11,7 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 1 — Netcode + Backend  
-**Brique en cours :** **1.8 — À confirmer dans la roadmap V2**  
+**Brique en cours :** **1.9 — Client Unity : intégration Photon Quantum + Auth (Custom Auth)**  
 **Statut brique :** À démarrer
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
@@ -180,6 +180,30 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 1.8** — Client Unity : connexion HTTP au backend (validée 10 mai 2026)
+  - Décisions techniques : JsonUtility natif (pas Newtonsoft) + UniTask 2.5.10 (async/await sur UnityWebRequest) + Editor Script de génération de scène
+  - Dep ajoutée dans `Packages/manifest.json` : `com.cysharp.unitask` via git URL pinnée au tag `#2.5.10`
+  - Asmdef updates : `Nymora.Network` ref `UniTask` ; `Nymora.UI` ref `Network` + `Unity.TextMeshPro` + `UniTask` ; `Nymora.Editor` ref `Unity.TextMeshPro` + `UniTask` (pour le tool de génération de scène)
+  - Code livré sous `Assets/_Nymora/Scripts/Network/Backend/` :
+    - `NymoraBackendSettings.cs` : SO `BaseUrl` + `TimeoutSeconds` (commit OK, BaseUrl pas un secret)
+    - `NymoraApiDtos.cs` : `RegisterRequest`, `LoginRequest`, `AuthResponse`, `ApiUserDto`, `MeResponse`, `ApiErrorBody` (champs publics pour JsonUtility)
+    - `NymoraApiClient.cs` : wrap `UnityWebRequest`, struct `ApiResult<T>` (success/failure unifié), 3 méthodes `RegisterAsync` / `LoginAsync` / `GetMeAsync`, gestion `UnityWebRequestException` + `OperationCanceledException`
+    - `AuthService.cs` : façade haut-niveau, persiste le JWT via `PlayerPrefs["nymora.auth.jwt"]`, restaure au constructeur, expose `IsLoggedIn` / `Logout`
+  - Code livré sous `Assets/_Nymora/Scripts/UI/Login/` :
+    - `LoginScreenController.cs` : MonoBehaviour qui pilote la scène, hooks/unhooks listeners proprement, gère `CancellationTokenSource` au cycle de vie, vérifie `/me` au `Start()` si token présent
+  - Editor Scripts livrés sous `Assets/_Nymora/Editor/Setup/` :
+    - `CreateBackendSettingsTool.cs` (menu `Nymora > Setup > Create Backend Settings`)
+    - `CreateLoginSceneTool.cs` (menu `Nymora > Setup > Create Login Scene`) — génère Canvas + 3 TMP_InputField + 3 Button + StatusText + cable les références sur le LoginScreenController via SerializedObject
+  - Asset settings créé : `Assets/_Nymora/Settings/NymoraBackendSettings.asset` (BaseUrl `http://localhost:3000`)
+  - Scène créée : `Assets/_Nymora/Scenes/00_Login.unity` (première scène Nymora dans le repo)
+  - Stratégie token : PlayerPrefs (temporaire Phase 1) ; à migrer vers stockage sécurisé plateforme-spécifique en Phase 7+ avant alpha
+  - Piège traversé : `Nymora.Editor.asmdef` doit aussi référencer `Unity.TextMeshPro` pour que le tool de génération de scène compile (sinon `TMPro` introuvable). La transitivité via `Nymora.UI` ne suffit pas pour les types externes.
+  - Validation manuelle (6/6 PASSED) : register depuis Unity → user en DB Postgres avec passwordHash bcrypt $2b$12$... → JWT loggé en console → token persiste après stop/play (PlayerPrefs) → /me valide la session au démarrage → logout efface le token → login avec mauvais mdp retourne bien 401 "Invalid credentials"
+  - Healthcheck Unity : 0 erreur, 0 warning
+  - 3 fenêtres de terminal ouvertes pour le test : Docker Desktop (Postgres+Redis), `npm run dev` (backend Express), Unity Editor
+
+---
+
 - **Brique 1.7** — Auth JWT + bcrypt (validée 10 mai 2026)
   - Stack : `bcrypt@6` (cost 12) + `jsonwebtoken@9` + `zod@4` + types associés
   - Architecture séparée services / middlewares / routes :
@@ -200,11 +224,16 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ## 🔄 BRIQUE EN COURS
 
-### Brique 1.8 — À confirmer dans la roadmap V2
+### Brique 1.9 — Client Unity : intégration Photon Quantum + Auth (Custom Auth)
 
-À détailler en début de brique. Hypothèses à confirmer dans `_docs/05_Roadmap_V2_Novice.md` : peut-être Custom Auth Photon (lien JWT backend ↔ Photon), ou route `/profile` (update displayName, etc.), ou setup CI GitHub Actions, ou tests unitaires Vitest. Lorenzo tranchera au début de la prochaine session.
+**Objectifs (extraits de `05_Roadmap_V2_Novice.md`) :**
+1. Lier l'authentification backend avec la connexion Photon (Custom Auth)
+2. Le client envoie le JWT à Photon, Photon valide via webhook backend
+3. Si JWT invalide, connexion Photon refusée
 
-**Prochaine étape après validation :** Brique 1.9 (à définir)
+**Validation attendue :** connexion Photon Quantum uniquement avec un JWT valide ; le backend logge la validation à chaque connexion.
+
+**Prochaine étape après validation :** Brique 1.10 — Système de versioning runtime (GameVersion + CombatRulesVersion + endpoint /version)
 
 ---
 
@@ -292,6 +321,19 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
 
+### 10 mai 2026 — Brique 1.8 (Unity client HTTP → backend) — même soirée
+- Lorenzo a voulu enchaîner direct sur la 1.8 après la validation de la 1.7 (pas de pause)
+- Lecture de `05_Roadmap_V2_Novice.md` pour cadrer la 1.8 officielle (= Client Unity HTTP au backend)
+- Décisions techniques tranchées en 3 questions : JsonUtility (pas Newtonsoft), UniTask (pas coroutines), Editor Script de génération de scène (pas manip clic à clic)
+- 11 fichiers livrés en parallèle (manifest.json, 3 asmdef updates, 4 nouveaux scripts Network, 1 script UI, 2 Editor Scripts)
+- 2 pièges traversés en cours de manip avec Lorenzo :
+  1. Backend Express pas démarré → status 0 "cannot connect to destination host" : il faut bien laisser `npm run dev` actif dans une fenêtre cmd dédiée pendant tout le test
+  2. `Nymora.Editor.asmdef` ne référençait pas `Unity.TextMeshPro` → erreur de compilation `TMPro introuvable` dans le tool de génération de scène ; ajout de la ref a corrigé
+- Pédagogie pour Lorenzo (novice) : besoin d'expliquer Prisma Studio, les filtres console Unity, le workflow multi-fenêtres (Docker + backend + Studio + Unity en parallèle)
+- 6 checks de validation manuels passés : register, console JWT, ligne en DB Postgres, persist PlayerPrefs, logout, login avec mauvais mdp
+- Healthcheck Unity : 0 erreur, 0 warning
+- Brique 1.8 validée → 1.9 (Custom Auth Photon) en attente
+
 ### 10 mai 2026 — Brique 1.7 (Auth JWT + bcrypt)
 - Reprise de session, push des restes de la 1.6 (backend Prisma + STATUT_ACTUEL maj) sur les 2 repos GitHub
 - Brique 1.7 : 3 décisions techniques tranchées avant livraison
@@ -341,7 +383,12 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 🎯 PROCHAINE ACTION POUR LORENZO
 
-> 1. À la prochaine session, dire : **"Quelle est la Brique 1.8 chef ?"** — Claude relira `_docs/05_Roadmap_V2_Novice.md` pour confirmer le contenu de la 1.8 avant de la cadrer
-> 2. Vérifier que Docker Desktop tourne (`docker compose ps` depuis `backend/`) — Postgres + Redis Up
-> 3. Si Docker stoppé : `cd backend && docker compose up -d` avant tout
-> 4. Smoke test rapide pour vérifier que tout part bien : `npm run test:auth` depuis `backend/` doit afficher "Auth smoke test PASSED."
+> 1. À la prochaine session, dire : **"On démarre la Brique 1.9 chef"** (Custom Auth Photon)
+> 2. **Avoir 3 fenêtres prêtes** :
+>    - Docker Desktop allumé (`docker compose ps` depuis `backend/` doit montrer Postgres + Redis Up)
+>    - Backend Express : `cd backend && npm run dev` dans une fenêtre cmd (laisser ouverte)
+>    - Unity Editor avec le projet Nymora ouvert
+> 3. Smoke test rapide :
+>    - `cd backend && npm run test:auth` doit afficher "Auth smoke test PASSED."
+>    - Lancer Unity sur la scène 00_Login → Press Play → si déjà connecté, status "Connecte : DoctorL08"
+> 4. Claude relira `05_Roadmap_V2_Novice.md` pour cadrer la 1.9 (intégration JWT ↔ Photon Custom Auth via webhook backend)

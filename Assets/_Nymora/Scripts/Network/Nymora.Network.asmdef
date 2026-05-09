@@ -2,7 +2,8 @@
     "name": "Nymora.Network",
     "rootNamespace": "Nymora.Network",
     "references": [
-        "Nymora.Core"
+        "Nymora.Core",
+        "UniTask"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

@@ -6,7 +6,9 @@
         "Nymora.Combat",
         "Nymora.Hub",
         "Nymora.UI",
-        "Nymora.Network"
+        "Nymora.Network",
+        "Unity.TextMeshPro",
+        "UniTask"
     ],
     "includePlatforms": [
         "Editor"

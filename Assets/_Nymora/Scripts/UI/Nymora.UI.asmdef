@@ -4,7 +4,10 @@
     "references": [
         "Nymora.Core",
         "Nymora.Hub",
-        "Nymora.Combat"
+        "Nymora.Combat",
+        "Nymora.Network",
+        "Unity.TextMeshPro",
+        "UniTask"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
