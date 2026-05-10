@@ -53,4 +53,13 @@ namespace Nymora.Network.Backend
     {
         public string error;
     }
+
+    /// <summary>Reponse de GET /version (versioning serveur).</summary>
+    [Serializable]
+    public class VersionResponse
+    {
+        public string minClientVersion;
+        public string currentClientVersion;
+        public int minCombatRulesVersion;
+    }
 }

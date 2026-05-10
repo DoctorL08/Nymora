@@ -1,5 +1,6 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Nymora.Core.Data;
 using Nymora.Network.Backend;
 using TMPro;
 using UnityEngine;
@@ -35,9 +36,15 @@ namespace Nymora.UI.Login
         [Header("Status")]
         [SerializeField] private TMP_Text _statusText;
 
+        [Header("Update Required panel")]
+        [SerializeField] private GameObject _updateRequiredPanel;
+        [SerializeField] private TMP_Text _updateRequiredText;
+
         private NymoraApiClient _api;
         private AuthService _auth;
+        private NymoraVersionClient _versionClient;
         private CancellationTokenSource _cts;
+        private bool _versionLocked;
 
         private void Awake()
         {
@@ -50,7 +57,10 @@ namespace Nymora.UI.Login
 
             _api = new NymoraApiClient(_backendSettings);
             _auth = new AuthService(_api);
+            _versionClient = new NymoraVersionClient(_api);
             _cts = new CancellationTokenSource();
+
+            if (_updateRequiredPanel != null) _updateRequiredPanel.SetActive(false);
         }
 
         private void OnEnable()
@@ -71,6 +81,28 @@ namespace Nymora.UI.Login
 
         private async void Start()
         {
+            // Etape 1 : check version client vs serveur AVANT toute autre requete.
+            SetStatus("Verification de la version client...");
+            var versionCheck = await _versionClient.CheckAsync(_cts.Token);
+
+            if (!versionCheck.IsReachable)
+            {
+                SetStatus($"Backend injoignable : {versionCheck.ErrorMessage}");
+                return;
+            }
+
+            if (!versionCheck.IsCompatible)
+            {
+                LockUiForUpdate(versionCheck.MinClientVersion, versionCheck.CurrentClientVersion);
+                return;
+            }
+
+            if (versionCheck.IsUpdateAvailable)
+            {
+                Debug.Log($"[Nymora.Login] Une mise a jour est disponible : client={GameVersion.Current}, serveur={versionCheck.CurrentClientVersion}");
+            }
+
+            // Etape 2 : flow normal (verification de session si token persiste).
             if (_auth.IsLoggedIn)
             {
                 SetStatus("Token detecte, verification cote serveur...");
@@ -78,6 +110,10 @@ namespace Nymora.UI.Login
                 if (me.IsSuccess)
                 {
                     SetStatus($"Connecte : {me.Data.displayName} ({me.Data.email})");
+                }
+                else if (me.StatusCode == 426)
+                {
+                    LockUiForUpdate(versionCheck.MinClientVersion, versionCheck.CurrentClientVersion);
                 }
                 else
                 {
@@ -103,12 +139,17 @@ namespace Nymora.UI.Login
 
         private async void OnLoginClicked()
         {
+            if (_versionLocked) return;
             SetStatus("Connexion...");
             var res = await _auth.LoginAsync(_emailInput.text, _passwordInput.text, _cts.Token);
             if (res.IsSuccess)
             {
                 Debug.Log($"[Nymora.Login] JWT recu (longueur {res.Data.token.Length}).");
                 SetStatus($"Connecte : {res.Data.user.displayName}");
+            }
+            else if (res.StatusCode == 426)
+            {
+                LockUiForUpdate(null, null);
             }
             else
             {
@@ -118,6 +159,7 @@ namespace Nymora.UI.Login
 
         private async void OnRegisterClicked()
         {
+            if (_versionLocked) return;
             SetStatus("Inscription...");
             var res = await _auth.RegisterAsync(
                 _emailInput.text, _passwordInput.text, _displayNameInput.text, _cts.Token);
@@ -125,6 +167,10 @@ namespace Nymora.UI.Login
             {
                 Debug.Log($"[Nymora.Login] JWT recu (longueur {res.Data.token.Length}).");
                 SetStatus($"Inscrit + connecte : {res.Data.user.displayName}");
+            }
+            else if (res.StatusCode == 426)
+            {
+                LockUiForUpdate(null, null);
             }
             else
             {
@@ -170,6 +216,36 @@ namespace Nymora.UI.Login
         {
             if (_statusText != null) _statusText.text = s;
             Debug.Log($"[Nymora.Login] {s}");
+        }
+
+        /// <summary>
+        /// Affiche le panel "Mise a jour requise" et desactive les boutons.
+        /// Appele soit au demarrage (version client &lt; min serveur), soit si une requete
+        /// HTTP retourne 426 en cours de session (pas censé arriver mais defense-in-depth).
+        /// </summary>
+        private void LockUiForUpdate(string minServerVersion, string currentServerVersion)
+        {
+            _versionLocked = true;
+
+            if (_loginButton != null) _loginButton.interactable = false;
+            if (_registerButton != null) _registerButton.interactable = false;
+            if (_logoutButton != null) _logoutButton.interactable = false;
+            if (_connectPhotonButton != null) _connectPhotonButton.interactable = false;
+
+            string msg;
+            if (!string.IsNullOrEmpty(minServerVersion))
+            {
+                msg = $"Mise a jour requise.\n\nVersion installee : {GameVersion.Current}\nVersion minimale : {minServerVersion}\nDerniere version : {currentServerVersion}";
+            }
+            else
+            {
+                msg = $"Mise a jour requise.\n\nTa version client ({GameVersion.Current}) n'est plus supportee.";
+            }
+
+            if (_updateRequiredText != null) _updateRequiredText.text = msg;
+            if (_updateRequiredPanel != null) _updateRequiredPanel.SetActive(true);
+
+            SetStatus("Client trop ancien : mise a jour requise.");
         }
     }
 }

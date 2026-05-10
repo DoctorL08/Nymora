@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Nymora.Core.Data;
 using Photon.Realtime;
 
 namespace Nymora.Network.Backend
@@ -27,10 +28,12 @@ namespace Nymora.Network.Backend
             };
 
             // Photon transmet ce dictionnaire en JSON au webhook, en POST body
-            // (Content-Type: application/json).
+            // (Content-Type: application/json). On envoie aussi la version du client
+            // pour que le backend puisse refuser un client trop vieux (ResultCode=2).
             auth.SetAuthPostData(new Dictionary<string, object>
             {
                 ["token"] = jwt,
+                ["clientVersion"] = GameVersion.Current,
             });
 
             return auth;

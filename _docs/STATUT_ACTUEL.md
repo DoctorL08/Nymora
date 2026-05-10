@@ -11,7 +11,7 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 1 — Netcode + Backend  
-**Brique en cours :** **1.10 — Système de versioning runtime**  
+**Brique en cours :** **1.11 — Logger structuré (NymoraLog client + Pino serveur)**  
 **Statut brique :** À démarrer
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
@@ -180,6 +180,37 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 1.10** — Système de versioning runtime (validée 10 mai 2026)
+  - Backend (commit côté `nymora-backend`) :
+    - Nouveau service `src/services/version.service.ts` : constantes `MIN_CLIENT_VERSION = '0.1.0'`, `CURRENT_CLIENT_VERSION = '0.1.0'`, `MIN_COMBAT_RULES_VERSION = 1` + helpers `parseSemver` / `compareSemver` / `checkClientVersion`
+    - Politique : `min < current` (flexible) — on bumpe `current` à chaque release, `min` uniquement aux breaking changes
+    - Nouveau endpoint `GET /version` (public, non gardé) sous `src/routes/version.ts` qui renvoie `{ minClientVersion, currentClientVersion, minCombatRulesVersion }`
+    - Nouveau middleware `versionGuard` sous `src/middlewares/version.middleware.ts` qui lit le header `X-Nymora-Client-Version`, refuse en HTTP 426 si absent/malformé/trop vieux (avec `reason: 'missing'|'malformed'|'too_old'` dans la réponse)
+    - Appliqué sur `/auth/register`, `/auth/login`, `/auth/me` (pas sur `/auth/photon-webhook` car Photon n'envoie pas de header custom)
+    - Webhook Photon : lit `clientVersion` depuis body/query (envoyé par Unity via `AuthValues.SetAuthPostData`), refuse en ResultCode=2 si trop vieux
+    - Nouveau smoke test `npm run test:version` (8 cas : GET /version + 3 cas de refus register + register OK + 3 cas webhook Photon)
+    - Mise à jour des 2 smoke tests existants pour passer le header / `clientVersion` (sinon régression)
+  - Unity (commit côté `Nymora`) sous `Assets/_Nymora/Scripts/Network/Backend/` :
+    - Nouveau `NymoraVersionClient.cs` : interroge GET /version, parse semver, retourne `VersionCheckResult` (`IsReachable` / `IsCompatible` / `IsUpdateAvailable` / `MinClientVersion` / `CurrentClientVersion`)
+    - `NymoraApiClient.cs` : injection automatique du header `X-Nymora-Client-Version: GameVersion.Current` sur **toutes** les requêtes auth ; nouvelle méthode `GetVersionAsync` qui SKIP le header (anti chicken-and-egg : un client trop vieux doit pouvoir interroger `/version` pour apprendre ce qui est requis)
+    - `NymoraApiDtos.cs` : ajout DTO `VersionResponse`
+    - `PhotonAuthBridge.cs` : ajout `clientVersion = GameVersion.Current` dans le dictionnaire `SetAuthPostData` (transmis au webhook backend)
+  - Unity UI sous `Assets/_Nymora/Scripts/UI/Login/` :
+    - `LoginScreenController.cs` : au `Start()`, check version AVANT toute autre requête. Si incompatible → `LockUiForUpdate` qui désactive les 4 boutons + affiche le panel "Mise à jour requise" avec version installée / min / dernière. Defense-in-depth : détection HTTP 426 sur Login/Register handlers (au cas où le serveur bumperait son `min` en cours de session)
+    - Nouvelles refs `_updateRequiredPanel` (GameObject) + `_updateRequiredText` (TMP_Text)
+  - Editor Tool `CreateLoginSceneTool.cs` : ajout panel plein écran "Mise à jour requise" (titre orange + message centré, initialement désactivé) + câblage SerializedObject des 2 nouvelles refs
+  - Validation E2E :
+    - `npm run test:auth` 7/7 PASSED, `npm run test:photon-webhook` 6/6 PASSED, `npm run test:version` 8/8 PASSED
+    - Unity Play normal : status "Verification de la version client..." puis "Aucune session active." → panel non affiché
+    - Test faux client trop vieux : `GameVersion.Current = "0.0.5"` → panel "Mise à jour requise" plein écran, boutons grisés
+    - Healthcheck Unity : 0 erreur, 0 warning
+  - Pièges à retenir :
+    - `GET /version` doit rester publique sans middleware version (sinon chicken-and-egg : un client trop vieux ne pourrait pas apprendre ce qui est requis)
+    - Tests smoke existants régresseront sans le header X-Nymora-Client-Version → toujours penser à les mettre à jour quand on ajoute une garde middleware globale
+    - Sur webhook Photon, ordre des checks : token d'abord (BadParams si manquant), puis version (InvalidAuth si trop vieille), puis JWT verify, puis DB anti-révocation
+
+---
+
 - **Brique 1.9** — Client Unity : intégration Photon Quantum + Auth (Custom Auth) (validée 10 mai 2026)
   - Architecture end-to-end Custom Auth :
     - Client Unity envoie son JWT à Photon Cloud via `AuthenticationValues.SetAuthPostData({"token": jwt})` (Custom auth type)
@@ -252,17 +283,17 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ## 🔄 BRIQUE EN COURS
 
-### Brique 1.10 — Système de versioning runtime
+### Brique 1.11 — Logger structuré (client + serveur)
 
 **Objectifs (extraits de `05_Roadmap_V2_Novice.md`) :**
-1. Implémenter `GameVersion` (semver) côté client (déjà partiellement présent dans `Scripts/Core/GameVersion.cs`)
-2. Implémenter `CombatRulesVersion` (incrémentée à chaque modif gameplay)
-3. Côté backend : endpoint `/version` qui renvoie les versions supportées
-4. Bloquer la connexion si client trop vieux (rejection côté backend ou côté webhook Photon)
+1. Côté client Unity : wrapper `NymoraLog` qui structure les logs (info/warn/error/critical)
+2. Côté serveur : Pino logger configuré pour JSON output
+3. Remplacer tous les `Debug.Log` existants par `NymoraLog.Info` dans le code Nymora
+4. Préparer l'envoi futur vers Loki (Phase 7+)
 
-**Validation attendue :** si on fake une vieille version client, le serveur refuse la connexion ; le client affiche un message "Mise à jour requise".
+**Validation attendue :** tous les logs côté client passent par NymoraLog ; côté serveur, les logs sont en JSON avec timestamp et level.
 
-**Prochaine étape après validation :** Brique 1.11 — Logger structuré (NymoraLog client + Pino serveur, prep pour Loki en Phase 7+)
+**Prochaine étape après validation :** Brique 1.12 — CI/CD basique GitHub Actions
 
 ---
 
@@ -353,6 +384,22 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
 
+### 10 mai 2026 — Brique 1.10 (Système de versioning runtime)
+- Cleanup docs préalable : commit `5f37270 docs: cleanup pre-1.10` (4 docs modifiés + plan pixel art + 2 captures d'écran + suppression fichier vide "Déblocage")
+- 3 décisions techniques tranchées en amont :
+  1. Politique versions : `min < current` (flexible) — pas strict, permet de bumper `current` à chaque release sans casser les clients existants
+  2. Points de blocage : double verrou HTTP `/auth/*` (header `X-Nymora-Client-Version` → 426) + webhook Photon (champ `clientVersion` dans body/query → ResultCode=2)
+  3. Cleanup docs séparé avant la brique pour un diff propre
+- Backend : 4 nouveaux fichiers (version.service.ts / route version.ts / middleware version.middleware.ts / smoke test version.ts) + 3 modifs (server.ts pour câbler le router, auth.ts pour appliquer le middleware + check inline webhook, package.json pour le nouveau script test:version) + 2 updates des smoke tests existants (test-auth et test-photon-webhook devaient passer le header / clientVersion sinon régression)
+- Unity : 1 nouveau fichier (NymoraVersionClient.cs avec semver parse + comparator) + 5 modifs (NymoraApiClient pour injection auto du header X-Nymora-Client-Version, NymoraApiDtos pour le DTO VersionResponse, PhotonAuthBridge pour ajouter clientVersion dans SetAuthPostData, LoginScreenController pour le check version au Start + LockUiForUpdate, CreateLoginSceneTool pour le panel "Mise à jour requise" plein écran)
+- Anti chicken-and-egg : `GET /version` est public sans middleware version + côté Unity, `GetVersionAsync` SKIP volontairement le header X-Nymora-Client-Version. Sinon un client trop vieux ne pourrait pas apprendre quelle version est requise.
+- Validation E2E :
+  - Smoke tests backend : `test:auth` 7/7, `test:photon-webhook` 6/6, `test:version` 8/8 (21/21 total)
+  - Test Unity golden path : status "Aucune session active", panel non affiché
+  - Test faux client : `GameVersion.Current = "0.0.5"` → panel "Mise à jour requise" plein écran avec toutes les versions, boutons grisés
+  - Healthcheck Unity : 0 erreur, 0 warning
+- Brique 1.10 validée → 1.11 (Logger structuré) en attente
+
 ### 10 mai 2026 — Cleanup docs : retrait du déblocage par level + de la 6e classe
 - Lorenzo tranche 2 décisions design : (1) tous les sorts dispos d'office, pas de gate par level ; (2) pas de 6e classe planifiée
 - Cleanup en cascade dans 3 docs (8 modifs au total) :
@@ -441,13 +488,14 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 🎯 PROCHAINE ACTION POUR LORENZO
 
-> 1. À la prochaine session, dire : **"On démarre la Brique 1.10 chef"** (Versioning runtime)
-> 2. **Avoir 3 fenêtres prêtes** (la 1.10 ne nécessite plus ngrok, tunnel facultatif) :
+> 1. À la prochaine session, dire : **"On démarre la Brique 1.11 chef"** (Logger structuré)
+> 2. **Avoir 3 fenêtres prêtes** (la 1.11 ne nécessite pas ngrok) :
 >    - Docker Desktop allumé (`docker compose ps` depuis `backend/` doit montrer Postgres + Redis Up)
 >    - Backend Express : `cd backend && npm run dev` dans une fenêtre cmd
 >    - Unity Editor avec le projet Nymora ouvert sur la scène 00_Login
-> 3. Si tu veux retester la 1.9 (Custom Auth Photon) avant de démarrer la 1.10 : il faudra **relancer ngrok** car son URL est temporaire (`*.ngrok-free.dev` change à chaque relance), puis **mettre à jour l'URL dans le dashboard Photon** avec la nouvelle. Sinon Photon tapera l'ancienne URL morte.
-> 4. Smoke tests rapides :
+> 3. Smoke tests rapides au démarrage (sanity check) :
 >    - `cd backend && npm run test:auth` → "Auth smoke test PASSED."
 >    - `cd backend && npm run test:photon-webhook` → "Photon webhook smoke test PASSED."
-> 5. Claude relira `05_Roadmap_V2_Novice.md` pour cadrer la 1.10 (GameVersion + CombatRulesVersion + endpoint `/version` + blocage client trop vieux)
+>    - `cd backend && npm run test:version` → "Version smoke test PASSED."
+> 4. Si tu veux retester la 1.9 (Custom Auth Photon) en E2E : relancer ngrok + mettre à jour l'URL dans le dashboard Photon (URL temporaire `*.ngrok-free.dev`)
+> 5. Claude relira `05_Roadmap_V2_Novice.md` pour cadrer la 1.11 (NymoraLog client + Pino serveur + remplacer Debug.Log par NymoraLog.Info)

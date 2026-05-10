@@ -108,6 +108,30 @@ namespace Nymora.Editor.Setup
             statusText.color = new Color(0.78f, 0.85f, 0.95f);
             PositionAbsolute(statusGo.GetComponent<RectTransform>(), 0f, -360f, 1700f, 60f);
 
+            // Panel "Mise a jour requise" (initialement desactive ; affiche si client trop vieux)
+            var updatePanelGo = CreateUIChild(canvasGo, "UpdateRequiredPanel", typeof(Image));
+            var updatePanelImg = updatePanelGo.GetComponent<Image>();
+            updatePanelImg.color = new Color(0.07f, 0.07f, 0.09f, 0.95f);
+            StretchFull(updatePanelGo.GetComponent<RectTransform>());
+
+            var updateTitleGo = CreateUIChild(updatePanelGo, "Title", typeof(TextMeshProUGUI));
+            var updateTitle = updateTitleGo.GetComponent<TextMeshProUGUI>();
+            updateTitle.text = "Mise a jour requise";
+            updateTitle.fontSize = 80;
+            updateTitle.alignment = TextAlignmentOptions.Center;
+            updateTitle.color = new Color(1f, 0.6f, 0.3f);
+            PositionAbsolute(updateTitleGo.GetComponent<RectTransform>(), 0f, 200f, 1400f, 120f);
+
+            var updateMsgGo = CreateUIChild(updatePanelGo, "Message", typeof(TextMeshProUGUI));
+            var updateMsg = updateMsgGo.GetComponent<TextMeshProUGUI>();
+            updateMsg.text = "Ta version client n'est plus supportee.";
+            updateMsg.fontSize = 36;
+            updateMsg.alignment = TextAlignmentOptions.Center;
+            updateMsg.color = new Color(0.92f, 0.92f, 0.95f);
+            PositionAbsolute(updateMsgGo.GetComponent<RectTransform>(), 0f, 0f, 1400f, 400f);
+
+            updatePanelGo.SetActive(false);
+
             // Controller + PhotonConnectionTester (sur le meme GameObject pour simplicite)
             var controllerGo = new GameObject("LoginScreenController",
                 typeof(LoginScreenController),
@@ -129,6 +153,8 @@ namespace Nymora.Editor.Setup
             so.FindProperty("_connectPhotonButton").objectReferenceValue = connectPhotonBtn;
             so.FindProperty("_photonTester").objectReferenceValue = photonTester;
             so.FindProperty("_statusText").objectReferenceValue = statusText;
+            so.FindProperty("_updateRequiredPanel").objectReferenceValue = updatePanelGo;
+            so.FindProperty("_updateRequiredText").objectReferenceValue = updateMsg;
             so.ApplyModifiedPropertiesWithoutUndo();
 
             EditorSceneManager.SaveScene(scene, ScenePath);

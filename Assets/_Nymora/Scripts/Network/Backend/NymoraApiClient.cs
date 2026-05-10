@@ -2,11 +2,18 @@ using System;
 using System.Text;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Nymora.Core.Data;
 using UnityEngine;
 using UnityEngine.Networking;
 
 namespace Nymora.Network.Backend
 {
+    /// <summary>Header HTTP qui transporte la version du client. Lu par versionGuard cote backend.</summary>
+    internal static class HttpHeaders
+    {
+        public const string ClientVersion = "X-Nymora-Client-Version";
+    }
+
     /// <summary>
     /// Resultat unifie d'un appel API : succes (data + status) ou echec (status + message).
     /// </summary>
@@ -61,8 +68,16 @@ namespace Nymora.Network.Backend
         public UniTask<ApiResult<MeResponse>> GetMeAsync(CancellationToken ct = default)
             => GetJsonAsync<MeResponse>("/auth/me", requireAuth: true, ct);
 
+        /// <summary>
+        /// Interroge le serveur sur les versions supportees. N'envoie PAS le header de version
+        /// pour eviter le chicken-and-egg (sinon un client trop vieux ne pourrait meme pas
+        /// apprendre quelle version est requise).
+        /// </summary>
+        public UniTask<ApiResult<VersionResponse>> GetVersionAsync(CancellationToken ct = default)
+            => GetJsonAsync<VersionResponse>("/version", requireAuth: false, ct, sendVersionHeader: false);
+
         private async UniTask<ApiResult<TResponse>> PostJsonAsync<TResponse>(
-            string path, object body, bool requireAuth, CancellationToken ct)
+            string path, object body, bool requireAuth, CancellationToken ct, bool sendVersionHeader = true)
         {
             string json = JsonUtility.ToJson(body);
             byte[] payload = Encoding.UTF8.GetBytes(json);
@@ -75,16 +90,18 @@ namespace Nymora.Network.Backend
             };
             req.SetRequestHeader("Content-Type", "application/json");
             ApplyAuth(req, requireAuth);
+            if (sendVersionHeader) ApplyClientVersion(req);
 
             return await SendAsync<TResponse>(req, ct);
         }
 
         private async UniTask<ApiResult<TResponse>> GetJsonAsync<TResponse>(
-            string path, bool requireAuth, CancellationToken ct)
+            string path, bool requireAuth, CancellationToken ct, bool sendVersionHeader = true)
         {
             using var req = UnityWebRequest.Get($"{_settings.BaseUrl}{path}");
             req.timeout = _settings.TimeoutSeconds;
             ApplyAuth(req, requireAuth);
+            if (sendVersionHeader) ApplyClientVersion(req);
 
             return await SendAsync<TResponse>(req, ct);
         }
@@ -95,6 +112,11 @@ namespace Nymora.Network.Backend
             {
                 req.SetRequestHeader("Authorization", $"Bearer {_bearerToken}");
             }
+        }
+
+        private static void ApplyClientVersion(UnityWebRequest req)
+        {
+            req.SetRequestHeader(HttpHeaders.ClientVersion, GameVersion.Current);
         }
 
         private static async UniTask<ApiResult<TResponse>> SendAsync<TResponse>(
