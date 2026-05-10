@@ -518,7 +518,7 @@ Première feature "hors combat" majeure. On crée la map communautaire avec Phot
 
 On met en place tout ce qui maintient l'engagement long terme : niveaux de classe, achievements, deck builder, shop, battle pass, monétisation.
 
-| OBJECTIFS PHASE 5 • Système de levels par classe (1-50 par compte par classe) • Déblocage progressif des sorts par level • 200 achievements répartis en 3 catégories • Deck Builder UI complet (5 decks max par classe, 6 sorts équipés sur 15) • Shop in-game (Nymos = monnaie de jeu) • Shop premium (Shards = monnaie payante) • Battle Pass 100 tiers (saisons 90 jours) • IAP Stripe pour Windows alpha (Apple/Google IAP en Phase 9 post-alpha) |
+| OBJECTIFS PHASE 5 • Système de levels par classe (1-50 par compte par classe) — débloquent uniquement des récompenses cosmétiques et titres (cadres, couleurs, skin niveau 50) • Les 15 sorts par classe sont disponibles dès le départ (pas de déblocage gameplay par level) • 200 achievements répartis en 3 catégories • Deck Builder UI complet (5 decks max par classe, 6 sorts équipés sur 15) • Shop in-game (Nymos = monnaie de jeu) • Shop premium (Shards = monnaie payante) • Battle Pass 100 tiers (saisons 90 jours) • IAP Stripe pour Windows alpha (Apple/Google IAP en Phase 9 post-alpha) |
 |---|
 
 | PHASE 6 Ranked + 2v2 + 3v3 2 mois • ~16 briques |
@@ -545,9 +545,9 @@ Une fois le soft launch validé et le jeu stabilisé, on entre en mode live serv
 
 Patches hebdomadaires d'équilibrage, première saison BP officielle, ajout de cosmétiques événementiels (Halloween, Noël), monitoring du churn et de la rétention.
 
-## **Mois 19-24 : nouvelle classe + clan wars**
+## **Mois 19-24 : clan wars + tournois**
 
-Une 6e classe (à designer pendant le soft launch en fonction des retours), introduction des guerres de clans hebdomadaires, premier tournoi communautaire avec cashprize cosmétique.
+Introduction des guerres de clans hebdomadaires, premier tournoi communautaire avec cashprize cosmétique.
 
 ## **Mois 25-30 : extension géographique**
 

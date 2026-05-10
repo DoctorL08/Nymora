@@ -325,6 +325,9 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 | Editor Scripts | Convention `Assets/_Nymora/Editor/{Setup,Generators,Windows}/` + asmdef `Nymora.Editor` | 8 mai 2026 |
 | **Outils scan auto** | **Roslyn + Healthcheck + Pre-commit hook + Console filter (Phase 0)** | **8 mai 2026** |
 | **Soft launch alpha** | **Steam Playtest ou itch.io** (pas TestFlight ni Google Play pour alpha) | **8 mai 2026** |
+| **Déblocage des sorts** | **Tous les 15 sorts par classe dispos dès la création du compte** (pas de gate gameplay par level) | **10 mai 2026** |
+| **Rôle des levels par classe** | **Récompenses cosmétiques + titres uniquement** (cadres, couleurs, skin niveau 50) — pas de gameplay | **10 mai 2026** |
+| **6e classe** | **Non planifiée** (focus sur les 5 existantes : Soulrender, Nightseer, Colossar, Necram, Ghostra) | **10 mai 2026** |
 
 ---
 
@@ -349,6 +352,17 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 10 mai 2026 — Cleanup docs : retrait du déblocage par level + de la 6e classe
+- Lorenzo tranche 2 décisions design : (1) tous les sorts dispos d'office, pas de gate par level ; (2) pas de 6e classe planifiée
+- Cleanup en cascade dans 3 docs (8 modifs au total) :
+  - `05_Roadmap_V2_Novice.md` : Phase 5 reformulée + section "Mois 19-24" renommée "clan wars + tournois" (au lieu de "nouvelle classe + clan wars")
+  - `03_GDD_Features.md` : edge case "Sort verrouillé" supprimée + refonte complète section 13 (PRINCIPE + tableau "PROGRESSION DES RÉCOMPENSES COSMÉTIQUES" + DESIGN insight reformulé). Tableau XP de classe inchangé (toujours pertinent)
+  - `04_Roadmap_14_mois.md` : S33 reformulé + checkpoint QA Phase 5 corrigé + ligne "6e classe" retirée de la roadmap post-launch 6-12 mois
+- Justification design (notée dans le GDD) : pas de barrière à l'entrée, matchmaking équitable car même pool de sorts pour tous, levels servent uniquement de prestige cosmétique
+- Décision : les paliers cosmétiques précis (cadre niveau 5, titre niveau 10, etc.) restent indicatifs dans le GDD et seront figés en Phase 5
+- 3 décisions verrouillées ajoutées au tableau de ce STATUT_ACTUEL
+- Pas de touche au code, pas de touche à la Bible V7.1 (qui ne mentionnait ni déblocage par level ni 6e classe)
 
 ### 10 mai 2026 — Brique 1.9 (Custom Auth Photon ↔ JWT backend) — session marathon
 - Lorenzo a voulu enchaîner direct sur la 1.9 (3ème brique de la soirée après 1.7 et 1.8, mode warrior)

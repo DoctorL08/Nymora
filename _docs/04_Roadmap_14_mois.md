@@ -311,7 +311,7 @@ Implémenter tout ce qui retient le joueur sur la durée : leveling par classe, 
 
 | SEM. | TÂCHE | DELIVERABLE |
 |---|---|---|
-| S33 | Niveaux par classe (XP curve, déblocages, UI tracking) | Match donne XP, level-up débloque sorts, UI d'XP visible |
+| S33 | Niveaux par classe (XP curve, paliers cosmétiques, UI tracking) | Match donne XP, level-up débloque récompenses cosmétiques + titres (pas de sorts), UI d'XP visible |
 | S34 | Système de succès (200 succès design + tracking) | Tous les succès trackés en temps réel, points calculés |
 | S35 | Deck builder UI complète + save/edit/delete API | Créer 5 decks, en supprimer un, en modifier — tout persiste |
 | S36 | Boutique UI + catalogue initial + rotation | 20 items en boutique, achat avec Nymos OK |
@@ -322,7 +322,7 @@ Implémenter tout ce qui retient le joueur sur la durée : leveling par classe, 
 
 ## **CHECKPOINT QA — FIN DE PHASE 5**
 
-- ✓ Cycle complet : nouveau compte → 5 matchs → niveau 2 → débloque 2 sorts → save deck → utilise en match
+- ✓ Cycle complet : nouveau compte → 5 matchs → niveau 2 → débloque récompense cosmétique (cadre/titre) → save deck (avec n'importe lesquels des 15 sorts) → utilise en match
 
 - ✓ Achat Nymos → boutique → équipement skin → visible en combat
 
@@ -543,8 +543,6 @@ Une fois en early access, le développement passe en mode LIVE SERVICE. Cycles d
 | MOIS 3 | Open beta publique | Steam Early Access ouverture, marketing intensif, 10k joueurs cible |
 
 ## **ROADMAP 6-12 MOIS POST-LAUNCH**
-
-- 6e classe (à concevoir, pas avant +6 mois pour ne pas casser l'équilibrage)
 
 - Mode TOURNOI (formats best-of-5, brackets, prizes)
 

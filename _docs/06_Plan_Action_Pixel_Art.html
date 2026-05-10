@@ -1,0 +1,1106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Nymora — Plan d'Action Pixel Art</title>
+<style>
+  /* ============== PAGE / PRINT ============== */
+  @page {
+    size: A4;
+    margin: 18mm 16mm;
+  }
+  @page :first {
+    margin: 0;
+  }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    color: #1a1714;
+    background: #fdfaf5;
+    font-family: -apple-system, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 10.5pt;
+    line-height: 1.55;
+  }
+
+  body {
+    counter-reset: section;
+  }
+
+  /* ============== COVER ============== */
+  .cover {
+    width: 210mm;
+    height: 297mm;
+    background:
+      radial-gradient(ellipse at 50% 30%, rgba(178, 34, 34, 0.20) 0%, transparent 55%),
+      radial-gradient(ellipse at 80% 70%, rgba(106, 79, 182, 0.18) 0%, transparent 55%),
+      radial-gradient(ellipse at 20% 80%, rgba(90, 139, 62, 0.15) 0%, transparent 55%),
+      linear-gradient(180deg, #14110d 0%, #1a1714 100%);
+    color: #f3ece0;
+    padding: 30mm 22mm;
+    box-sizing: border-box;
+    position: relative;
+    page-break-after: always;
+    overflow: hidden;
+  }
+  .cover::before {
+    content: "";
+    position: absolute;
+    inset: 12mm;
+    border: 2px solid rgba(243, 236, 224, 0.35);
+    pointer-events: none;
+  }
+  .cover-eyebrow {
+    font-size: 11pt;
+    letter-spacing: 0.4em;
+    text-transform: uppercase;
+    color: rgba(243, 236, 224, 0.7);
+    margin-bottom: 22mm;
+    margin-top: 30mm;
+  }
+  .cover h1 {
+    font-size: 42pt;
+    line-height: 1.05;
+    margin: 0;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+  }
+  .cover h1 .accent {
+    background: linear-gradient(90deg, #B22222 0%, #6A4FB6 33%, #5A8B3E 66%, #6F8FA8 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .cover h2 {
+    font-size: 16pt;
+    color: #f3ece0;
+    font-weight: 400;
+    margin-top: 8mm;
+    margin-bottom: 0;
+    letter-spacing: 0.02em;
+    line-height: 1.3;
+  }
+  .cover .meta {
+    position: absolute;
+    bottom: 22mm;
+    left: 22mm;
+    right: 22mm;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4mm 8mm;
+    color: rgba(243, 236, 224, 0.85);
+    font-size: 10pt;
+  }
+  .cover .meta .label {
+    color: rgba(243, 236, 224, 0.55);
+    font-size: 8.5pt;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 1mm;
+  }
+  .cover .swatches {
+    position: absolute;
+    bottom: 100mm;
+    left: 22mm;
+    display: flex;
+    gap: 4mm;
+  }
+  .cover .swatch {
+    width: 12mm;
+    height: 12mm;
+    border: 2px solid rgba(243, 236, 224, 0.4);
+  }
+  .cover .swatch[data-c="soulrender"]   { background: #B22222; }
+  .cover .swatch[data-c="nightseer"]    { background: #6A4FB6; }
+  .cover .swatch[data-c="colossar"]     { background: #7A6B5C; }
+  .cover .swatch[data-c="necram"]       { background: #5A8B3E; }
+  .cover .swatch[data-c="ghostra"]      { background: #6F8FA8; }
+  .cover .swatch-labels {
+    position: absolute;
+    bottom: 92mm;
+    left: 22mm;
+    display: flex;
+    gap: 4mm;
+    font-size: 7.5pt;
+    color: rgba(243, 236, 224, 0.6);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .cover .swatch-labels span {
+    width: 12mm;
+    text-align: center;
+  }
+
+  /* ============== CONTENT BODY ============== */
+  .content {
+    padding: 0 6mm;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: "Segoe UI", -apple-system, sans-serif;
+    color: #14110d;
+    line-height: 1.25;
+    page-break-after: avoid;
+  }
+  h1 {
+    font-size: 22pt;
+    border-bottom: 3px solid #B22222;
+    padding-bottom: 4mm;
+    margin-top: 14mm;
+    margin-bottom: 6mm;
+    letter-spacing: -0.01em;
+    page-break-before: always;
+  }
+  h1.no-break { page-break-before: auto; }
+  h1:first-of-type { page-break-before: auto; margin-top: 0; }
+  h2 {
+    font-size: 15pt;
+    color: #2a1a14;
+    margin-top: 9mm;
+    margin-bottom: 3mm;
+    border-left: 4px solid #6A4FB6;
+    padding-left: 4mm;
+  }
+  h3 {
+    font-size: 12pt;
+    color: #3a2820;
+    margin-top: 6mm;
+    margin-bottom: 2mm;
+  }
+  p {
+    margin: 0 0 3mm 0;
+    text-align: justify;
+    hyphens: auto;
+  }
+  blockquote {
+    border-left: 3px solid #c9a85a;
+    background: rgba(201, 168, 90, 0.08);
+    margin: 4mm 0;
+    padding: 3mm 5mm;
+    color: #3a2820;
+    font-style: italic;
+  }
+  blockquote strong { color: #6e4f1a; font-style: normal; }
+
+  ul, ol {
+    margin: 2mm 0 3mm 0;
+    padding-left: 6mm;
+  }
+  ul li, ol li {
+    margin-bottom: 1mm;
+  }
+  ul ul, ol ol { margin: 1mm 0; }
+
+  hr {
+    border: none;
+    border-top: 1px solid #c4b8a5;
+    margin: 8mm 0;
+  }
+
+  /* ============== TABLES ============== */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 3mm 0 5mm 0;
+    font-size: 9.5pt;
+    page-break-inside: avoid;
+  }
+  thead {
+    background: #2a1a14;
+    color: #f3ece0;
+  }
+  th {
+    text-align: left;
+    padding: 2mm 3mm;
+    font-weight: 600;
+    font-size: 9pt;
+    letter-spacing: 0.03em;
+  }
+  td {
+    padding: 2mm 3mm;
+    border-bottom: 1px solid #e2d9c8;
+    vertical-align: top;
+  }
+  tbody tr:nth-child(even) {
+    background: rgba(178, 34, 34, 0.04);
+  }
+  tbody tr:hover {
+    background: rgba(106, 79, 182, 0.08);
+  }
+  td code {
+    background: #2a1a14;
+    color: #f3ece0;
+    padding: 0.5mm 1.5mm;
+    border-radius: 1mm;
+    font-size: 9pt;
+  }
+
+  /* ============== CODE ============== */
+  code {
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    background: #f0e8d8;
+    padding: 0.4mm 1.2mm;
+    font-size: 9pt;
+    border-radius: 1mm;
+    color: #5c2a14;
+  }
+  pre {
+    background: #14110d;
+    color: #e8dfc9;
+    padding: 4mm 5mm;
+    border-radius: 2mm;
+    font-family: "Cascadia Mono", "Consolas", monospace;
+    font-size: 8.5pt;
+    line-height: 1.4;
+    overflow-x: auto;
+    page-break-inside: avoid;
+    margin: 3mm 0 5mm 0;
+  }
+  pre code {
+    background: none;
+    color: inherit;
+    padding: 0;
+  }
+
+  /* ============== TOC ============== */
+  .toc {
+    background: linear-gradient(135deg, #fdfaf5 0%, #f5ebd8 100%);
+    border: 1px solid #c4b8a5;
+    padding: 7mm 8mm;
+    page-break-after: always;
+    margin-bottom: 0;
+  }
+  .toc h2 {
+    margin-top: 0;
+    border-left-color: #B22222;
+  }
+  .toc ol {
+    list-style: none;
+    padding-left: 0;
+    counter-reset: toc;
+    column-count: 1;
+  }
+  .toc ol li {
+    counter-increment: toc;
+    padding: 1.5mm 0;
+    border-bottom: 1px dotted #c4b8a5;
+    display: flex;
+    justify-content: space-between;
+  }
+  .toc ol li::before {
+    content: counter(toc, decimal-leading-zero);
+    color: #B22222;
+    font-weight: 700;
+    margin-right: 4mm;
+    font-family: "Cascadia Mono", monospace;
+  }
+  .toc ol li .ttl { flex: 1; }
+  .toc ol li .pg {
+    color: #6A4FB6;
+    font-family: "Cascadia Mono", monospace;
+    font-size: 9pt;
+  }
+
+  /* ============== CALLOUTS ============== */
+  .callout {
+    border-left: 5px solid;
+    padding: 4mm 5mm;
+    margin: 4mm 0;
+    background: #f5ebd8;
+    page-break-inside: avoid;
+  }
+  .callout.warn      { border-color: #B22222; background: rgba(178, 34, 34, 0.08); }
+  .callout.info      { border-color: #6F8FA8; background: rgba(111, 143, 168, 0.10); }
+  .callout.tip       { border-color: #5A8B3E; background: rgba(90, 139, 62, 0.10); }
+  .callout.critical  { border-color: #6A4FB6; background: rgba(106, 79, 182, 0.10); }
+  .callout-label {
+    display: inline-block;
+    font-weight: 700;
+    font-size: 8.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    margin-bottom: 1.5mm;
+  }
+  .callout.warn     .callout-label { color: #B22222; }
+  .callout.info     .callout-label { color: #4a6e85; }
+  .callout.tip      .callout-label { color: #5A8B3E; }
+  .callout.critical .callout-label { color: #6A4FB6; }
+
+  /* ============== CLASS COLOR CHIPS ============== */
+  .chip {
+    display: inline-block;
+    padding: 0.4mm 2mm;
+    border-radius: 1mm;
+    color: #fff;
+    font-size: 8.5pt;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+  }
+  .chip.sr { background: #B22222; }
+  .chip.ns { background: #6A4FB6; }
+  .chip.co { background: #7A6B5C; }
+  .chip.ne { background: #5A8B3E; }
+  .chip.gh { background: #6F8FA8; }
+
+  /* ============== UTILS ============== */
+  .keep { page-break-inside: avoid; }
+  .small { font-size: 9pt; color: #5a4a3a; }
+  strong { color: #14110d; }
+
+  /* checkboxes for sprint lists */
+  ul li input[type="checkbox"] {
+    margin-right: 2mm;
+    accent-color: #B22222;
+  }
+</style>
+</head>
+<body>
+
+<!-- =================== COVER =================== -->
+<section class="cover">
+  <div class="cover-eyebrow">Nymora · Direction Artistique</div>
+  <h1>Plan d'Action<br><span class="accent">Pixel Art</span></h1>
+  <h2>Pour le collègue qui rejoint la prod côté design.<br>
+      Pixel-art 128×128 · Aseprite + Pixel Lab · Unity 2022.3 URP 2D.</h2>
+
+  <div class="swatches">
+    <div class="swatch" data-c="soulrender"></div>
+    <div class="swatch" data-c="nightseer"></div>
+    <div class="swatch" data-c="colossar"></div>
+    <div class="swatch" data-c="necram"></div>
+    <div class="swatch" data-c="ghostra"></div>
+  </div>
+  <div class="swatch-labels">
+    <span>SR</span><span>NS</span><span>CO</span><span>NE</span><span>GH</span>
+  </div>
+
+  <div class="meta">
+    <div>
+      <div class="label">De</div>
+      <div>Lorenzo (lead dev) + Claude (lead tech)</div>
+    </div>
+    <div>
+      <div class="label">Pour</div>
+      <div>Le collègue artiste qui rejoint la prod</div>
+    </div>
+    <div>
+      <div class="label">Date</div>
+      <div>9 mai 2026 — V1.0</div>
+    </div>
+    <div>
+      <div class="label">Cible alpha</div>
+      <div>Windows uniquement — Mai 2027</div>
+    </div>
+  </div>
+</section>
+
+<!-- =================== TOC =================== -->
+<section class="toc">
+  <h2>Sommaire</h2>
+  <ol>
+    <li><span class="ttl">Résumé en 30 secondes</span><span class="pg">p.3</span></li>
+    <li><span class="ttl">Contexte projet — Nymora, stack, état actuel</span><span class="pg">p.3</span></li>
+    <li><span class="ttl">Spécifications techniques pixel art</span><span class="pg">p.5</span></li>
+    <li><span class="ttl">Pipeline Aseprite + Pixel Lab</span><span class="pg">p.7</span></li>
+    <li><span class="ttl">Charte graphique — classes, marques, tiles</span><span class="pg">p.9</span></li>
+    <li><span class="ttl">Inventaire complet des sprites à produire</span><span class="pg">p.12</span></li>
+    <li><span class="ttl">Ordre de production recommandé (sprints)</span><span class="pg">p.16</span></li>
+    <li><span class="ttl">Workflow de collaboration avec Lorenzo</span><span class="pg">p.19</span></li>
+    <li><span class="ttl">Conventions naming + arborescence Unity</span><span class="pg">p.20</span></li>
+    <li><span class="ttl">Budget temps estimé</span><span class="pg">p.22</span></li>
+    <li><span class="ttl">Checklist avant de commencer + règles finales</span><span class="pg">p.23</span></li>
+  </ol>
+</section>
+
+<!-- =================== CONTENT =================== -->
+<section class="content">
+
+<h1 id="resume" class="no-break">0 · Résumé en 30 secondes</h1>
+
+<p>Bienvenue. Tu rejoins <strong>Nymora</strong>, un PvP tactique 1v1 dark fantasy en pixel-art, dev en solo par Lorenzo (alpha Windows visée pour <strong>mai 2027</strong>). Ton job : produire <strong>toute la direction artistique</strong> du jeu — sprites de combat, icônes de sorts, tilesets, UI, map sociale, cosmétiques.</p>
+
+<p>On bosse <strong>brique par brique, en séquentiel</strong>, calé sur la roadmap technique de Lorenzo. <strong>Tu n'as PAS à tout produire d'un coup</strong> : chaque sprint vise une livraison utile au code en cours. Mieux vaut 1 classe finie et intégrée que 5 classes en draft.</p>
+
+<div class="callout critical">
+  <div class="callout-label">Trois règles non-négociables</div>
+  <ol style="margin: 0;">
+    <li><strong>Toujours valider la palette + le styleframe AVANT de scaler la prod.</strong> Une erreur de direction sur la première classe = 5 classes à refaire.</li>
+    <li><strong>Pixel Lab est un assistant, pas un livreur.</strong> Tout sprite passe par un cleanup manuel (palette, contours, lisibilité combat).</li>
+    <li><strong>Lisibilité en stream avant esthétique.</strong> Chaque sort, chaque marque, chaque ressource doit être identifiable en 1 seconde sur un stream Twitch.</li>
+  </ol>
+</div>
+
+<h1 id="contexte">1 · Contexte projet</h1>
+
+<h2>1.1 Nymora c'est quoi</h2>
+<p>Un <strong>PvP 1v1 tactique au tour par tour</strong>, vue grille (top-down ou ¾), dark fantasy. 5 classes radicalement asymétriques (<span class="chip sr">Soulrender</span> <span class="chip ns">Nightseer</span> <span class="chip co">Colossar</span> <span class="chip ne">Necram</span> <span class="chip gh">Ghostra</span>). Match court (15-20 min), 6-8 tours, 1500 HP, 8 PA, 3 PM.</p>
+
+<p>Chaque classe a :</p>
+<ul>
+  <li>Une <strong>identité visuelle forte</strong> (couleur d'accent, ressource unique, fantasy de gameplay)</li>
+  <li>15 sorts répartis en 5 Offensifs / 5 Tactiques / 5 Survie</li>
+  <li>1 sort Signature débloqué à ressource max</li>
+  <li>Un passif visuel non-linéaire qui s'amplifie au fil du match</li>
+</ul>
+
+<p>Hors combat, le jeu propose une <strong>map communautaire</strong> isométrique-2.5D (50 joueurs/instance) façon hub MMO, avec chat multi-canal, deck builder, ranked, clans, boutique, battle pass.</p>
+
+<h2>1.2 Stack technique côté Lorenzo</h2>
+<table>
+  <thead><tr><th>Composant</th><th>Choix</th></tr></thead>
+  <tbody>
+    <tr><td>Engine</td><td>Unity 2022.3.62f3 LTS</td></tr>
+    <tr><td>Render pipeline</td><td>Universal 2D (URP 2D)</td></tr>
+    <tr><td>Lighting</td><td>2D Lights activées (normal maps optionnelles, pas pour l'alpha)</td></tr>
+    <tr><td>Build target alpha</td><td>Windows Standalone uniquement (Mac/Mobile post-alpha)</td></tr>
+    <tr><td>Format sprites</td><td>PNG, Filter Mode = Point, Compression = None, PPU = 128</td></tr>
+    <tr><td>Animation</td><td>Sprite-sheets ou frames séquencées (Aseprite Importer Unity probable)</td></tr>
+  </tbody>
+</table>
+
+<h2>1.3 État actuel du projet (au 9 mai 2026)</h2>
+<ul>
+  <li><strong>Phase 1 — Fondations techniques</strong> en cours (backend + netcode)</li>
+  <li><strong>Phase 2 — Combat 1v1 (Soulrender + Nightseer)</strong> prévue Juillet-Août 2026</li>
+  <li><strong>Phase 3 — Combat 1v1 (3 autres classes)</strong> prévue Sept-Oct 2026</li>
+  <li><strong>Phase 4 — Map commu + social</strong> prévue Nov-Déc 2026</li>
+  <li><strong>Phase 5 — Progression + économie</strong> prévue Jan-Fév 2027</li>
+  <li><strong>Phase 6 — Ranked + 2v2/3v3</strong> prévue Mars-Avr 2027</li>
+  <li><strong>Phase 7 — Polish + soft launch</strong> prévue Mai-Juin 2027</li>
+</ul>
+
+<div class="callout warn">
+  <div class="callout-label">Implication pour toi</div>
+  Ta deadline critique #1 = <strong>Soulrender complet pour fin juillet 2026</strong>. Tout le reste découle de ça.
+</div>
+
+<h1 id="specs">2 · Spécifications techniques pixel art</h1>
+
+<h2>2.1 Résolutions cibles</h2>
+<table>
+  <thead><tr><th>Asset</th><th>Résolution</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Sprite perso (combat + map commu)</strong></td><td>128×128 px</td><td>Pivot bas-centre, 1 frame par direction si nécessaire</td></tr>
+    <tr><td>Tile arène combat</td><td>128×128 px</td><td>1 tile = 1 case du grid Quantum</td></tr>
+    <tr><td>Tile map commu</td><td>64×64 px</td><td>Plus dense, 60×40 cases ≈ 8 écrans</td></tr>
+    <tr><td>Icône de sort</td><td>128×128 px</td><td>Affichée 64-96 px en jeu mais on rend 128 pour scaling propre</td></tr>
+    <tr><td>Avatar profil</td><td>256×256 px</td><td>Portrait, plus détaillé que sprite combat</td></tr>
+    <tr><td>Bannière profil</td><td>512×128 px</td><td>Background derrière l'avatar</td></tr>
+    <tr><td>VFX sort signature</td><td>256×256 px (3-5 frames)</td><td>Spectaculaire, doit être lisible à 1 sec</td></tr>
+    <tr><td>Marque visuelle (overlay cible)</td><td>64×64 px</td><td>S'affiche au-dessus du sprite touché</td></tr>
+    <tr><td>UI cadre/bouton</td><td>9-slice scalable</td><td>Bordures pixel-art, partie centrale tilable</td></tr>
+    <tr><td>Emote map commu</td><td>128×128 px (4-12 frames)</td><td>Anim courte (1-2s)</td></tr>
+  </tbody>
+</table>
+
+<h2>2.2 Format de fichier</h2>
+<ul>
+  <li><strong>Source de travail :</strong> <code>.aseprite</code> (un fichier par asset ou par animation)</li>
+  <li><strong>Export pour Unity :</strong> <code>.png</code> 32-bit RGBA, transparence préservée</li>
+  <li><strong>Sprite-sheets :</strong> export Aseprite « JSON Hash + spritesheet » si anim multi-frames, sinon PNG simple</li>
+</ul>
+
+<h2>2.3 Palette</h2>
+<ul>
+  <li><strong>Indexée 32-64 couleurs max par classe</strong> (lisibilité + signature visuelle forte)</li>
+  <li>Chaque classe a sa <strong>palette dérivée d'une palette globale Nymora</strong> (à définir au sprint 0)</li>
+  <li>Couleurs d'accent par classe <strong>DÉJÀ VERROUILLÉES dans le code</strong> :</li>
+</ul>
+
+<table>
+  <thead><tr><th>Classe</th><th>Accent (hex)</th><th>Mood</th></tr></thead>
+  <tbody>
+    <tr><td><span class="chip sr">SOULRENDER</span></td><td><code>#B22222</code></td><td>Rouge sang, brûlant</td></tr>
+    <tr><td><span class="chip ns">NIGHTSEER</span></td><td><code>#6A4FB6</code></td><td>Violet voilé, mystique</td></tr>
+    <tr><td><span class="chip co">COLOSSAR</span></td><td><code>#7A6B5C</code></td><td>Terre/pierre, massif</td></tr>
+    <tr><td><span class="chip ne">NECRAM</span></td><td><code>#5A8B3E</code></td><td>Vert putride, mort</td></tr>
+    <tr><td><span class="chip gh">GHOSTRA</span></td><td><code>#6F8FA8</code></td><td>Bleu spectral, froid</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <div class="callout-label">Verrou code</div>
+  Ces accents sont <strong>codés dans <code>NymoraClassDefinition.asset</code></strong> et utilisés par l'UI. Tu dois t'aligner dessus, pas l'inverse. Si tu veux changer, faut convaincre Lorenzo et il devra patcher les ScriptableObjects.
+</div>
+
+<h2>2.4 Style visuel cible</h2>
+<ul>
+  <li><strong>Pixel art 128×128 dark fantasy</strong> dans la lignée de :
+    <ul>
+      <li><strong>Owlboy</strong> (lighting, lisibilité, palette)</li>
+      <li><strong>Blasphemous</strong> (mood gothique, contraste)</li>
+      <li><strong>Children of Morta</strong> (combat top-down, anims)</li>
+      <li><strong>Hyper Light Drifter</strong> (économie de pixels, posture, palette restreinte)</li>
+      <li><strong>Eastward</strong> (ambiance + UI riche)</li>
+    </ul>
+  </li>
+  <li><strong>Combat = top-down ou ¾ vue plongée</strong> (à valider sprint 0)</li>
+  <li><strong>Map commu = ¾ isométrique-light</strong> (vue de Stardew Valley / Eastward)</li>
+  <li><strong>Lighting :</strong> 2D Lights URP — prévoir des sprites avec des zones « lumineuses » qui réagissent bien aux lights (pas de zones aplaties)</li>
+  <li><strong>Animations :</strong> snappy (combat = 4-6 frames par anim, pas 12), satisfaisantes au hit</li>
+</ul>
+
+<h1 id="pipeline">3 · Pipeline Aseprite + Pixel Lab</h1>
+
+<h2>3.1 Setup recommandé</h2>
+<ol>
+  <li><strong>Aseprite version stable</strong> (≥ 1.3.x) avec Pixel Lab installé</li>
+  <li><strong>Templates Aseprite</strong> à créer une fois pour toutes :
+    <ul>
+      <li><code>template_char_128.aseprite</code> — canvas 128×128, layer onion-skin, frame tags <code>idle/walk/attack/cast/hurt/death</code></li>
+      <li><code>template_icon_128.aseprite</code> — canvas 128×128, layer cadre + layer pictogramme</li>
+      <li><code>template_tile_128.aseprite</code> — canvas 128×128, grid 16/8 visible</li>
+    </ul>
+  </li>
+  <li><strong>Profil colorimétrique :</strong> sRGB. Pas de gamma correction.</li>
+  <li><strong>Export profile :</strong> créer 1 export profile par type (<code>Export PNG only</code>, <code>Export sprite-sheet + JSON</code>)</li>
+</ol>
+
+<h2>3.2 Comment exploiter Pixel Lab proprement</h2>
+<p>Pixel Lab est puissant mais <strong>dangereux si utilisé brut</strong>. Règles d'usage :</p>
+
+<div class="callout tip">
+  <div class="callout-label">À FAIRE avec Pixel Lab</div>
+  <ul style="margin: 0;">
+    <li>Générer des <strong>bases de pose</strong> (skeleton tool) pour les anims combat</li>
+    <li>Générer des <strong>walk cycles génériques</strong> comme starting point</li>
+    <li>Générer des <strong>variantes de pose</strong> (idle alt, victory) pour gagner du temps</li>
+    <li>Générer des <strong>mockups d'objets/props</strong> pour la map commu (statues, arbres, ruines)</li>
+    <li>Tester rapidement plusieurs <strong>directions de design</strong> avant validation</li>
+  </ul>
+</div>
+
+<div class="callout warn">
+  <div class="callout-label">À NE PAS FAIRE</div>
+  <ul style="margin: 0;">
+    <li>Pousser un sprite généré sans cleanup palette + retouche manuelle</li>
+    <li>Générer 5 classes d'un coup avec des prompts différents (= perte de cohérence)</li>
+    <li>Utiliser Pixel Lab pour les <strong>icônes de sort</strong> (trop spécifique au lore, à faire à la main)</li>
+    <li>Utiliser Pixel Lab pour les <strong>VFX signature</strong> (trop important pour la lisibilité gameplay)</li>
+  </ul>
+</div>
+
+<h2>3.3 Workflow type pour un sprite perso</h2>
+<pre>1. Concept rapide à la main (croquis dans Aseprite, 64×64) — 30 min
+2. Validation auprès de Lorenzo (preview PNG) — async
+3. Pixel Lab : générer 3-4 variations de pose idle 128×128 — 15 min
+4. Choisir la meilleure base, cleanup palette manuelle — 1-2h
+5. Animer (idle 4f, walk 6f, attack 4f, cast 5f, hurt 2f, death 6f) — 4-8h
+6. Export sprite-sheet PNG + JSON
+7. Drop dans Assets/_Nymora/Art/Sprites/Classes/{Classe}/
+8. Notifier Lorenzo (commit + screenshot)</pre>
+
+<h2>3.4 Workflow type pour une icône de sort</h2>
+<pre>1. Lire le sort dans la Bible V7.1 (effet, fantasy) — 5 min
+2. Croquis manuel rapide (3 idées) — 15 min
+3. Choisir une idée, dessiner cadre + pictogramme — 30-45 min
+4. Glow / accent couleur de la classe
+5. Si sort = Glyphe / Combo → ajouter un overlay rune subtil
+6. Si sort = Signature → cadre doré + glow plus fort
+7. Export PNG 128×128</pre>
+
+<h2>3.5 Pièges connus de Pixel Lab</h2>
+<ul>
+  <li><strong>Drift de palette</strong> entre 2 générations → toujours forcer la palette de la classe via "constrain to palette" si l'option existe, sinon cleanup manuel</li>
+  <li><strong>Anti-aliasing parasite</strong> sur les bords → toujours passer un dernier coup de crayon manuel pour nettoyer</li>
+  <li><strong>Outlines incohérentes</strong> → établir une règle (outline 1px noir pur OU outline contextuelle plus sombre que la couleur du sprite, mais <strong>pas un mix</strong>)</li>
+  <li><strong>Animations Pixel Lab parfois molles</strong> → garder les keyframes générées mais redessiner les inbetweens à la main pour le snap</li>
+</ul>
+
+<h1 id="charte">4 · Charte graphique</h1>
+
+<h2>4.1 Identités visuelles par classe</h2>
+<table>
+  <thead><tr><th>Classe</th><th>Silhouette</th><th>Matière</th><th>Lumière</th><th>Détail signature</th></tr></thead>
+  <tbody>
+    <tr><td><span class="chip sr">SR</span></td><td>Trapue, large, posture penchée vers l'avant</td><td>Cuir + métal rouillé</td><td>Aura rouge progressive (vide → fissures écarlates dans la peau)</td><td>Lames recourbées, sang qui coule</td></tr>
+    <tr><td><span class="chip ns">NS</span></td><td>Élancée, encapuchonnée, posture floue</td><td>Tissu + verre teinté</td><td>Halos violets, fragments lumineux qui flottent</td><td>Œil(s) sur le visage caché, gravures runiques</td></tr>
+    <tr><td><span class="chip co">CO</span></td><td>Massive, immobile, posture ancrée</td><td>Pierre + roches</td><td>Faible lumière, accents ocre/terreux</td><td>Fissures dans la peau qui rayonnent quand FD monte</td></tr>
+    <tr><td><span class="chip ne">NE</span></td><td>Mince, voûtée, posture instable</td><td>Os + chair pourrie</td><td>Brume verte, particules putrides qui s'élèvent</td><td>Marques de putréfaction qui se propagent à 6/6 PT</td></tr>
+    <tr><td><span class="chip gh">GH</span></td><td>Spectrale, flottante, posture irréelle</td><td>Brume + chaînes</td><td>Halo bleu froid, transparence variable</td><td>Leurres qui se détachent de la silhouette</td></tr>
+  </tbody>
+</table>
+
+<h2>4.2 Évolutions visuelles selon ressource</h2>
+<p>C'est <strong>CRITIQUE pour la lisibilité gameplay</strong>. Chaque classe doit avoir des <strong>stages visuels</strong> indexés sur sa jauge de ressource :</p>
+
+<table>
+  <thead><tr><th>Classe</th><th>Stage 0/cap</th><th>Stage mid</th><th>Stage cap</th><th>Signature dispo</th></tr></thead>
+  <tbody>
+    <tr><td><span class="chip sr">Soulrender (HG, cap 5)</span></td><td>aura discrète</td><td>rouge marqué</td><td>fissures écarlates</td><td>tout le sprite « pulse » rouge</td></tr>
+    <tr><td><span class="chip ns">Nightseer (PR, cap 4)</span></td><td>halo violet faible</td><td>runes qui s'allument</td><td>tout le sprite scintille</td><td>un œil supplémentaire s'ouvre</td></tr>
+    <tr><td><span class="chip co">Colossar (FD, cap 3)</span></td><td>normal</td><td>fissures lumineuses</td><td>corps minéralisé</td><td>strates de pierre qui s'empilent</td></tr>
+    <tr><td><span class="chip ne">Necram (PT, cap 6)</span></td><td>brume légère</td><td>particules denses</td><td>cadavre ambulant</td><td>aura putride bouillonnante</td></tr>
+    <tr><td><span class="chip gh">Ghostra (RM, 3 leurres)</span></td><td>netteté pleine</td><td>1-2 leurres autour</td><td>3 leurres répartis</td><td>la « vraie » Ghostra et ses leurres deviennent indistinguables</td></tr>
+  </tbody>
+</table>
+
+<div class="callout info">
+  <div class="callout-label">Implémentation Unity</div>
+  Ces stages seront probablement <strong>3-5 sprites alternatifs</strong> par classe (idle stage 0, idle stage mid, idle stage cap, idle signature ready). Lorenzo gérera le swap côté code via l'état Quantum.
+</div>
+
+<h2>4.3 Marques visibles sur cible (Mark System)</h2>
+<p>Chaque classe a une marque qu'elle pose sur l'adversaire. Tu dois fournir <strong>un overlay 64×64 par marque</strong>, animé en boucle 4 frames :</p>
+
+<table>
+  <thead><tr><th>Marque</th><th>Posée par</th><th>Visuel</th></tr></thead>
+  <tbody>
+    <tr><td><strong>MARQUE DE CARNAGE</strong></td><td><span class="chip sr">SR</span></td><td>Croix de sang qui coule, rouge <code>#B22222</code></td></tr>
+    <tr><td><strong>TRAQUÉ</strong></td><td><span class="chip ns">NS</span></td><td>Œil violet pulsant, <code>#6A4FB6</code></td></tr>
+    <tr><td><strong>VOILÉ</strong></td><td><span class="chip ns">NS</span> (sur case)</td><td>Brume violet semi-transparente sur tile</td></tr>
+    <tr><td><strong>EMPREINTÉ</strong></td><td><span class="chip ns">NS</span></td><td>Empreinte de pas lumineuse violet</td></tr>
+    <tr><td><strong>PLAIE OUVERTE</strong></td><td><span class="chip sr">SR</span> (Ouvre-Plaie+HG)</td><td>Plaie béante rouge qui pulse</td></tr>
+    <tr><td><strong>VENIN / PUTRÉFACTION</strong></td><td><span class="chip ne">NE</span></td><td>Goutte verte qui s'écoule, <code>#5A8B3E</code></td></tr>
+    <tr><td><strong>CIBLAGE GHOSTRA</strong></td><td><span class="chip gh">GH</span></td><td>Marque spectrale clignotante, <code>#6F8FA8</code></td></tr>
+    <tr><td><strong>FONDATION</strong></td><td><span class="chip co">CO</span> (sur case)</td><td>Plaque de pierre qui apparaît, <code>#7A6B5C</code></td></tr>
+  </tbody>
+</table>
+
+<h2>4.4 Tiles spéciales du combat</h2>
+<table>
+  <thead><tr><th>Tile</th><th>Effet gameplay</th><th>Visuel</th></tr></thead>
+  <tbody>
+    <tr><td><strong>VAPEUR CARMIN</strong></td><td>-1 PM si traversée, 1 tour</td><td>Brume rouge basse sur tile, semi-transparente</td></tr>
+    <tr><td><strong>SANG COAGULÉ</strong></td><td>30 dégâts / début de tour, 2 tours</td><td>Flaque rouge épaisse avec petites bulles</td></tr>
+    <tr><td><strong>CASE VOILÉE</strong></td><td>Invisible côté adversaire</td><td>Côté joueur = brume violette, côté adversaire = tile vide normal</td></tr>
+    <tr><td><strong>EMBÛCHE NIGHTSEER</strong></td><td>100 dgt + Empreinté</td><td>Marque triangulaire piège (visible joueur uniquement)</td></tr>
+    <tr><td><strong>FONDATION</strong></td><td>Bonus défensif Colossar</td><td>Plaque de pierre surélevée</td></tr>
+    <tr><td><strong>ZONE PUTRIDE</strong></td><td>DoT zone Necram</td><td>Mare verte bouillonnante</td></tr>
+  </tbody>
+</table>
+
+<h1 id="inventaire">5 · Inventaire complet des sprites à produire</h1>
+
+<div class="callout info">
+  <div class="callout-label">Périmètre</div>
+  Cet inventaire est <strong>exhaustif pour l'alpha Windows</strong>. Les chiffres entre parenthèses sont les estimations de volumes.
+</div>
+
+<h2>5.1 Combat — Par classe (×5)</h2>
+<p>Pour CHAQUE classe :</p>
+<table>
+  <thead><tr><th>Asset</th><th>Quantité</th><th>Format</th></tr></thead>
+  <tbody>
+    <tr><td>Sprite combat — idle (3 stages : low/mid/cap)</td><td>3 anims × 4 frames = 12 frames</td><td>128×128 PNG sheet</td></tr>
+    <tr><td>Sprite combat — walk (8 directions ou 4)</td><td>4 anims × 6 frames = 24 frames</td><td>128×128 PNG sheet</td></tr>
+    <tr><td>Sprite combat — attack (1 anim générique)</td><td>1 anim × 4-6 frames</td><td>128×128 PNG sheet</td></tr>
+    <tr><td>Sprite combat — cast (1 anim générique)</td><td>1 anim × 5-7 frames</td><td>128×128 PNG sheet</td></tr>
+    <tr><td>Sprite combat — hurt</td><td>1 anim × 2 frames</td><td>128×128 PNG sheet</td></tr>
+    <tr><td>Sprite combat — death</td><td>1 anim × 6-8 frames</td><td>128×128 PNG sheet</td></tr>
+    <tr><td>Sprite map commu — idle</td><td>4 directions × 4 frames</td><td>128×128 PNG sheet</td></tr>
+    <tr><td>Sprite map commu — walk</td><td>4 directions × 6 frames</td><td>128×128 PNG sheet</td></tr>
+    <tr><td>Avatar profil</td><td>1 portrait</td><td>256×256 PNG</td></tr>
+    <tr><td>Icônes de sorts (15 sorts + 1 signature)</td><td>16 icônes</td><td>128×128 PNG</td></tr>
+    <tr><td>VFX sort signature</td><td>1 anim × 8-12 frames</td><td>256×256 PNG sheet</td></tr>
+    <tr><td>Marque sur cible (overlay anim)</td><td>1 marque × 4 frames</td><td>64×64 PNG sheet</td></tr>
+    <tr><td>Tiles spéciales générées par la classe</td><td>2-4 tiles × 4 frames</td><td>128×128 PNG sheet</td></tr>
+  </tbody>
+</table>
+
+<p><strong>Volume par classe :</strong> ~120-150 frames + 16 icônes + 1 avatar + 1 VFX signature.</p>
+
+<h2>5.2 Combat — Tileset arène (commun)</h2>
+<table>
+  <thead><tr><th>Asset</th><th>Quantité</th></tr></thead>
+  <tbody>
+    <tr><td>Tile sol arène (variations 1-4)</td><td>4 tiles 128×128</td></tr>
+    <tr><td>Tile bord/délimitation arène</td><td>8 tiles (coins + côtés)</td></tr>
+    <tr><td>Tile décor arène (props ambiance, ruines, statues, torches)</td><td>10-15 tiles</td></tr>
+    <tr><td>Indicateur de case sélectionnée (curseur)</td><td>1 anim × 2 frames</td></tr>
+    <tr><td>Indicateur de portée de sort (overlay tile)</td><td>4 variants (allié / ennemi / neutre / empty)</td></tr>
+    <tr><td>Indicateur de mouvement disponible</td><td>1 sprite</td></tr>
+  </tbody>
+</table>
+
+<h2>5.3 UI de combat</h2>
+<table>
+  <thead><tr><th>Asset</th><th>Description</th></tr></thead>
+  <tbody>
+    <tr><td>Cadre HP (barre + numérique)</td><td>Style sang, crénelé pixel-art</td></tr>
+    <tr><td>Cadre PA (8 segments)</td><td>Cristaux, pleins/vides</td></tr>
+    <tr><td>Cadre PM (3 segments)</td><td>Plumes/pas, pleins/vides</td></tr>
+    <tr><td>Slot signature (illuminé à ressource max)</td><td>Animation glow 4 frames quand actif</td></tr>
+    <tr><td>6 slots de sorts du deck</td><td>Cadres avec icône + cooldown overlay</td></tr>
+    <tr><td>Bouton "Fin de tour"</td><td>État normal / hover / pressed</td></tr>
+    <tr><td>Timer de tour (15s)</td><td>Cercle qui se vide</td></tr>
+    <tr><td>Indicateur "Ton tour / Tour adverse"</td><td>Bandeau haut écran</td></tr>
+    <tr><td>Popup dégâts (texte flottant)</td><td>Police pixel chiffrée</td></tr>
+    <tr><td>Popup heal</td><td>Police pixel verte</td></tr>
+    <tr><td>Popup miss / esquive</td><td>Police pixel grise</td></tr>
+  </tbody>
+</table>
+
+<h2>5.4 Map communautaire (Phase 4)</h2>
+<table>
+  <thead><tr><th>Asset</th><th>Quantité</th></tr></thead>
+  <tbody>
+    <tr><td>Tileset sol map commu (cathédrale ruinée)</td><td>~30 tiles 64×64</td></tr>
+    <tr><td>Tileset murs / piliers</td><td>~20 tiles</td></tr>
+    <tr><td>Props fixes (statues brisées, torches, bannières, fontaines)</td><td>~25 props</td></tr>
+    <tr><td>Effets ambiance (brume, particules)</td><td>5-8 anims looped</td></tr>
+    <tr><td>PNJ Marchand (idle + interaction)</td><td>1 sprite 128×128 + anim 4f</td></tr>
+    <tr><td>PNJ Maître de Clan</td><td>1 sprite</td></tr>
+    <tr><td>PNJ Guide Ranked</td><td>1 sprite</td></tr>
+    <tr><td>Tableau d'événements (interactif)</td><td>1 sprite + anim glow</td></tr>
+    <tr><td>Zones spéciales (Arène d'entraînement, Salon des Champions, Forum des Clans)</td><td>3 sprites décor</td></tr>
+    <tr><td>Emotes joueur (saluer, danser, applaudir, taunt, rire, pleurer, victory, defeat)</td><td>8 anims × 8-12 frames</td></tr>
+  </tbody>
+</table>
+
+<h2>5.5 UI hors-combat</h2>
+<table>
+  <thead><tr><th>Écran</th><th>Assets</th></tr></thead>
+  <tbody>
+    <tr><td><strong>WelcomeScreen / Login / Register</strong></td><td>Logo Nymora, fond animé, cadres input, boutons CTA</td></tr>
+    <tr><td><strong>MainMenu</strong></td><td>Background ambiance, boutons (Map commu, Arène, Profil, Boutique, BP, Settings)</td></tr>
+    <tr><td><strong>Profil</strong></td><td>Avatar frame, bannière frame, onglets, icônes stats</td></tr>
+    <tr><td><strong>Deck Builder</strong></td><td>Cadres slots × 6, pool de sorts, filtres OFF/TAC/SUR, boutons save/rename/delete</td></tr>
+    <tr><td><strong>Menu Arène</strong></td><td>Cadres mode IA (3 difficultés) + cadres ranked (1v1/2v2/3v3)</td></tr>
+    <tr><td><strong>Boutique</strong></td><td>Tuiles items (3 tailles), badges prix, currency icons (Nymos + Shards)</td></tr>
+    <tr><td><strong>Battle Pass</strong></td><td>Track 100 tiers, voie gratuite + premium + élite, cadenas, étoiles</td></tr>
+    <tr><td><strong>Clans</strong></td><td>Roster, banner clan, rôles (Leader/Off/Vét/Mb), création clan</td></tr>
+    <tr><td><strong>Chat</strong></td><td>Onglets canaux, bulles messages, badges role, emoji picker</td></tr>
+    <tr><td><strong>Settings</strong></td><td>Sliders, toggles, dropdowns, onglets (Audio/Vidéo/Contrôles/Accessibilité/Privacy)</td></tr>
+  </tbody>
+</table>
+
+<h2>5.6 Cosmétiques (Phase 5)</h2>
+<table>
+  <thead><tr><th>Catégorie</th><th>Volume alpha</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Skins de classe</strong></td><td>5 par classe × 5 = <strong>25 skins</strong></td><td>Variantes des sprites combat + map commu</td></tr>
+    <tr><td>Bannières profil</td><td>50 bannières</td><td>512×128 PNG, illustrations</td></tr>
+    <tr><td>Titres</td><td>(texte, pas d'art)</td><td>—</td></tr>
+    <tr><td>Effets de sort cosmétiques</td><td>3-5 par sort populaire</td><td>Overlay particules, ne change pas le gameplay</td></tr>
+    <tr><td>Emotes premium</td><td>10-15 emotes payantes</td><td>Anims plus longues, plus spectaculaires</td></tr>
+    <tr><td>Stickers chat</td><td>30-50 stickers animés</td><td>64×64 GIF/sprite-sheet</td></tr>
+    <tr><td>Bannières combat (pre/post-match)</td><td>10 bannières</td><td>1920×400 ish</td></tr>
+  </tbody>
+</table>
+
+<h2>5.7 Extras</h2>
+<table>
+  <thead><tr><th>Asset</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td>Logo Nymora</td><td>Plusieurs variantes (full, monogramme, mono)</td></tr>
+    <tr><td>Splash screen Unity</td><td>Affiché au démarrage</td></tr>
+    <tr><td>Loading screens</td><td>3-5 illustrations rotation</td></tr>
+    <tr><td>Icônes succès</td><td>3 catégories × ~15 styles = ~50 icônes</td></tr>
+    <tr><td>Icônes UI génériques</td><td>~30 icônes 32×32 ou 64×64</td></tr>
+    <tr><td>Curseur custom</td><td>Point + interact + combat</td></tr>
+  </tbody>
+</table>
+
+<h1 id="ordre">6 · Ordre de production recommandé</h1>
+
+<div class="callout info">
+  <div class="callout-label">Hypothèse de travail</div>
+  ~3-5h/jour, calé sur la roadmap dev. Si tu peux prendre de l'avance, c'est cadeau.
+</div>
+
+<h2>Sprint 0 — SETUP + CONCEPT <span class="small">(1 semaine)</span></h2>
+<p><strong>Objectif :</strong> valider la direction artistique avant de produire à l'échelle.</p>
+<ul>
+  <li>Installer Aseprite + Pixel Lab + valider workflow</li>
+  <li>Créer les templates Aseprite</li>
+  <li>Définir la <strong>palette globale Nymora</strong> (16-24 couleurs core)</li>
+  <li>Étudier la Bible V7.1 (Soulrender + Nightseer en priorité)</li>
+  <li>Produire 1 <strong>styleframe combat</strong> : Soulrender en pose idle + 1 attack frame</li>
+  <li>Produire 1 <strong>styleframe map commu</strong> : un coin de cathédrale ruinée + 1 sprite joueur</li>
+  <li>Produire 3 <strong>icônes de sorts test</strong> (Soulrender : Tranche-Âme, Pacte de Sang, Sève Vive)</li>
+  <li><strong>Validation Lorenzo</strong> sur les styleframes</li>
+</ul>
+
+<h2>Sprint 1 — SOULRENDER COMPLET <span class="small">(3 semaines, prio absolue)</span></h2>
+<div class="callout critical">
+  <div class="callout-label">Pourquoi en premier</div>
+  Soulrender est la classe « pillier » du jeu (mascotte naturelle), et c'est la première classe que Lorenzo va coder en Phase 2 (juillet 2026). Si tu finis Soulrender avant que Lorenzo ait fini de coder le combat, <strong>tu seras systématiquement en avance toute la suite du projet</strong>.
+</div>
+<ul>
+  <li>Sprite combat complet (idle 3 stages + walk + attack + cast + hurt + death)</li>
+  <li>Sprite map commu (idle + walk)</li>
+  <li>Avatar profil 256×256</li>
+  <li><strong>16 icônes de sorts</strong> (5 Off + 5 Tac + 5 Sur + Âme Lacérée)</li>
+  <li>VFX Âme Lacérée (anim spectaculaire 8-12 frames)</li>
+  <li>Marque de Carnage + Plaie Ouverte (overlays animés)</li>
+  <li>Tiles Vapeur Carmin + Sang Coagulé</li>
+  <li>Stages visuels HG (0/5, mid, 5/5)</li>
+</ul>
+
+<h2>Sprint 2 — NIGHTSEER COMPLET <span class="small">(3 semaines)</span></h2>
+<ul>
+  <li>Mêmes assets que Soulrender, adaptés Nightseer</li>
+  <li>Marques Traqué + Voilé + Empreinté</li>
+  <li>VFX Traquenard</li>
+  <li>Tile Voilé (deux variants : POV joueur + POV adversaire)</li>
+  <li>Stages visuels PR (0/4, mid, 4/4)</li>
+</ul>
+
+<h2>Sprint 3 — TILESET ARÈNE + UI COMBAT <span class="small">(2 semaines)</span></h2>
+<p><strong>À faire en parallèle ou intercalé</strong> des classes, car ça débloque les tests de combat de Lorenzo.</p>
+<ul>
+  <li>Tileset arène (sol + bords + décor)</li>
+  <li>Indicateurs de portée / mouvement / sélection</li>
+  <li>Cadre HP / PA / PM</li>
+  <li>Slot signature</li>
+  <li>6 slots de sorts</li>
+  <li>Timer + bandeau de tour</li>
+  <li>Popups dégâts / heal / miss</li>
+</ul>
+
+<h2>Sprints 4-6 — COLOSSAR / NECRAM / GHOSTRA <span class="small">(3 sem chacun, Phase 3 dev)</span></h2>
+<p>Même pattern que Soulrender et Nightseer.</p>
+
+<h2>Sprint 7 — TILESET MAP COMMU + PNJ <span class="small">(3 semaines, Phase 4 dev)</span></h2>
+<ul>
+  <li>Tileset cathédrale ruinée (sol + murs + props)</li>
+  <li>PNJ (Marchand, Clan, Ranked, Tableau)</li>
+  <li>Effets ambiance (brume, torches, particules)</li>
+  <li>Emotes joueurs (8 emotes de base)</li>
+</ul>
+
+<h2>Sprint 8 — UI HORS-COMBAT <span class="small">(3 semaines)</span></h2>
+<ul>
+  <li>WelcomeScreen / Login</li>
+  <li>MainMenu</li>
+  <li>Profil + onglets</li>
+  <li>Deck Builder</li>
+  <li>Menu Arène</li>
+  <li>Settings</li>
+</ul>
+
+<h2>Sprint 9 — BOUTIQUE + BATTLE PASS + CHAT <span class="small">(2 semaines, Phase 5)</span></h2>
+
+<h2>Sprint 10+ — COSMÉTIQUES <span class="small">(continu jusqu'au soft launch)</span></h2>
+<ul>
+  <li>5 skins par classe (priorité Soulrender + Nightseer)</li>
+  <li>Bannières profil (lot de 20-30 pour démarrer)</li>
+  <li>Stickers chat (lot de 20)</li>
+  <li>Effets de sort cosmétiques</li>
+</ul>
+
+<h2>Sprint POLISH — Avant soft launch <span class="small">(2-3 semaines)</span></h2>
+<ul>
+  <li>Logo final + splash</li>
+  <li>Loading screens</li>
+  <li>Icônes succès</li>
+  <li>Curseur custom</li>
+  <li>Pass de polish global (revue de tout, harmonisation palettes, fix incohérences)</li>
+</ul>
+
+<h1 id="workflow">7 · Workflow de collaboration avec Lorenzo</h1>
+
+<h2>7.1 Règle d'or : « Brique par brique » s'applique aussi à toi</h2>
+<p>Lorenzo bosse en briques atomiques (1-5 jours). Toi pareil : pas de gros sprint sans validation intermédiaire. Si tu pars sur 3 classes en parallèle sans valider la première, c'est mort.</p>
+
+<h2>7.2 Cadence de validation</h2>
+<table>
+  <thead><tr><th>Type de livraison</th><th>Cadence validation</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Styleframe / nouvelle direction</strong></td><td>24-48h (faut Lorenzo dispo, échange dédié)</td></tr>
+    <tr><td>Sprite/anim individuelle</td><td>Async, batch en fin de sprint</td></tr>
+    <tr><td>Sprint complet</td><td>Demande explicite, max 48h</td></tr>
+    <tr><td>Nouveau type d'asset (ex: 1ère icône)</td><td>24h</td></tr>
+  </tbody>
+</table>
+
+<h2>7.3 Format de livraison</h2>
+<p>Pour chaque livraison, fournir un dossier avec :</p>
+<pre>{nom_asset}/
+├── source/              ← .aseprite originaux (pour modifs futures)
+├── export/              ← .png prêts pour Unity
+│   ├── {nom}_idle.png
+│   ├── {nom}_walk.png
+│   └── {nom}_attack.png
+├── preview.gif          ← pour valider rapidement le rendu (anims)
+└── README.md            ← résumé : asset, dimensions, usage, particularités</pre>
+
+<h2>7.4 Outils de communication</h2>
+<ul>
+  <li><strong>Discord/Slack</strong> (à voir avec Lorenzo) — discussions courtes, partages preview</li>
+  <li><strong>GitHub</strong> — repo <code>Nymora</code> (Lorenzo te donnera l'accès Git LFS pour les assets binaires)</li>
+  <li><strong>Trello / Linear</strong> (à choisir) — board partagé pour tracker les sprints</li>
+  <li>Lorenzo héberge : <code>C:\Users\Lorenzo\Documents\Unity\Nymora\Nymora\Assets\_Nymora\Art\</code></li>
+</ul>
+
+<h2>7.5 Quand poser une question vs avancer</h2>
+<div class="callout tip">
+  <div class="callout-label">Pose une question si</div>
+  <ul style="margin: 0;">
+    <li>Le sort/feature n'est pas clair dans la Bible V7.1</li>
+    <li>Tu hésites entre 2 directions stylistiques</li>
+    <li>Tu as besoin de prioriser entre 2 sprints</li>
+    <li>Pixel Lab génère un truc bizarre et tu veux confirmer si on garde</li>
+  </ul>
+</div>
+
+<div class="callout info">
+  <div class="callout-label">Avance sans demander si</div>
+  <ul style="margin: 0;">
+    <li>C'est dans la Bible V7.1 et c'est explicite</li>
+    <li>C'est un cleanup / variation d'un asset déjà validé</li>
+    <li>C'est dans le sprint en cours et la spec est claire</li>
+  </ul>
+</div>
+
+<h1 id="naming">8 · Conventions naming + arborescence Unity</h1>
+
+<h2>8.1 Arborescence Unity</h2>
+<pre>Assets/_Nymora/Art/
+├── Sprites/
+│   ├── Classes/
+│   │   ├── Soulrender/
+│   │   │   ├── Combat/
+│   │   │   │   ├── soulrender_idle_stage0.png
+│   │   │   │   ├── soulrender_idle_stage1.png
+│   │   │   │   ├── soulrender_idle_stage2.png
+│   │   │   │   ├── soulrender_walk.png
+│   │   │   │   ├── soulrender_attack.png
+│   │   │   │   └── ...
+│   │   │   ├── Hub/
+│   │   │   │   ├── soulrender_hub_idle.png
+│   │   │   │   └── soulrender_hub_walk.png
+│   │   │   └── Avatar/
+│   │   │       └── soulrender_avatar.png
+│   │   ├── Nightseer/
+│   │   ├── Colossar/
+│   │   ├── Necram/
+│   │   └── Ghostra/
+│   ├── Spells/
+│   │   ├── Soulrender/
+│   │   │   ├── icon_tranche_ame.png
+│   │   │   ├── icon_ouvre_plaie.png
+│   │   │   └── icon_ame_laceree.png
+│   │   └── ...
+│   ├── UI/
+│   │   ├── Combat/      Menu/      Profile/
+│   │   ├── DeckBuilder/ Shop/      BattlePass/
+│   │   └── Chat/
+│   ├── Tiles/
+│   │   ├── Arena/
+│   │   └── Hub/
+│   ├── Marks/
+│   │   ├── mark_carnage.png
+│   │   ├── mark_traque.png
+│   │   └── ...
+│   ├── Cosmetics/
+│   │   ├── Skins/   Banners/   Stickers/
+│   └── Misc/
+│       ├── Logo/   Cursor/   Loading/
+├── Animations/      ← AnimationClip Unity (Lorenzo gère côté code)
+├── VFX/             ← Particle systems + sprites VFX
+│   ├── Soulrender/
+│   │   └── ame_laceree_anim.png
+│   └── ...
+└── _Source/         ← .aseprite (gitignored si trop lourd, sinon LFS)
+    ├── Classes/
+    ├── Spells/
+    └── ...</pre>
+
+<h2>8.2 Conventions de naming</h2>
+<ul>
+  <li><strong>Toujours en <code>snake_case</code></strong>, jamais d'espaces ni de majuscules</li>
+  <li>Préfixer par le contexte :
+    <ul>
+      <li><code>class_action_variant.png</code> → ex. <code>soulrender_walk_north.png</code></li>
+      <li><code>icon_&lt;spell_id&gt;.png</code> → ex. <code>icon_tranche_ame.png</code></li>
+      <li><code>mark_&lt;name&gt;.png</code> → ex. <code>mark_carnage.png</code></li>
+      <li><code>tile_&lt;biome&gt;_&lt;variant&gt;.png</code> → ex. <code>tile_arena_floor_01.png</code></li>
+      <li><code>ui_&lt;screen&gt;_&lt;element&gt;.png</code> → ex. <code>ui_combat_pa_filled.png</code></li>
+      <li><code>vfx_&lt;class&gt;_&lt;spell&gt;.png</code> → ex. <code>vfx_soulrender_ame_laceree.png</code></li>
+    </ul>
+  </li>
+  <li><strong>Sprite-sheets :</strong> suffixe <code>_sheet.png</code> + <code>.json</code> associé.</li>
+</ul>
+
+<h2>8.3 Settings d'import Unity</h2>
+<div class="callout info">
+  <div class="callout-label">Pour info — Lorenzo s'en charge</div>
+  Lorenzo configurera un <strong>Texture Importer Preset</strong> côté code. Tu n'as pas à te soucier de ça, mais pour info :
+  <ul style="margin: 1mm 0 0 0;">
+    <li>Texture Type : Sprite (2D and UI)</li>
+    <li>Filter Mode : <strong>Point (no filter)</strong></li>
+    <li>Compression : <strong>None</strong></li>
+    <li>Pixels Per Unit : <strong>128</strong> (1 sprite = 1 unit Unity)</li>
+    <li>Mesh Type : Tight</li>
+    <li>Generate Mip Maps : <strong>OFF</strong></li>
+  </ul>
+</div>
+
+<h1 id="budget">9 · Budget temps estimé</h1>
+
+<table>
+  <thead><tr><th>Sprint</th><th>Volume</th><th>Estimation</th></tr></thead>
+  <tbody>
+    <tr><td>Sprint 0 — Concept + styleframes</td><td>Setup + 2 styleframes + 3 icônes</td><td><strong>5 jours</strong></td></tr>
+    <tr><td>Sprint 1 — Soulrender complet</td><td>1 classe complète</td><td><strong>15 jours</strong></td></tr>
+    <tr><td>Sprint 2 — Nightseer complet</td><td>1 classe complète</td><td><strong>15 jours</strong></td></tr>
+    <tr><td>Sprint 3 — Tileset arène + UI combat</td><td>Tileset + UI in-game</td><td><strong>10 jours</strong></td></tr>
+    <tr><td>Sprint 4-6 — 3 autres classes</td><td>3 classes complètes</td><td><strong>45 jours</strong></td></tr>
+    <tr><td>Sprint 7 — Map commu + PNJ</td><td>Tileset hub + 4 PNJ + 8 emotes</td><td><strong>15 jours</strong></td></tr>
+    <tr><td>Sprint 8 — UI hors-combat</td><td>6-8 écrans UI</td><td><strong>15 jours</strong></td></tr>
+    <tr><td>Sprint 9 — Boutique + BP + Chat</td><td>UI commerce + BP track + chat</td><td><strong>10 jours</strong></td></tr>
+    <tr><td>Sprint 10+ — Cosmétiques</td><td>25 skins + bannières + stickers</td><td><strong>30 jours</strong> (étalé)</td></tr>
+    <tr><td>Sprint POLISH</td><td>Logo + loading + finitions</td><td><strong>10 jours</strong></td></tr>
+    <tr style="background: #2a1a14; color: #f3ece0;"><td><strong>TOTAL</strong></td><td><strong>Alpha Windows</strong></td><td><strong>~170 jours = 8-9 mois</strong></td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+  <div class="callout-label">Marge</div>
+  Prévoir <strong>+30% de buffer</strong> pour les retouches, les nouvelles demandes Lorenzo, les imprévus. Donc viser <strong>~11 mois</strong>, ce qui colle pile-poil à la deadline alpha (mai 2027).
+</div>
+
+<h1 id="check">10 · Checklist avant de commencer</h1>
+
+<ul>
+  <li>☐ Installer Aseprite (≥ 1.3.x) + Pixel Lab</li>
+  <li>☐ Créer les 3 templates Aseprite (char / icon / tile)</li>
+  <li>☐ Lire <strong><code>_docs/01_BIBLE_V7.1_Combat.md</code></strong> (au moins les sections Soulrender + Nightseer)</li>
+  <li>☐ Lire <strong><code>_docs/03_GDD_Features.md</code></strong> (au moins les sections Map Commu + Deck Builder + Profil)</li>
+  <li>☐ Demander à Lorenzo l'accès Git du repo <code>Nymora</code> (LFS activé)</li>
+  <li>☐ Demander à Lorenzo le canal de communication (Discord ? Slack ?)</li>
+  <li>☐ Caler la première session de validation (sprint 0 styleframes)</li>
+</ul>
+
+<h1 id="refs">11 · Références</h1>
+<table>
+  <thead><tr><th>Sujet</th><th>Source</th></tr></thead>
+  <tbody>
+    <tr><td>Combat — sorts, classes, ressources</td><td><code>_docs/01_BIBLE_V7.1_Combat.md</code></td></tr>
+    <tr><td>Hub, UI, social, économie</td><td><code>_docs/03_GDD_Features.md</code></td></tr>
+    <tr><td>Stack technique</td><td><code>_docs/02_Architecture_Technique.md</code></td></tr>
+    <tr><td>Roadmap globale</td><td><code>_docs/04_Roadmap_14_mois.md</code></td></tr>
+    <tr><td>Roadmap dev semaine par semaine</td><td><code>_docs/05_Roadmap_V2_Novice.md</code></td></tr>
+    <tr><td>État présent du projet</td><td><code>_docs/STATUT_ACTUEL.md</code></td></tr>
+    <tr><td>Couleurs accent par classe (code)</td><td><code>Assets/_Nymora/ScriptableObjects/Classes/*.asset</code></td></tr>
+  </tbody>
+</table>
+
+<h1 id="rules">12 · Règles finales</h1>
+
+<ol>
+  <li><strong>Une seule classe complète vaut mieux que cinq classes en draft.</strong></li>
+  <li><strong>Pixel Lab assiste, ne livre pas.</strong> Cleanup manuel obligatoire.</li>
+  <li><strong>Lisibilité gameplay &gt; esthétique pure.</strong> Si un sort n'est pas identifiable en 1 sec, c'est raté.</li>
+  <li><strong>Palette indexée, pas de free pixel.</strong> Une classe = une sous-palette stricte.</li>
+  <li><strong>Validation Lorenzo avant de scaler.</strong> Aucun sprint long sans go intermédiaire.</li>
+  <li><strong>Backups Aseprite.</strong> Source <code>.aseprite</code> sauvegardés dans <code>_Source/</code> ET sur ton drive personnel.</li>
+  <li><strong>Documente ce que tu livres.</strong> README court par dossier, ça sauve des questions.</li>
+</ol>
+
+<div class="callout critical" style="margin-top: 8mm;">
+  <div class="callout-label">Mot final</div>
+  Bienvenue dans Nymora. <strong>On a une vraie chance de finir un jeu propre.</strong> Reste rigoureux, valide brique par brique, et on l'a. 💪
+</div>
+
+<p class="small" style="text-align: center; margin-top: 10mm; color: #8a7a6a;">
+Document généré le 9 mai 2026 — V1.0<br>
+À mettre à jour à chaque fin de phase ou changement majeur de scope.
+</p>
+
+</section>
+
+</body>
+</html>

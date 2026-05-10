@@ -225,8 +225,6 @@ Permettre au joueur de construire ses 6 sorts parmi les 15 disponibles par class
 
 - Joueur qui supprime sa dernière deck d'une classe : un deck "starter" est recréé automatiquement
 
-- Joueur qui essaye d'utiliser un deck en match alors qu'il a un sort verrouillé (level non atteint) : popup "Sort verrouillé, équipe-en un autre" avant le match
-
 - Synchronisation cross-device : un deck créé sur mobile est instantanément dispo sur PC après login
 
 # **5. MENU ARÈNE — IA & RANKED**
@@ -556,25 +554,22 @@ Affrontements 5v5 entre clans, organisés en matchmaking. Calendrier : weekend u
 
 ## **PRINCIPE**
 
-Chaque classe a son propre niveau de 1 à 50, indépendant des autres classes. Un compte peut donc avoir Soulrender 50 et Necram 12. Le leveling DÉBLOQUE des sorts dans le deck builder.
+Chaque classe a son propre niveau de 1 à 50, indépendant des autres classes. Un compte peut donc avoir Soulrender 50 et Necram 12. **Tous les 15 sorts d'une classe sont disponibles dès le départ** (pas de déblocage de gameplay par level). Le leveling débloque uniquement des **récompenses cosmétiques et titres** — c'est de la progression de prestige, pas de gameplay.
 
-## **PROGRESSION DES SORTS**
+## **PROGRESSION DES RÉCOMPENSES COSMÉTIQUES**
 
-| NIVEAU | DÉBLOCAGE | IMPLICATION GAMEPLAY |
-|---|---|---|
-| 1 | 5 sorts (1 offensif basique + 1 tactique + 3 survie) | Match safe, découverte |
-| 3 | +2 offensifs | Premier vrai outil DPS |
-| 5 | +1 tactique avancé | Premier outil de setup réel |
-| 10 | +1 offensif majeur | Pic de pression accessible |
-| 15 | +1 tactique de contrôle | Mindgames possibles |
-| 20 | +1 sort signature en combat (ex: Charge Brutale) | Build agressif viable |
-| 25 | +1 sort de survie avancé | Sustain build viable |
-| 30 | +1 burst final (ex: Détonation Sanglante) | Build burst viable |
-| 35 | +1 panic button (ex: Dernier Souffle) | Tous outils défensifs |
-| 40 | +1 sort signature défensif | Polyvalence totale |
-| 50 | Tous les 15 sorts débloqués + skin exclusif niveau 50 | Maîtrise complète |
+Paliers indicatifs (à détailler précisément en Phase 5) :
 
-| DESIGN L'IDÉE : un nouveau joueur n'est PAS submergé par 15 sorts dès le début. Il en a 5 et apprend la classe. À mesure qu'il level, il découvre des outils plus avancés. Il peut quand même affronter des joueurs niveau 50 — son MMR le placera contre des joueurs de son niveau. |
+| NIVEAU | DÉBLOCAGE COSMÉTIQUE |
+|---|---|
+| 5 | Cadre de profil "Initié [Classe]" |
+| 10 | Titre affichable "Adepte de [Classe]" |
+| 20 | Couleur de pseudo dédiée à la classe |
+| 30 | Cadre animé "Vétéran [Classe]" |
+| 40 | Emote de combat exclusive |
+| 50 | Skin de classe exclusif niveau 50 + titre "Maître de [Classe]" |
+
+| DESIGN L'IDÉE : tous les outils gameplay sont accessibles dès la création du compte — un nouveau joueur peut tester les 15 sorts immédiatement. Le leveling sert uniquement de jauge de prestige et d'expression visuelle, pas de gate gameplay. Avantage : pas de barrière à l'entrée, pas de frustration, et le matchmaking reste équitable car tout le monde a le même pool de sorts. |
 |---|
 
 ## **XP DE CLASSE**
