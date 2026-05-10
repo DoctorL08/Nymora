@@ -5,13 +5,22 @@ name: Unity CI
 # Unity a charger tous les scripts et asmdef -> si quelque chose ne
 # compile pas, le workflow est rouge.
 #
-# Prerequis : secret UNITY_LICENSE configure dans le repo (voir le
-# workflow "Unity — Acquire Activation File" + procedure dans son
-# en-tete pour generer le .ulf une fois).
+# === ETAT : DESACTIVE EN ATTENTE D'UNE LICENSE UNITY ===
+# Lorenzo a un compte Unity organisation sans license Pro/Plus achetee,
+# et Unity Personal n'apparait pas pour les comptes orga. Solution future :
+# soit creer un compte Unity ID secondaire perso (avec une autre adresse
+# email), activer Personal dessus, recuperer le .ulf et le coller dans
+# le secret UNITY_LICENSE. Soit acheter une Unity Pro license et utiliser
+# UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD.
+#
+# Pour reactiver le workflow apres avoir configure UNITY_LICENSE :
+#   - changer 'on: workflow_dispatch' vers 'on: { push: { branches: [main] } }'
+#
+# Pour declencher MANUELLEMENT en attendant (par ex. apres avoir configure
+# la license) : Actions > Unity CI > Run workflow > main > Run.
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
 
 jobs:
   compile-check:

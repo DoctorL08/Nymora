@@ -11,7 +11,7 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 1 — Netcode + Backend  
-**Brique en cours :** **1.12 — CI/CD basique GitHub Actions**  
+**Brique en cours :** **1.13 — Hosting Phase 1 : VPS Hetzner CX22**  
 **Statut brique :** À démarrer
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
@@ -180,6 +180,29 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 1.12** — CI/CD GitHub Actions (validée côté backend le 11 mai 2026 ; Unity CI désactivé en attente d'une license)
+  - Décisions techniques :
+    1. Unity CI scope = compile-check via GameCI test-runner EditMode (~5-10 min/run, pas de build .exe full)
+    2. Triggers = push sur main uniquement (pas de PR car solo dev)
+    3. Backend = 5 smoke tests (db + prisma + auth + photon + version) via services Docker
+  - Backend (commit côté `nymora-backend`) :
+    - `.github/workflows/backend-ci.yml` : services Postgres 16-alpine + Redis 7-alpine avec healthchecks, Node 22 + cache npm, JWT_SECRET généré à la volée via `openssl rand -hex 64`, séquence `npm ci → prisma generate → prisma migrate deploy → lint → build → 5 smoke tests`
+    - **Run validé VERT** sur le premier push 1.10+1.11+1.12 (~3-5 min)
+  - Unity (commit côté `Nymora`) :
+    - `.github/workflows/unity-ci.yml` créé puis **désactivé** : passé en `on: workflow_dispatch` car la license Unity n'est pas dispo (compte orga sans Pro/Plus, et Personal n'apparaît pas pour les comptes orga)
+    - Workflow `unity-activation.yml` supprimé (action GameCI `unity-request-activation-file@v2` dépréciée, GameCI demande maintenant de générer le .alf en local depuis Unity Editor)
+  - À faire plus tard pour réactiver Unity CI (Phase 7 prep alpha au plus tard) :
+    1. Soit créer un compte Unity ID secondaire perso avec un autre email → activer Personal → récupérer le .ulf dans `%PROGRAMDATA%\Unity\Unity_lic.ulf` → coller dans secret repo `UNITY_LICENSE`
+    2. Soit acheter une Unity Pro license et utiliser la méthode GameCI Pro (3 secrets : `UNITY_SERIAL` + `UNITY_EMAIL` + `UNITY_PASSWORD`)
+    3. Puis changer `on: workflow_dispatch` vers `on: { push: { branches: [main] } }` dans `unity-ci.yml`
+  - Pièges traversés :
+    1. Action GameCI `unity-request-activation-file@v2` dépréciée → ne plus l'utiliser, générer le .alf en local via la commande CLI Unity (`Unity.exe -batchmode -createManualActivationFile -logfile -`)
+    2. Sur la commande CLI Unity : besoin des guillemets autour du chemin (`"C:\Program Files\..."`) sinon cmd casse sur l'espace de "Program Files"
+    3. Le `.ulf` Personal d'une license active est dans `%PROGRAMDATA%\Unity\Unity_lic.ulf` (pas `%PROGRAMFILES%`)
+    4. Les comptes Unity org sans license Pro/Plus achetée ne peuvent pas activer Unity Personal → besoin d'un compte secondaire
+
+---
+
 - **Brique 1.11** — Logger structuré client + serveur (validée 11 mai 2026)
   - Décisions techniques tranchées :
     1. Scope du remplacement = runtime uniquement (Editor scripts et smoke tests CLI restent en `Debug.Log` / `console.log` car non-prod)
@@ -308,16 +331,17 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ## 🔄 BRIQUE EN COURS
 
-### Brique 1.12 — CI/CD basique GitHub Actions
+### Brique 1.13 — Hosting Phase 1 : VPS Hetzner CX22
 
 **Objectifs (extraits de `05_Roadmap_V2_Novice.md`) :**
-1. Côté backend : workflow GitHub Actions qui run les tests + lint à chaque push
-2. Côté Unity : workflow qui compile le projet en build Windows à chaque push
-3. Les builds Mac/Android/iOS automatiques restent reportés en Phase 8/9 post-alpha
+1. Créer un compte Hetzner Cloud
+2. Provisionner un CX22 (~4€/mois) en datacenter Falkenstein
+3. Installer Docker + déployer le backend dessus
+4. Configurer un sous-domaine `api-dev.nymora.fr` (achat domaine OVH/Namecheap nécessaire)
 
-**Validation attendue :** push sur main déclenche les workflows ; tous passent au vert.
+**Validation attendue :** API accessible depuis l'extérieur (test depuis le navigateur), backend en prod tournant.
 
-**Prochaine étape après validation :** Brique 1.13 — Hosting Phase 1 : VPS Hetzner CX22
+**Prochaine étape après validation :** Brique 1.14 — Premier déploiement automatisé (suite CI/CD avec deploy auto vers Hetzner)
 
 ---
 
@@ -407,6 +431,17 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 1.12 (CI/CD GitHub Actions) — backend OK, Unity bloqué license
+- Décisions cadrage : Unity scope = compile-check léger (pas build full), triggers = push main only, backend = 5 smoke tests
+- Backend workflow livré en 1 fichier `backend-ci.yml` : services Postgres + Redis avec healthchecks, JWT_SECRET à la volée, séquence complète npm ci → prisma → lint → build → 5 tests
+- Push initial sur les 2 repos (avec tous les commits accumulés 1.10 + 1.11 + 1.12) → Backend CI **VERT au premier essai** ✅
+- Galère Unity CI : 
+  1. Workflow `unity-activation.yml` créé pour générer .alf via action GameCI → action `unity-request-activation-file@v2` **DÉPRÉCIÉE** ("This action is no longer supported")
+  2. Pivot vers génération .alf en local via `Unity.exe -batchmode -createManualActivationFile -logfile -` → Lorenzo a galéré avec les guillemets (`"C:\Program Files\..."`) puis sur le site Unity manual qui demandait un serial Pro/Plus
+  3. Tentative alternative via Unity Hub → Manage License → mais le compte Unity de Lorenzo est de type "organisation" sans license Pro achetée, et Personal n'est pas dispo pour les comptes orga
+  4. **Décision** : on désactive Unity CI pour la 1.12 (passé en `on: workflow_dispatch`), on le réactivera en Phase 7 prep alpha (au plus tard) avec soit un compte Unity ID perso secondaire, soit une Unity Pro license achetée
+- Brique 1.12 **validée partiellement** (backend OK, Unity en attente) → enchaîne sur 1.13 (Hetzner) ; Unity CI reste en backlog pour plus tard
 
 ### 11 mai 2026 — Brique 1.11 (Logger structuré client + serveur)
 - 3 décisions techniques tranchées en début de brique : scope runtime uniquement, niveaux Info/Warn/Error/Critical, Pino pretty en dev + JSON en prod
@@ -523,14 +558,13 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 🎯 PROCHAINE ACTION POUR LORENZO
 
-> 1. À la prochaine session, dire : **"On démarre la Brique 1.12 chef"** (CI/CD GitHub Actions)
-> 2. **Avoir 3 fenêtres prêtes** (la 1.12 ne nécessite pas ngrok) :
->    - Docker Desktop allumé (`docker compose ps` depuis `backend/` doit montrer Postgres + Redis Up)
->    - Backend Express : `cd backend && npm run dev` dans une fenêtre cmd
->    - Unity Editor avec le projet Nymora ouvert sur la scène 00_Login
-> 3. Smoke tests rapides au démarrage (sanity check) :
->    - `cd backend && npm run test:auth` → "Auth smoke test PASSED."
->    - `cd backend && npm run test:photon-webhook` → "Photon webhook smoke test PASSED."
->    - `cd backend && npm run test:version` → "Version smoke test PASSED."
-> 4. Si tu veux retester la 1.9 (Custom Auth Photon) en E2E : relancer ngrok + mettre à jour l'URL dans le dashboard Photon (URL temporaire `*.ngrok-free.dev`)
-> 5. Claude relira `05_Roadmap_V2_Novice.md` pour cadrer la 1.12 (workflow GitHub Actions backend `test + lint` à chaque push + workflow Unity build Windows)
+> 1. À la prochaine session, dire : **"On démarre la Brique 1.13 chef"** (VPS Hetzner CX22)
+> 2. **Pré-requis spécifiques 1.13** :
+>    - Avoir une carte bancaire prête (Hetzner facture mensuellement, ~4€/mois pour le CX22)
+>    - Décider du nom de domaine (`nymora.fr` ou autre, achat sur OVH/Namecheap ~10€/an) — ou utiliser un sous-domaine free le temps de la 1.13
+>    - Docker Desktop allumé (pour comparer avec la stack qui tournera sur Hetzner)
+> 3. Vérifications pré-1.13 :
+>    - Backend CI toujours vert sur GitHub Actions
+>    - Tous les commits locaux poussés (Hetzner va pull depuis GitHub)
+> 4. Unity CI **en attente** (license manquante) : à finaliser plus tard, voir la section 1.12 ci-dessus pour les options. Ne nous bloque pas pour la 1.13.
+> 5. Claude relira `05_Roadmap_V2_Novice.md` pour cadrer la 1.13 (provisioning CX22, install Docker, deploy backend, sous-domaine api-dev)
