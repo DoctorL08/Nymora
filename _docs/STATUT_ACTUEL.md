@@ -10,9 +10,9 @@
 
 ## 🎯 OÙ ON EN EST
 
-**Phase actuelle :** Phase 1 — Netcode + Backend  
-**Brique en cours :** **1.13 — Hosting Phase 1 : VPS Hetzner CX22**  
-**Statut brique :** À démarrer
+**Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
+**Brique en cours :** **2.1 — À définir au début de la Phase 2**  
+**Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -180,6 +180,29 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 1.14** — Test bout-en-bout Phase 1 (validée 11 mai 2026, scope minimal)
+  - Décision de scope : on a coupé court vs la roadmap V2 originale (qui demandait simulation Quantum déterministe + checksums) → on a fait uniquement le test **auth multi-client** (Build .exe + Editor en parallèle, 2 comptes distincts, 2 sessions Photon simultanées). La validation déterministe Quantum se fera naturellement en Phase 2 dès qu'on aura 2 personnages qui bougent.
+  - Build Standalone Windows configuré : scènes [00_Login.unity], Mono backend, Windowed 1280×720, build dans `Builds/1.14/Nymora.exe`
+  - Photon Cloud / ngrok réactivés pour la session : URL ngrok-free `https://alphabet-reverend-cloud.ngrok-free.dev` configurée dans le dashboard Photon Custom Authentication
+  - 2 comptes créés : `test1@nymora.local` (tester1) + `test2@nymora.local` (tester2)
+  - Validation E2E :
+    - Editor (Play 00_Login) : Login tester1 → Photon OK UserId=`e13a1867-6994-47db-a730-0d3a5f6d21d5`
+    - Build (Nymora.exe) : Login tester2 → Photon OK UserId=`33b893cc-75c2-4683-a8d6-3fe3f4531fa8`
+    - 2 UUIDs Postgres distincts, 2 sessions Photon simultanées validées par le webhook backend en parallèle
+  - Pièges traversés :
+    1. PlayerPrefs Editor vs Build : sur Windows, Unity Editor et un Build standalone ont **des clés de registry distinctes** (`HKCU\Software\Unity\UnityEditor\...` vs `HKCU\Software\<CompanyName>\...`). Pas d'interférence à craindre entre les 2 instances pour la persistence du JWT.
+    2. URL ngrok-free temporaire change à chaque relance → toujours mettre à jour le dashboard Photon avant de tester. Sinon Photon tape une URL morte et retourne ResultCode=3 BadParams sans message clair.
+
+---
+
+- **Brique 1.13** — Hosting Phase 1 VPS Hetzner — **REPORTÉE en Phase 7** (prep alpha)
+  - Décision prise le 11 mai 2026 : Lorenzo veut minimiser les dépenses tant que le gameplay (Phase 2-3) ne prouve pas que Nymora est fun. Hetzner CX22 (~4€/mois) + domaine (~10€/an) = ~60€/an inutiles tant qu'on bosse seul en local.
+  - Tout marche en local : backend Node sur localhost:3000, Photon Cloud free tier (100 CCU = ~5-10K inscriptions OK). Multi-client local testé en 1.14.
+  - Hetzner sera réactivé quand on voudra inviter des testeurs externes (Phase 7 prep alpha closed).
+  - À ce moment-là : créer compte Hetzner Cloud + domaine OVH/Namecheap + Docker deploy + sous-domaine `api-dev.nymora.fr` + Let's Encrypt HTTPS (HTTPS obligatoire pour webhook Photon).
+
+---
+
 - **Brique 1.12** — CI/CD GitHub Actions (validée côté backend le 11 mai 2026 ; Unity CI désactivé en attente d'une license)
   - Décisions techniques :
     1. Unity CI scope = compile-check via GameCI test-runner EditMode (~5-10 min/run, pas de build .exe full)
@@ -331,17 +354,23 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ## 🔄 BRIQUE EN COURS
 
-### Brique 1.13 — Hosting Phase 1 : VPS Hetzner CX22
+### 🎮 PHASE 2 — Combat (Soulrender + Nightseer)
+
+**Durée estimée :** 2 mois (~16 briques)
 
 **Objectifs (extraits de `05_Roadmap_V2_Novice.md`) :**
-1. Créer un compte Hetzner Cloud
-2. Provisionner un CX22 (~4€/mois) en datacenter Falkenstein
-3. Installer Docker + déployer le backend dessus
-4. Configurer un sous-domaine `api-dev.nymora.fr` (achat domaine OVH/Namecheap nécessaire)
+- Système de grille de combat 15×17 cases
+- Système de tour par tour avec PA/PM/HP
+- Pathfinding A* pour les déplacements
+- **Soulrender complète** : 15 sorts + signature + ressource Hémoglyphe + passif L'Appel du Sang
+- **Nightseer complète** : 15 sorts + signature + ressource Prescience + passif L'Œil qui n'est pas
+- Brouillard de guerre fonctionnel
+- IA de combat niveau Easy et Medium
+- **Combat 1v1 vs IA jouable bout en bout** ← LE moment de vérité gameplay
 
-**Validation attendue :** API accessible depuis l'extérieur (test depuis le navigateur), backend en prod tournant.
+**Le détail brique par brique de la Phase 2 sera livré au début de la prochaine session.**
 
-**Prochaine étape après validation :** Brique 1.14 — Premier déploiement automatisé (suite CI/CD avec deploy auto vers Hetzner)
+**Prochaine étape :** Demander à Claude de cadrer la Phase 2 et lister les briques 2.1, 2.2, ...
 
 ---
 
@@ -431,6 +460,17 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 1.14 (Test E2E Phase 1) — 🏁 CLÔTURE PHASE 1
+- Décisions cadrage : scope minimal (auth multi-client uniquement, pas de simulation Quantum déterministe) car la simulation propre demande du custom code throwaway qui sera refait en Phase 2 quand on aura de vrais Systems
+- Discussion stratégie coûts importante : Lorenzo a demandé "la 1.13 est obligatoire ?" → clarification que Hetzner ≠ slots Photon, et qu'on peut tout faire en local jusqu'à Phase 7 sans dépenser. **Décision : reporter 1.13 en Phase 7 (prep alpha).** Memory feedback créée pour cette philosophie.
+- 1.14 en pratique :
+  1. Build Standalone Windows configuré (Mono, Windowed 1280×720, scène 00_Login seule, dossier `Builds/1.14/`)
+  2. ngrok relancé : nouvelle URL `https://alphabet-reverend-cloud.ngrok-free.dev`, dashboard Photon Custom Auth mis à jour avec `/auth/photon-webhook`
+  3. Test multi-client : Editor login tester1 + Build login tester2, chacun clic Connect Photon → 2 UserIds Postgres distincts (e13a... et 33b8...)
+- Validation : 2 sessions Photon simultanées OK, backend supporte le multi-client, webhook valide les 2 JWTs en parallèle sans interférence
+- 🏁 **PHASE 1 CLÔTURÉE** : 14 briques / 14 (1.13 reportée explicitement). Stack fondations complète : Quantum + Fusion + Backend Node+Postgres+Redis+Prisma + Auth JWT/bcrypt/Custom Auth Photon + version-guard + Logger Pino/NymoraLog + CI/CD backend vert + multi-client validé. Coût total : 0€.
+- **Prochaine session : Phase 2 (Combat). Claude livrera le détail des briques 2.x au début de la prochaine session.**
 
 ### 11 mai 2026 — Brique 1.12 (CI/CD GitHub Actions) — backend OK, Unity bloqué license
 - Décisions cadrage : Unity scope = compile-check léger (pas build full), triggers = push main only, backend = 5 smoke tests
@@ -558,13 +598,14 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 🎯 PROCHAINE ACTION POUR LORENZO
 
-> 1. À la prochaine session, dire : **"On démarre la Brique 1.13 chef"** (VPS Hetzner CX22)
-> 2. **Pré-requis spécifiques 1.13** :
->    - Avoir une carte bancaire prête (Hetzner facture mensuellement, ~4€/mois pour le CX22)
->    - Décider du nom de domaine (`nymora.fr` ou autre, achat sur OVH/Namecheap ~10€/an) — ou utiliser un sous-domaine free le temps de la 1.13
->    - Docker Desktop allumé (pour comparer avec la stack qui tournera sur Hetzner)
-> 3. Vérifications pré-1.13 :
->    - Backend CI toujours vert sur GitHub Actions
->    - Tous les commits locaux poussés (Hetzner va pull depuis GitHub)
-> 4. Unity CI **en attente** (license manquante) : à finaliser plus tard, voir la section 1.12 ci-dessus pour les options. Ne nous bloque pas pour la 1.13.
-> 5. Claude relira `05_Roadmap_V2_Novice.md` pour cadrer la 1.13 (provisioning CX22, install Docker, deploy backend, sous-domaine api-dev)
+> 1. À la prochaine session, dire : **"On démarre la Phase 2 chef"** 🎮
+> 2. **Pré-requis Phase 2** (mêmes 3 fenêtres que d'habitude, pas de nouveau setup) :
+>    - Docker Desktop allumé (`docker compose ps` depuis `backend/` montre Postgres + Redis Up)
+>    - Backend Express : `cd backend && npm run dev` dans une fenêtre cmd (laisser tourner)
+>    - Unity Editor avec le projet Nymora ouvert
+> 3. Pas besoin de ngrok pour la Phase 2 (le combat est local jusqu'à la fin Phase 3)
+> 4. Smoke tests rapides (sanity check) au démarrage :
+>    - `cd backend && npm run test:auth` → "Auth smoke test PASSED."
+>    - `cd backend && npm run test:version` → "Version smoke test PASSED."
+> 5. Claude lira `01_BIBLE_V7.1_Combat.md` (stats, sorts, classes) + `05_Roadmap_V2_Novice.md` pour cadrer la Phase 2 et te livrer la liste des briques 2.x. Probablement on commencera par : système de grille 15×17 + Position2D + Tile data + visualisation grille.
+> 6. **Backlog notable** à reprendre plus tard : Unity CI (license) + 1.13 Hetzner (Phase 7 prep alpha) + 1.14 simulation Quantum déterministe complète (sera couverte naturellement par Phase 2 quand on aura du combat à tester).
