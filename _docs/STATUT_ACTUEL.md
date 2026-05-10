@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 10 mai 2026  
+**Dernière mise à jour :** 11 mai 2026  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,7 +11,7 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** Phase 1 — Netcode + Backend  
-**Brique en cours :** **1.11 — Logger structuré (NymoraLog client + Pino serveur)**  
+**Brique en cours :** **1.12 — CI/CD basique GitHub Actions**  
 **Statut brique :** À démarrer
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
@@ -180,6 +180,31 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ---
 
+- **Brique 1.11** — Logger structuré client + serveur (validée 11 mai 2026)
+  - Décisions techniques tranchées :
+    1. Scope du remplacement = runtime uniquement (Editor scripts et smoke tests CLI restent en `Debug.Log` / `console.log` car non-prod)
+    2. Niveaux exposés = `Info / Warn / Error / Critical` (4 niveaux, KISS, alignés sur la roadmap V2 et compatibles Pino qui appelle Critical = `fatal`)
+    3. Format Pino = pretty-print en dev (couleurs + timestamps), JSON brut en prod (parsable Loki en Phase 7+) via `NODE_ENV`
+  - Backend (commit côté `nymora-backend`) :
+    - Nouveau `src/services/logger.ts` : singleton Pino configuré via `NODE_ENV`. `base: { service: 'nymora-backend' }`. Méthodes `logger.info/warn/error/fatal(...)` avec convention `logger.info({ contextObj }, 'message')`.
+    - Modif `src/index.ts` : `console.log` remplacé par `logger.info({ port }, 'Backend Nymora demarre')`.
+    - Deps ajoutées : `pino@9.14.0` (dependency) + `pino-pretty@11.3.0` (devDep).
+    - Smoke tests CLI inchangés (leurs `console.log` sont des outputs lisibles pour Lorenzo, pas du runtime serveur).
+  - Unity (commit côté `Nymora`) :
+    - Nouveau `Assets/_Nymora/Scripts/Core/Logging/NymoraLog.cs` (asmdef `Nymora.Core`, sans dépendance) : static class avec enum `NymoraLogLevel` + méthodes `Info/Warn/Error/Critical(category, message)`. Wrap `Debug.Log/LogWarning/LogError` (Critical = `LogError` avec prefix `[CRITICAL]`) pour rester visible dans la Console Unity ET le filtre `NymoraConsoleWindow`. Event `OnLogEmitted` static pour brancher un sink HTTP vers Loki en Phase 7+.
+    - Modif `LoginScreenController.cs` : 6 `Debug.Log/LogWarning/LogError` remplacés par `NymoraLog.Info/Warn/Critical("Login", ...)`. `Debug.LogError` initial sur backend settings manquant → promu `NymoraLog.Critical`. Le `SetStatus` interne logge maintenant via `NymoraLog.Info`.
+  - Convention adoptée : préfixe automatique `[Nymora.{Category}]` géré par le wrapper. Les appelants passent seulement le category (`"Login"`) + le message brut, sans réécrire le préfixe.
+  - Validation E2E :
+    - Backend Pino : démarrage avec `pino-pretty` lisible (couleurs + `HH:MM:ss.l` + service tag)
+    - Smoke tests : `test:auth` 7/7 + `test:photon-webhook` 6/6 + `test:version` 8/8 (21/21 total)
+    - Console Unity propre : logs `[Nymora.Login] ...` avec stack trace montrant le flow `NymoraLog.Emit → Info → SetStatus → Start`
+    - Healthcheck Unity : 0 erreur
+  - Pièges traversés :
+    1. Nodemon crashe en cascade pendant les saves successifs des fichiers (TS6133/TS6192 "imports unused" transitoires). Inoffensif tant que le DERNIER état du fichier compile. Faut pas paniquer sur des erreurs intermédiaires.
+    2. Cannot find module 'pino' → toujours bien faire `npm install` après ajout d'une dep. Sur Windows il faut souvent un Ctrl+C + relance `npm run dev` pour que nodemon repère les nouvelles deps installées pendant qu'il tourne.
+
+---
+
 - **Brique 1.10** — Système de versioning runtime (validée 10 mai 2026)
   - Backend (commit côté `nymora-backend`) :
     - Nouveau service `src/services/version.service.ts` : constantes `MIN_CLIENT_VERSION = '0.1.0'`, `CURRENT_CLIENT_VERSION = '0.1.0'`, `MIN_COMBAT_RULES_VERSION = 1` + helpers `parseSemver` / `compareSemver` / `checkClientVersion`
@@ -283,17 +308,16 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ## 🔄 BRIQUE EN COURS
 
-### Brique 1.11 — Logger structuré (client + serveur)
+### Brique 1.12 — CI/CD basique GitHub Actions
 
 **Objectifs (extraits de `05_Roadmap_V2_Novice.md`) :**
-1. Côté client Unity : wrapper `NymoraLog` qui structure les logs (info/warn/error/critical)
-2. Côté serveur : Pino logger configuré pour JSON output
-3. Remplacer tous les `Debug.Log` existants par `NymoraLog.Info` dans le code Nymora
-4. Préparer l'envoi futur vers Loki (Phase 7+)
+1. Côté backend : workflow GitHub Actions qui run les tests + lint à chaque push
+2. Côté Unity : workflow qui compile le projet en build Windows à chaque push
+3. Les builds Mac/Android/iOS automatiques restent reportés en Phase 8/9 post-alpha
 
-**Validation attendue :** tous les logs côté client passent par NymoraLog ; côté serveur, les logs sont en JSON avec timestamp et level.
+**Validation attendue :** push sur main déclenche les workflows ; tous passent au vert.
 
-**Prochaine étape après validation :** Brique 1.12 — CI/CD basique GitHub Actions
+**Prochaine étape après validation :** Brique 1.13 — Hosting Phase 1 : VPS Hetzner CX22
 
 ---
 
@@ -383,6 +407,17 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 1.11 (Logger structuré client + serveur)
+- 3 décisions techniques tranchées en début de brique : scope runtime uniquement, niveaux Info/Warn/Error/Critical, Pino pretty en dev + JSON en prod
+- Backend : install `pino@9.14.0` + `pino-pretty@11.3.0`, création `src/services/logger.ts` (singleton avec base `service: nymora-backend` + transport pino-pretty conditionnel via NODE_ENV), modif `src/index.ts` pour `logger.info({port}, '...')`
+- Unity : nouveau `Scripts/Core/Logging/NymoraLog.cs` (4 méthodes Info/Warn/Error/Critical + event OnLogEmitted pour Loki Phase 7+), modif `LoginScreenController.cs` pour remplacer 6 `Debug.Log` par `NymoraLog`
+- Convention : préfixe `[Nymora.{Category}]` géré par le wrapper, appelants passent juste category + message
+- 2 pièges traversés :
+  1. Crash cascade nodemon pendant les saves successifs (TS6133/TS6192 transitoires sur auth.ts) — inoffensif, juste attendre que toutes les saves soient passées
+  2. `Cannot find module 'pino'` car npm install pas encore fait quand le serveur a redémarré — résolu par Ctrl+C + relance `npm run dev` après les install
+- Validation : pino-pretty visible au démarrage, 21/21 smoke tests passed, Console Unity propre avec stack traces qui passent bien par NymoraLog.Emit, Healthcheck Unity 0 erreur
+- Brique 1.11 validée → 1.12 (CI/CD GitHub Actions) en attente
 
 ### 10 mai 2026 — Brique 1.10 (Système de versioning runtime)
 - Cleanup docs préalable : commit `5f37270 docs: cleanup pre-1.10` (4 docs modifiés + plan pixel art + 2 captures d'écran + suppression fichier vide "Déblocage")
@@ -488,8 +523,8 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 🎯 PROCHAINE ACTION POUR LORENZO
 
-> 1. À la prochaine session, dire : **"On démarre la Brique 1.11 chef"** (Logger structuré)
-> 2. **Avoir 3 fenêtres prêtes** (la 1.11 ne nécessite pas ngrok) :
+> 1. À la prochaine session, dire : **"On démarre la Brique 1.12 chef"** (CI/CD GitHub Actions)
+> 2. **Avoir 3 fenêtres prêtes** (la 1.12 ne nécessite pas ngrok) :
 >    - Docker Desktop allumé (`docker compose ps` depuis `backend/` doit montrer Postgres + Redis Up)
 >    - Backend Express : `cd backend && npm run dev` dans une fenêtre cmd
 >    - Unity Editor avec le projet Nymora ouvert sur la scène 00_Login
@@ -498,4 +533,4 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 >    - `cd backend && npm run test:photon-webhook` → "Photon webhook smoke test PASSED."
 >    - `cd backend && npm run test:version` → "Version smoke test PASSED."
 > 4. Si tu veux retester la 1.9 (Custom Auth Photon) en E2E : relancer ngrok + mettre à jour l'URL dans le dashboard Photon (URL temporaire `*.ngrok-free.dev`)
-> 5. Claude relira `05_Roadmap_V2_Novice.md` pour cadrer la 1.11 (NymoraLog client + Pino serveur + remplacer Debug.Log par NymoraLog.Info)
+> 5. Claude relira `05_Roadmap_V2_Novice.md` pour cadrer la 1.12 (workflow GitHub Actions backend `test + lint` à chaque push + workflow Unity build Windows)

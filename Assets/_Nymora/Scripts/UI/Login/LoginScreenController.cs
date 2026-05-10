@@ -1,6 +1,7 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Nymora.Core.Data;
+using Nymora.Core.Logging;
 using Nymora.Network.Backend;
 using TMPro;
 using UnityEngine;
@@ -50,7 +51,7 @@ namespace Nymora.UI.Login
         {
             if (_backendSettings == null)
             {
-                Debug.LogError("[Nymora.Login] NymoraBackendSettings non assigne dans l'Inspector.");
+                NymoraLog.Critical("Login", "NymoraBackendSettings non assigne dans l'Inspector.");
                 enabled = false;
                 return;
             }
@@ -99,7 +100,7 @@ namespace Nymora.UI.Login
 
             if (versionCheck.IsUpdateAvailable)
             {
-                Debug.Log($"[Nymora.Login] Une mise a jour est disponible : client={GameVersion.Current}, serveur={versionCheck.CurrentClientVersion}");
+                NymoraLog.Info("Login", $"Mise a jour disponible : client={GameVersion.Current}, serveur={versionCheck.CurrentClientVersion}");
             }
 
             // Etape 2 : flow normal (verification de session si token persiste).
@@ -144,7 +145,7 @@ namespace Nymora.UI.Login
             var res = await _auth.LoginAsync(_emailInput.text, _passwordInput.text, _cts.Token);
             if (res.IsSuccess)
             {
-                Debug.Log($"[Nymora.Login] JWT recu (longueur {res.Data.token.Length}).");
+                NymoraLog.Info("Login", $"JWT recu (longueur {res.Data.token.Length}).");
                 SetStatus($"Connecte : {res.Data.user.displayName}");
             }
             else if (res.StatusCode == 426)
@@ -165,7 +166,7 @@ namespace Nymora.UI.Login
                 _emailInput.text, _passwordInput.text, _displayNameInput.text, _cts.Token);
             if (res.IsSuccess)
             {
-                Debug.Log($"[Nymora.Login] JWT recu (longueur {res.Data.token.Length}).");
+                NymoraLog.Info("Login", $"JWT recu (longueur {res.Data.token.Length}).");
                 SetStatus($"Inscrit + connecte : {res.Data.user.displayName}");
             }
             else if (res.StatusCode == 426)
@@ -203,19 +204,19 @@ namespace Nymora.UI.Login
             if (result.IsSuccess)
             {
                 SetStatus($"Photon OK ! Region={result.Region} UserId={result.UserId}");
-                Debug.Log($"[Nymora.Login] Photon Custom Auth validee. Region={result.Region}, UserId={result.UserId}");
+                NymoraLog.Info("Login", $"Photon Custom Auth validee. Region={result.Region}, UserId={result.UserId}");
             }
             else
             {
                 SetStatus($"Photon refuse : {result.FailureMessage}");
-                Debug.LogWarning($"[Nymora.Login] Photon connection failed: {result.FailureMessage}");
+                NymoraLog.Warn("Login", $"Photon connection failed: {result.FailureMessage}");
             }
         }
 
         private void SetStatus(string s)
         {
             if (_statusText != null) _statusText.text = s;
-            Debug.Log($"[Nymora.Login] {s}");
+            NymoraLog.Info("Login", s);
         }
 
         /// <summary>
