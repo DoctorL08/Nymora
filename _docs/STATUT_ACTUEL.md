@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026 (Brique 2.4 validée)  
+**Dernière mise à jour :** 11 mai 2026 (Brique 2.5 validée — bloc A bouclé)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.5 — Pathfinding A* déterministe** (à démarrer)  
+**Brique en cours :** **2.6 — Système de targeting (Shape + Filter)** (à démarrer)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 4/17 briques validées
+**Statut Phase 2 :** 5/17 briques validées (Bloc A — Fondations grille & tour : ✅ 5/5)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,32 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.5** — Pathfinding A* déterministe (validée 11 mai 2026)
+  - `Assets/QuantumUser/Simulation/Combat/Pathfinding/AStarPathfinder.cs` : static class, méthode `TryFindPath(Frame f, int sx, int sy, int tx, int ty, int maxSteps, int* pathOutBuffer, out int pathLength)`.
+  - Algorithme :
+    - 4-connexité Manhattan (DX = {1,-1,0,0}, DY = {0,0,1,-1}, ordre fixe pour déterminisme)
+    - Open set : tableau plat de taille max 255 cases, `bestF` recherché par scan linéaire (acceptable pour 255 max)
+    - Closed set : `bool[255]`
+    - gScore : `int[255]` init à `int.MaxValue`
+    - cameFrom : `int[255]` init à `-1` (Unreachable)
+    - Heuristique : Manhattan strict, jamais surestimation (admissible → optimum garanti)
+    - Tie-break : index grille croissant en cas d'égalité fScore → reproductibilité totale
+    - Zero allocation heap : tous les buffers en `stackalloc` (~4 KB stack par appel)
+    - Reconstruction du path en 2 phases : count d'abord (fail-fast si > maxSteps), puis écriture dans le buffer fourni
+  - `MovementSystem.cs` refactor : 
+    - Validation rapide `manhattan > PM` → skip A* (économie)
+    - Cas adjacent (manhattan==1) → skip A* (optim, applique direct comme en 2.4)
+    - Sinon → A* avec `pathBuffer = stackalloc int[GridConstants.Count]`
+    - Application synchrone en 1 tick : `GridX/Y` → target, `PM -= path.length`, SetOccupant ancien/nouveau
+  - Hooks ajustés (cohérence simu/view) :
+    - `tools/git-hooks/pre-commit` : refactor pour scanner SIMULATION uniquement (2 paths, exclusion `View/` et `Generated/`)
+    - `NymoraHealthCheck` : refactor `CheckQuantumViolations` → nouvelle méthode `ScanPath(relativePath, ...)` réutilisable, 2 invocations (CombatScripts + QuantumSimPath), exclusion `View/` et `Generated/`. Le View Unity peut désormais utiliser `Time.deltaTime` sans déclencher de violation Quantum.
+  - Pièges traversés :
+    1. **Conflit nom variable `f`** : dans un système Quantum la convention est `Frame f`, donc une variable locale `int f = fScore` collide. Réflexe : nommer toujours `fScore` ou `gValue` etc. dans le code A*.
+    2. **Périmètre du check déterminisme** : avant ce refactor, le hook et le healthcheck scannaient `Scripts/Combat/` complet mais pas `QuantumUser/Simulation/`. Asymétrie corrigée — désormais les 2 paths scannés, View/ et Generated/ exclus.
 
 ---
 
@@ -456,18 +482,18 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ### Cadrage des 17 briques (validé le 11 mai 2026)
 
-**Bloc A — Fondations grille & tour (5 briques)**
+**Bloc A — Fondations grille & tour (5 briques) ✅ BOUCLÉ 11 mai 2026**
 - 2.1 — Grille 15×17 (data Quantum FP + visualisation iso 2D) ✅ VALIDÉE 11 mai 2026
 - 2.2 — Entity Combatant Quantum (HP/PA/PM/Class) ✅ VALIDÉE 11 mai 2026
 - 2.3 — État machine de tour + timer 15s + initiative ✅ VALIDÉE 11 mai 2026
 - 2.4 — Mouvement case par case (PM) ✅ VALIDÉE 11 mai 2026
-- 2.5 — Pathfinding A* déterministe ⏳ PROCHAINE
+- 2.5 — Pathfinding A* déterministe ✅ VALIDÉE 11 mai 2026
 - 2.3 — État machine de tour + timer 15s + initiative
 - 2.4 — Mouvement case par case (PM)
 - 2.5 — Pathfinding A* déterministe
 
 **Bloc B — Sorts & ciblage générique (3 briques)**
-- 2.6 — Système de targeting (Shape + Filter)
+- 2.6 — Système de targeting (Shape + Filter) ⏳ PROCHAINE
 - 2.7 — Spell runtime engine
 - 2.8 — Premier sort Tranche-Âme Soulrender (E2E damage flow)
 
@@ -486,7 +512,7 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.16 — IA Medium (heuristique multi-tour)
 - 2.17 — Scène `30_CombatIA` + test E2E combat 1v1 jouable 🎯
 
-**Prochaine étape :** Démarrer brique 2.5 — Pathfinding A* déterministe (clic case lointaine = chemin auto cellule par cellule).
+**Prochaine étape :** Démarrer brique 2.6 — Système de targeting (Shape + Filter générique, preview View).
 
 ---
 
@@ -580,6 +606,28 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 2.5 (Pathfinding A* déterministe) + clôture Bloc A
+- 1 nouveau fichier (`AStarPathfinder.cs`) + refactor `MovementSystem.cs` + 2 fix hook (pre-commit Git + Healthcheck Nymora)
+- A* déterministe :
+  - Heuristique Manhattan (4-connexité, garantit optimum sur grille rectangulaire)
+  - Tie-break par index grille croissant (`y*Width + x`) → ordre d'expansion totalement reproductible
+  - Zero allocation heap : tous les buffers en `stackalloc int[Count]` / `stackalloc bool[Count]` (~4 KB stack/appel pour 255 cases)
+  - Pas de FP : tout int (gScore, fScore = gScore + Manhattan)
+  - Reconstruction du path en 2 phases (count + écriture) pour fail-fast si len > maxSteps
+- `MovementSystem` refactor :
+  - Heuristique rapide `manhattanDistance > PM` → skip A* (économie)
+  - Cas adjacent (manhattan==1) → skip A* aussi (optim cas fréquent)
+  - Sinon → A* déterministe
+  - Application synchrone en 1 tick : combattant téléporté, PM -= path.length, SetOccupant
+  - Le View lerp en ligne droite (anim case-par-case = Phase 2.10+ si nécessaire)
+- 2 fix hook **importants** côté outillage (cohérence simu/view) :
+  - `tools/git-hooks/pre-commit` : scan séparé `QuantumUser/Simulation/` (sauf Generated/) ET `Scripts/Combat/` (sauf View/) — le View Unity peut légitimement utiliser `Time.deltaTime` pour les lerps/animations
+  - `NymoraHealthCheck` (Editor Tool) : même refactor — nouvelle méthode `ScanPath` réutilisable, scanne 2 paths avec exclusions, ajoute le check sur la simu Quantum qui n'était pas couvert avant
+- 1 piège traversé :
+  - Conflit de nom local `int f = ...` dans la boucle A* alors que le paramètre est `Frame f` — renommé en `fScore`. Réflexe à garder : éviter les variables locales nommées `f` dans tout code Quantum.
+- Validation : mouvement 2-3 cases fonctionne, A* contourne le Nightseer si nécessaire, distance > PM rejeté, healthcheck à 0 erreur (incluant le nouveau scan de la simu Quantum).
+- 🏁 **Bloc A — Fondations grille & tour : BOUCLÉ** (5/5 briques validées en une session marathon : 2.1 → 2.5 le 11 mai 2026).
 
 ### 11 mai 2026 — Brique 2.4 (Mouvement case par case + DeterministicCommand)
 - 7 fichiers livrés (2 simu Movement + 2 updates Setup + 2 updates View + 1 nouveau input controller)

@@ -3,12 +3,15 @@ namespace Quantum
     using Photon.Deterministic;
 
     /// <summary>
-    /// Traite les MoveCommands envoyees par les joueurs. Bouge le Combatant d'1 case
-    /// (4-connexite Manhattan) si toutes les validations passent : phase TurnActive,
-    /// joueur actif, PM > 0, case adjacente, walkable, non occupee.
+    /// Traite les MoveCommands envoyees par les joueurs.
     ///
-    /// 2.4 : mouvement 1 case a la fois. Le pathfinding A* multi-cases (clic sur case
-    /// lointaine = chemin auto cellule par cellule) c'est la brique 2.5.
+    /// 2.5 : appelle A* pour calculer le chemin optimal vers la case cible.
+    /// - Si distance Manhattan == 1 : application directe (skip A*, optim)
+    /// - Sinon : A* deterministe (cf AStarPathfinder), application si path.length <= PM
+    ///
+    /// Application synchrone en 1 tick : combattant teleporte a la destination,
+    /// PM decrement par la longueur du chemin. Le View lerp en ligne droite vers
+    /// la nouvelle case (anim case-par-case = Phase 2.10+ si necessaire).
     /// </summary>
     public unsafe class MovementSystem : SystemMainThread
     {
@@ -34,7 +37,6 @@ namespace Quantum
                 return;
             }
 
-            // Cherche le Combatant du joueur
             EntityRef combatantEntity = EntityRef.None;
             var filter = f.Filter<Combatant>();
             while (filter.NextUnsafe(out EntityRef entity, out Combatant* c))
@@ -60,43 +62,70 @@ namespace Quantum
                 return;
             }
 
+            // No-op silencieux si clic sur la propre case du combattant.
+            if (targetX == combatant->GridX && targetY == combatant->GridY) return;
+
             if (!GridHelpers.InBounds(targetX, targetY))
             {
                 Log.Warn($"[Movement] rejet : ({targetX},{targetY}) hors grille");
                 return;
             }
-
             if (!GridHelpers.IsWalkable(f, targetX, targetY))
             {
                 Log.Warn($"[Movement] rejet : ({targetX},{targetY}) non walkable");
                 return;
             }
-
             if (GridHelpers.GetOccupant(f, targetX, targetY) != EntityRef.None)
             {
                 Log.Warn($"[Movement] rejet : ({targetX},{targetY}) deja occupee");
                 return;
             }
 
-            // Adjacence Manhattan : distance 4-connexite == 1 (pas de diagonale en 2.4)
+            // Heuristique rapide : si meme la distance Manhattan optimale depasse PM, inutile d'appeler A*.
             int dx = targetX - combatant->GridX;
             int dy = targetY - combatant->GridY;
             int absDx = dx < 0 ? -dx : dx;
             int absDy = dy < 0 ? -dy : dy;
-            if (absDx + absDy != 1)
+            int manhattan = absDx + absDy;
+            if (manhattan > combatant->PM)
             {
-                Log.Warn($"[Movement] rejet : non-adjacent (dx={dx}, dy={dy})");
+                Log.Warn($"[Movement] rejet : distance optimale {manhattan} > PM {combatant->PM}");
                 return;
             }
 
-            // Application : libere ancienne case, deplace, occupe nouvelle case, decrement PM
+            // Cas adjacent (1 case) : skip A* pour optimiser
+            if (manhattan == 1)
+            {
+                ApplyMove(f, combatant, combatantEntity, targetX, targetY, 1);
+                return;
+            }
+
+            // Cas multi-cases : A* deterministe
+            int* pathBuffer = stackalloc int[GridConstants.Count];
+            if (!AStarPathfinder.TryFindPath(
+                    f,
+                    combatant->GridX, combatant->GridY,
+                    targetX, targetY,
+                    combatant->PM,
+                    pathBuffer,
+                    out int pathLength))
+            {
+                Log.Warn($"[Movement] rejet : pas de chemin <= PM={combatant->PM} vers ({targetX},{targetY})");
+                return;
+            }
+
+            ApplyMove(f, combatant, combatantEntity, targetX, targetY, pathLength);
+        }
+
+        private static void ApplyMove(Frame f, Combatant* combatant, EntityRef entity, int targetX, int targetY, int cost)
+        {
             GridHelpers.SetOccupant(f, combatant->GridX, combatant->GridY, EntityRef.None);
             combatant->GridX = targetX;
             combatant->GridY = targetY;
-            combatant->PM -= 1;
-            GridHelpers.SetOccupant(f, targetX, targetY, combatantEntity);
+            combatant->PM -= cost;
+            GridHelpers.SetOccupant(f, targetX, targetY, entity);
 
-            Log.Info($"[Movement] P{playerIndex} -> ({targetX},{targetY}) PM restant={combatant->PM}");
+            Log.Info($"[Movement] P{combatant->PlayerIndex} -> ({targetX},{targetY}) cost={cost} PM restant={combatant->PM}");
         }
     }
 }

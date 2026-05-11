@@ -29,7 +29,11 @@ namespace Nymora.Editor.Tools
     /// </summary>
     public static class NymoraHealthCheck
     {
+        // Paths scannes pour les violations Quantum (code de SIMULATION uniquement).
+        // Le View Unity (Scripts/Combat/View/) peut legitimement utiliser Time.deltaTime.
+        // Le Generated/ cote Quantum est auto-genere depuis le DSL, pas pertinent a scanner.
         private const string CombatScriptsPath = "Assets/_Nymora/Scripts/Combat";
+        private const string QuantumSimPath = "Assets/QuantumUser/Simulation";
         private const string ClassesPath = "Assets/_Nymora/ScriptableObjects/Classes";
         private const string ReportRelativePath = "_docs/healthcheck_report.md";
 
@@ -89,20 +93,37 @@ namespace Nymora.Editor.Tools
         private static void CheckQuantumViolations(Report r)
         {
             const string cat = "Quantum";
-            string absCombat = Path.Combine(Application.dataPath, "..", CombatScriptsPath);
-            if (!Directory.Exists(absCombat))
+
+            int totalScanned = 0;
+            int totalViolations = 0;
+
+            ScanPath(CombatScriptsPath, r, cat, ref totalScanned, ref totalViolations, excludeViewSubfolder: true);
+            ScanPath(QuantumSimPath,    r, cat, ref totalScanned, ref totalViolations, excludeViewSubfolder: false);
+
+            r.AddInfo(cat, $"Fichiers de SIMULATION scannes : {totalScanned} | Violations : {totalViolations}");
+        }
+
+        private static void ScanPath(string relativePath, Report r, string cat, ref int totalScanned, ref int totalViolations, bool excludeViewSubfolder)
+        {
+            string abs = Path.Combine(Application.dataPath, "..", relativePath);
+            if (!Directory.Exists(abs))
             {
-                r.AddInfo(cat, $"Dossier {CombatScriptsPath} inexistant — skip (normal en debut de projet).");
+                r.AddInfo(cat, $"Dossier {relativePath} inexistant — skip.");
                 return;
             }
 
-            var files = Directory.GetFiles(absCombat, "*.cs", SearchOption.AllDirectories);
-            int scanned = 0;
-            int violations = 0;
-
+            var files = Directory.GetFiles(abs, "*.cs", SearchOption.AllDirectories);
             foreach (var path in files)
             {
-                scanned++;
+                string normalized = path.Replace('\\', '/');
+
+                // View/ = rendu Unity, Time.deltaTime y est legitime pour les animations.
+                if (excludeViewSubfolder && normalized.Contains("/Scripts/Combat/View/")) continue;
+
+                // Generated/ = code auto-genere par le DSL Quantum, pas pertinent a scanner.
+                if (normalized.Contains("/Generated/")) continue;
+
+                totalScanned++;
                 string[] lines = File.ReadAllLines(path);
                 for (int i = 0; i < lines.Length; i++)
                 {
@@ -111,12 +132,10 @@ namespace Nymora.Editor.Tools
                     {
                         string rel = path.Replace(Application.dataPath + Path.DirectorySeparatorChar, "Assets" + Path.DirectorySeparatorChar);
                         r.AddError(cat, $"{match.Value} ligne {i + 1} : {rel}");
-                        violations++;
+                        totalViolations++;
                     }
                 }
             }
-
-            r.AddInfo(cat, $"Scripts Combat scannes : {scanned} | Violations : {violations}");
         }
 
         // ---------------------------------------------------------------------
