@@ -7,8 +7,8 @@
     {
         static partial void AddSystemsUser(ICollection<SystemBase> systems, RuntimeConfig gameConfig, SimulationConfig simulationConfig, SystemsConfig systemsConfig)
         {
-            // The system collection is already filled with systems coming from the SystemsConfig. 
-            // Add or remove systems to the collection: systems.Add(new SystemFoo());
+            // Phase 2 — Combat
+            systems.Add(new GridSystem());
         }
     }
 }

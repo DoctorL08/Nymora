@@ -539,6 +539,28 @@ namespace Quantum {
     }
   }
   [StructLayout(LayoutKind.Explicit)]
+  public unsafe partial struct Tile {
+    public const Int32 SIZE = 16;
+    public const Int32 ALIGNMENT = 8;
+    [FieldOffset(0)]
+    public Byte Walkable;
+    [FieldOffset(8)]
+    public EntityRef Occupant;
+    public override readonly Int32 GetHashCode() {
+      unchecked { 
+        var hash = 20327;
+        hash = hash * 31 + Walkable.GetHashCode();
+        hash = hash * 31 + Occupant.GetHashCode();
+        return hash;
+      }
+    }
+    public static void Serialize(void* ptr, FrameSerializer serializer) {
+        var p = (Tile*)ptr;
+        serializer.Stream.Serialize(&p->Walkable);
+        EntityRef.Serialize(&p->Occupant, serializer);
+    }
+  }
+  [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct _globals_ {
     public const Int32 SIZE = 640;
     public const Int32 ALIGNMENT = 8;
@@ -606,6 +628,38 @@ namespace Quantum {
         Quantum.BitSet6.Serialize(&p->PlayerLastConnectionState, serializer);
     }
   }
+  [StructLayout(LayoutKind.Explicit)]
+  public unsafe partial struct GridSingleton : Quantum.IComponentSingleton {
+    public const Int32 SIZE = 4088;
+    public const Int32 ALIGNMENT = 8;
+    [FieldOffset(4)]
+    public Int32 Width;
+    [FieldOffset(0)]
+    public Int32 Height;
+    [FieldOffset(8)]
+    [FramePrinter.FixedArrayAttribute(typeof(Tile), 255)]
+    private fixed Byte _Tiles_[4080];
+    public readonly FixedArray<Tile> Tiles {
+      get {
+        fixed (byte* p = _Tiles_) { return new FixedArray<Tile>(p, 16, 255); }
+      }
+    }
+    public override readonly Int32 GetHashCode() {
+      unchecked { 
+        var hash = 19121;
+        hash = hash * 31 + Width.GetHashCode();
+        hash = hash * 31 + Height.GetHashCode();
+        hash = hash * 31 + HashCodeUtils.GetArrayHashCode(Tiles);
+        return hash;
+      }
+    }
+    public static void Serialize(void* ptr, FrameSerializer serializer) {
+        var p = (GridSingleton*)ptr;
+        serializer.Stream.Serialize(&p->Height);
+        serializer.Stream.Serialize(&p->Width);
+        FixedArray.Serialize(p->Tiles, serializer, Statics.SerializeTile);
+    }
+  }
   public static unsafe partial class Constants {
   }
   public unsafe partial class Frame {
@@ -626,6 +680,8 @@ namespace Quantum {
       BuildSignalsArrayOnComponentRemoved<CharacterController2D>();
       BuildSignalsArrayOnComponentAdded<CharacterController3D>();
       BuildSignalsArrayOnComponentRemoved<CharacterController3D>();
+      BuildSignalsArrayOnComponentAdded<Quantum.GridSingleton>();
+      BuildSignalsArrayOnComponentRemoved<Quantum.GridSingleton>();
       BuildSignalsArrayOnComponentAdded<MapEntityLink>();
       BuildSignalsArrayOnComponentRemoved<MapEntityLink>();
       BuildSignalsArrayOnComponentAdded<NavMeshAvoidanceAgent>();
@@ -680,8 +736,10 @@ namespace Quantum {
     }
   }
   public unsafe partial class Statics {
+    public static FrameSerializer.Delegate SerializeTile;
     public static FrameSerializer.Delegate SerializeInput;
     static partial void InitStaticDelegatesGen() {
+      SerializeTile = Quantum.Tile.Serialize;
       SerializeInput = Quantum.Input.Serialize;
     }
     static partial void RegisterSimulationTypesGen(TypeRegistry typeRegistry) {
@@ -716,6 +774,7 @@ namespace Quantum {
       typeRegistry.Register(typeof(FPVector3), FPVector3.SIZE);
       typeRegistry.Register(typeof(FrameMetaData), FrameMetaData.SIZE);
       typeRegistry.Register(typeof(FrameTimer), FrameTimer.SIZE);
+      typeRegistry.Register(typeof(Quantum.GridSingleton), Quantum.GridSingleton.SIZE);
       typeRegistry.Register(typeof(HingeJoint), HingeJoint.SIZE);
       typeRegistry.Register(typeof(HingeJoint3D), HingeJoint3D.SIZE);
       typeRegistry.Register(typeof(Hit), Hit.SIZE);
@@ -762,6 +821,7 @@ namespace Quantum {
       typeRegistry.Register(typeof(Shape3D), Shape3D.SIZE);
       typeRegistry.Register(typeof(SpringJoint), SpringJoint.SIZE);
       typeRegistry.Register(typeof(SpringJoint3D), SpringJoint3D.SIZE);
+      typeRegistry.Register(typeof(Quantum.Tile), Quantum.Tile.SIZE);
       typeRegistry.Register(typeof(Transform2D), Transform2D.SIZE);
       typeRegistry.Register(typeof(Transform2DVertical), Transform2DVertical.SIZE);
       typeRegistry.Register(typeof(Transform3D), Transform3D.SIZE);
@@ -769,8 +829,9 @@ namespace Quantum {
       typeRegistry.Register(typeof(Quantum._globals_), Quantum._globals_.SIZE);
     }
     static partial void InitComponentTypeIdGen() {
-      ComponentTypeId.Reset(ComponentTypeId.BuiltInComponentCount + 0)
+      ComponentTypeId.Reset(ComponentTypeId.BuiltInComponentCount + 1)
         .AddBuiltInComponents()
+        .Add<Quantum.GridSingleton>(Quantum.GridSingleton.Serialize, null, null, ComponentFlags.Singleton)
         .Finish();
     }
     [Preserve()]

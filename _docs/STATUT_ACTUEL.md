@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026  
+**Dernière mise à jour :** 11 mai 2026 (Brique 2.1 validée)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,8 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.1 — À définir au début de la Phase 2**  
-**Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)
+**Brique en cours :** **2.2 — Entity Combatant Quantum (HP/PA/PM/Class)** (à démarrer)  
+**Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
+**Statut Phase 2 :** 1/17 briques validées
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -177,6 +178,24 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.1** — Grille de combat 15×17 (validée 11 mai 2026)
+  - DSL Quantum 3 sous `Assets/QuantumUser/Simulation/Combat/Grid/Grid.qtn` : `struct Tile { Byte Walkable; EntityRef Occupant; }` + `singleton component GridSingleton { Int32 Width; Int32 Height; array<Tile>[255] Tiles; }` (regen auto par `QuantumQtnAssetImporter` au save)
+  - `GridSystem.cs` (`SystemSignalsOnly`) : init des 255 tiles walkables dans `OnInit(Frame f)` via `f.Unsafe.GetOrAddSingletonPointer<GridSingleton>(EntityRef.None)`. Inscrit dans `SystemSetup.User.cs > AddSystemsUser`.
+  - `GridHelpers.cs` : `GridConstants` (Width=15, Height=17, Count=255) + helpers `Index/InBounds/IsWalkable/GetOccupant/SetOccupant/SetWalkable`. Constants hardcodées car liées à la taille du fixed array DSL.
+  - Côté View (Nymora.Combat asmdef enrichie de refs `Quantum.Simulation` + `Quantum.Unity` via GUID) :
+    - `IsoProjection.cs` : `GridToWorld(int gx, int gy, float tileW, float tileH) → Vector3` (formule iso 2:1) + `SortingOrderFor(gx,gy)` = `-(gx+gy)` + `CenterOffset(w,h,tW,tH)` (moyenne des 4 coins inversée) pour centrer la grille autour de (0,0).
+    - `TileView.cs` : MonoBehaviour léger sur chaque tile, stocke (GridX, GridY) + helper `SetSortingOrder(layer, order)`.
+    - `GridRenderer.cs` : MonoBehaviour abonné à `CallbackGameStarted` qui lit `GridSingleton` en safe API (`frame.GetSingleton<GridSingleton>()`) et instancie les 255 tiles avec offset de centrage. Pattern color even/odd pour échiquier visuel.
+  - SO `GridSettings.asset` sous `Assets/_Nymora/Settings/` : `TileWorldWidth=1.0`, `TileWorldHeight=0.5`, `SortingLayer="Default"`, `BaseSortingOrder=0`, `CenterGrid=true`.
+  - Editor Tools : `Nymora > Setup > Create Grid Assets` (génère sprite losange 64×32 procédural Texture2D + prefab `TileView.prefab` câblé via SerializedObject + SO GridSettings idempotent) ; `Nymora > Validation > Grid Previewer` (preview iso 15×17 hors Play, `HideFlags.DontSaveInEditor`).
+  - Pièges traversés (à retenir) :
+    1. Quantum 3 unsafe API : `GetOrAddSingleton<T>()` n'existe PAS en unsafe → utiliser `Unsafe.GetOrAddSingletonPointer<T>(EntityRef.None)`. La version safe `f.GetOrAddSingleton<T>(EntityRef)` retourne par valeur (copie), pas un pointer.
+    2. `autoReferenced: true` côté Quantum.Unity/Simulation NE suffit PAS pour qu'une asmdef custom (Nymora.Combat) y ait accès. Il faut ajouter les GUIDs explicitement dans `references` : `5d82202959c2f144ea95e134645b6833` (Simulation) + `f6fa0c2f8b9a9f64897d3351666f3d66` (Unity).
+    3. Grille iso non centrée par défaut : la formule étend le losange de `-(H-1)*tW/2` à `+(W-1)*tW/2` en X et de 0 à `(W+H-2)*tH/2` en Y. Toujours appliquer un offset de centrage si on veut que la caméra (0,0,-10) tombe juste.
+    4. Le DSL `.qtn` régénère le codegen Quantum automatiquement à l'import (postprocessor dans `QuantumQtnAssetImporter`), pas besoin de menu manuel.
 
 ---
 
@@ -356,7 +375,7 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 ### 🎮 PHASE 2 — Combat (Soulrender + Nightseer)
 
-**Durée estimée :** 2 mois (~16 briques)
+**Durée estimée :** 2 mois (~17 briques)
 
 **Objectifs (extraits de `05_Roadmap_V2_Novice.md`) :**
 - Système de grille de combat 15×17 cases
@@ -368,9 +387,36 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - IA de combat niveau Easy et Medium
 - **Combat 1v1 vs IA jouable bout en bout** ← LE moment de vérité gameplay
 
-**Le détail brique par brique de la Phase 2 sera livré au début de la prochaine session.**
+### Cadrage des 17 briques (validé le 11 mai 2026)
 
-**Prochaine étape :** Demander à Claude de cadrer la Phase 2 et lister les briques 2.1, 2.2, ...
+**Bloc A — Fondations grille & tour (5 briques)**
+- 2.1 — Grille 15×17 (data Quantum FP + visualisation iso 2D) ✅ VALIDÉE 11 mai 2026
+- 2.2 — Entity Combatant Quantum (HP/PA/PM/Class) ⏳ PROCHAINE
+- 2.3 — État machine de tour + timer 15s + initiative
+- 2.4 — Mouvement case par case (PM)
+- 2.5 — Pathfinding A* déterministe
+
+**Bloc B — Sorts & ciblage générique (3 briques)**
+- 2.6 — Système de targeting (Shape + Filter)
+- 2.7 — Spell runtime engine
+- 2.8 — Premier sort Tranche-Âme Soulrender (E2E damage flow)
+
+**Bloc C — Soulrender (3 briques)**
+- 2.9 — Ressource Hémoglyphe (cap 5)
+- 2.10 — 14 sorts Soulrender restants + marques + Vapeur Carmin
+- 2.11 — Signature Âme Lacérée + Passif Appel du Sang
+
+**Bloc D — Nightseer (3 briques)**
+- 2.12 — Brouillard de guerre déterministe
+- 2.13 — Prescience + 15 sorts Nightseer + passif L'Œil qui n'est pas
+- 2.14 — Signature Traquenard
+
+**Bloc E — IA & E2E (3 briques)**
+- 2.15 — IA Easy (greedy)
+- 2.16 — IA Medium (heuristique multi-tour)
+- 2.17 — Scène `30_CombatIA` + test E2E combat 1v1 jouable 🎯
+
+**Prochaine étape :** Démarrer brique 2.2 — Entity Combatant Quantum (HP/PA/PM/Class).
 
 ---
 
@@ -436,6 +482,9 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 | **Déblocage des sorts** | **Tous les 15 sorts par classe dispos dès la création du compte** (pas de gate gameplay par level) | **10 mai 2026** |
 | **Rôle des levels par classe** | **Récompenses cosmétiques + titres uniquement** (cadres, couleurs, skin niveau 50) — pas de gameplay | **10 mai 2026** |
 | **6e classe** | **Non planifiée** (focus sur les 5 existantes : Soulrender, Nightseer, Colossar, Necram, Ghostra) | **10 mai 2026** |
+| **Vue grille de combat** | **Isométrique 2D** (cases en losange, style Dofus/Wakfu) — vit uniquement côté View ; la simulation Quantum reste rectangulaire en `int` | **11 mai 2026** |
+| **Origine grille (logique)** | **(0,0) bas-gauche, X→droite, Y→haut** (convention math classique, cohérent Unity world space) | **11 mai 2026** |
+| **PPU sprites combat** | **64 px / unit** (sprites 64×64, projection iso ratio 2:1 = losange 64×32 world) | **11 mai 2026** |
 
 ---
 
@@ -460,6 +509,31 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 2.1 (Grille 15×17 data + view iso 2D)
+- Première brique gameplay de la Phase 2 ✅
+- 10 fichiers livrés (3 simu Quantum + 4 view/settings + 2 editor tools + 1 update SystemSetup) + 1 update asmdef Nymora.Combat (refs Quantum.Simulation/Quantum.Unity via GUID)
+- DSL Quantum 3 : `struct Tile { Byte Walkable; EntityRef Occupant; }` + `singleton component GridSingleton { Int32 Width; Int32 Height; array<Tile>[255] Tiles; }`. Régénéré auto par `QuantumQtnAssetImporter` au save → `Generated/Quantum.CodeGen.Core.cs` enrichi + nouveau `QPrototypeGridSingleton.cs` côté View.
+- Simu déterministe : `GridSystem : SystemSignalsOnly` qui init la grille dans `OnInit(Frame f)` via `f.Unsafe.GetOrAddSingletonPointer<GridSingleton>(EntityRef.None)`. Width/Height stockés dans la singleton, taille fixe `array[255]` verrouillée au compile time.
+- View iso 2D : `IsoProjection` static helper (formule 2:1) + `GridRenderer` MonoBehaviour qui s'abonne à `CallbackGameStarted` et spawn 255 tiles. Sorting order `-(gx+gy)` pour ordre de rendu correct futur.
+- Centrage auto via `IsoProjection.CenterOffset(...)` calculé sur la moyenne des 4 coins du losange → grille centrée à (0,0) world, tombe juste sous la caméra par défaut.
+- Editor Tools : `CreateGridAssetsTool` (génère sprite losange 64×32 procédural en Texture2D + prefab TileView + SO GridSettings) + `GridPreviewerWindow` (preview iso hors Play pour validation rapide).
+- Pièges traversés :
+  1. Mauvaise API Quantum 3 au premier jet : `GetOrAddSingleton<T>()` n'existe pas en unsafe → corrigé en `Unsafe.GetOrAddSingletonPointer<T>(EntityRef.None)` (la version safe retourne par valeur, l'unsafe retourne un pointer).
+  2. `Nymora.Combat.asmdef` ne référençait pas explicitement Quantum.Unity / Quantum.Simulation → `QuantumGame` introuvable au compile. Le flag `autoReferenced: true` côté Quantum ne suffit pas pour les asmdef custom : il faut ajouter les GUIDs `5d82202959c2f144ea95e134645b6833` (Simulation) et `f6fa0c2f8b9a9f64897d3351666f3d66` (Unity) dans les `references`.
+  3. Caméra non centrée au premier Play : la formule iso donne un losange qui s'étend en X de `-(Height-1)*tileW/2` à `+(Width-1)*tileW/2` et en Y de 0 à `(Width+Height-2)*tileH/2`. Fix : option `CenterGrid` (default true) + offset calculé sur la moyenne des 4 coins.
+- Validation : compil 0 erreur / 0 warning, grille 15×17 = 255 tiles visibles en iso centrée, Play QuantumGameScene OK (GridSystem tourne, CallbackGameStarted déclenche le spawn View), Graph Profiler vert.
+
+### 11 mai 2026 — Cadrage Phase 2 (17 briques) + démarrage 2.1
+- Lorenzo dit "go phase 2" après les prérequis (Docker + backend + Unity OK)
+- Claude lit `01_BIBLE_V7.1_Combat.md` (stats, ressources, signatures) + section Phase 2 du `05_Roadmap_V2_Novice.md`
+- Cadrage Phase 2 publié : **17 briques** en 5 blocs (Fondations / Sorts génériques / Soulrender / Nightseer / IA+E2E)
+- 3 décisions techniques verrouillées en début de Phase 2 :
+  1. **Vue iso 2D** (cases losange style Dofus) — projection vit côté View uniquement, simu reste rectangulaire en `int`
+  2. **Origine grille (0,0) bas-gauche** (Y vers le haut, convention math classique)
+  3. **PPU 64** (sprites 64×64, losange world 64×32 ratio 2:1)
+- 17 tâches créées dans la task list pour tracker la progression
+- Brique en cours : **2.1** (grille 15×17 data + view iso) — SETUP en cours de présentation
 
 ### 11 mai 2026 — Brique 1.14 (Test E2E Phase 1) — 🏁 CLÔTURE PHASE 1
 - Décisions cadrage : scope minimal (auth multi-client uniquement, pas de simulation Quantum déterministe) car la simulation propre demande du custom code throwaway qui sera refait en Phase 2 quand on aura de vrais Systems

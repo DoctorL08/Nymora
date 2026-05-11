@@ -49,6 +49,35 @@ namespace Quantum.Prototypes.Unity {
   using RuntimeInitializeOnLoadMethodAttribute = UnityEngine.RuntimeInitializeOnLoadMethodAttribute;
   #endif //;
   
+  [System.SerializableAttribute()]
+  public unsafe partial class GridSingletonPrototype : Quantum.QuantumUnityPrototypeAdapter<Quantum.Prototypes.GridSingletonPrototype> {
+    public Int32 Width;
+    public Int32 Height;
+    [ArrayLengthAttribute(255)]
+    public Quantum.Prototypes.Unity.TilePrototype[] Tiles = new Quantum.Prototypes.Unity.TilePrototype[255];
+    partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.GridSingletonPrototype prototype);
+    public override Quantum.Prototypes.GridSingletonPrototype Convert(Quantum.QuantumEntityPrototypeConverter converter) {
+      var result = new Quantum.Prototypes.GridSingletonPrototype();
+      converter.Convert(this.Width, out result.Width);
+      converter.Convert(this.Height, out result.Height);
+      converter.Convert(this.Tiles, out result.Tiles);
+      ConvertUser(converter, ref result);
+      return result;
+    }
+  }
+  [System.SerializableAttribute()]
+  public unsafe partial class TilePrototype : Quantum.QuantumUnityPrototypeAdapter<Quantum.Prototypes.TilePrototype> {
+    public Byte Walkable;
+    public Quantum.QuantumEntityPrototype Occupant;
+    partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.TilePrototype prototype);
+    public override Quantum.Prototypes.TilePrototype Convert(Quantum.QuantumEntityPrototypeConverter converter) {
+      var result = new Quantum.Prototypes.TilePrototype();
+      converter.Convert(this.Walkable, out result.Walkable);
+      converter.Convert(this.Occupant, out result.Occupant);
+      ConvertUser(converter, ref result);
+      return result;
+    }
+  }
 }
 #pragma warning restore 0109
 #pragma warning restore 1591

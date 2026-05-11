@@ -50,6 +50,26 @@ namespace Quantum.Prototypes {
   #endif //;
   
   [System.SerializableAttribute()]
+  [Quantum.Prototypes.Prototype(typeof(Quantum.GridSingleton))]
+  public unsafe class GridSingletonPrototype : ComponentPrototype<Quantum.GridSingleton> {
+    public Int32 Width;
+    public Int32 Height;
+    [ArrayLengthAttribute(255)]
+    public Quantum.Prototypes.TilePrototype[] Tiles = new Quantum.Prototypes.TilePrototype[255];
+    public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
+        Quantum.GridSingleton component = default;
+        Materialize((Frame)f, ref component, in context);
+        return f.Set(entity, component) == SetResult.ComponentAdded;
+    }
+    public void Materialize(Frame frame, ref Quantum.GridSingleton result, in PrototypeMaterializationContext context = default) {
+        result.Width = this.Width;
+        result.Height = this.Height;
+        for (int i = 0, count = PrototypeValidator.CheckLength(Tiles, 255, in context); i < count; ++i) {
+          this.Tiles[i].Materialize(frame, ref *result.Tiles.GetPointer(i), in context);
+        }
+    }
+  }
+  [System.SerializableAttribute()]
   [Quantum.Prototypes.Prototype(typeof(Quantum.Input))]
   public unsafe partial class InputPrototype : StructPrototype {
     [HideInInspector()]
@@ -57,6 +77,16 @@ namespace Quantum.Prototypes {
     partial void MaterializeUser(Frame frame, ref Quantum.Input result, in PrototypeMaterializationContext context);
     public void Materialize(Frame frame, ref Quantum.Input result, in PrototypeMaterializationContext context = default) {
         MaterializeUser(frame, ref result, in context);
+    }
+  }
+  [System.SerializableAttribute()]
+  [Quantum.Prototypes.Prototype(typeof(Quantum.Tile))]
+  public unsafe class TilePrototype : StructPrototype {
+    public Byte Walkable;
+    public MapEntityId Occupant;
+    public void Materialize(Frame frame, ref Quantum.Tile result, in PrototypeMaterializationContext context = default) {
+        result.Walkable = this.Walkable;
+        PrototypeValidator.FindMapEntity(this.Occupant, in context, out result.Occupant);
     }
   }
 }
