@@ -14,10 +14,13 @@ namespace Nymora.Combat.View
         public int GridX { get; private set; }
         public int GridY { get; private set; }
 
+        private Color _baseColor;
+
         public void Setup(int gx, int gy, Color baseColor)
         {
             GridX = gx;
             GridY = gy;
+            _baseColor = baseColor;
 
             if (_sprite == null)
             {
@@ -35,6 +38,22 @@ namespace Nymora.Combat.View
             if (_sprite == null) return;
             _sprite.sortingLayerName = layer;
             _sprite.sortingOrder = order;
+        }
+
+        /// <summary>
+        /// Surligne la tile avec une couleur de highlight (typiquement pour targeting preview).
+        /// </summary>
+        public void ApplyHighlight(Color highlightColor)
+        {
+            if (_sprite != null) _sprite.color = highlightColor;
+        }
+
+        /// <summary>
+        /// Restaure la couleur de base (echiquier).
+        /// </summary>
+        public void ClearHighlight()
+        {
+            if (_sprite != null) _sprite.color = _baseColor;
         }
     }
 }

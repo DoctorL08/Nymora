@@ -32,6 +32,21 @@ namespace Nymora.Combat.View
         [SerializeField] private bool _autoAddLocalPlayers = true;
         [SerializeField] private int _autoAddPlayerCount = 2;
 
+        [Header("Debug — targeting preview (brique 2.6)")]
+        [Tooltip("Active la preview de targeting. Quand actif, le clic gauche ne deplace plus le combattant (bypass MoveCommand).")]
+        [SerializeField] private bool _debugShowTargeting = false;
+        [SerializeField] private TargetingShape _debugShape = TargetingShape.SingleTile;
+        [SerializeField] private TargetingFilter _debugFilter = TargetingFilter.Enemy;
+        [SerializeField] private int _debugRangeMin = 1;
+        [SerializeField] private int _debugRangeMax = 4;
+
+        // Expose les valeurs au TargetingPreviewView (read-only).
+        public bool DebugShowTargeting => _debugShowTargeting;
+        public TargetingShape DebugShape => _debugShape;
+        public TargetingFilter DebugFilter => _debugFilter;
+        public int DebugRangeMin => _debugRangeMin;
+        public int DebugRangeMax => _debugRangeMax;
+
         private Vector3 _centerOffset;
         private bool _gridReady;
 
@@ -79,6 +94,11 @@ namespace Nymora.Combat.View
             if (_camera == null) return;
             // Qualifie UnityEngine.Input : Quantum a aussi un type "Input" (struct DSL) et le using Quantum cree une ambiguite.
             if (!UnityEngine.Input.GetMouseButtonDown(0)) return;
+
+            // Quand on est en mode preview targeting, le clic ne deplace plus le combattant
+            // (on bypass MoveCommand le temps de tester le ciblage). Sera retire en 2.8 quand
+            // le clic enverra un vrai CastSpellCommand.
+            if (_debugShowTargeting) return;
 
             var game = QuantumRunner.Default?.Game;
             if (game == null) return;

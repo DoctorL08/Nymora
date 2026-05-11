@@ -64,6 +64,33 @@ namespace Quantum {
     Necram = 4,
     Ghostra = 5,
   }
+  public enum TargetingFilter : byte {
+    None = 0,
+    Self = 1,
+    Ally = 2,
+    AllyIncludingSelf = 3,
+    Enemy = 4,
+    AnyUnit = 5,
+    EmptyTile = 6,
+    TileWithObstacle = 7,
+    TileWithLure = 8,
+    AnyTile = 9,
+  }
+  public enum TargetingShape : byte {
+    None = 0,
+    SingleTile = 1,
+    CrossSmall = 10,
+    CrossMedium = 11,
+    CrossLarge = 12,
+    Square3x3 = 20,
+    Square5x5 = 21,
+    Line = 30,
+    LineThrough = 31,
+    Cone = 40,
+    CircleSmall = 50,
+    CircleMedium = 51,
+    CircleLarge = 52,
+  }
   [System.FlagsAttribute()]
   public enum InputButtons : int {
   }
@@ -928,6 +955,8 @@ namespace Quantum {
       typeRegistry.Register(typeof(Shape3D), Shape3D.SIZE);
       typeRegistry.Register(typeof(SpringJoint), SpringJoint.SIZE);
       typeRegistry.Register(typeof(SpringJoint3D), SpringJoint3D.SIZE);
+      typeRegistry.Register(typeof(Quantum.TargetingFilter), 1);
+      typeRegistry.Register(typeof(Quantum.TargetingShape), 1);
       typeRegistry.Register(typeof(Quantum.Tile), Quantum.Tile.SIZE);
       typeRegistry.Register(typeof(Transform2D), Transform2D.SIZE);
       typeRegistry.Register(typeof(Transform2DVertical), Transform2DVertical.SIZE);
@@ -951,6 +980,8 @@ namespace Quantum {
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.InputButtons>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.NymoraClass>();
       FramePrinter.EnsurePrimitiveNotStripped<QueryOptions>();
+      FramePrinter.EnsurePrimitiveNotStripped<Quantum.TargetingFilter>();
+      FramePrinter.EnsurePrimitiveNotStripped<Quantum.TargetingShape>();
     }
   }
 }

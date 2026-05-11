@@ -97,5 +97,24 @@ namespace Nymora.Combat.View
             }
             _tiles = null;
         }
+
+        /// <summary>
+        /// Recupere le TileView a une position grille donnee. Retourne null si hors bornes
+        /// ou si la grille n'a pas encore ete spawn.
+        /// </summary>
+        public TileView GetTileView(int gx, int gy)
+        {
+            if (_tiles == null) return null;
+            int width = (_settings != null) ? 0 : 0; // pas necessaire ici, on a la singleton via la frame
+            // On utilise les dimensions de l'index : _tiles a ete cree avec width = GridSingleton.Width
+            // qui devrait toujours valoir GridConstants.Width (15). On peut donc faire le calcul directement.
+            const int gridWidth = 15;
+            const int gridHeight = 17;
+            if (gx < 0 || gx >= gridWidth || gy < 0 || gy >= gridHeight) return null;
+            int idx = gy * gridWidth + gx;
+            if (idx < 0 || idx >= _tiles.Length) return null;
+            var go = _tiles[idx];
+            return go != null ? go.GetComponent<TileView>() : null;
+        }
     }
 }

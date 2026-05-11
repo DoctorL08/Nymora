@@ -1,0 +1,42 @@
+// Systeme de ciblage Nymora — Bible V7.1.
+//
+// 2 concepts orthogonaux :
+//   - Shape : forme de la ZONE D'EFFET du sort (centree sur la case visee)
+//   - Filter : type d'occupant accepte (Self/Ally/Enemy/EmptyTile/...)
+//
+// La PORTEE du sort (distance min/max depuis le caster) est gere separement
+// dans la struct SpellDefinition (cote Nymora.Core, pas en DSL Quantum).
+//
+// Enum values verrouillees pour rester identiques a Nymora.Core.Enums.TargetingShape/Filter.
+// NE PAS reorganiser sans incrementer CombatRulesVersion.
+
+enum TargetingShape : Byte
+{
+    None = 0,
+    SingleTile = 1,
+    CrossSmall = 10,
+    CrossMedium = 11,
+    CrossLarge = 12,
+    Square3x3 = 20,
+    Square5x5 = 21,
+    Line = 30,
+    LineThrough = 31,
+    Cone = 40,
+    CircleSmall = 50,
+    CircleMedium = 51,
+    CircleLarge = 52,
+}
+
+enum TargetingFilter : Byte
+{
+    None = 0,
+    Self = 1,
+    Ally = 2,
+    AllyIncludingSelf = 3,
+    Enemy = 4,
+    AnyUnit = 5,
+    EmptyTile = 6,
+    TileWithObstacle = 7,
+    TileWithLure = 8,
+    AnyTile = 9,
+}

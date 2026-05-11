@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026 (Brique 2.5 validée — bloc A bouclé)  
+**Dernière mise à jour :** 11 mai 2026 (Brique 2.6 validée)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.6 — Système de targeting (Shape + Filter)** (à démarrer)  
+**Brique en cours :** **2.7 — Spell runtime engine** (à démarrer)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 5/17 briques validées (Bloc A — Fondations grille & tour : ✅ 5/5)
+**Statut Phase 2 :** 6/17 briques validées (Bloc A ✅ 5/5, Bloc B 1/3)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,28 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.6** — Système de targeting Shape + Filter (validée 11 mai 2026)
+  - DSL Quantum sous `Assets/QuantumUser/Simulation/Combat/Targeting/Targeting.qtn` :
+    - `enum TargetingShape : Byte` (13 valeurs identiques Nymora.Core.Enums)
+    - `enum TargetingFilter : Byte` (10 valeurs identiques Nymora.Core.Enums)
+  - `TargetingResolver.cs` (static unsafe) avec **3 méthodes principales** + wrappers safe :
+    - `ResolveCastableCells(Frame, casterX, casterY, rangeMin, rangeMax, outBuffer, out count)` : cases dans la range Manhattan
+    - `ResolveEffectCells(Frame, casterX, casterY, targetX, targetY, shape, outBuffer, out count)` : zone d'effet selon shape
+    - `MatchesFilter(Frame, cellX, cellY, filter, casterEntity, casterPlayerIndex)` : validation occupant
+    - Shapes implémentés en 2.6 : **SingleTile, CrossSmall, Line, CircleSmall**. Les autres (CrossMedium/Large, Square3x3/5x5, LineThrough, Cone, CircleMedium/Large) loggent `Log.Warn` "non implémentée — à faire quand un sort en aura besoin" pour éviter le code mort.
+    - Wrappers safe `int[]` + wrappers unsafe `int*` (le simu utilise stackalloc, le View utilise les arrays managés sans avoir besoin de `allowUnsafeCode` sur Nymora.Combat asmdef)
+  - Côté View :
+    - `TileView` enrichi : `_baseColor` stocké, helpers `ApplyHighlight(Color)` / `ClearHighlight()`
+    - `GridRenderer.GetTileView(int gx, int gy)` : lookup direct par coords (gridWidth/Height hardcodés 15/17 pour rester aligné avec GridConstants côté simu)
+    - `TargetingPreviewView` : MonoBehaviour subscribe `CallbackUpdateView`, clear highlights → si mode debug actif, highlight castable (bleu) + effect au survol (rouge)
+    - `CombatInputController` : 5 champs `_debugShowTargeting/_debugShape/_debugFilter/_debugRangeMin/_debugRangeMax` (default OFF + SingleTile + Enemy + 1-4), exposés en read-only properties. Quand mode debug actif → bypass `MoveCommand` au clic gauche
+  - Pièges à retenir :
+    1. **`unsafe { fixed(int* buf = ...) }`** ne compile pas dans une asmdef avec `allowUnsafeCode: false`. Solution : ajouter des wrappers safe `int[]` dans l'asmdef de simu (qui a `allowUnsafeCode: true`) qui font le `fixed` en interne. Le View appelle la version safe, le simu garde la version unsafe pour stackalloc.
+    2. **Visibilité du highlight** sous les combattants : les pions ont un sortingOrder de 700-990, les tiles 0-, donc le pion masque visuellement le highlight de sa case. Pas gênant pour la 2.6 (le résolveur fait bien son boulot, vérifiable via les autres cases), à améliorer en Phase 7 polish avec un overlay.
+    3. **MatchesFilter Enemy vs AnyUnit** : Enemy = combattant avec PlayerIndex différent du caster. Self = combattant avec entity == caster. AnyUnit = n'importe quel combattant (incluant caster). Logique vérifiée pour le 1v1 (Soulrender vs Nightseer).
 
 ---
 
@@ -493,7 +515,8 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.5 — Pathfinding A* déterministe
 
 **Bloc B — Sorts & ciblage générique (3 briques)**
-- 2.6 — Système de targeting (Shape + Filter) ⏳ PROCHAINE
+- 2.6 — Système de targeting (Shape + Filter) ✅ VALIDÉE 11 mai 2026
+- 2.7 — Spell runtime engine ⏳ PROCHAINE
 - 2.7 — Spell runtime engine
 - 2.8 — Premier sort Tranche-Âme Soulrender (E2E damage flow)
 
@@ -512,7 +535,7 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.16 — IA Medium (heuristique multi-tour)
 - 2.17 — Scène `30_CombatIA` + test E2E combat 1v1 jouable 🎯
 
-**Prochaine étape :** Démarrer brique 2.6 — Système de targeting (Shape + Filter générique, preview View).
+**Prochaine étape :** Démarrer brique 2.7 — Spell runtime engine (exécution générique des SpellEffect, consommation PA, events typés).
 
 ---
 
@@ -606,6 +629,29 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 2.6 (Targeting Shape + Filter)
+- 2 fichiers Quantum (Targeting.qtn + TargetingResolver.cs) + 1 nouveau View (TargetingPreviewView) + 3 updates (TileView, GridRenderer, CombatInputController)
+- DSL Quantum : `enum TargetingShape : Byte` (13 valeurs : None, SingleTile, CrossSmall/Medium/Large, Square3x3/5x5, Line, LineThrough, Cone, CircleSmall/Medium/Large) + `enum TargetingFilter : Byte` (10 valeurs : None, Self, Ally, AllyIncludingSelf, Enemy, AnyUnit, EmptyTile, TileWithObstacle, TileWithLure, AnyTile). Valeurs dupliquées de Nymora.Core.Enums (mêmes IDs).
+- `TargetingResolver` (static, unsafe class) : 3 méthodes principales
+  - `ResolveCastableCells` : cases visables par caster (range Manhattan rangeMin..rangeMax)
+  - `ResolveEffectCells` : cases impactées par le sort (zone d'effet selon shape)
+  - `MatchesFilter` : la case match-elle le filter (occupant type, vs casterEntity)
+  - **Shapes implémentés en 2.6** : SingleTile, CrossSmall, Line (sans stop sur unité), CircleSmall (disque Manhattan rayon 1). Les autres logguent un warning "à implémenter quand un sort en aura besoin" — éviter le code mort.
+  - Wrappers safe `int[]` ajoutés en plus des versions unsafe `int*` (le simu utilisera stackalloc pour zero-alloc, le View utilise les arrays managés sans avoir besoin de `allowUnsafeCode` sur Nymora.Combat asmdef)
+- `TargetingPreviewView` : MonoBehaviour subscribe `CallbackUpdateView`
+  - Clear highlights précédents
+  - Si `_debugShowTargeting` actif sur le CombatInputController :
+    - Trouve le caster = combattant du joueur actif
+    - Calcule castable cells (range Manhattan) + applique MatchesFilter → highlight bleu clair
+    - Au survol case castable → calcule effect cells (shape autour du hover) → highlight rouge clair par-dessus
+- `TileView` enrichi : `_baseColor` stocké, méthodes `ApplyHighlight(Color)` / `ClearHighlight()` pour restaurer
+- `GridRenderer.GetTileView(int gx, int gy)` exposé (lookup direct par coords)
+- `CombatInputController` enrichi : 5 nouveaux champs `_debugShowTargeting/_debugShape/_debugFilter/_debugRangeMin/_debugRangeMax` exposés en read-only properties. Quand `_debugShowTargeting` actif, le clic ne déclenche pas de MoveCommand (bypass pour pas pourrir l'UX de test).
+- 1 piège traversé : 
+  - `unsafe { fixed(int* buf = ...) }` ne compile pas dans `Nymora.Combat` qui a `allowUnsafeCode: false`. Fix propre : ajout de wrappers safe dans `TargetingResolver` (asmref Quantum.Simulation qui A `allowUnsafeCode: true`) qui acceptent `int[]` et font le `fixed` en interne. Le code unsafe reste contenu dans Quantum.Simulation, le View ne le voit jamais.
+- Limitation visuelle constatée par Lorenzo : les pions combattants (sortingOrder ~700-990) passent devant les tiles highlighted (sortingOrder 0-) → la case où est le combattant est masquée visuellement. Pas gênant fonctionnellement (le résolveur fait bien son boulot, vérifiable via le hover sur d'autres cases). Pourra être amélioré avec un overlay au-dessus du pion (Phase 7 polish).
+- Validation : Range respecté, shape change en live au switch inspector, filter Enemy/AnyUnit/Self/EmptyTile fonctionnel (testé avec range=12 pour voir le Nightseer à 8 cases du Soulrender).
 
 ### 11 mai 2026 — Brique 2.5 (Pathfinding A* déterministe) + clôture Bloc A
 - 1 nouveau fichier (`AStarPathfinder.cs`) + refactor `MovementSystem.cs` + 2 fix hook (pre-commit Git + Healthcheck Nymora)
