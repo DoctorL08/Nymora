@@ -150,6 +150,14 @@ namespace Quantum
             {
                 effectiveDmg += 120;
             }
+            // Detonation Sanglante (2.10.c) : 60 + 40 par HG total consomme (mandatory + optional).
+            // Avec HGSpend=0 -> 60+80=140. Avec HGSpend=3 (max) -> 60+200=260.
+            if (cmd.Spell == SpellId.SoulrenderDetonationSanglante)
+            {
+                int totalHGForDetonation = spellDef.HGCostMandatory + hgSpend;
+                effectiveDmg = SpellRegistry.DetonationBaseDamage
+                             + SpellRegistry.DetonationDamagePerHG * totalHGForDetonation;
+            }
             // Pacte de Sang +50% : applique a tout sort OFFENSIF (DamageAmount > 0).
             // Consume apres le damage loop (1 seul cast offensif).
             int pacteBuffPct = StatusHelper.GetMagnitude(caster, StatusKind.BuffNextOffensiveDmgPercent, 0);
@@ -190,6 +198,9 @@ namespace Quantum
             // ===== Damage loop + Shield absorption + Riposte trigger + gain HG =====
             bool casterHitSomething = false;       // au moins 1 cible a perdu des HP (apres shield)
             bool castHitMarkedTarget = false;      // au moins 1 cible MarkedByCarnage a perdu des HP
+            bool wasKill = false;                  // 2.10.c : au moins 1 cible est tombee a HP=0 sur ce cast
+            int killedTargetX = -1;                // position de la cible tuee (pour recul Tranche-Ame)
+            int killedTargetY = -1;
             bool isMelee = spellDef.RangeMax == 1; // pour trigger Riposte (Bible : attaque MELEE)
 
             if (effectiveDmg > 0)
@@ -232,6 +243,16 @@ namespace Quantum
                         if (targetC->HP < 0) targetC->HP = 0;
                         casterHitSomething = true;
                         Log.Info($"[Spell] Damage {effectiveDmg} (HP loss {dmgRemaining}) sur P{targetC->PlayerIndex} ({cx},{cy}) HP {before} -> {targetC->HP}");
+
+                        // 2.10.c : Kill detection. Tracker si au moins 1 cible est tombee a HP=0.
+                        // killedTargetX/Y sert au recul Tranche-Ame (direction opposee a la cible tuee).
+                        if (targetC->HP == 0 && before > 0)
+                        {
+                            wasKill = true;
+                            killedTargetX = cx;
+                            killedTargetY = cy;
+                            Log.Info($"[Spell] KILL : P{targetC->PlayerIndex} tombe a HP=0 sur ({cx},{cy})");
+                        }
 
                         // Marque de Carnage tracker (bonus HG cote caster, applique 1x apres la boucle).
                         if (StatusHelper.Has(targetC, StatusKind.MarkedByCarnage))
@@ -304,7 +325,10 @@ namespace Quantum
             }
 
             // ===== Effets specifiques par sort (apres damage) =====
-            ApplySpellSpecificEffects(f, cmd, spellDef, caster, casterEntity, casterHitSomething, hgSpend, currentTurn, effectBuffer, effectCount);
+            ApplySpellSpecificEffects(f, cmd, spellDef, caster, casterEntity,
+                casterHitSomething, hgSpend, currentTurn,
+                effectBuffer, effectCount,
+                wasKill, killedTargetX, killedTargetY);
 
             // ===== Rage Insatiable : regen 1 PA si offensif (max 1 par tour) =====
             if (spellDef.IsOffensive != 0 && StatusHelper.Has(caster, StatusKind.RageInsatiableActive))
@@ -326,6 +350,9 @@ namespace Quantum
         /// <summary>
         /// Applique les effets non-damage specifiques au sort : statuses, self-effects.
         /// Le damage / gain HG / Riposte trigger sont deja faits dans la boucle principale.
+        ///
+        /// 2.10.c : prend wasKill + killedTargetX/Y en parametre pour les effets conditionnels
+        /// au kill (recul Tranche-Ame, Curee kill chain).
         /// </summary>
         private static void ApplySpellSpecificEffects(
             Frame f,
@@ -337,10 +364,42 @@ namespace Quantum
             int hgSpend,
             int currentTurn,
             int* effectBuffer,
-            int effectCount)
+            int effectCount,
+            bool wasKill,
+            int killedTargetX,
+            int killedTargetY)
         {
             switch (cmd.Spell)
             {
+                case SpellId.SoulrenderTrancheAme:
+                {
+                    // 2.10.c : recul 2 cases gratuites si la cible est tuee par Tranche-Ame.
+                    // Direction opposee a la cible (sur l'axe melee, donc dx ou dy != 0 mais pas les 2).
+                    if (wasKill)
+                    {
+                        int dxFromTarget = caster->GridX - killedTargetX;
+                        int dyFromTarget = caster->GridY - killedTargetY;
+                        // Tente 2 cases d'abord, fallback 1 case si bloque.
+                        int reculDist = SpellRegistry.TrancheAmeKillRecul;
+                        bool moved = false;
+                        for (int dist = reculDist; dist >= 1 && !moved; dist--)
+                        {
+                            int newX = caster->GridX + dxFromTarget * dist;
+                            int newY = caster->GridY + dyFromTarget * dist;
+                            moved = MovementHelpers.MoveNonPM(f, casterEntity, caster, newX, newY);
+                            if (moved)
+                            {
+                                Log.Info($"[Spell] Tranche-Ame recul {dist} case(s) sur P{caster->PlayerIndex} -> ({newX},{newY})");
+                            }
+                        }
+                        if (!moved)
+                        {
+                            Log.Info($"[Spell] Tranche-Ame recul impossible (cases bloquees) sur P{caster->PlayerIndex}");
+                        }
+                    }
+                    break;
+                }
+
                 case SpellId.SoulrenderOuvrePlaie:
                     // Si 1 HG depense ET cible touchee : applique AntiHealShield 2 tours sur la cible.
                     if (hgSpend >= 1 && casterHitSomething)
@@ -498,6 +557,224 @@ namespace Quantum
                     caster->Resource += SpellRegistry.DernierSouffleHGGain;
                     if (caster->Resource > maxResDS) caster->Resource = maxResDS;
                     Log.Info($"[Spell] Dernier Souffle : +{SpellRegistry.DernierSouffleHGGain} HG (clamped, {resBeforeDS} -> {caster->Resource})");
+                    break;
+                }
+
+                // -------------------------------------------------------------
+                // 2.10.c
+                // -------------------------------------------------------------
+
+                case SpellId.SoulrenderChargeBrutale:
+                {
+                    // Trace la ligne caster -> target jusqu'a 1ere case occupee ou non-walkable.
+                    // Inflige 180 dgts si une cible bloque. Pose Vapeur Carmin sur cases foulees.
+                    // Caster termine sur la case juste AVANT l'obstacle (ou case finale si pas obstacle).
+                    int sx = caster->GridX;
+                    int sy = caster->GridY;
+                    int dxRaw = cmd.TargetX - sx;
+                    int dyRaw = cmd.TargetY - sy;
+                    int adx = dxRaw < 0 ? -dxRaw : dxRaw;
+                    int ady = dyRaw < 0 ? -dyRaw : dyRaw;
+
+                    // Axe dominant : on force la ligne sur 1 axe cardinal (X ou Y).
+                    int stepX = 0, stepY = 0;
+                    int maxSteps;
+                    if (adx >= ady)
+                    {
+                        stepX = dxRaw > 0 ? 1 : -1;
+                        maxSteps = adx;
+                    }
+                    else
+                    {
+                        stepY = dyRaw > 0 ? 1 : -1;
+                        maxSteps = ady;
+                    }
+                    if (maxSteps > SpellRegistry.ChargeBrutaleRange) maxSteps = SpellRegistry.ChargeBrutaleRange;
+
+                    int finalX = sx;
+                    int finalY = sy;
+                    EntityRef hitTarget = EntityRef.None;
+                    int hitX = -1, hitY = -1;
+
+                    for (int step = 1; step <= maxSteps; step++)
+                    {
+                        int cx = sx + stepX * step;
+                        int cy = sy + stepY * step;
+                        if (!GridHelpers.InBounds(cx, cy)) break;
+                        if (!GridHelpers.IsWalkable(f, cx, cy)) break;
+
+                        EntityRef occ = GridHelpers.GetOccupant(f, cx, cy);
+                        if (occ != EntityRef.None && occ != casterEntity)
+                        {
+                            // Cible bloque la charge. Caster s'arrete sur la case precedente.
+                            hitTarget = occ;
+                            hitX = cx;
+                            hitY = cy;
+                            break;
+                        }
+
+                        // Case libre : caster avance.
+                        finalX = cx;
+                        finalY = cy;
+                    }
+
+                    // Mouvement caster vers la case finale (non-PM).
+                    if (finalX != sx || finalY != sy)
+                    {
+                        bool moved = MovementHelpers.MoveNonPM(f, casterEntity, caster, finalX, finalY);
+                        if (moved)
+                        {
+                            Log.Info($"[Spell] Charge Brutale : P{caster->PlayerIndex} fonce ({sx},{sy}) -> ({finalX},{finalY})");
+                        }
+                    }
+
+                    // Pose Vapeur Carmin sur toutes les cases foulees, de (sx+step) jusqu'a (finalX,finalY) inclus.
+                    // La case de la cible bloquante n'est PAS impregnee (foulee = traversee par le caster).
+                    {
+                        for (int step = 1; step <= maxSteps; step++)
+                        {
+                            int cx2 = sx + stepX * step;
+                            int cy2 = sy + stepY * step;
+                            GridHelpers.SetTerrain(f, cx2, cy2, TerrainKind.VapeurCarmin, SpellRegistry.VapeurCarminTurns, currentTurn);
+                            if (cx2 == finalX && cy2 == finalY) break;
+                        }
+                        Log.Info($"[Spell] Charge Brutale : Vapeur Carmin pose sur cases foulees ({SpellRegistry.VapeurCarminTurns} tour)");
+                    }
+
+                    // Damage 180 a la cible bloquante si presente.
+                    if (hitTarget != EntityRef.None
+                        && f.Unsafe.TryGetPointer<Combatant>(hitTarget, out Combatant* hitC))
+                    {
+                        int hpBeforeHit = hitC->HP;
+                        // Shield absorption manuel (Charge Brutale non-pipeline).
+                        int dmgLeft = SpellRegistry.ChargeBrutaleDamage;
+                        int shieldBefore = StatusHelper.GetMagnitude(hitC, StatusKind.ShieldActive, 0);
+                        if (shieldBefore > 0)
+                        {
+                            int absorbed = dmgLeft > shieldBefore ? shieldBefore : dmgLeft;
+                            int shieldAfter = shieldBefore - absorbed;
+                            if (shieldAfter == 0) StatusHelper.Consume(hitC, StatusKind.ShieldActive);
+                            else StatusHelper.SetMagnitude(hitC, StatusKind.ShieldActive, shieldAfter);
+                            dmgLeft -= absorbed;
+                            Log.Info($"[Spell] Charge Brutale : shield absorbe {absorbed} sur P{hitC->PlayerIndex}");
+                        }
+                        if (dmgLeft > 0)
+                        {
+                            hitC->HP -= dmgLeft;
+                            if (hitC->HP < 0) hitC->HP = 0;
+                            Log.Info($"[Spell] Charge Brutale : Damage {SpellRegistry.ChargeBrutaleDamage} (HP loss {dmgLeft}) sur P{hitC->PlayerIndex} ({hitX},{hitY}) HP {hpBeforeHit} -> {hitC->HP}");
+
+                            // Gain HG cote caster (Soulrender qui inflige, max 1 par sort).
+                            if (caster->Class == NymoraClass.Soulrender)
+                            {
+                                int maxResCB = CombatantStats.GetMaxResource(caster->Class);
+                                int beforeResCB = caster->Resource;
+                                caster->Resource = (beforeResCB + 1 > maxResCB) ? maxResCB : beforeResCB + 1;
+                                if (caster->Resource != beforeResCB)
+                                {
+                                    Log.Info($"[Spell] HG +1 sur P{caster->PlayerIndex} (Charge Brutale inflige) : {beforeResCB} -> {caster->Resource}");
+                                }
+                            }
+
+                            // Gain HG cible si Soulrender subit, max 1/tour adverse.
+                            if (hitC->Class == NymoraClass.Soulrender && hitC->LastResourceGainOnHitTurn != currentTurn)
+                            {
+                                int maxResCT = CombatantStats.GetMaxResource(hitC->Class);
+                                int beforeResCT = hitC->Resource;
+                                hitC->Resource = (beforeResCT + 1 > maxResCT) ? maxResCT : beforeResCT + 1;
+                                hitC->LastResourceGainOnHitTurn = currentTurn;
+                                if (hitC->Resource != beforeResCT)
+                                {
+                                    Log.Info($"[Spell] HG +1 sur P{hitC->PlayerIndex} (Charge Brutale subi) : {beforeResCT} -> {hitC->Resource}");
+                                }
+                            }
+                        }
+                    }
+                    break;
+                }
+
+                case SpellId.SoulrenderDetonationSanglante:
+                {
+                    // Le damage en croix 3 est deja gere par le pipeline generique (DamageAmount calcule dynamiquement).
+                    // Ici on pose Sang Coagule sur la case CENTRE (TargetX, TargetY) pour 2 tours.
+                    GridHelpers.SetTerrain(f, cmd.TargetX, cmd.TargetY, TerrainKind.SangCoagule, SpellRegistry.SangCoaguleTurns, currentTurn);
+                    Log.Info($"[Spell] Detonation Sanglante : Sang Coagule pose en ({cmd.TargetX},{cmd.TargetY}) pour {SpellRegistry.SangCoaguleTurns} tours");
+
+                    // TODO 2.11 : si totalHG consomme == 5 -> interdit Ame Laceree + reset son cooldown.
+                    // Implementer quand la signature arrive en 2.11.
+                    break;
+                }
+
+                case SpellId.SoulrenderCuree:
+                {
+                    // Damage 150 deja applique par pipeline. Selon issue :
+                    //   - Kill : caster heal 50% HP manquants + BonusPANextTurn = 4
+                    //   - Miss (cible vivante) : caster -60 HP self
+                    if (wasKill)
+                    {
+                        int missingHP = caster->MaxHP - caster->HP;
+                        int healAmount = missingHP / 2; // 50% des HP manquants
+                        int hpBeforeCuree = caster->HP;
+                        if (StatusHelper.Has(caster, StatusKind.AntiHealShield))
+                        {
+                            Log.Info($"[Spell] Curee KILL : heal {healAmount} BLOQUE par AntiHealShield sur P{caster->PlayerIndex}");
+                        }
+                        else
+                        {
+                            caster->HP += healAmount;
+                            if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
+                            Log.Info($"[Spell] Curee KILL : heal {healAmount} (50% manquants) sur P{caster->PlayerIndex} HP {hpBeforeCuree} -> {caster->HP}");
+                        }
+                        // BonusPANextTurn applique au prochain TurnStart du caster (TurnSystem).
+                        caster->BonusPANextTurn += SpellRegistry.CureeBonusPANextTurn;
+                        Log.Info($"[Spell] Curee KILL : +{SpellRegistry.CureeBonusPANextTurn} PA next turn sur P{caster->PlayerIndex} (total BonusPANextTurn={caster->BonusPANextTurn})");
+                    }
+                    else
+                    {
+                        // Cible n'est pas morte : self-damage 60 HP au caster.
+                        int hpBeforeCureeMiss = caster->HP;
+                        caster->HP -= SpellRegistry.CureeMissSelfDamage;
+                        if (caster->HP < 0) caster->HP = 0;
+                        Log.Info($"[Spell] Curee MISS : -{SpellRegistry.CureeMissSelfDamage} HP self sur P{caster->PlayerIndex} HP {hpBeforeCureeMiss} -> {caster->HP}");
+                    }
+                    break;
+                }
+
+                case SpellId.SoulrenderCauterisation:
+                {
+                    // Retire tous DoT (BleedDoT et futurs Necram). Pour 2.10.c : aucun DoT actuel,
+                    // donc on heal min 60 (toujours applique meme si 0 DoT retire).
+                    int dotsRemoved = 0;
+                    if (StatusHelper.Has(caster, StatusKind.BleedDoT))
+                    {
+                        StatusHelper.Consume(caster, StatusKind.BleedDoT);
+                        dotsRemoved++;
+                    }
+                    // Futurs DoT (Necram poison etc) seront ajoutes ici en Phase 3.
+
+                    int healAmount;
+                    if (dotsRemoved == 0)
+                    {
+                        healAmount = SpellRegistry.CauterisationHealMin;
+                    }
+                    else
+                    {
+                        healAmount = dotsRemoved * SpellRegistry.CauterisationHealPerDoT;
+                        if (healAmount < SpellRegistry.CauterisationHealMin) healAmount = SpellRegistry.CauterisationHealMin;
+                        if (healAmount > SpellRegistry.CauterisationHealMax) healAmount = SpellRegistry.CauterisationHealMax;
+                    }
+
+                    if (StatusHelper.Has(caster, StatusKind.AntiHealShield))
+                    {
+                        Log.Info($"[Spell] Cauterisation : retire {dotsRemoved} DoT, heal {healAmount} BLOQUE par AntiHealShield sur P{caster->PlayerIndex}");
+                    }
+                    else
+                    {
+                        int hpBeforeCauter = caster->HP;
+                        caster->HP += healAmount;
+                        if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
+                        Log.Info($"[Spell] Cauterisation : retire {dotsRemoved} DoT, heal {healAmount} sur P{caster->PlayerIndex} HP {hpBeforeCauter} -> {caster->HP}");
+                    }
                     break;
                 }
             }

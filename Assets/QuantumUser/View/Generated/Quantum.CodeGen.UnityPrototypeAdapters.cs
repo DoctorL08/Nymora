@@ -69,11 +69,17 @@ namespace Quantum.Prototypes.Unity {
   public unsafe partial class TilePrototype : Quantum.QuantumUnityPrototypeAdapter<Quantum.Prototypes.TilePrototype> {
     public Byte Walkable;
     public Quantum.QuantumEntityPrototype Occupant;
+    public Quantum.QEnum8<TerrainKind> Terrain;
+    public Int32 TerrainTurnsLeft;
+    public Int32 TerrainAppliedOnTurn;
     partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.TilePrototype prototype);
     public override Quantum.Prototypes.TilePrototype Convert(Quantum.QuantumEntityPrototypeConverter converter) {
       var result = new Quantum.Prototypes.TilePrototype();
       converter.Convert(this.Walkable, out result.Walkable);
       converter.Convert(this.Occupant, out result.Occupant);
+      converter.Convert(this.Terrain, out result.Terrain);
+      converter.Convert(this.TerrainTurnsLeft, out result.TerrainTurnsLeft);
+      converter.Convert(this.TerrainAppliedOnTurn, out result.TerrainAppliedOnTurn);
       ConvertUser(converter, ref result);
       return result;
     }

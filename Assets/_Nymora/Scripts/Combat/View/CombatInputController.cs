@@ -112,6 +112,11 @@ namespace Nymora.Combat.View
             //   8 = Peau de Fer       (self, shield 200 HP / 2 tours)
             //   9 = Seve Vive         (self, heal 100)  — Shift+9 = depense 1 HG (+60 heal)
             //   0 = Dernier Souffle   (self, HP<30%, heal 200 + 3 HG, 1/match)
+            // 2.10.c — touches F1-F4 (cliquables HUD en 2.13) :
+            //   F1 = Charge Brutale       (ligne range 5, 180 dgts + Vapeur Carmin)
+            //   F2 = Detonation Sanglante (range 4, croix 3, 2 HG mandatory) — Shift+F2 = HGSpend max 3 (total 5 HG)
+            //   F3 = Curee                (range 2, 2 HG, kill chain)
+            //   F4 = Cauterisation        (self, retire DoT + heal)
             bool key1 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha1);
             bool key2 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha2);
             bool key3 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha3);
@@ -122,10 +127,15 @@ namespace Nymora.Combat.View
             bool key8 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha8);
             bool key9 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha9);
             bool key0 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha0);
+            bool keyF1 = UnityEngine.Input.GetKeyDown(KeyCode.F1);
+            bool keyF2 = UnityEngine.Input.GetKeyDown(KeyCode.F2);
+            bool keyF3 = UnityEngine.Input.GetKeyDown(KeyCode.F3);
+            bool keyF4 = UnityEngine.Input.GetKeyDown(KeyCode.F4);
             bool shiftHeld = UnityEngine.Input.GetKey(KeyCode.LeftShift) || UnityEngine.Input.GetKey(KeyCode.RightShift);
 
             bool anySpellKey = key1 || key2 || key3 || key4 || key5
-                            || key6 || key7 || key8 || key9 || key0;
+                            || key6 || key7 || key8 || key9 || key0
+                            || keyF1 || keyF2 || keyF3 || keyF4;
             if (!mouseDown && !spaceDown && !anySpellKey) return;
 
             // Calcule la case sous la souris (partagee entre mvt et cast).
@@ -222,6 +232,33 @@ namespace Nymora.Combat.View
             {
                 if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
                     SendSpellAt(game, senderPlayer, SpellId.SoulrenderDernierSouffle, cx, cy, 0);
+                return;
+            }
+
+            // 2.10.c — sorts F1-F4.
+            // F1 Charge Brutale / F2 Detonation Sanglante / F3 Curee : ciblent la case sous la souris.
+            // F4 Cauterisation : self-target.
+            if (keyF1)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.SoulrenderChargeBrutale, gx, gy, 0);
+                return;
+            }
+            if (keyF2)
+            {
+                // Shift+F2 = HGSpend max 3 (total 5 HG avec mandatory 2). Sans Shift = HGSpend 0 (total 2 HG).
+                byte hg = (byte)(shiftHeld ? 3 : 0);
+                SendSpellAt(game, senderPlayer, SpellId.SoulrenderDetonationSanglante, gx, gy, hg);
+                return;
+            }
+            if (keyF3)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.SoulrenderCuree, gx, gy, 0);
+                return;
+            }
+            if (keyF4)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.SoulrenderCauterisation, cx, cy, 0);
                 return;
             }
 

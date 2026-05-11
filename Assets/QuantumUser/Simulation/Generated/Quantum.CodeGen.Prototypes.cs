@@ -88,6 +88,7 @@ namespace Quantum.Prototypes {
     [ArrayLengthAttribute(8)]
     public Quantum.Prototypes.StatusPrototype[] Statuses = new Quantum.Prototypes.StatusPrototype[8];
     public Int32 OncePerMatchUsedFlags;
+    public Int32 BonusPANextTurn;
     partial void MaterializeUser(Frame frame, ref Quantum.Combatant result, in PrototypeMaterializationContext context);
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.Combatant component = default;
@@ -111,6 +112,7 @@ namespace Quantum.Prototypes {
           this.Statuses[i].Materialize(frame, ref *result.Statuses.GetPointer(i), in context);
         }
         result.OncePerMatchUsedFlags = this.OncePerMatchUsedFlags;
+        result.BonusPANextTurn = this.BonusPANextTurn;
         MaterializeUser(frame, ref result, in context);
     }
   }
@@ -165,9 +167,15 @@ namespace Quantum.Prototypes {
   public unsafe class TilePrototype : StructPrototype {
     public Byte Walkable;
     public MapEntityId Occupant;
+    public Quantum.QEnum8<TerrainKind> Terrain;
+    public Int32 TerrainTurnsLeft;
+    public Int32 TerrainAppliedOnTurn;
     public void Materialize(Frame frame, ref Quantum.Tile result, in PrototypeMaterializationContext context = default) {
         result.Walkable = this.Walkable;
         PrototypeValidator.FindMapEntity(this.Occupant, in context, out result.Occupant);
+        result.Terrain = this.Terrain;
+        result.TerrainTurnsLeft = this.TerrainTurnsLeft;
+        result.TerrainAppliedOnTurn = this.TerrainAppliedOnTurn;
     }
   }
 }

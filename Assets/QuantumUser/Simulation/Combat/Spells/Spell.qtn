@@ -20,18 +20,18 @@ enum SpellId : Byte
     // 2-9 reserves pour autres sorts de dev
 
     // SOULRENDER (Bible V7.1 — 5 offensifs + 5 tactiques + 5 survie + signature)
-    SoulrenderTrancheAme        = 10,  // 2.8  — Offensif : 3 PA, melee 1, 220 dgts
+    SoulrenderTrancheAme        = 10,  // 2.8  — Offensif : 3 PA, melee 1, 220 dgts (+ recul 2 cases si kill, 2.10.c)
     SoulrenderOuvrePlaie        = 11,  // 2.10.a — Offensif : 2 PA, range 1, 110 dgts (+120 si 1 HG, anti-heal)
-    // 12 reserve (Charge Brutale,   2.10.c)
-    // 13 reserve (Detonation Sangl, 2.10.c)
-    // 14 reserve (Curee,            2.10.c)
+    SoulrenderChargeBrutale     = 12,  // 2.10.c — Offensif : 4 PA, ligne range 5, 180 dgts 1ere cible + Vapeur Carmin cases foulees
+    SoulrenderDetonationSanglante = 13, // 2.10.c — Offensif : 4 PA, range 4 croix 3, 60 base +40 par HG (min 2, max 5), Sang Coagule centre
+    SoulrenderCuree             = 14,  // 2.10.c — Offensif : 2 PA, range 2, 2 HG, 150 dgts. Kill -> heal 50% manquants + 4 PA next turn. Miss -> -60 HP self.
     SoulrenderPacteDeSang       = 15,  // 2.10.a — Tactique : 1 PA, self, -80 HP +3 HG +50% next offensif, 1/match
     SoulrenderMarqueDeCarnage   = 16,  // 2.10.b — Tactique : 2 PA, range 5, marque cible 3 tours (+1 HG bonus sur cast Soulrender)
     SoulrenderEmpoignade        = 17,  // 2.10.b — Tactique : 3 PA, range 3, pull cible adjacent + anti-teleport 1 tour
     SoulrenderRugissement       = 18,  // 2.10.a — Tactique : 3 PA, AoE rayon 3, -1 PM + anti-tp (ou -2 si <50%)
     SoulrenderRageInsatiable    = 19,  // 2.10.a — Tactique : 3 PA, self, 2 tours +1 PA cost / +1 PA regen offensif
     SoulrenderRiposteCarmin     = 20,  // 2.10.a — Survie  : 2 PA, self, 1 tour reflect 100 dgts melee + -1 PM attaquant
-    // 21 reserve (Cautérisation,    2.10.c)
+    SoulrenderCauterisation     = 21,  // 2.10.c — Survie  : 2 PA, self, retire tous DoT + heal 60/DoT (min 60, max 180). Stub 2.10.c (pas de DoT actuel).
     SoulrenderPeauDeFer         = 22,  // 2.10.b — Survie  : 3 PA, self, shield 200 HP / 2 tours + 30 dgts bonus melee
     SoulrenderSeveVive          = 23,  // 2.10.b — Survie  : 2 PA, self, heal 100 (+60 si 1 HG, +50 si DoT actif)
     SoulrenderDernierSouffle    = 24,  // 2.10.b — Survie  : 4 PA, self, HP<30% only, heal 200 + 3 HG, 1/match

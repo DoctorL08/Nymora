@@ -1,14 +1,31 @@
 // Grille de combat Nymora — 15x17 cases.
-// Tile : data d'une case (walkable + occupant entity).
+// Tile : data d'une case (walkable + occupant entity + terrain).
 // GridSingleton : singleton Quantum qui stocke les 255 tiles + dimensions.
 //
 // Width et Height sont stockes dans la singleton pour eviter les valeurs magiques
 // cote runtime, mais la taille du fixed array (255) est verrouillee au compile time.
 // Toute modification de la taille de grille => regenerer ce DSL.
 
+// 2.10.c — Terrains poses par les sorts Soulrender (et futures classes).
+// Verrouille : ne PAS reorganiser les ints existants (CombatRulesVersion).
+enum TerrainKind : Byte
+{
+    None         = 0,
+    VapeurCarmin = 1,  // Soulrender (Charge Brutale, classe transforme map) : -1 PM en traversee, 1 tour
+    SangCoagule  = 2,  // Soulrender (Detonation Sanglante, signature Ame Laceree, passif <20% HP) : 30 dgts debut de tour, 2 tours
+}
+
 struct Tile {
     Byte Walkable;
     EntityRef Occupant;
+
+    // 2.10.c — Terrain temporaire pose sur la case.
+    //   Terrain == None : pas de terrain (defaut).
+    //   TerrainTurnsLeft : nombre de tours restants avant expiration.
+    //   TerrainAppliedOnTurn : tour ou le terrain a ete pose (skip-decrement comme Statuses).
+    TerrainKind Terrain;
+    Int32 TerrainTurnsLeft;
+    Int32 TerrainAppliedOnTurn;
 }
 
 singleton component GridSingleton {

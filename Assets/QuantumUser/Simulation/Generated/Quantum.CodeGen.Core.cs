@@ -78,12 +78,16 @@ namespace Quantum {
     TestZap = 1,
     SoulrenderTrancheAme = 10,
     SoulrenderOuvrePlaie = 11,
+    SoulrenderChargeBrutale = 12,
+    SoulrenderDetonationSanglante = 13,
+    SoulrenderCuree = 14,
     SoulrenderPacteDeSang = 15,
     SoulrenderMarqueDeCarnage = 16,
     SoulrenderEmpoignade = 17,
     SoulrenderRugissement = 18,
     SoulrenderRageInsatiable = 19,
     SoulrenderRiposteCarmin = 20,
+    SoulrenderCauterisation = 21,
     SoulrenderPeauDeFer = 22,
     SoulrenderSeveVive = 23,
     SoulrenderDernierSouffle = 24,
@@ -126,6 +130,11 @@ namespace Quantum {
     CircleSmall = 50,
     CircleMedium = 51,
     CircleLarge = 52,
+  }
+  public enum TerrainKind : byte {
+    None = 0,
+    VapeurCarmin = 1,
+    SangCoagule = 2,
   }
   [System.FlagsAttribute()]
   public enum InputButtons : int {
@@ -648,23 +657,35 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct Tile {
-    public const Int32 SIZE = 16;
+    public const Int32 SIZE = 24;
     public const Int32 ALIGNMENT = 8;
     [FieldOffset(0)]
     public Byte Walkable;
-    [FieldOffset(8)]
+    [FieldOffset(16)]
     public EntityRef Occupant;
+    [FieldOffset(1)]
+    public TerrainKind Terrain;
+    [FieldOffset(8)]
+    public Int32 TerrainTurnsLeft;
+    [FieldOffset(4)]
+    public Int32 TerrainAppliedOnTurn;
     public override readonly Int32 GetHashCode() {
       unchecked { 
         var hash = 20327;
         hash = hash * 31 + Walkable.GetHashCode();
         hash = hash * 31 + Occupant.GetHashCode();
+        hash = hash * 31 + (Byte)Terrain;
+        hash = hash * 31 + TerrainTurnsLeft.GetHashCode();
+        hash = hash * 31 + TerrainAppliedOnTurn.GetHashCode();
         return hash;
       }
     }
     public static void Serialize(void* ptr, FrameSerializer serializer) {
         var p = (Tile*)ptr;
         serializer.Stream.Serialize(&p->Walkable);
+        serializer.Stream.Serialize((Byte*)&p->Terrain);
+        serializer.Stream.Serialize(&p->TerrainAppliedOnTurn);
+        serializer.Stream.Serialize(&p->TerrainTurnsLeft);
         EntityRef.Serialize(&p->Occupant, serializer);
     }
   }
@@ -768,37 +789,39 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct Combatant : Quantum.IComponent {
-    public const Int32 SIZE = 180;
+    public const Int32 SIZE = 184;
     public const Int32 ALIGNMENT = 4;
-    [FieldOffset(44)]
+    [FieldOffset(48)]
     public Int32 PlayerIndex;
     [FieldOffset(0)]
     public NymoraClass Class;
-    [FieldOffset(12)]
-    public Int32 HP;
-    [FieldOffset(20)]
-    public Int32 MaxHP;
-    [FieldOffset(36)]
-    public Int32 PA;
-    [FieldOffset(24)]
-    public Int32 MaxPA;
-    [FieldOffset(40)]
-    public Int32 PM;
-    [FieldOffset(28)]
-    public Int32 MaxPM;
-    [FieldOffset(4)]
-    public Int32 GridX;
-    [FieldOffset(8)]
-    public Int32 GridY;
-    [FieldOffset(48)]
-    public Int32 Resource;
     [FieldOffset(16)]
-    public Int32 LastResourceGainOnHitTurn;
+    public Int32 HP;
+    [FieldOffset(24)]
+    public Int32 MaxHP;
+    [FieldOffset(40)]
+    public Int32 PA;
+    [FieldOffset(28)]
+    public Int32 MaxPA;
+    [FieldOffset(44)]
+    public Int32 PM;
+    [FieldOffset(32)]
+    public Int32 MaxPM;
+    [FieldOffset(8)]
+    public Int32 GridX;
+    [FieldOffset(12)]
+    public Int32 GridY;
     [FieldOffset(52)]
+    public Int32 Resource;
+    [FieldOffset(20)]
+    public Int32 LastResourceGainOnHitTurn;
+    [FieldOffset(56)]
     [FramePrinter.FixedArrayAttribute(typeof(Status), 8)]
     private fixed Byte _Statuses_[128];
-    [FieldOffset(32)]
+    [FieldOffset(36)]
     public Int32 OncePerMatchUsedFlags;
+    [FieldOffset(4)]
+    public Int32 BonusPANextTurn;
     public readonly FixedArray<Status> Statuses {
       get {
         fixed (byte* p = _Statuses_) { return new FixedArray<Status>(p, 16, 8); }
@@ -821,12 +844,14 @@ namespace Quantum {
         hash = hash * 31 + LastResourceGainOnHitTurn.GetHashCode();
         hash = hash * 31 + HashCodeUtils.GetArrayHashCode(Statuses);
         hash = hash * 31 + OncePerMatchUsedFlags.GetHashCode();
+        hash = hash * 31 + BonusPANextTurn.GetHashCode();
         return hash;
       }
     }
     public static void Serialize(void* ptr, FrameSerializer serializer) {
         var p = (Combatant*)ptr;
         serializer.Stream.Serialize((Byte*)&p->Class);
+        serializer.Stream.Serialize(&p->BonusPANextTurn);
         serializer.Stream.Serialize(&p->GridX);
         serializer.Stream.Serialize(&p->GridY);
         serializer.Stream.Serialize(&p->HP);
@@ -844,7 +869,7 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct GridSingleton : Quantum.IComponentSingleton {
-    public const Int32 SIZE = 4088;
+    public const Int32 SIZE = 6128;
     public const Int32 ALIGNMENT = 8;
     [FieldOffset(4)]
     public Int32 Width;
@@ -852,10 +877,10 @@ namespace Quantum {
     public Int32 Height;
     [FieldOffset(8)]
     [FramePrinter.FixedArrayAttribute(typeof(Tile), 255)]
-    private fixed Byte _Tiles_[4080];
+    private fixed Byte _Tiles_[6120];
     public readonly FixedArray<Tile> Tiles {
       get {
-        fixed (byte* p = _Tiles_) { return new FixedArray<Tile>(p, 16, 255); }
+        fixed (byte* p = _Tiles_) { return new FixedArray<Tile>(p, 24, 255); }
       }
     }
     public override readonly Int32 GetHashCode() {
@@ -1051,6 +1076,7 @@ namespace Quantum {
       typeRegistry.Register(typeof(Quantum.StatusKind), 1);
       typeRegistry.Register(typeof(Quantum.TargetingFilter), 1);
       typeRegistry.Register(typeof(Quantum.TargetingShape), 1);
+      typeRegistry.Register(typeof(Quantum.TerrainKind), 1);
       typeRegistry.Register(typeof(Quantum.Tile), Quantum.Tile.SIZE);
       typeRegistry.Register(typeof(Transform2D), Transform2D.SIZE);
       typeRegistry.Register(typeof(Transform2DVertical), Transform2DVertical.SIZE);
@@ -1079,6 +1105,7 @@ namespace Quantum {
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.StatusKind>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.TargetingFilter>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.TargetingShape>();
+      FramePrinter.EnsurePrimitiveNotStripped<Quantum.TerrainKind>();
     }
   }
 }

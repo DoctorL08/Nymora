@@ -62,6 +62,21 @@ namespace Quantum
         public const int DernierSouffleHGGain         = 3;
         public const int DernierSouffleHPThresholdPct = 30;  // utilisable uniquement a < 30% HP
 
+        // 2.10.c constants
+        public const int ChargeBrutaleRange           = 5;
+        public const int ChargeBrutaleDamage          = 180;
+        public const int VapeurCarminTurns            = 1;
+        public const int DetonationBaseDamage         = 60;
+        public const int DetonationDamagePerHG        = 40;
+        public const int SangCoaguleTurns             = 2;
+        public const int CureeDamage                  = 150;
+        public const int CureeBonusPANextTurn         = 4;
+        public const int CureeMissSelfDamage          = 60;
+        public const int CauterisationHealMin         = 60;   // toujours applique (min)
+        public const int CauterisationHealPerDoT      = 60;   // chaque DoT retire ajoute 60
+        public const int CauterisationHealMax         = 180;  // cap 3 DoTs retires
+        public const int TrancheAmeKillRecul          = 2;    // 2 cases de recul si kill
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -279,6 +294,90 @@ namespace Quantum
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitDernierSouffle,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // -------------------------------------------------------------
+                // SOULRENDER 2.10.c
+                // -------------------------------------------------------------
+
+                // Charge Brutale (2.10.c) : 4 PA, ligne range 5. Fonce en ligne droite jusqu'a la
+                // 1ere unite ou case bloquante. Inflige 180 dgts a la cible touchee. Toutes les
+                // cases foulees deviennent Vapeur Carmin 1 tour. Gestion specifique dans
+                // ApplySpellSpecificEffects (mvt + dgts + terrain).
+                // Shape Line existe deja (TargetingResolver) mais on gere l'effet specifique
+                // ici car on a besoin du chemin precis + du mouvement caster.
+                case SpellId.SoulrenderChargeBrutale:
+                    def = new SpellDef
+                    {
+                        PACost = 4,
+                        Shape = TargetingShape.SingleTile, // on gere la ligne nous-memes
+                        Filter = TargetingFilter.AnyTile,  // peut viser une case vide ou ennemi
+                        RangeMin = 1,
+                        RangeMax = ChargeBrutaleRange,
+                        DamageAmount = 0, // applique manuellement dans le branche specifique
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Detonation Sanglante (2.10.c) : 4 PA, range 4, AoE croix 3.
+                // Damage de base 60 + 40 par HG total consomme (mandatory 2 + optional max 3 = 5).
+                // Sang Coagule pose sous la case centre 2 tours.
+                // ATTENTION 2.11 : si on consomme 5 HG ici, ca interdit Ame Laceree et reset son cooldown.
+                case SpellId.SoulrenderDetonationSanglante:
+                    def = new SpellDef
+                    {
+                        PACost = 4,
+                        Shape = TargetingShape.CrossSmall, // croix 3 cases (centre + 4 cardinales)
+                        Filter = TargetingFilter.AnyTile,
+                        RangeMin = 1,
+                        RangeMax = 4,
+                        DamageAmount = 0, // calcule dynamiquement (60 + 40*totalHG)
+                        HGCostMandatory = 2,
+                        HGCostMaxOptional = 3,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Curee (2.10.c) : 2 PA, range 2, 2 HG (mandatory), 150 dgts.
+                // Kill chain : heal 50% HP manquants + 4 PA next turn.
+                // Miss (target encore vivante) : caster prend 60 dgts self.
+                case SpellId.SoulrenderCuree:
+                    def = new SpellDef
+                    {
+                        PACost = 2,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 2,
+                        DamageAmount = CureeDamage,
+                        HGCostMandatory = 2,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Cauterisation (2.10.c, stub) : 2 PA, self, retire tous DoT + heal 60 par DoT
+                // retire (min 60 toujours, max 180 cap 3 DoTs). Pour 2.10.c : aucun DoT actuel,
+                // donc heal = 60 (min). Structure prete pour Phase 3 Necram.
+                case SpellId.SoulrenderCauterisation:
+                    def = new SpellDef
+                    {
+                        PACost = 2,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
                     };
                     return true;

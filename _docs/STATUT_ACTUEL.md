@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026 (Brique 2.10.b validée)  
+**Dernière mise à jour :** 11 mai 2026 (Brique 2.10.c validée — 15/15 sorts Soulrender)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.10.c — Terrains + Mvt non-PM + Kill detection + 4 sorts** (à démarrer, dernière de 2.10)  
+**Brique en cours :** **2.11 — Signature Âme Lacérée + Passif Appel du Sang** (à démarrer)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 9/17 briques validées + 2.10 découpée en 3 sous-briques (2.10.a ✅, 2.10.b ✅, 2.10.c à venir). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C 1/3 (2.9) + 2.10.a + 2.10.b livrées (10 sorts Soulrender sur 15 implémentés).
+**Statut Phase 2 :** 9/17 briques validées + 2.10 découpée en 3 sous-briques toutes validées (2.10.a ✅, 2.10.b ✅, 2.10.c ✅). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C 2/3 (2.9 ✅ + 2.10 ✅, reste 2.11). **15/15 sorts Soulrender implémentés Bible V7.1.** Architecture combat solide : Statuses framework + terrains + kill detection + mouvement non-PM + helpers Shield/Heal/Mark/Pull. Prêt pour signature Âme Lacérée (2.11) puis sprites (2.12) et HUD complet (2.13).
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,27 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.10.c** — Terrains + Mvt non-PM + Kill detection + 4 sorts Soulrender (validée 11 mai 2026, sous-brique 3/3 du Bloc C, clôt 2.10)
+  - **Nouveau framework Terrains** (par-case, pas par-combattant) :
+    - `Grid.qtn` étendu : enum `TerrainKind` (None/VapeurCarmin/SangCoagule) + champs `Terrain`, `TerrainTurnsLeft`, `TerrainAppliedOnTurn` sur la struct Tile (skip-décrémentation comme Statuses).
+    - `GridHelpers` : GetTerrainKind/SetTerrain/ClearTerrain/DecrementAllTerrainsOnTurnEnd.
+    - `TurnSystem` étendu : tick Sang Coagulé (-30 HP au combatant actif sur sa case au TurnStart) + DecrementAllTerrains à TurnEnd.
+  - **Mouvement non-PM** : nouveau helper `MovementHelpers.MoveNonPM` (valide walkable + occupant mais ignore le compteur PM). Réutilisable : Charge Brutale, recul Tranche-Âme, futurs sorts qui téléportent.
+  - **Kill detection post-damage** : tracker `wasKill = (HP==0 && before>0)` + `killedTargetX/Y` dans le damage loop. Signature `ApplySpellSpecificEffects` étendue avec ces 3 params. Champ `Int32 BonusPANextTurn` sur Combatant (Curée kill chain), appliqué au reset PA du TurnSystem.
+  - **Vapeur Carmin cost +1** simplifié : si la case de destination du mouvement est Vapeur Carmin → cost += 1 PM. Vraie traversée multi-case en Phase 7 polish.
+  - **4 sorts livrés Bible V7.1 strict (touches F1-F4)** :
+    - **Charge Brutale** (id 12, F1) : 4 PA, ligne range 5, 180 dgts à 1ère cible bloquante. Caster fonce jusqu'à la case avant l'obstacle. Toutes cases foulées deviennent Vapeur Carmin 1 tour. Gain HG caster/cible géré manuellement (logique hors pipeline générique car damage = 0 dans SpellDef).
+    - **Détonation Sanglante** (id 13, F2, Shift+F2 = HGSpend max 3) : 4 PA, AoE croix 3, 60 base + 40 par HG total (mandatory 2 + optional 0-3). Sang Coagulé posé sous le centre AoE pour 2 tours. TODO 2.11 : si HG=5 total → interdit Âme Lacérée + reset son cooldown.
+    - **Curée** (id 14, F3) : 2 PA, range 2, 2 HG mandatory, 150 dgts. KILL → heal 50% HP manquants + `BonusPANextTurn += 4`. MISS (target vivante) → caster prend 60 dgts self.
+    - **Cautérisation** (id 21, F4) : 2 PA, self, stub. Retire DoT actifs (uniquement `BleedDoT` en 2.10.c, vide en pratique), heal min 60 toujours (max 180 si 3 DoT retirés en Phase 3 Necram). Check AntiHealShield.
+  - **Effet bonus Tranche-Âme** : si `wasKill && SpellId == SoulrenderTrancheAme` → caster recule 2 cases (fallback 1 si bloqué) dans la direction opposée à la cible tuée. Helper `MovementHelpers.MoveNonPM`. Clôt le TODO 2.11 noté en 2.8.
+  - **Constants Bible V7.1 centralisées** dans SpellRegistry : ChargeBrutaleRange/Damage, VapeurCarminTurns, DetonationBaseDamage/DamagePerHG, SangCoaguleTurns, CureeDamage/BonusPANextTurn/MissSelfDamage, CauterisationHealMin/PerDoT/Max, TrancheAmeKillRecul.
+  - **Validation E2E (6/7 tests critiques + #3 par inspection)** : Charge Brutale fonce ✓, Vapeur Carmin posée ✓, Détonation Damage 140 ✓, Sang Coagulé posé ✓, tick TurnStart -30 HP ✓, Cautérisation heal 60 ✓.
+  - **Bug C# rencontré et fixé** : 3e occurrence du shadowing `hpBefore` avec le case `Pacte de Sang` (sans braces). Renommé `hpBeforeCuree`, `hpBeforeCureeMiss`, `hpBeforeCauter`, `maxResDS`, `resBeforeDS`. Pattern à généraliser en 2.13 : wrapper toutes les cases en `{}`.
+  - **15 sorts Soulrender complets** Bible V7.1. Bloc C avance à 2/3 (reste 2.11).
 
 ---
 
@@ -629,8 +650,10 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.9 — Ressource Hémoglyphe (cap 5) ✅ VALIDÉE 11 mai 2026
 - 2.10.a — Framework Statuses + 5 sorts (Ouvre-Plaie, Pacte de Sang, Rugissement, Rage Insatiable, Riposte Carmin) ✅ VALIDÉE 11 mai 2026
 - 2.10.b — Shields + Heals + Marques + 5 sorts (Peau de Fer, Sève Vive, Dernier Souffle, Marque de Carnage, Empoignade) ✅ VALIDÉE 11 mai 2026
-- 2.10.c — Terrains (Vapeur Carmin, Sang Coagulé) + Mvt non-PM + Kill detection + 4 sorts (Charge Brutale, Détonation Sanglante, Curée, Cautérisation) + effet bonus Tranche-Âme ⏳ PROCHAINE
-- 2.11 — Signature Âme Lacérée + Passif Appel du Sang
+- 2.10.c — Terrains (Vapeur Carmin, Sang Coagulé) + Mvt non-PM + Kill detection + 4 sorts (Charge Brutale, Détonation Sanglante, Curée, Cautérisation) + effet bonus Tranche-Âme ✅ VALIDÉE 11 mai 2026
+- 2.11 — Signature Âme Lacérée + Passif Appel du Sang ⏳ PROCHAINE
+- 2.12 — Assets visuels Soulrender (sprites 4 dirs + icônes 15 sorts + icône passif + signature)
+- 2.13 — HUD combat complet (passif bas-gauche, 6 sorts bas-centre, timeline bas-droite, PA/PM haut-gauche, timer haut-centre, End Turn milieu-droite, prévisu PM/range, infobulles, texte flottant dgts/heals, deck éditable Inspector)
 
 **Bloc D — Nightseer (3 briques)**
 - 2.12 — Brouillard de guerre déterministe
@@ -736,6 +759,16 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 2.10.c (Terrains + Mvt non-PM + Kill detection + 4 sorts) — fin de 2.10
+- **Marathon session** : 2.10.a, 2.10.b, 2.10.c livrées et validées dans la même journée. 15 sorts Soulrender complets.
+- **Décision d'architecture importante** : terrains stockés directement dans la struct `Tile` (par-case), pas via un `StatusKind`. Logique : un terrain est lié à une CASE, pas à un combattant ; les Statuses sont conçus pour les combattants. Évite des hacks comme "Tile virtuel sans owner". Pattern proche : champs ShieldHP/TurnsLeft mais directement sur la grid.
+- **Mouvement non-PM** : helper isolé dans son propre fichier (`MovementHelpers.cs`) pour pouvoir être réutilisé. Charge Brutale + recul Tranche-Âme y appellent. Empoignade pull (2.10.b) pourrait y être refacto-é en Phase 7 polish pour cohérence.
+- **Discussion roadmap HUD avec Lorenzo (clé)** : la roadmap actuelle n'a AUCUNE brique dédiée au HUD combat (Phase 4 = map communautaire, pas combat). Lorenzo allait jouer 10 mois avec un HUD placeholder TMP_Text. Décision : intercaler 2.12 (sprites Soulrender + icônes) et 2.13 (HUD combat complet) après 2.11, AVANT d'attaquer Nightseer. Le designer va déposer les assets dans `Assets/_Nymora/Art/Sprites/Soulrender/` et `Assets/_Nymora/Art/UI/Icons/Soulrender/` (dossiers créés).
+- **HUD layout validé** (à livrer en 2.13) : PA/PM haut-gauche, Timer haut-centre, zone combat centrale, End Turn milieu-droite, Passif bas-gauche, 6 sorts bas-centre, Timeline simple `P0 > P1` bas-droite. **Prévisu range PM cliquables + prévisu range sorts + tooltips persos + texte flottant dgts/heals**. Deck éditable via `[SerializeField] SpellId[] _testDeck` (pas de deck imposé, configuration libre Inspector).
+- **Bug C# récurrent identifié** : le case `Pacte de Sang` (sans braces) shadow les locals `hpBefore`, `maxRes`, `resBefore` dans tout le switch. À chaque nouveau case 2.10.x j'ai dû renommer mes vars. Note pour 2.13 : refacto le switch pour wrapper TOUTES les cases en `{}`, plus jamais de shadowing.
+- **6/7 tests E2E validés** : Charge Brutale, Vapeur Carmin posée, Détonation Damage 140, Sang Coagulé posé, tick TurnStart -30 HP, Cautérisation. Le test cost +1 Vapeur Carmin n'a pas été déclenché en E2E (P1 a évité les cases Vapeur), mais code trivial (1 ligne) considéré OK par inspection.
+- **Brique 2.10 complète** (a+b+c). Soulrender est à 15/15 sorts. Reste 2.11 (signature + passif) pour clôturer le Bloc C.
 
 ### 11 mai 2026 — Brique 2.10.b (Shields + Heals + Marques + 5 sorts)
 - Suite directe de 2.10.a dans la même session. Lorenzo a enchaîné après validation E2E de 2.10.a.

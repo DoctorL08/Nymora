@@ -60,4 +60,9 @@ component Combatant
     //   Bits 2-31 reserves pour futurs sorts 1/match (Phase 2.13+, Phase 3)
     // Pas reset entre tours (par definition once-per-match). Reset uniquement au spawn.
     Int32 OncePerMatchUsedFlags;
+
+    // 2.10.c — PA bonus ajoute au reset PA du PROCHAIN tour de ce combattant (Curee kill chain).
+    // Reset a 0 dans TurnSystem.EnterTurnStart apres application. Pas un Status (parce que
+    // l'effet est consume en 1 application precise, pas une duree).
+    Int32 BonusPANextTurn;
 }

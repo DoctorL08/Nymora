@@ -87,16 +87,25 @@ namespace Quantum
             int absDx = dx < 0 ? -dx : dx;
             int absDy = dy < 0 ? -dy : dy;
             int manhattan = absDx + absDy;
-            if (manhattan > combatant->PM)
+
+            // 2.10.c : Vapeur Carmin sur la case d'arrivee coute +1 PM (simplification du Bible
+            // "traversee" — verifie uniquement la destination, vraie traversee multi-case = Phase 7).
+            int extraCostVapeur = 0;
+            if (GridHelpers.GetTerrainKind(f, targetX, targetY) == TerrainKind.VapeurCarmin)
             {
-                Log.Warn($"[Movement] rejet : distance optimale {manhattan} > PM {combatant->PM}");
+                extraCostVapeur = 1;
+            }
+
+            if (manhattan + extraCostVapeur > combatant->PM)
+            {
+                Log.Warn($"[Movement] rejet : distance optimale {manhattan} (+{extraCostVapeur} Vapeur Carmin) > PM {combatant->PM}");
                 return;
             }
 
             // Cas adjacent (1 case) : skip A* pour optimiser
             if (manhattan == 1)
             {
-                ApplyMove(f, combatant, combatantEntity, targetX, targetY, 1);
+                ApplyMove(f, combatant, combatantEntity, targetX, targetY, 1 + extraCostVapeur);
                 return;
             }
 
@@ -114,7 +123,14 @@ namespace Quantum
                 return;
             }
 
-            ApplyMove(f, combatant, combatantEntity, targetX, targetY, pathLength);
+            int totalCost = pathLength + extraCostVapeur;
+            if (totalCost > combatant->PM)
+            {
+                Log.Warn($"[Movement] rejet : path cost {pathLength} (+{extraCostVapeur} Vapeur Carmin) > PM {combatant->PM}");
+                return;
+            }
+
+            ApplyMove(f, combatant, combatantEntity, targetX, targetY, totalCost);
         }
 
         private static void ApplyMove(Frame f, Combatant* combatant, EntityRef entity, int targetX, int targetY, int cost)

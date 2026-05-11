@@ -42,6 +42,7 @@ namespace Quantum
                 Resource = 0,
                 LastResourceGainOnHitTurn = -1,
                 OncePerMatchUsedFlags = 0,
+                BonusPANextTurn = 0,
             };
 
             var entity = f.Create();

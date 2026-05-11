@@ -76,7 +76,13 @@ namespace Quantum
             {
                 if (combatant->PlayerIndex == activePlayer)
                 {
-                    combatant->PA = combatant->MaxPA;
+                    // 2.10.c : BonusPANextTurn (Curee kill) ajoute au reset PA, puis consume.
+                    combatant->PA = combatant->MaxPA + combatant->BonusPANextTurn;
+                    if (combatant->BonusPANextTurn > 0)
+                    {
+                        Log.Info($"[TurnSystem] BonusPANextTurn +{combatant->BonusPANextTurn} PA sur P{combatant->PlayerIndex} (Curee kill chain)");
+                        combatant->BonusPANextTurn = 0;
+                    }
                     combatant->PM = combatant->MaxPM;
 
                     // 2.10.a : MovementMalus (Rugissement -1/-2, Riposte Carmin -1)
@@ -88,6 +94,16 @@ namespace Quantum
                         combatant->PM -= pmMalus;
                         if (combatant->PM < 0) combatant->PM = 0;
                         Log.Info($"[TurnSystem] MovementMalus -{pmMalus} PM applique sur P{combatant->PlayerIndex} (PM={combatant->PM}/{combatant->MaxPM})");
+                    }
+
+                    // 2.10.c : Sang Coagule tick. Si le combatant actif est sur une case
+                    // SangCoagule au demarrage de son tour, il subit 30 dgts (Bible V7.1).
+                    if (GridHelpers.GetTerrainKind(f, combatant->GridX, combatant->GridY) == TerrainKind.SangCoagule)
+                    {
+                        int hpBefore = combatant->HP;
+                        combatant->HP -= 30;
+                        if (combatant->HP < 0) combatant->HP = 0;
+                        Log.Info($"[TurnSystem] Sang Coagule tick : -30 HP sur P{combatant->PlayerIndex} ({combatant->GridX},{combatant->GridY}) HP {hpBefore} -> {combatant->HP}");
                     }
                 }
             }
@@ -112,6 +128,9 @@ namespace Quantum
             // "skip si AppliedOnTurn == currentTurn" assure une semantic intuitive
             // pour les durees Bible V7.1 (cf StatusHelper.DecrementAllOnTurnEnd).
             StatusHelper.DecrementAllOnTurnEnd(f, state->TurnNumber);
+
+            // 2.10.c : meme regle pour les terrains (Vapeur Carmin 1 tour, Sang Coagule 2 tours).
+            GridHelpers.DecrementAllTerrainsOnTurnEnd(f, state->TurnNumber);
 
             // Alternance stricte des 2 joueurs (1v1 en Phase 2). Pour 2v2/3v3 (Phase 6),
             // la rotation devra suivre l'ordre d'initiative et non un simple modulo.
