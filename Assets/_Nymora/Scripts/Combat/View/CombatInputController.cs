@@ -100,20 +100,32 @@ namespace Nymora.Combat.View
             bool mouseDown = UnityEngine.Input.GetMouseButtonDown(0);
             bool spaceDown = UnityEngine.Input.GetKeyDown(KeyCode.Space);
 
-            // 2.10.a : touches 1-5 pour les 5 sorts Soulrender de la brique.
+            // 2.10.a — touches 1-5 :
             //   1 = Ouvre-Plaie       (range 1, melee)  — Shift+1 = depense 1 HG (Glyphe)
             //   2 = Pacte de Sang     (self, 1/match)
             //   3 = Rugissement       (AoE rayon 3, self target)
             //   4 = Rage Insatiable   (self)
             //   5 = Riposte Carmin    (self)
+            // 2.10.b — touches 6-9, 0 :
+            //   6 = Marque de Carnage (range 5, enemy)
+            //   7 = Empoignade        (range 3, enemy, pull adjacent)
+            //   8 = Peau de Fer       (self, shield 200 HP / 2 tours)
+            //   9 = Seve Vive         (self, heal 100)  — Shift+9 = depense 1 HG (+60 heal)
+            //   0 = Dernier Souffle   (self, HP<30%, heal 200 + 3 HG, 1/match)
             bool key1 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha1);
             bool key2 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha2);
             bool key3 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha3);
             bool key4 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha4);
             bool key5 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha5);
+            bool key6 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha6);
+            bool key7 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha7);
+            bool key8 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha8);
+            bool key9 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha9);
+            bool key0 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha0);
             bool shiftHeld = UnityEngine.Input.GetKey(KeyCode.LeftShift) || UnityEngine.Input.GetKey(KeyCode.RightShift);
 
-            bool anySpellKey = key1 || key2 || key3 || key4 || key5;
+            bool anySpellKey = key1 || key2 || key3 || key4 || key5
+                            || key6 || key7 || key8 || key9 || key0;
             if (!mouseDown && !spaceDown && !anySpellKey) return;
 
             // Calcule la case sous la souris (partagee entre mvt et cast).
@@ -177,6 +189,39 @@ namespace Nymora.Combat.View
             {
                 if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
                     SendSpellAt(game, senderPlayer, SpellId.SoulrenderRiposteCarmin, cx, cy, 0);
+                return;
+            }
+
+            // 2.10.b — sorts 6-9, 0.
+            // 6 Marque de Carnage / 7 Empoignade : ciblent un ennemi (case sous la souris).
+            // 8 Peau de Fer / 9 Seve Vive / 0 Dernier Souffle : self-target.
+            if (key6)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.SoulrenderMarqueDeCarnage, gx, gy, 0);
+                return;
+            }
+            if (key7)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.SoulrenderEmpoignade, gx, gy, 0);
+                return;
+            }
+            if (key8)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.SoulrenderPeauDeFer, cx, cy, 0);
+                return;
+            }
+            if (key9)
+            {
+                byte hg = (byte)(shiftHeld ? 1 : 0);
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.SoulrenderSeveVive, cx, cy, hg);
+                return;
+            }
+            if (key0)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.SoulrenderDernierSouffle, cx, cy, 0);
                 return;
             }
 

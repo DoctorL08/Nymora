@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026 (Brique 2.10.a validée)  
+**Dernière mise à jour :** 11 mai 2026 (Brique 2.10.b validée)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.10.b — 5 sorts Soulrender (Shields + Heals + Marques)** (à démarrer)  
+**Brique en cours :** **2.10.c — Terrains + Mvt non-PM + Kill detection + 4 sorts** (à démarrer, dernière de 2.10)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 9/17 briques validées + 2.10 découpée en 3 sous-briques (2.10.a ✅ validée, 2.10.b en cours, 2.10.c à venir). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C 1/3 (2.9) + sous-brique 2.10.a livrée.
+**Statut Phase 2 :** 9/17 briques validées + 2.10 découpée en 3 sous-briques (2.10.a ✅, 2.10.b ✅, 2.10.c à venir). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C 1/3 (2.9) + 2.10.a + 2.10.b livrées (10 sorts Soulrender sur 15 implémentés).
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,29 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.10.b** — Shields + Heals + Marques + 5 sorts Soulrender (validée 11 mai 2026, sous-brique 2/3 du Bloc C)
+  - **Frameworks ajoutés au moteur** :
+    - **Shields** : nouveau `StatusKind.ShieldActive` (8). Magnitude = HP courant du shield, TurnsLeft = durée. Absorption avant HP dans le damage loop (`dmgRemaining -= absorbed`). Si Magnitude tombe à 0 : `StatusHelper.Consume`. Si pas brisé mid-cast : `SetMagnitude` pour update. Pattern simple sans refactor Combatant.qtn.
+    - **Heals** : effet flat dans `ApplySpellSpecificEffects`. Compute amount avec variants (HG bonus optionnel, bonus DoT conditionnel via `BleedDoT` stub). Check `AntiHealShield` sur cible (log "BLOQUE" + skip si actif). Clamp à `MaxHP`. Réutilisé par Sève Vive (caster=self) et Dernier Souffle (caster=self).
+    - **Marques** : `StatusKind.MarkedByCarnage` activé. Tracker `castHitMarkedTarget` dans damage loop. Après le HG normal Soulrender, +1 HG bonus si caster a touché au moins 1 cible marquée (max 1 par cast). Conditionné à `dmgRemaining > 0` (le shield total absorption ne déclenche pas).
+    - **Pull mechanic** : helper privé `PullTargetAdjacent(caster, target)` qui calcule la case adjacente au caster sur la ligne caster→target (axe dominant). Fallback sur 4 cases cardinales si la case "naturelle" est occupée/non-walkable. Skip si target déjà adjacent.
+    - **Bonus melee Peau de Fer** : check `RangeMax==1 && ShieldActive.Magnitude>0` au calcul effective damage → +30 dgts. Combinable avec Pacte +50% et Ouvre-Plaie HG.
+    - **Conditionnel HP%** : check `caster->HP * 100 >= caster->MaxHP * threshold` AVANT consommation PA. Pas de SpellDef extension (un seul sort en bénéficie pour 2.10.b, on reste pragmatique).
+  - **Nouveau StatusKind réservé** : `BleedDoT` (9) — stub pour Phase 3 Necram. Aucun sort 2.10.b ne l'applique mais Sève Vive vérifie sa présence pour le bonus +50 HP.
+  - **5 sorts livrés Bible V7.1 strict (touches 6-9, 0)** :
+    - **Marque de Carnage** (id 16, touche `6`) : 2 PA, range 5, applique `MarkedByCarnage` 3 tours. +1 HG bonus sur cast Soulrender qui touche.
+    - **Empoignade** (id 17, touche `7`) : 3 PA, range 3, pull cible adjacent (helper `PullTargetAdjacent`) + `AntiTeleport` 1 tour. Pas de dgts.
+    - **Peau de Fer** (id 22, touche `8`) : 3 PA, self. `ShieldActive` 200 HP / 2 tours. +30 dgts melee pendant durée (tant que Magnitude > 0).
+    - **Sève Vive** (id 23, touche `9`, Shift+9 = +HG) : 2 PA, self. Heal 100 (+60 si 1 HG, +50 si BleedDoT). Check AntiHealShield.
+    - **Dernier Souffle** (id 24, touche `0`) : 4 PA, self. Conditionnel HP < 30% MaxHP. Heal 200 + 3 HG. 1/match. Check AntiHealShield (heal seul bloqué, HG toujours appliqué).
+  - **Constants centralisées** dans SpellRegistry : `PeauDeFerShieldHP/Turns`, `PeauDeFerMeleeDmgBonus`, `MarqueDeCarnageTurns`, `SeveViveHealBase/BonusHG/BonusBleed`, `DernierSouffleHealAmount/HGGain/HPThresholdPct`. Tous Bible V7.1 strict.
+  - **View** : CombatInputController bind touches 6-9, 0. Helper `TryGetCasterCell` réutilisé pour sorts self-target.
+  - **Validation E2E (7/7 tests critiques)** : Marque bonus HG (+1+1 = 2 HG) ✓, Peau de Fer status posé ✓, Bonus melee +30 (Damage 250 sur Tranche-Âme) ✓, Shield absorption (200 absorbé + 20 HP loss) ✓, Pull Empoignade ((9,8)→(7,8)) ✓, Sève Vive heal base (100 HP) ✓, Dernier Souffle rejet HP>30% ✓.
+  - **Bug C# rencontré et fixé** : `hpBefore`, `maxRes`, `resBefore` shadow le case `Pacte de Sang` (qui n'a pas de braces). Renommé en `hpBeforeHeal`, `maxResDS`, `resBeforeDS` dans les cases Sève Vive et Dernier Souffle.
+  - **Observation** : la règle "casterHitSomething = HP loss only" (introduite ici) couvre proprement le cas où le shield absorbe tout — pas de gain HG ni Marque bonus si pas de dgts au HP. Cohérent avec Bible "inflige des dégâts".
 
 ---
 
@@ -605,8 +628,8 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 **Bloc C — Soulrender (3 briques, 2.10 découpée en a/b/c)**
 - 2.9 — Ressource Hémoglyphe (cap 5) ✅ VALIDÉE 11 mai 2026
 - 2.10.a — Framework Statuses + 5 sorts (Ouvre-Plaie, Pacte de Sang, Rugissement, Rage Insatiable, Riposte Carmin) ✅ VALIDÉE 11 mai 2026
-- 2.10.b — Shields + Heals + Marques + 5 sorts (Peau de Fer, Sève Vive, Dernier Souffle, Marque de Carnage, Empoignade) ⏳ EN COURS
-- 2.10.c — Terrains (Vapeur Carmin, Sang Coagulé) + Mvt non-PM + Kill detection + 4 sorts (Charge Brutale, Détonation Sanglante, Curée, Cautérisation) + effet bonus Tranche-Âme
+- 2.10.b — Shields + Heals + Marques + 5 sorts (Peau de Fer, Sève Vive, Dernier Souffle, Marque de Carnage, Empoignade) ✅ VALIDÉE 11 mai 2026
+- 2.10.c — Terrains (Vapeur Carmin, Sang Coagulé) + Mvt non-PM + Kill detection + 4 sorts (Charge Brutale, Détonation Sanglante, Curée, Cautérisation) + effet bonus Tranche-Âme ⏳ PROCHAINE
 - 2.11 — Signature Âme Lacérée + Passif Appel du Sang
 
 **Bloc D — Nightseer (3 briques)**
@@ -619,7 +642,7 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.16 — IA Medium (heuristique multi-tour)
 - 2.17 — Scène `30_CombatIA` + test E2E combat 1v1 jouable 🎯
 
-**Prochaine étape :** Démarrer 2.10.b — Shields (Peau de Fer 200 HP), Heals (Sève Vive, Dernier Souffle), Marques (Marque de Carnage donne +1 HG bonus sur cast Soulrender), Pull (Empoignade). 5 sorts à livrer. Le framework Statuses de 2.10.a est réutilisé tel quel. Architecture clarifiée : Shields = champs `ShieldHP`/`ShieldTurnsLeft` sur Combatant (pas un Status, plus simple et lisible). Heals = nouvelle branche dans SpellSystem (effet Heal) avec check AntiHealShield. Marques = `StatusKind.MarkedByCarnage` déjà déclaré.
+**Prochaine étape :** Démarrer 2.10.c — Terrains (`Tile.TerrainType` + tick TurnStart pour effets passants/dégâts début tour : Vapeur Carmin -1 PM en traversée, Sang Coagulé 30 dgts en début de tour), Mouvement non-PM (helper qui ignore le compteur PM mais respecte walkable/occupant — pour Charge Brutale + recul Tranche-Âme), Kill detection post-damage (signal pour Curée chain + Sang Coagulé Détonation + recul Tranche-Âme). 4 sorts à livrer : Charge Brutale (ligne range 5 + Vapeur Carmin), Détonation Sanglante (AoE croix 3 + Sang Coagulé + interlock signature 2.11), Curée (kill detection chain + heal proportionnel + gain PA next turn + self-damage miss), Cautérisation (stub retire DoT — pas de DoT actuel mais structure prête pour Necram). Plus l'effet bonus Tranche-Âme (recul 2 cases si kill, clôt le TODO 2.11 noté en 2.8).
 
 ---
 
@@ -713,6 +736,16 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 2.10.b (Shields + Heals + Marques + 5 sorts)
+- Suite directe de 2.10.a dans la même session. Lorenzo a enchaîné après validation E2E de 2.10.a.
+- **Réutilisation maximale du framework Statuses** : Shield et Mark sont implémentés comme StatusKind (`ShieldActive`, `MarkedByCarnage`). Pas de nouveaux champs sur Combatant. Décision pragmatique : la Magnitude variable du Status `ShieldActive` (HP courant qui baisse à chaque hit) marche très bien et reste lisible. Pas d'over-engineering avec un composant dédié.
+- **Damage loop refactoré** pour gérer shield absorption en premier. La règle "casterHitSomething = HP loss only" (introduite ici) couvre proprement les cas où le shield absorbe tout : pas de gain HG ni Marque bonus si pas de dgts au HP. Cohérent avec Bible "inflige des dégâts".
+- **Bug C# rencontré** : `hpBefore`, `maxRes`, `resBefore` dans les nouveaux cases Sève Vive/Dernier Souffle shadow les locals du case `Pacte de Sang` (qui n'a pas de braces, donc dans le scope de la méthode). Renommé en `hpBeforeHeal`, `maxResDS`, `resBeforeDS`. À noter pour futurs sorts : préférer wrapper les cases en `{}` pour scoper proprement.
+- **5/7 tests passés au 1er run, 7/7 après ajustement**. Le test Empoignade a raté la 1ère fois car Lorenzo a bougé P0 en (4,8) au lieu de (5,8) → distance 4 > range 3 → rejet. Au run suivant, P0(6,8) cast Empoignade sur P1(9,8) (distance 3) → pull à (7,8), cohérent avec l'algorithme axe-dominant.
+- **Bonus melee Peau de Fer +30** validé : Tranche-Âme (220) + Pacte (+50%) **non testé combiné**, mais Tranche-Âme + Peau de Fer = 250 dgts observé. La stack `Pacte→Peau de Fer→Tranche-Âme` est théoriquement faisable : 220 × 1.5 + 30 = 360 dgts (un Soulrender peut donc envoyer 360 dgts mêlée Tranche-Âme avec setup).
+- **Note Bible-strict** : seul un Soulrender devrait pouvoir cast les sorts Soulrender. En 2.10.b on n'a pas de check class — P1 Nightseer peut cast Sève Vive dans les tests (visible dans le log "P1 cast SoulrenderSeveVive"). C'est OK pour 2.10 (mode debug) mais à corriger en Phase 6 quand on aura un vrai matchmaking avec sélection de classe.
+- **Brique 2.10.b complète**. 10 sorts Soulrender sur 15 implémentés. Reste 4 sorts + bonus Tranche-Âme en 2.10.c, puis signature Âme Lacérée + passif L'Appel du Sang en 2.11. Ensuite Bloc D (Nightseer).
 
 ### 11 mai 2026 — Brique 2.10.a (Framework Statuses + 5 sorts Soulrender) — grosse session
 - **Pivot architectural** : la brique 2.10 (14 sorts restants Bible V7.1) est découpée en 3 sous-briques pour rester gérable dans le workflow "1 brique = validation E2E" :

@@ -48,7 +48,19 @@ namespace Quantum
         public const byte OncePerMatchBitNone = 255;
 
         public const byte OncePerMatchBitPacteDeSang   = 0;
-        public const byte OncePerMatchBitDernierSouffle = 1; // 2.10.b
+        public const byte OncePerMatchBitDernierSouffle = 1;
+
+        // Constantes Bible V7.1 partagees par plusieurs sorts / systemes.
+        public const int PeauDeFerShieldHP            = 200;
+        public const int PeauDeFerShieldTurns         = 2;
+        public const int PeauDeFerMeleeDmgBonus       = 30;
+        public const int MarqueDeCarnageTurns         = 3;
+        public const int SeveViveHealBase             = 100;
+        public const int SeveViveHealBonusHG          = 60;  // +60 si 1 HG depense -> 160
+        public const int SeveViveHealBonusBleed       = 50;  // +50 si BleedDoT actif
+        public const int DernierSouffleHealAmount     = 200;
+        public const int DernierSouffleHGGain         = 3;
+        public const int DernierSouffleHPThresholdPct = 30;  // utilisable uniquement a < 30% HP
 
         public static bool TryGet(SpellId id, out SpellDef def)
         {
@@ -172,6 +184,101 @@ namespace Quantum
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // -------------------------------------------------------------
+                // SOULRENDER 2.10.b
+                // -------------------------------------------------------------
+
+                // Marque de Carnage (2.10.b) : 2 PA, range 5, marque cible 3 tours.
+                // Effet : tous les casts Soulrender sur cible marquee genere +1 HG bonus
+                // (en plus du +1 normal Soulrender qui inflige). Gere dans damage loop.
+                case SpellId.SoulrenderMarqueDeCarnage:
+                    def = new SpellDef
+                    {
+                        PACost = 2,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 5,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Empoignade (2.10.b) : 3 PA, range 3, pull cible adjacent + AntiTeleport 1 tour.
+                // Pas de dgts. Si pas de case adjacente libre : no-op silencieux (rare).
+                case SpellId.SoulrenderEmpoignade:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 3,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Peau de Fer (2.10.b) : 3 PA, self, applique ShieldActive 200 HP / 2 tours.
+                // Pendant la duree, sorts melee du caster gagnent +30 dgts (cf damage loop).
+                case SpellId.SoulrenderPeauDeFer:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Seve Vive (2.10.b) : 2 PA, self, heal 100 (+60 si 1 HG, +50 si DoT actif).
+                // HGCostMaxOptional = 1 : player choisit 0 ou 1 HG depense.
+                case SpellId.SoulrenderSeveVive:
+                    def = new SpellDef
+                    {
+                        PACost = 2,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 1,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Dernier Souffle (2.10.b) : 4 PA, self, HP < 30% obligatoire.
+                // Heal 200 HP + 3 HG. 1 fois par match. Check HP% dans SpellSystem amont.
+                case SpellId.SoulrenderDernierSouffle:
+                    def = new SpellDef
+                    {
+                        PACost = 4,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitDernierSouffle,
                         IsOffensive = 0,
                     };
                     return true;

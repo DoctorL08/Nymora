@@ -24,7 +24,13 @@ enum StatusKind : Byte
     RageInsatiableActive         = 6,  // Magnitude = LastTurnPAGained tracker (init -1)
 
     // Soulrender (2.10.b)
-    MarkedByCarnage              = 7,  // cible marquee, +1 HG bonus sur cast Soulrender
+    MarkedByCarnage              = 7,  // cible marquee, +1 HG bonus sur cast Soulrender (3 tours)
+    ShieldActive                 = 8,  // Magnitude = HP courant du shield (Peau de Fer = 200, 2 tours)
+                                       //   Absorption avant HP dans damage loop. Si Magnitude tombe a 0 -> Consume.
+                                       //   Pendant que actif : +30 dgts sorts melee du porteur.
+    BleedDoT                     = 9,  // stub 2.10.b : DoT generique sur soi (Necram poison Phase 3, etc).
+                                       //   Sert au bonus Seve Vive "saigne actuellement" (+50 HP).
+                                       //   Aucun sort ne l'applique en 2.10.b (reserve pour Phase 3 Necram).
 }
 
 struct Status

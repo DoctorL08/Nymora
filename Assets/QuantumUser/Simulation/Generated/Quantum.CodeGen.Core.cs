@@ -79,9 +79,14 @@ namespace Quantum {
     SoulrenderTrancheAme = 10,
     SoulrenderOuvrePlaie = 11,
     SoulrenderPacteDeSang = 15,
+    SoulrenderMarqueDeCarnage = 16,
+    SoulrenderEmpoignade = 17,
     SoulrenderRugissement = 18,
     SoulrenderRageInsatiable = 19,
     SoulrenderRiposteCarmin = 20,
+    SoulrenderPeauDeFer = 22,
+    SoulrenderSeveVive = 23,
+    SoulrenderDernierSouffle = 24,
   }
   public enum StatusKind : byte {
     None = 0,
@@ -92,6 +97,8 @@ namespace Quantum {
     MovementMalus = 5,
     RageInsatiableActive = 6,
     MarkedByCarnage = 7,
+    ShieldActive = 8,
+    BleedDoT = 9,
   }
   public enum TargetingFilter : byte {
     None = 0,

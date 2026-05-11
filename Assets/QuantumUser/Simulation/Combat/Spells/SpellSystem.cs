@@ -85,6 +85,17 @@ namespace Quantum
                 }
             }
 
+            // Dernier Souffle (2.10.b) : conditionnel HP < 30% MaxHP (Bible V7.1).
+            // Check avant consommation PA pour eviter de "perdre" le cast.
+            if (cmd.Spell == SpellId.SoulrenderDernierSouffle)
+            {
+                if (caster->HP * 100 >= caster->MaxHP * SpellRegistry.DernierSouffleHPThresholdPct)
+                {
+                    Log.Warn($"[Spell] rejet : Dernier Souffle requiert HP < {SpellRegistry.DernierSouffleHPThresholdPct}% (actuel {caster->HP}/{caster->MaxHP})");
+                    return;
+                }
+            }
+
             // HG validation (mandatory + optional clamped).
             int hgSpend = cmd.HGSpend;
             if (hgSpend > spellDef.HGCostMaxOptional) hgSpend = spellDef.HGCostMaxOptional;
@@ -146,6 +157,15 @@ namespace Quantum
             {
                 effectiveDmg += effectiveDmg * pacteBuffPct / 100;
             }
+            // Peau de Fer (2.10.b) : pendant la duree du shield, sorts melee du caster
+            // gagnent +30 dgts (Bible V7.1). spellDef.RangeMax == 1 = sort melee.
+            // Le bonus s'applique uniquement si le shield a encore des HP (Magnitude > 0).
+            if (effectiveDmg > 0
+                && spellDef.RangeMax == 1
+                && StatusHelper.GetMagnitude(caster, StatusKind.ShieldActive, 0) > 0)
+            {
+                effectiveDmg += SpellRegistry.PeauDeFerMeleeDmgBonus;
+            }
 
             // ===== Resolution AoE =====
             // Cas special Rugissement : rayon 3 Manhattan autour du caster (TargetingResolver
@@ -167,8 +187,9 @@ namespace Quantum
                     out effectCount);
             }
 
-            // ===== Damage loop + Riposte trigger + gain HG =====
-            bool casterHitSomething = false;
+            // ===== Damage loop + Shield absorption + Riposte trigger + gain HG =====
+            bool casterHitSomething = false;       // au moins 1 cible a perdu des HP (apres shield)
+            bool castHitMarkedTarget = false;      // au moins 1 cible MarkedByCarnage a perdu des HP
             bool isMelee = spellDef.RangeMax == 1; // pour trigger Riposte (Bible : attaque MELEE)
 
             if (effectiveDmg > 0)
@@ -183,37 +204,68 @@ namespace Quantum
                     if (!f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC)) continue;
                     if (target == casterEntity) continue; // pas d'auto-damage offensif
 
-                    int before = targetC->HP;
-                    targetC->HP -= effectiveDmg;
-                    if (targetC->HP < 0) targetC->HP = 0;
-                    casterHitSomething = true;
-                    Log.Info($"[Spell] Damage {effectiveDmg} sur P{targetC->PlayerIndex} ({cx},{cy}) HP {before} -> {targetC->HP}");
-
-                    // Trigger Riposte Carmin si cible porte RipostMelee et sort = melee.
-                    if (isMelee && StatusHelper.Has(targetC, StatusKind.RipostMelee))
+                    // Shield absorption (2.10.b) : ShieldActive absorbe avant HP.
+                    // L'excedent passe au HP. Si Magnitude tombe a 0 : Consume status.
+                    int dmgRemaining = effectiveDmg;
+                    int shieldBefore = StatusHelper.GetMagnitude(targetC, StatusKind.ShieldActive, 0);
+                    if (shieldBefore > 0)
                     {
-                        int reflectDmg = StatusHelper.GetMagnitude(targetC, StatusKind.RipostMelee, 100);
-                        int casterBefore = caster->HP;
-                        caster->HP -= reflectDmg;
-                        if (caster->HP < 0) caster->HP = 0;
-                        Log.Info($"[Spell] Riposte Carmin : P{caster->PlayerIndex} prend {reflectDmg} dgts (HP {casterBefore} -> {caster->HP})");
-
-                        // L'attaquant prend MovementMalus 1 (1 tour) sur son prochain mouvement.
-                        StatusHelper.Apply(caster, StatusKind.MovementMalus, magnitude: 1, turnsLeft: 1, currentTurn);
+                        int absorbed = dmgRemaining > shieldBefore ? shieldBefore : dmgRemaining;
+                        int shieldAfter = shieldBefore - absorbed;
+                        if (shieldAfter == 0)
+                        {
+                            StatusHelper.Consume(targetC, StatusKind.ShieldActive);
+                            Log.Info($"[Spell] Shield brise sur P{targetC->PlayerIndex} ({cx},{cy}) (absorbe {absorbed})");
+                        }
+                        else
+                        {
+                            StatusHelper.SetMagnitude(targetC, StatusKind.ShieldActive, shieldAfter);
+                            Log.Info($"[Spell] Shield absorbe {absorbed} sur P{targetC->PlayerIndex} ({cx},{cy}) (shield {shieldBefore} -> {shieldAfter})");
+                        }
+                        dmgRemaining -= absorbed;
                     }
 
-                    // Gain HG cote CIBLE (Bible V7.1) : Soulrender qui subit, max 1 par tour adverse.
-                    if (targetC->Class == NymoraClass.Soulrender)
+                    if (dmgRemaining > 0)
                     {
-                        if (targetC->LastResourceGainOnHitTurn != currentTurn)
+                        int before = targetC->HP;
+                        targetC->HP -= dmgRemaining;
+                        if (targetC->HP < 0) targetC->HP = 0;
+                        casterHitSomething = true;
+                        Log.Info($"[Spell] Damage {effectiveDmg} (HP loss {dmgRemaining}) sur P{targetC->PlayerIndex} ({cx},{cy}) HP {before} -> {targetC->HP}");
+
+                        // Marque de Carnage tracker (bonus HG cote caster, applique 1x apres la boucle).
+                        if (StatusHelper.Has(targetC, StatusKind.MarkedByCarnage))
                         {
-                            int maxResource = CombatantStats.GetMaxResource(targetC->Class);
-                            int beforeRes = targetC->Resource;
-                            targetC->Resource = (beforeRes + 1 > maxResource) ? maxResource : beforeRes + 1;
-                            targetC->LastResourceGainOnHitTurn = currentTurn;
-                            if (targetC->Resource != beforeRes)
+                            castHitMarkedTarget = true;
+                        }
+
+                        // Trigger Riposte Carmin si cible porte RipostMelee et sort = melee.
+                        if (isMelee && StatusHelper.Has(targetC, StatusKind.RipostMelee))
+                        {
+                            int reflectDmg = StatusHelper.GetMagnitude(targetC, StatusKind.RipostMelee, 100);
+                            int casterBefore = caster->HP;
+                            caster->HP -= reflectDmg;
+                            if (caster->HP < 0) caster->HP = 0;
+                            Log.Info($"[Spell] Riposte Carmin : P{caster->PlayerIndex} prend {reflectDmg} dgts (HP {casterBefore} -> {caster->HP})");
+
+                            // L'attaquant prend MovementMalus 1 (1 tour) sur son prochain mouvement.
+                            StatusHelper.Apply(caster, StatusKind.MovementMalus, magnitude: 1, turnsLeft: 1, currentTurn);
+                        }
+
+                        // Gain HG cote CIBLE (Bible V7.1) : Soulrender qui subit, max 1 par tour adverse.
+                        // Conditionne a dgts effectifs au HP (shield total absorption = pas de gain).
+                        if (targetC->Class == NymoraClass.Soulrender)
+                        {
+                            if (targetC->LastResourceGainOnHitTurn != currentTurn)
                             {
-                                Log.Info($"[Spell] HG +1 sur P{targetC->PlayerIndex} (subi dgts, tour {currentTurn}) : {beforeRes} -> {targetC->Resource}");
+                                int maxResource = CombatantStats.GetMaxResource(targetC->Class);
+                                int beforeRes = targetC->Resource;
+                                targetC->Resource = (beforeRes + 1 > maxResource) ? maxResource : beforeRes + 1;
+                                targetC->LastResourceGainOnHitTurn = currentTurn;
+                                if (targetC->Resource != beforeRes)
+                                {
+                                    Log.Info($"[Spell] HG +1 sur P{targetC->PlayerIndex} (subi dgts, tour {currentTurn}) : {beforeRes} -> {targetC->Resource}");
+                                }
                             }
                         }
                     }
@@ -229,6 +281,18 @@ namespace Quantum
                 if (caster->Resource != beforeRes)
                 {
                     Log.Info($"[Spell] HG +1 sur P{caster->PlayerIndex} (inflige dgts) : {beforeRes} -> {caster->Resource}");
+                }
+
+                // Marque de Carnage (2.10.b) : +1 HG bonus si on a touche au moins 1 cible marquee.
+                // Max 1 bonus par cast peu importe le nb de cibles marquees touchees.
+                if (castHitMarkedTarget)
+                {
+                    int beforeBonus = caster->Resource;
+                    caster->Resource = (beforeBonus + 1 > maxResource) ? maxResource : beforeBonus + 1;
+                    if (caster->Resource != beforeBonus)
+                    {
+                        Log.Info($"[Spell] HG +1 bonus (Marque de Carnage) sur P{caster->PlayerIndex} : {beforeBonus} -> {caster->Resource}");
+                    }
                 }
             }
 
@@ -339,6 +403,103 @@ namespace Quantum
                     StatusHelper.Apply(caster, StatusKind.RipostMelee, magnitude: 100, turnsLeft: 1, currentTurn);
                     Log.Info($"[Spell] Riposte Carmin : RipostMelee 100 dgts (1 tour) sur P{caster->PlayerIndex}");
                     break;
+
+                // -------------------------------------------------------------
+                // 2.10.b
+                // -------------------------------------------------------------
+
+                case SpellId.SoulrenderMarqueDeCarnage:
+                {
+                    EntityRef target = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (target != EntityRef.None
+                        && f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC))
+                    {
+                        StatusHelper.Apply(targetC, StatusKind.MarkedByCarnage, magnitude: 0,
+                            turnsLeft: SpellRegistry.MarqueDeCarnageTurns, currentTurn);
+                        Log.Info($"[Spell] Marque de Carnage : P{targetC->PlayerIndex} marque pour {SpellRegistry.MarqueDeCarnageTurns} tours");
+                    }
+                    break;
+                }
+
+                case SpellId.SoulrenderEmpoignade:
+                {
+                    EntityRef target = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (target != EntityRef.None
+                        && f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC))
+                    {
+                        int beforeX = targetC->GridX;
+                        int beforeY = targetC->GridY;
+                        bool pulled = PullTargetAdjacent(f, caster, target, targetC);
+                        if (pulled)
+                        {
+                            Log.Info($"[Spell] Empoignade : P{targetC->PlayerIndex} tire ({beforeX},{beforeY}) -> ({targetC->GridX},{targetC->GridY})");
+                        }
+                        else
+                        {
+                            Log.Info($"[Spell] Empoignade : P{targetC->PlayerIndex} deja adjacent ou pas de case libre (no-op move)");
+                        }
+                        // AntiTeleport applique meme si pas de pull (cible ne peut pas tp au prochain tour).
+                        StatusHelper.Apply(targetC, StatusKind.AntiTeleport, magnitude: 0, turnsLeft: 1, currentTurn);
+                    }
+                    break;
+                }
+
+                case SpellId.SoulrenderPeauDeFer:
+                    // ShieldActive 2 tours, magnitude = 200 HP de shield.
+                    // Le bonus +30 dgts melee est calcule au runtime dans effective damage (lit Magnitude).
+                    StatusHelper.Apply(caster, StatusKind.ShieldActive,
+                        magnitude: SpellRegistry.PeauDeFerShieldHP,
+                        turnsLeft: SpellRegistry.PeauDeFerShieldTurns,
+                        currentTurn);
+                    Log.Info($"[Spell] Peau de Fer : ShieldActive {SpellRegistry.PeauDeFerShieldHP} HP / {SpellRegistry.PeauDeFerShieldTurns} tours sur P{caster->PlayerIndex}");
+                    break;
+
+                case SpellId.SoulrenderSeveVive:
+                {
+                    int healAmount = SpellRegistry.SeveViveHealBase;
+                    int hgBonus = (hgSpend >= 1) ? SpellRegistry.SeveViveHealBonusHG : 0;
+                    healAmount += hgBonus;
+                    bool isBleeding = StatusHelper.Has(caster, StatusKind.BleedDoT);
+                    int bleedBonus = isBleeding ? SpellRegistry.SeveViveHealBonusBleed : 0;
+                    healAmount += bleedBonus;
+
+                    if (StatusHelper.Has(caster, StatusKind.AntiHealShield))
+                    {
+                        Log.Info($"[Spell] Seve Vive : heal {healAmount} BLOQUE par AntiHealShield sur P{caster->PlayerIndex}");
+                    }
+                    else
+                    {
+                        int hpBeforeHeal = caster->HP;
+                        caster->HP += healAmount;
+                        if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
+                        int healed = caster->HP - hpBeforeHeal;
+                        Log.Info($"[Spell] Seve Vive : heal {healed} (base {SpellRegistry.SeveViveHealBase} + HG {hgBonus} + Bleed {bleedBonus}) HP {hpBeforeHeal} -> {caster->HP}");
+                    }
+                    break;
+                }
+
+                case SpellId.SoulrenderDernierSouffle:
+                {
+                    // Heal 200 HP (bloque si AntiHealShield) + 3 HG (toujours applique).
+                    if (StatusHelper.Has(caster, StatusKind.AntiHealShield))
+                    {
+                        Log.Info($"[Spell] Dernier Souffle : heal {SpellRegistry.DernierSouffleHealAmount} BLOQUE par AntiHealShield sur P{caster->PlayerIndex}");
+                    }
+                    else
+                    {
+                        int hpBeforeHeal = caster->HP;
+                        caster->HP += SpellRegistry.DernierSouffleHealAmount;
+                        if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
+                        Log.Info($"[Spell] Dernier Souffle : heal {SpellRegistry.DernierSouffleHealAmount} sur P{caster->PlayerIndex} (HP {hpBeforeHeal} -> {caster->HP})");
+                    }
+
+                    int maxResDS = CombatantStats.GetMaxResource(caster->Class);
+                    int resBeforeDS = caster->Resource;
+                    caster->Resource += SpellRegistry.DernierSouffleHGGain;
+                    if (caster->Resource > maxResDS) caster->Resource = maxResDS;
+                    Log.Info($"[Spell] Dernier Souffle : +{SpellRegistry.DernierSouffleHGGain} HG (clamped, {resBeforeDS} -> {caster->Resource})");
+                    break;
+                }
             }
         }
 
@@ -361,6 +522,83 @@ namespace Quantum
                     outBuffer[count++] = GridHelpers.Index(x, y);
                 }
             }
+        }
+
+        /// <summary>
+        /// Empoignade (2.10.b) : pull target sur la case adjacente au caster sur la ligne
+        /// caster -> target. Si target est deja adjacent : no-op (return false). Si la case
+        /// "naturelle" est occupee/non-walkable : fallback sur les 4 cases cardinales du caster.
+        /// Retourne true si le pull a deplace la cible, false sinon.
+        /// </summary>
+        private static bool PullTargetAdjacent(Frame f, Combatant* caster, EntityRef targetEntity, Combatant* targetC)
+        {
+            int px = caster->GridX;
+            int py = caster->GridY;
+            int tx = targetC->GridX;
+            int ty = targetC->GridY;
+
+            int dx = tx - px;
+            int dy = ty - py;
+            int absDx = dx < 0 ? -dx : dx;
+            int absDy = dy < 0 ? -dy : dy;
+
+            // Deja adjacent (distance Manhattan == 1) : no-op.
+            if (absDx + absDy == 1) return false;
+
+            // Calcule la case sur la ligne caster -> target la plus proche du caster (axe dominant).
+            int newX, newY;
+            if (absDx >= absDy)
+            {
+                newX = px + (dx > 0 ? 1 : -1);
+                newY = py;
+            }
+            else
+            {
+                newX = px;
+                newY = py + (dy > 0 ? 1 : -1);
+            }
+
+            // Si case "naturelle" pas dispo (hors grille / non walkable / occupee) : fallback
+            // sur les 4 cases cardinales du caster.
+            if (!IsCellFreeForPull(f, newX, newY))
+            {
+                bool found = false;
+                for (int dir = 0; dir < 4; dir++)
+                {
+                    int trialX = px;
+                    int trialY = py;
+                    switch (dir)
+                    {
+                        case 0: trialX = px + 1; break;
+                        case 1: trialX = px - 1; break;
+                        case 2: trialY = py + 1; break;
+                        case 3: trialY = py - 1; break;
+                    }
+                    if (IsCellFreeForPull(f, trialX, trialY))
+                    {
+                        newX = trialX;
+                        newY = trialY;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) return false;
+            }
+
+            // Apply move.
+            GridHelpers.SetOccupant(f, tx, ty, EntityRef.None);
+            targetC->GridX = newX;
+            targetC->GridY = newY;
+            GridHelpers.SetOccupant(f, newX, newY, targetEntity);
+            return true;
+        }
+
+        private static bool IsCellFreeForPull(Frame f, int x, int y)
+        {
+            if (!GridHelpers.InBounds(x, y)) return false;
+            if (!GridHelpers.IsWalkable(f, x, y)) return false;
+            if (GridHelpers.GetOccupant(f, x, y) != EntityRef.None) return false;
+            return true;
         }
     }
 }
