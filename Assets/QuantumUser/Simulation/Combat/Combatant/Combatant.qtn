@@ -38,4 +38,15 @@ component Combatant
     // Position discrete sur la grille de combat.
     Int32 GridX;
     Int32 GridY;
+
+    // Ressource de classe (Bible V7.1 — chaque classe en a une asymetrique) :
+    //   - Soulrender : Hemoglyph (cap 5)
+    //   - Nightseer  : Prescience (cap 4) — Phase 2.13
+    //   - Colossar   : Fondation (cap 3) — Phase 3
+    //   - Necram     : Putrefaction (cap 6) — Phase 3
+    //   - Ghostra    : Remanence (3 leurres max) — Phase 3
+    // En 2.9 seul Hemoglyph est implemente. Le champ Resource est generique
+    // pour pouvoir accueillir toutes les classes sans refactor majeur.
+    Int32 Resource;
+    Int32 LastResourceGainOnHitTurn;
 }

@@ -106,6 +106,10 @@ namespace Quantum
                 out int effectCount);
 
             // Applique le damage a chaque cible dans la zone (uniquement les Combatants pour 2.7).
+            // Track si au moins 1 cible a effectivement pris des degats (gain HG cote caster).
+            bool casterHitSomething = false;
+            int currentTurn = f.TryGetSingleton<CombatState>(out var state) ? state.TurnNumber : 0;
+
             if (spellDef.DamageAmount > 0)
             {
                 for (int i = 0; i < effectCount; i++)
@@ -120,7 +124,40 @@ namespace Quantum
                     int before = targetC->HP;
                     targetC->HP -= spellDef.DamageAmount;
                     if (targetC->HP < 0) targetC->HP = 0;
+                    casterHitSomething = true;
                     Log.Info($"[Spell] Damage {spellDef.DamageAmount} sur P{targetC->PlayerIndex} ({cx},{cy}) HP {before} -> {targetC->HP}");
+
+                    // Gain ressource cote CIBLE (Bible V7.1 : Soulrender +1 HG quand subit dgts,
+                    // max 1 fois par tour adverse). Pour les autres classes, leur ressource sera
+                    // ajoutee quand elles seront implementees (2.13 Nightseer, Phase 3 reste).
+                    if (targetC->Class == NymoraClass.Soulrender)
+                    {
+                        if (targetC->LastResourceGainOnHitTurn != currentTurn)
+                        {
+                            int maxResource = CombatantStats.GetMaxResource(targetC->Class);
+                            int beforeRes = targetC->Resource;
+                            targetC->Resource = (beforeRes + 1 > maxResource) ? maxResource : beforeRes + 1;
+                            targetC->LastResourceGainOnHitTurn = currentTurn;
+                            if (targetC->Resource != beforeRes)
+                            {
+                                Log.Info($"[Spell] HG +1 sur P{targetC->PlayerIndex} (subi dgts, tour {currentTurn}) : {beforeRes} -> {targetC->Resource}");
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Gain ressource cote CASTER (Bible V7.1 : Soulrender +1 HG quand inflige dgts,
+            // max 1 par sort peu importe le nombre de cibles). Applique uniquement si au moins
+            // 1 cible a effectivement pris des degats.
+            if (casterHitSomething && caster->Class == NymoraClass.Soulrender)
+            {
+                int maxResource = CombatantStats.GetMaxResource(caster->Class);
+                int beforeRes = caster->Resource;
+                caster->Resource = (beforeRes + 1 > maxResource) ? maxResource : beforeRes + 1;
+                if (caster->Resource != beforeRes)
+                {
+                    Log.Info($"[Spell] HG +1 sur P{caster->PlayerIndex} (inflige dgts) : {beforeRes} -> {caster->Resource}");
                 }
             }
 

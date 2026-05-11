@@ -35,19 +35,32 @@ namespace Nymora.Combat.View
                 ? state.TurnTimerTicks / (float)updateRate
                 : 0f;
 
-            // Resolution de la classe du joueur actif (depuis le Combatant correspondant).
+            // Resolution de la classe et ressource du joueur actif.
             string activeClassLabel = "?";
+            string resourceLabel = "";
             var filter = frame.Filter<Combatant>();
             while (filter.Next(out EntityRef _, out Combatant combatant))
             {
                 if (combatant.PlayerIndex == state.ActivePlayerIndex)
                 {
                     activeClassLabel = combatant.Class.ToString();
+                    int maxResource = Quantum.CombatantStats.GetMaxResource(combatant.Class);
+                    if (maxResource > 0)
+                    {
+                        // Tag court de ressource selon la classe (Bible V7.1).
+                        string tag = combatant.Class == NymoraClass.Soulrender ? "HG"
+                                   : combatant.Class == NymoraClass.Nightseer  ? "PR"
+                                   : combatant.Class == NymoraClass.Colossar   ? "FD"
+                                   : combatant.Class == NymoraClass.Necram     ? "PT"
+                                   : combatant.Class == NymoraClass.Ghostra    ? "RM"
+                                   : "?";
+                        resourceLabel = $"  [{tag} {combatant.Resource}/{maxResource}]";
+                    }
                     break;
                 }
             }
 
-            _label.text = $"Phase: {state.CurrentPhase}  |  Tour {state.TurnNumber}  |  Joueur P{state.ActivePlayerIndex} {activeClassLabel}  |  Timer {secondsRemaining:0.0}s";
+            _label.text = $"Phase: {state.CurrentPhase}  |  Tour {state.TurnNumber}  |  Joueur P{state.ActivePlayerIndex} {activeClassLabel}{resourceLabel}  |  Timer {secondsRemaining:0.0}s";
         }
     }
 }

@@ -83,6 +83,8 @@ namespace Quantum.Prototypes {
     public Int32 MaxPM;
     public Int32 GridX;
     public Int32 GridY;
+    public Int32 Resource;
+    public Int32 LastResourceGainOnHitTurn;
     partial void MaterializeUser(Frame frame, ref Quantum.Combatant result, in PrototypeMaterializationContext context);
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.Combatant component = default;
@@ -100,6 +102,8 @@ namespace Quantum.Prototypes {
         result.MaxPM = this.MaxPM;
         result.GridX = this.GridX;
         result.GridY = this.GridY;
+        result.Resource = this.Resource;
+        result.LastResourceGainOnHitTurn = this.LastResourceGainOnHitTurn;
         MaterializeUser(frame, ref result, in context);
     }
   }

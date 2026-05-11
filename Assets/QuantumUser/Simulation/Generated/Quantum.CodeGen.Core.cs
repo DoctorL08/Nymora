@@ -716,28 +716,32 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct Combatant : Quantum.IComponent {
-    public const Int32 SIZE = 40;
+    public const Int32 SIZE = 48;
     public const Int32 ALIGNMENT = 4;
-    [FieldOffset(36)]
+    [FieldOffset(40)]
     public Int32 PlayerIndex;
     [FieldOffset(0)]
     public NymoraClass Class;
     [FieldOffset(12)]
     public Int32 HP;
-    [FieldOffset(16)]
-    public Int32 MaxHP;
-    [FieldOffset(28)]
-    public Int32 PA;
     [FieldOffset(20)]
-    public Int32 MaxPA;
+    public Int32 MaxHP;
     [FieldOffset(32)]
-    public Int32 PM;
+    public Int32 PA;
     [FieldOffset(24)]
+    public Int32 MaxPA;
+    [FieldOffset(36)]
+    public Int32 PM;
+    [FieldOffset(28)]
     public Int32 MaxPM;
     [FieldOffset(4)]
     public Int32 GridX;
     [FieldOffset(8)]
     public Int32 GridY;
+    [FieldOffset(44)]
+    public Int32 Resource;
+    [FieldOffset(16)]
+    public Int32 LastResourceGainOnHitTurn;
     public override readonly Int32 GetHashCode() {
       unchecked { 
         var hash = 3449;
@@ -751,6 +755,8 @@ namespace Quantum {
         hash = hash * 31 + MaxPM.GetHashCode();
         hash = hash * 31 + GridX.GetHashCode();
         hash = hash * 31 + GridY.GetHashCode();
+        hash = hash * 31 + Resource.GetHashCode();
+        hash = hash * 31 + LastResourceGainOnHitTurn.GetHashCode();
         return hash;
       }
     }
@@ -760,12 +766,14 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->GridX);
         serializer.Stream.Serialize(&p->GridY);
         serializer.Stream.Serialize(&p->HP);
+        serializer.Stream.Serialize(&p->LastResourceGainOnHitTurn);
         serializer.Stream.Serialize(&p->MaxHP);
         serializer.Stream.Serialize(&p->MaxPA);
         serializer.Stream.Serialize(&p->MaxPM);
         serializer.Stream.Serialize(&p->PA);
         serializer.Stream.Serialize(&p->PM);
         serializer.Stream.Serialize(&p->PlayerIndex);
+        serializer.Stream.Serialize(&p->Resource);
     }
   }
   [StructLayout(LayoutKind.Explicit)]

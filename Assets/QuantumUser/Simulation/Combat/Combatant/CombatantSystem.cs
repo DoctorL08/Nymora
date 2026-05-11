@@ -38,7 +38,9 @@ namespace Quantum
                 MaxPM = maxPM,
                 PM = maxPM,
                 GridX = x,
-                GridY = y
+                GridY = y,
+                Resource = 0,
+                LastResourceGainOnHitTurn = -1,
             };
 
             var entity = f.Create();

@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026 (Brique 2.8 validée — bloc B bouclé)  
+**Dernière mise à jour :** 11 mai 2026 (Brique 2.9 validée)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.9 — Ressource Hémoglyphe (cap 5)** (à démarrer)  
+**Brique en cours :** **2.10 — 14 sorts Soulrender restants** (à démarrer, grosse brique)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 8/17 briques validées (Bloc A ✅ 5/5, Bloc B ✅ 3/3)
+**Statut Phase 2 :** 9/17 briques validées (Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C 1/3)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,28 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.9** — Ressource Hémoglyphe Soulrender (validée 11 mai 2026, ouverture Bloc C)
+  - `Combatant.qtn` : ajout `Int32 Resource` (générique pour les 5 classes) + `Int32 LastResourceGainOnHitTurn` (tracker pour appliquer la règle "max 1 par tour adverse")
+  - `CombatantStats.cs` : caps des 5 classes (Bible V7.1) :
+    - Soulrender Hemoglyph = 5
+    - Nightseer Prescience = 4
+    - Colossar Fondation = 3
+    - Necram Putrefaction = 6
+    - Ghostra Remanence = 3 leurres
+    - helper `GetMaxResource(NymoraClass) → int`
+  - `CombatantSystem.cs` : init `Resource = 0, LastResourceGainOnHitTurn = -1` au spawn
+  - `SpellSystem.cs` (modif): logique de gain dans le pipeline de cast :
+    - Boolean `casterHitSomething` tracke si au moins 1 cible a effectivement pris des dgts
+    - Pendant le loop damage : si `targetC->Class == Soulrender` et `LastResourceGainOnHitTurn != currentTurn` → +1 HG cible + update tracker
+    - Après le loop : si `casterHitSomething && caster->Class == Soulrender` → +1 HG caster (clamped à MaxResource)
+  - `CombatHUDView.cs` : affichage `[HG x/5]` (ou PR/FD/PT/RM selon classe) après le label classe, uniquement si MaxResource > 0
+  - Convention de design Bible V7.1 verrouillée :
+    - **Resource persiste entre tours** (jamais reset, sauf via consommation par sorts spécifiques en 2.10)
+    - **PA/PM reset au TurnStart, mais HP et Resource non** — ressource asymétrique = stratégie long terme
+  - Pas de piège technique. Le pattern "Resource générique + helper par classe" devrait scale pour les 4 autres classes sans refactor majeur.
 
 ---
 
@@ -555,7 +577,8 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.8 — Premier sort Tranche-Âme Soulrender (E2E damage flow)
 
 **Bloc C — Soulrender (3 briques)**
-- 2.9 — Ressource Hémoglyphe (cap 5) ⏳ PROCHAINE
+- 2.9 — Ressource Hémoglyphe (cap 5) ✅ VALIDÉE 11 mai 2026
+- 2.10 — 14 sorts Soulrender restants ⏳ PROCHAINE
 - 2.10 — 14 sorts Soulrender restants + marques + Vapeur Carmin
 - 2.11 — Signature Âme Lacérée + Passif Appel du Sang
 
@@ -569,7 +592,7 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.16 — IA Medium (heuristique multi-tour)
 - 2.17 — Scène `30_CombatIA` + test E2E combat 1v1 jouable 🎯
 
-**Prochaine étape :** Démarrer brique 2.9 — Ressource Hémoglyphe (cap 5, gain à infliger/subir dgts, persiste entre tours).
+**Prochaine étape :** Démarrer brique 2.10 — 14 sorts Soulrender restants (Ouvre-Plaie, Charge Brutale, Empoignade, Pacte de Sang, etc.) + système de marques + terrain Vapeur Carmin. **GROSSE BRIQUE** : potentiellement à découper en 2.10.a/b/c.
 
 ---
 
@@ -663,6 +686,16 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 2.9 (Ressource Hémoglyphe Soulrender)
+- 5 modifs : DSL Combatant.qtn (Resource + LastResourceGainOnHitTurn), CombatantStats (caps 5 classes), CombatantSystem (init au spawn), SpellSystem (gain caster/cible), CombatHUDView (affichage [HG x/5])
+- Architecture **générique** : champ `Resource` partagé pour les 5 classes (HG/PR/FD/PT/RM), helper `CombatantStats.GetMaxResource(NymoraClass)` qui retourne 5/4/3/6/3 selon la classe. En 2.9 seul Soulrender a la logique gain implémentée, les autres viendront avec leurs classes respectives (2.13 Nightseer, Phase 3 reste).
+- Logique gain Bible V7.1 :
+  - **Cast Soulrender qui touche au moins 1 cible** → +1 HG (caster), max 1 par cast peu importe le nb de cibles
+  - **Soulrender qui subit dégâts** → +1 HG par cast adverse, max 1 par TurnNumber via tracker `LastResourceGainOnHitTurn`. Si pris 3 hits dans le même tour adverse, +1 HG total.
+- Affichage HUD : `Joueur P0 Soulrender [HG x/5]` après la classe, tag adapté par classe (HG/PR/FD/PT/RM). Pour Nightseer/Colossar/Necram/Ghostra le HUD affiche déjà le placeholder même si la logique gain n'est pas encore branchée.
+- Aucun piège technique sur cette brique — implémentation fluide.
+- 🎯 **Le Soulrender a maintenant sa vraie économie de combat** (Bible V7.1) — la ressource va dicter les payoffs des sorts à venir (Ouvre-Plaie +1 HG → +120 dgts + anti-heal, Détonation Sanglante consomme tous les HG, Signature Âme Lacérée nécessite HG=5).
 
 ### 11 mai 2026 — Brique 2.8 (Premier sort Bible V7.1 : Tranche-Âme) + clôture Bloc B
 - 3 modifs courtes : `Spell.qtn` (ajout SpellId.SoulrenderTrancheAme = 10 + plages réservées), `SpellRegistry.cs` (TrancheAme + TestZap retiré), `CombatInputController` (Espace → TrancheAme)

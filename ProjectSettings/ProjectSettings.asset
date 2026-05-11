@@ -580,7 +580,7 @@ PlayerSettings:
     PS5: QUANTUM_XY
     QNX: QUANTUM_XY
     Stadia: QUANTUM_XY
-    Standalone: QUANTUM_XY
+    Standalone: QUANTUM_XY;QUANTUM_LOGLEVEL_INFO
     VisionOS: QUANTUM_XY
     WebGL: QUANTUM_XY
     Windows Store Apps: QUANTUM_XY
