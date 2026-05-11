@@ -19,6 +19,13 @@ enum SpellId : Byte
 
     TestZap = 1,
     // 2-9 reserves pour autres sorts de dev
+
+    // SOULRENDER (Bible V7.1 — 5 offensifs + 5 tactiques + 5 survie + signature)
+    SoulrenderTrancheAme = 10,
+    // 11-14 reserves pour autres sorts offensifs Soulrender (Ouvre-Plaie, Charge Brutale, Detonation Sanglante, Curee)
+    // 15-19 sorts tactiques (Empoignade, Pacte de Sang, Marque de Carnage, Rugissement, Rage Insatiable)
+    // 20-24 sorts survie
+    // 25 SIGNATURE : Ame Laceree
 }
 
 enum SpellEffectKind : Byte

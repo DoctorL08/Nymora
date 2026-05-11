@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026 (Brique 2.7 validée)  
+**Dernière mise à jour :** 11 mai 2026 (Brique 2.8 validée — bloc B bouclé)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.8 — Premier sort Tranche-Âme Soulrender** (à démarrer)  
+**Brique en cours :** **2.9 — Ressource Hémoglyphe (cap 5)** (à démarrer)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 7/17 briques validées (Bloc A ✅ 5/5, Bloc B 2/3)
+**Statut Phase 2 :** 8/17 briques validées (Bloc A ✅ 5/5, Bloc B ✅ 3/3)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,19 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.8** — Premier sort Tranche-Âme Soulrender (validée 11 mai 2026, clôture Bloc B)
+  - `Spell.qtn` : ajout `SoulrenderTrancheAme = 10` dans `SpellId` + plages réservées documentées (10-29 Soulrender, 30-49 Nightseer, 50-69 Colossar, 70-89 Necram, 90-109 Ghostra)
+  - `SpellRegistry.cs` : case `SpellId.SoulrenderTrancheAme` → SpellDef { PACost=3, Shape=SingleTile, Filter=Enemy, RangeMin=1, RangeMax=1, DamageAmount=220 } — valeurs Bible V7.1 strictes
+  - TestZap retiré du registry (gardé dans `SpellId` enum pour ne pas casser des commands sérialisées éventuelles). Plus aucun sort de debug castable — que des vrais sorts Bible V7.1 désormais
+  - `CombatInputController` : touche Espace cast `SpellId.SoulrenderTrancheAme` (au lieu de TestZap). Le clic gauche reste pour le mouvement.
+  - **TODO 2.11** : implémenter l'effet bonus Bible V7.1 "Si le coup tue, le Soulrender RECULE de 2 cases gratuitement (mouvement non-PM)". Nécessite :
+    1. Détection HP=0 dans SpellSystem post-damage
+    2. Système de mort (entity destroyed ? marked dead ? Bible V7.1 ne précise pas — à trancher)
+    3. Mouvement non-PM (helper séparé qui ignore le compteur PM, mais conserve walkable + occupant check)
+  - Validation E2E : cast à distance 2 rejeté ✓, cast adjacent 220 dmg ✓, second cast PA=5→2 dmg ✓, third cast rejeté PA insuffisant ✓.
 
 ---
 
@@ -534,15 +547,15 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.4 — Mouvement case par case (PM)
 - 2.5 — Pathfinding A* déterministe
 
-**Bloc B — Sorts & ciblage générique (3 briques)**
+**Bloc B — Sorts & ciblage générique (3 briques) ✅ BOUCLÉ 11 mai 2026**
 - 2.6 — Système de targeting (Shape + Filter) ✅ VALIDÉE 11 mai 2026
 - 2.7 — Spell runtime engine ✅ VALIDÉE 11 mai 2026
-- 2.8 — Premier sort Tranche-Âme Soulrender ⏳ PROCHAINE
+- 2.8 — Premier sort Tranche-Âme Soulrender ✅ VALIDÉE 11 mai 2026
 - 2.7 — Spell runtime engine
 - 2.8 — Premier sort Tranche-Âme Soulrender (E2E damage flow)
 
 **Bloc C — Soulrender (3 briques)**
-- 2.9 — Ressource Hémoglyphe (cap 5)
+- 2.9 — Ressource Hémoglyphe (cap 5) ⏳ PROCHAINE
 - 2.10 — 14 sorts Soulrender restants + marques + Vapeur Carmin
 - 2.11 — Signature Âme Lacérée + Passif Appel du Sang
 
@@ -556,7 +569,7 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.16 — IA Medium (heuristique multi-tour)
 - 2.17 — Scène `30_CombatIA` + test E2E combat 1v1 jouable 🎯
 
-**Prochaine étape :** Démarrer brique 2.8 — Premier sort Tranche-Âme Soulrender (vrai sort Bible V7.1 + retrait du TestZap debug).
+**Prochaine étape :** Démarrer brique 2.9 — Ressource Hémoglyphe (cap 5, gain à infliger/subir dgts, persiste entre tours).
 
 ---
 
@@ -650,6 +663,21 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 2.8 (Premier sort Bible V7.1 : Tranche-Âme) + clôture Bloc B
+- 3 modifs courtes : `Spell.qtn` (ajout SpellId.SoulrenderTrancheAme = 10 + plages réservées), `SpellRegistry.cs` (TrancheAme + TestZap retiré), `CombatInputController` (Espace → TrancheAme)
+- Tranche-Âme spec Bible V7.1 : **3 PA, range 1 (mêlée), SingleTile, Enemy, 220 dégâts**. Effet bonus "recul de 2 cases si kill" différé en 2.11 (nécessite système de mort + mouvement gratuit non-PM, hors scope minimal).
+- TestZap retiré du registry (gardé dans l'enum pour ne pas casser d'éventuelles commands sérialisées). Plus aucun sort de "debug" castable — uniquement les vrais sorts Bible V7.1.
+- Validation E2E impressionnante côté logs (cf détail) :
+  - Soulrender bouge vers (6,8) puis (7,8) en plusieurs tours
+  - Nightseer (IA absente, déplacé manuellement via `_debugAllPlayersMovable`) à (8,8)
+  - Cast Tranche-Âme avec distance 2 → `[Spell] rejet : distance 2 hors range [1,1]` ✓
+  - Cast Tranche-Âme adjacent → `[Spell] Damage 220 sur P1 (8,8) HP 1500 -> 1280` ✓ ✓ ✓
+  - Second cast → `HP 1280 -> 1060` ✓ (8 PA - 3 cast 1 - 3 cast 2 = 2 PA restant)
+  - Troisième cast tenté avec PA=2 → `[Spell] rejet : PA 2 < cost 3` ✓
+- 🏁 **Bloc B — Sorts & ciblage générique : BOUCLÉ** (3/3 briques : targeting, engine, premier sort vertical Bible V7.1)
+- Question UX clarifiée pour Lorenzo : le flag `_debugAllPlayersMovable` (true par défaut Phase 2) sur `CombatInputController` envoie les commandes au joueur actif courant, peu importe P0/P1 — pratique pour tester les 2 combattants sans matchmaking. Sera désactivé en Phase 6 quand le matchmaking arrivera.
+- 🎯 **MOMENT CHARNIÈRE** : c'est la 1ère fois qu'un sort Nymora *réel* (Bible V7.1) inflige des dégâts dans le jeu. Les fondations de la Phase 2 sont maintenant validées (grille + tours + mouvement + sorts). Reste à étoffer : ressource Hémoglyphe (2.9), 14 sorts Soulrender (2.10), signature + passif (2.11), Nightseer complet (2.12-2.14), IA (2.15-2.16), test E2E (2.17).
 
 ### 11 mai 2026 — Brique 2.7 (Spell runtime engine + DÉCOUVERTE QUANTUM_LOGLEVEL)
 - 4 fichiers Quantum nouveaux (Spell.qtn, CastSpellCommand, SpellRegistry, SpellSystem) + 2 updates (CommandSetup, SystemSetup) + 1 update View (CombatInputController : touche Espace = cast TestZap)

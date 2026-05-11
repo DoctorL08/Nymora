@@ -76,6 +76,7 @@ namespace Quantum {
   public enum SpellId : byte {
     None = 0,
     TestZap = 1,
+    SoulrenderTrancheAme = 10,
   }
   public enum TargetingFilter : byte {
     None = 0,

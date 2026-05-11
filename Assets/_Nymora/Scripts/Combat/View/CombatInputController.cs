@@ -121,13 +121,13 @@ namespace Nymora.Combat.View
                 }
             }
 
-            // Espace : cast TestZap sur la case sous la souris (brique 2.7).
-            // En 2.8 remplace par "sort selectionne dans la barre de sorts" + clic.
+            // Espace : cast Tranche-Ame Soulrender (brique 2.8, Bible V7.1 : 3 PA, melee 1, 220 dgts).
+            // En 2.10+ remplace par "sort selectionne dans la barre de sorts" + clic (UI quickcast).
             if (spaceDown)
             {
-                var castCmd = new CastSpellCommand { Spell = SpellId.TestZap, TargetX = gx, TargetY = gy };
+                var castCmd = new CastSpellCommand { Spell = SpellId.SoulrenderTrancheAme, TargetX = gx, TargetY = gy };
                 game.SendCommand(senderPlayer, castCmd);
-                Debug.Log($"[Nymora.CombatInput] Sent CastSpellCommand TestZap player={senderPlayer} target=({gx},{gy})");
+                Debug.Log($"[Nymora.CombatInput] Sent CastSpellCommand TrancheAme player={senderPlayer} target=({gx},{gy})");
                 return;
             }
 

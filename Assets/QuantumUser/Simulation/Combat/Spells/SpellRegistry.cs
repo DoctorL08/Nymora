@@ -26,18 +26,23 @@ namespace Quantum
         {
             switch (id)
             {
-                case SpellId.TestZap:
+                // SOULRENDER — Tranche-Ame (Bible V7.1 : 3 PA, portee 1 melee, 220 dgts, +recul 2 cases si kill)
+                // TODO 2.11 : effet "recul gratuit 2 cases si kill" (necessite systeme de mort + mouvement non-PM).
+                case SpellId.SoulrenderTrancheAme:
                     def = new SpellDef
                     {
                         PACost = 3,
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.Enemy,
                         RangeMin = 1,
-                        RangeMax = 5,
-                        DamageAmount = 100,
+                        RangeMax = 1,
+                        DamageAmount = 220,
                     };
                     return true;
 
+                // TestZap est conserve dans l'enum SpellId pour ne pas casser d'eventuelles commands
+                // serialisees, mais retire du registry actif : il n'est plus castable.
+                // Le sort de debug est remplace par Tranche-Ame qui est un vrai sort Bible V7.1.
                 default:
                     def = default;
                     return false;
