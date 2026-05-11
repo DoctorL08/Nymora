@@ -492,6 +492,56 @@ PrefabInstance:
     m_AddedGameObjects: []
     m_AddedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 9e5addbaa78b7264889bf147e593db91, type: 3}
+--- !u!1 &1246937099
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1246937101}
+  - component: {fileID: 1246937100}
+  m_Layer: 0
+  m_Name: CombatantRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1246937100
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1246937099}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e299fff5f9686804ab153fc0adaf3c3e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _gridSettings: {fileID: 11400000, guid: e28dde8a0c27b744889dfe45f498a670, type: 2}
+  _soulrenderPrefab: {fileID: 1937457057080640798, guid: eaa085f4b9ec7744d955db72d3cd64fc, type: 3}
+  _nightseerPrefab: {fileID: 754554047947511558, guid: 2078f77e66c620e4793f3db176c3f644, type: 3}
+  _colossarPrefab: {fileID: 4001644256250217770, guid: d2aaf90540d72dc4b8ddc1dd6f422067, type: 3}
+  _necramPrefab: {fileID: 2644071964246177066, guid: a5b19877918d92e4a88e78847ab570d0, type: 3}
+  _ghostraPrefab: {fileID: 7130866591408297228, guid: 754afc4d0638dcd4bb108c94fae242fe, type: 3}
+--- !u!4 &1246937101
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1246937099}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1662786569
 GameObject:
   m_ObjectHideFlags: 0
@@ -640,3 +690,4 @@ SceneRoots:
   - {fileID: 1244270708}
   - {fileID: 445223003}
   - {fileID: 932372493}
+  - {fileID: 1246937101}

@@ -50,6 +50,39 @@ namespace Quantum.Prototypes {
   #endif //;
   
   [System.SerializableAttribute()]
+  [Quantum.Prototypes.Prototype(typeof(Quantum.Combatant))]
+  public unsafe partial class CombatantPrototype : ComponentPrototype<Quantum.Combatant> {
+    public Int32 PlayerIndex;
+    public Quantum.QEnum8<NymoraClass> Class;
+    public Int32 HP;
+    public Int32 MaxHP;
+    public Int32 PA;
+    public Int32 MaxPA;
+    public Int32 PM;
+    public Int32 MaxPM;
+    public Int32 GridX;
+    public Int32 GridY;
+    partial void MaterializeUser(Frame frame, ref Quantum.Combatant result, in PrototypeMaterializationContext context);
+    public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
+        Quantum.Combatant component = default;
+        Materialize((Frame)f, ref component, in context);
+        return f.Set(entity, component) == SetResult.ComponentAdded;
+    }
+    public void Materialize(Frame frame, ref Quantum.Combatant result, in PrototypeMaterializationContext context = default) {
+        result.PlayerIndex = this.PlayerIndex;
+        result.Class = this.Class;
+        result.HP = this.HP;
+        result.MaxHP = this.MaxHP;
+        result.PA = this.PA;
+        result.MaxPA = this.MaxPA;
+        result.PM = this.PM;
+        result.MaxPM = this.MaxPM;
+        result.GridX = this.GridX;
+        result.GridY = this.GridY;
+        MaterializeUser(frame, ref result, in context);
+    }
+  }
+  [System.SerializableAttribute()]
   [Quantum.Prototypes.Prototype(typeof(Quantum.GridSingleton))]
   public unsafe class GridSingletonPrototype : ComponentPrototype<Quantum.GridSingleton> {
     public Int32 Width;

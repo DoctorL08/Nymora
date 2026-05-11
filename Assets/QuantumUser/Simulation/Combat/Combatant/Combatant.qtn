@@ -1,0 +1,41 @@
+// Combatant Nymora — 1 entity Quantum par personnage en jeu.
+//
+// Stats Bible V7.1 (1500 HP / 8 PA / 3 PM, Colossar a 2 PM).
+// Position discrete grille (GridX, GridY) — pas de Transform2D FP, on reste
+// pur grid-based pour aligner avec GridSingleton et garder la simulation
+// strictement entiere (deterministe trivialement, simple a debugger).
+//
+// PlayerIndex : 0 ou 1 en 2.2 (1v1). Plus tard 0..5 pour les modes 2v2/3v3.
+//
+// NymoraClass est duplique vs l'enum cote Nymora.Core.Enums : le DSL Quantum
+// ne peut pas referencer un type externe. Les valeurs sont identiques (None=0,
+// Soulrender=1, Nightseer=2, Colossar=3, Necram=4, Ghostra=5) — ordre verrouille
+// par CombatRulesVersion, ne PAS reorganiser.
+
+enum NymoraClass : Byte
+{
+    None = 0,
+    Soulrender = 1,
+    Nightseer = 2,
+    Colossar = 3,
+    Necram = 4,
+    Ghostra = 5,
+}
+
+component Combatant
+{
+    Int32 PlayerIndex;
+    NymoraClass Class;
+
+    // Stats Bible V7.1 — caps fixes par classe, valeurs courantes mutables.
+    Int32 HP;
+    Int32 MaxHP;
+    Int32 PA;
+    Int32 MaxPA;
+    Int32 PM;
+    Int32 MaxPM;
+
+    // Position discrete sur la grille de combat.
+    Int32 GridX;
+    Int32 GridY;
+}

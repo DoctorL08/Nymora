@@ -49,6 +49,14 @@ namespace Quantum {
   using RuntimeInitializeOnLoadMethodAttribute = UnityEngine.RuntimeInitializeOnLoadMethodAttribute;
   #endif //;
   
+  public enum NymoraClass : byte {
+    None = 0,
+    Soulrender = 1,
+    Nightseer = 2,
+    Colossar = 3,
+    Necram = 4,
+    Ghostra = 5,
+  }
   [System.FlagsAttribute()]
   public enum InputButtons : int {
   }
@@ -629,6 +637,60 @@ namespace Quantum {
     }
   }
   [StructLayout(LayoutKind.Explicit)]
+  public unsafe partial struct Combatant : Quantum.IComponent {
+    public const Int32 SIZE = 40;
+    public const Int32 ALIGNMENT = 4;
+    [FieldOffset(36)]
+    public Int32 PlayerIndex;
+    [FieldOffset(0)]
+    public NymoraClass Class;
+    [FieldOffset(12)]
+    public Int32 HP;
+    [FieldOffset(16)]
+    public Int32 MaxHP;
+    [FieldOffset(28)]
+    public Int32 PA;
+    [FieldOffset(20)]
+    public Int32 MaxPA;
+    [FieldOffset(32)]
+    public Int32 PM;
+    [FieldOffset(24)]
+    public Int32 MaxPM;
+    [FieldOffset(4)]
+    public Int32 GridX;
+    [FieldOffset(8)]
+    public Int32 GridY;
+    public override readonly Int32 GetHashCode() {
+      unchecked { 
+        var hash = 3449;
+        hash = hash * 31 + PlayerIndex.GetHashCode();
+        hash = hash * 31 + (Byte)Class;
+        hash = hash * 31 + HP.GetHashCode();
+        hash = hash * 31 + MaxHP.GetHashCode();
+        hash = hash * 31 + PA.GetHashCode();
+        hash = hash * 31 + MaxPA.GetHashCode();
+        hash = hash * 31 + PM.GetHashCode();
+        hash = hash * 31 + MaxPM.GetHashCode();
+        hash = hash * 31 + GridX.GetHashCode();
+        hash = hash * 31 + GridY.GetHashCode();
+        return hash;
+      }
+    }
+    public static void Serialize(void* ptr, FrameSerializer serializer) {
+        var p = (Combatant*)ptr;
+        serializer.Stream.Serialize((Byte*)&p->Class);
+        serializer.Stream.Serialize(&p->GridX);
+        serializer.Stream.Serialize(&p->GridY);
+        serializer.Stream.Serialize(&p->HP);
+        serializer.Stream.Serialize(&p->MaxHP);
+        serializer.Stream.Serialize(&p->MaxPA);
+        serializer.Stream.Serialize(&p->MaxPM);
+        serializer.Stream.Serialize(&p->PA);
+        serializer.Stream.Serialize(&p->PM);
+        serializer.Stream.Serialize(&p->PlayerIndex);
+    }
+  }
+  [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct GridSingleton : Quantum.IComponentSingleton {
     public const Int32 SIZE = 4088;
     public const Int32 ALIGNMENT = 8;
@@ -680,6 +742,8 @@ namespace Quantum {
       BuildSignalsArrayOnComponentRemoved<CharacterController2D>();
       BuildSignalsArrayOnComponentAdded<CharacterController3D>();
       BuildSignalsArrayOnComponentRemoved<CharacterController3D>();
+      BuildSignalsArrayOnComponentAdded<Quantum.Combatant>();
+      BuildSignalsArrayOnComponentRemoved<Quantum.Combatant>();
       BuildSignalsArrayOnComponentAdded<Quantum.GridSingleton>();
       BuildSignalsArrayOnComponentRemoved<Quantum.GridSingleton>();
       BuildSignalsArrayOnComponentAdded<MapEntityLink>();
@@ -757,6 +821,7 @@ namespace Quantum {
       typeRegistry.Register(typeof(CharacterController2D), CharacterController2D.SIZE);
       typeRegistry.Register(typeof(CharacterController3D), CharacterController3D.SIZE);
       typeRegistry.Register(typeof(ColorRGBA), ColorRGBA.SIZE);
+      typeRegistry.Register(typeof(Quantum.Combatant), Quantum.Combatant.SIZE);
       typeRegistry.Register(typeof(ComponentPrototypeRef), ComponentPrototypeRef.SIZE);
       typeRegistry.Register(typeof(ComponentTypeRef), ComponentTypeRef.SIZE);
       typeRegistry.Register(typeof(DistanceJoint), DistanceJoint.SIZE);
@@ -800,6 +865,7 @@ namespace Quantum {
       typeRegistry.Register(typeof(NullableFPVector2), NullableFPVector2.SIZE);
       typeRegistry.Register(typeof(NullableFPVector3), NullableFPVector3.SIZE);
       typeRegistry.Register(typeof(NullableNonNegativeFP), NullableNonNegativeFP.SIZE);
+      typeRegistry.Register(typeof(Quantum.NymoraClass), 1);
       typeRegistry.Register(typeof(PhysicsBody2D), PhysicsBody2D.SIZE);
       typeRegistry.Register(typeof(PhysicsBody3D), PhysicsBody3D.SIZE);
       typeRegistry.Register(typeof(PhysicsCallbacks2D), PhysicsCallbacks2D.SIZE);
@@ -829,8 +895,9 @@ namespace Quantum {
       typeRegistry.Register(typeof(Quantum._globals_), Quantum._globals_.SIZE);
     }
     static partial void InitComponentTypeIdGen() {
-      ComponentTypeId.Reset(ComponentTypeId.BuiltInComponentCount + 1)
+      ComponentTypeId.Reset(ComponentTypeId.BuiltInComponentCount + 2)
         .AddBuiltInComponents()
+        .Add<Quantum.Combatant>(Quantum.Combatant.Serialize, null, null, ComponentFlags.None)
         .Add<Quantum.GridSingleton>(Quantum.GridSingleton.Serialize, null, null, ComponentFlags.Singleton)
         .Finish();
     }
@@ -839,6 +906,7 @@ namespace Quantum {
       FramePrinter.EnsureNotStripped();
       FramePrinter.EnsurePrimitiveNotStripped<CallbackFlags>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.InputButtons>();
+      FramePrinter.EnsurePrimitiveNotStripped<Quantum.NymoraClass>();
       FramePrinter.EnsurePrimitiveNotStripped<QueryOptions>();
     }
   }

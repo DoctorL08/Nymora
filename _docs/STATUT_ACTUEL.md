@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026 (Brique 2.1 validée)  
+**Dernière mise à jour :** 11 mai 2026 (Brique 2.2 validée)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.2 — Entity Combatant Quantum (HP/PA/PM/Class)** (à démarrer)  
+**Brique en cours :** **2.3 — État machine de tour + timer 15s + initiative** (à démarrer)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 1/17 briques validées
+**Statut Phase 2 :** 2/17 briques validées
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,27 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.2** — Entity Combatant Quantum (validée 11 mai 2026)
+  - DSL Quantum sous `Assets/QuantumUser/Simulation/Combat/Combatant/Combatant.qtn` : `enum NymoraClass : Byte { None=0, Soulrender=1, Nightseer=2, Colossar=3, Necram=4, Ghostra=5 }` (dupliqué intentionnellement vs Nymora.Core.Enums car DSL Quantum ne peut référencer un type externe) + `component Combatant { PlayerIndex, Class, HP/MaxHP, PA/MaxPA, PM/MaxPM, GridX, GridY }` (positions discrètes int pour rester pur grid-based)
+  - `CombatantStats.cs` : constantes Bible V7.1 verrouillées (1500 HP, 8 PA, 3 PM standard, 2 PM Colossar) — helpers `GetMaxHP/MaxPA/MaxPM(NymoraClass)`
+  - `CombatantSystem.cs` (`SystemSignalsOnly`) : `OnInit` crée 2 entities via `f.Create() + f.Add(entity, value)` (signature value-pass plus simple que Add + GetPointer), positions hardcodées (3,8) Soulrender + (11,8) Nightseer, marque la grille via `GridHelpers.SetOccupant`. Inscrit dans `SystemSetup.User.cs > AddSystemsUser` APRÈS `GridSystem` (ordre important : SetOccupant lit la singleton GridSingleton initialisée par GridSystem).
+  - Côté View (Nymora.Combat) :
+    - `CombatantView.cs` : MonoBehaviour léger sur chaque GameObject combattant, expose EntityRef + GridX/GridY + Class + helpers Bind/UpdateGridPosition. Sorting order = `1000 - (gx + gy) * 10` (range 700-990, toujours au-dessus des tiles qui sont à 0..-30).
+    - `CombatantRenderer.cs` : MonoBehaviour subscribe `CallbackGameStarted` (spawn initial via `frame.Filter<Combatant>()`) + `CallbackUpdateView` (sync positions à chaque frame verified, spawn à la volée si nouvelle entity Combatant apparaît). Pas de pooling (max 2 combattants en 1v1, useless en Phase 2).
+  - Editor Tool `CreateCombatantPlaceholdersTool` (menu `Nymora > Setup > Create Combatant Placeholders`) : génère 5 sprites circulaires 128×128 PNG procédural (couleurs accent Bible V7.1 : #B22222 Soulrender, #6A4FB6 Nightseer, #7A6B5C Colossar, #5A8B3E Necram, #6F8FA8 Ghostra) + 5 prefabs câblés (SpriteRenderer + CombatantView via SerializedObject). Idempotent.
+  - Sprites stockés : `Assets/_Nymora/Art/Sprites/Combatants/<Class>_Placeholder.png`. Prefabs : `Assets/_Nymora/Prefabs/Combat/Combatants/Combatant_<Class>.prefab`.
+  - **Convention PPU verrouillée pour le projet** :
+    - Tiles : 64×64 px → PPU 64 → 1×1 unité world = 1 case ✓
+    - Persos : 128×128 px → PPU 128 → 1×1 unité world = 1 case ✓
+    - Règle : chaque catégorie de sprite a son PPU = sa résolution. Jamais le même PPU pour des sprites de tailles différentes.
+  - Pièges traversés (à retenir) :
+    1. `Nymora.Editor.asmdef` doit aussi inclure les GUIDs Quantum.Simulation + Quantum.Unity dans `references` pour que les Editor Tools puissent compiler du code utilisant `NymoraClass`/etc. Le flag `autoReferenced` côté Quantum ne suffit jamais pour les asmdef custom.
+    2. PPU vs taille sprite : 128×128 + PPU 64 → 2×2 cases (BUG). 128×128 + PPU 128 → 1×1 case ✓. Convention finalement claire : PPU = résolution du sprite.
+    3. Sorting order combattants : formule `100 - (gx+gy)*10` produisait des valeurs négatives pour les combattants éloignés → invisibles derrière les tiles. Fix : base 1000 → toujours > 0 et > toutes les tiles.
+    4. `Filter.NextUnsafe<T>(out, out T*)` nécessite `allowUnsafeCode: true`. Pour Nymora.Combat (safe), utiliser `Filter.Next(out, out T)` qui retourne par valeur (copie d'un struct ~40 bytes, négligeable).
 
 ---
 
@@ -391,7 +412,8 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 **Bloc A — Fondations grille & tour (5 briques)**
 - 2.1 — Grille 15×17 (data Quantum FP + visualisation iso 2D) ✅ VALIDÉE 11 mai 2026
-- 2.2 — Entity Combatant Quantum (HP/PA/PM/Class) ⏳ PROCHAINE
+- 2.2 — Entity Combatant Quantum (HP/PA/PM/Class) ✅ VALIDÉE 11 mai 2026
+- 2.3 — État machine de tour + timer 15s + initiative ⏳ PROCHAINE
 - 2.3 — État machine de tour + timer 15s + initiative
 - 2.4 — Mouvement case par case (PM)
 - 2.5 — Pathfinding A* déterministe
@@ -416,7 +438,7 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.16 — IA Medium (heuristique multi-tour)
 - 2.17 — Scène `30_CombatIA` + test E2E combat 1v1 jouable 🎯
 
-**Prochaine étape :** Démarrer brique 2.2 — Entity Combatant Quantum (HP/PA/PM/Class).
+**Prochaine étape :** Démarrer brique 2.3 — État machine de tour + timer 15s + initiative.
 
 ---
 
@@ -484,7 +506,8 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 | **6e classe** | **Non planifiée** (focus sur les 5 existantes : Soulrender, Nightseer, Colossar, Necram, Ghostra) | **10 mai 2026** |
 | **Vue grille de combat** | **Isométrique 2D** (cases en losange, style Dofus/Wakfu) — vit uniquement côté View ; la simulation Quantum reste rectangulaire en `int` | **11 mai 2026** |
 | **Origine grille (logique)** | **(0,0) bas-gauche, X→droite, Y→haut** (convention math classique, cohérent Unity world space) | **11 mai 2026** |
-| **PPU sprites combat** | **64 px / unit** (sprites 64×64, projection iso ratio 2:1 = losange 64×32 world) | **11 mai 2026** |
+| **PPU sprites combat (tiles)** | **64 px / unit** (sprites tile 64×64, projection iso ratio 2:1 = losange 64×32 world) | **11 mai 2026** |
+| **PPU sprites combat (persos)** | **128 px / unit** (sprites perso 128×128 → 1×1 unite world = 1 case). Convention : chaque categorie de sprite a son PPU adapte a sa resolution, jamais le meme PPU pour des sprites de tailles differentes | **11 mai 2026** |
 
 ---
 
@@ -509,6 +532,25 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 2.2 (Entity Combatant Quantum HP/PA/PM/Class)
+- 7 fichiers livrés + 2 updates asmdef (Nymora.Editor pour refs Quantum) + 1 update SystemSetup
+- DSL Quantum : `enum NymoraClass : Byte` (dupliqué côté Quantum, valeurs identiques à Nymora.Core.Enums) + `component Combatant { PlayerIndex, Class, HP/MaxHP, PA/MaxPA, PM/MaxPM, GridX, GridY }`
+- `CombatantSystem` : `SystemSignalsOnly`, OnInit crée 2 entities via `f.Create()` + `f.Add<T>(entity, value)` (API unique value-pass plus simple que Add + GetPointer), positions hardcodées (3,8) et (11,8), marque la grille via `GridHelpers.SetOccupant`
+- `CombatantStats` : constantes Bible V7.1 (1500 HP, 8 PA, 3 PM / 2 PM Colossar) accessibles via helpers `GetMaxHP/PA/PM(NymoraClass)`
+- Côté View : `CombatantView` (binding entity ↔ GameObject, sorting order) + `CombatantRenderer` (subscribe CallbackGameStarted pour spawn initial + CallbackUpdateView pour sync positions à chaque tick verified)
+- Editor Tool : `CreateCombatantPlaceholdersTool` génère 5 sprites placeholder (1 par classe avec couleur accent Bible V7.1) + 5 prefabs câblés (SpriteRenderer + CombatantView via SerializedObject)
+- **Convention PPU clarifiée et verrouillée** (décision majeure de cette brique) :
+  - Tiles : 64×64 PPU 64 → 1 unité world = 1 case ✓
+  - Persos : 128×128 PPU 128 → 1 unité world = 1 case ✓
+  - Règle : chaque catégorie de sprite a son PPU adapté à sa résolution, JAMAIS le même PPU pour des sprites de tailles différentes
+- 4 pièges traversés (à retenir) :
+  1. **Nymora.Editor.asmdef** doit aussi référencer Quantum.Simulation + Quantum.Unity via GUID pour que les Editor Tools voient `NymoraClass`. Le `autoReferenced: true` côté Quantum ne suffit jamais pour les asmdef custom — toujours ajouter explicitement les GUIDs.
+  2. **PPU vs taille de sprite** : confusion initiale, j'avais mis sprite 128×128 avec PPU 64 → pion 2×2 cases. Le bon couple est sprite 128×128 + PPU 128 → 1×1 case. Convention notée pour tous les futurs sprites du projet.
+  3. **Sorting order combattants** : ma première formule `100 - (gx+gy)*10` donnait des valeurs négatives (jusqu'à -90) pour les combattants éloignés → ils passaient derrière les tiles (qui sont à 0..-30). Fix : base 1000 → range 700-990, toujours > 0 et > tiles.
+  4. **Quantum API safe vs unsafe** : `Filter.NextUnsafe(out, out T*)` nécessite `allowUnsafeCode: true` sur l'asmdef. Pour Nymora.Combat qui reste safe (View), utiliser `Filter.Next(out, out T)` qui retourne par valeur (copie ~40 bytes, négligeable).
+- Validation : 2 pions visibles (rouge Soulrender en (3,8), violet Nightseer en (11,8)), logs corrects HP=1500/1500 PA=8 PM=3, healthcheck OK, Graph Profiler vert.
+- Question UX restée ouverte : pion rond placeholder "déborde" verticalement (sprite 1×1 unité world, case iso 1×0.5 visuel). C'est normal — anticipe le rendu final (perso debout ~2 cases de haut posant les pieds au centre). Lorenzo accepte le placeholder visuel actuel, on continue.
 
 ### 11 mai 2026 — Brique 2.1 (Grille 15×17 data + view iso 2D)
 - Première brique gameplay de la Phase 2 ✅
