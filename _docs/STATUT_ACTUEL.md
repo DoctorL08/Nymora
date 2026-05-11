@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 12 mai 2026 (Brique 2.12 finalisée — facing 4 directions iso NE/SE/NW/SW)  
+**Dernière mise à jour :** 12 mai 2026 (Brique 2.12.bis validée — anims complètes Soulrender walk/cast/attack/hurt/death)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.13 — HUD combat complet** (à démarrer) + reliquat 2.12.bis (anims walk/spell par catégorie/PM speed)  
+**Brique en cours :** **2.13 — HUD combat complet** (à démarrer la prochaine session)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 12/17 briques validées. Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11) + **2.12 ✅** (sprites Soulrender + icônes + Animator + facing 4 directions iso). **🏆 Soulrender 100% gameplay + visuel base** : 15 sorts + signature Âme Lacérée + passif Appel du Sang + 3 stages animés idle (HG palier) + facing 4 dirs (NE/SE livrés par designer, NW/SW miroir flipX runtime) + 17 icônes. Reste 2.12.bis (anims walk/cast/attack/hurt/death + vitesse selon PM), 2.13 HUD complet → 2.14-2.16 Nightseer + IA → 2.17 E2E.
+**Statut Phase 2 :** 12/17 briques validées + 2.12.bis. Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11) + **2.12 ✅** (sprites + icônes + Animator + facing 4 dirs) + **2.12.bis ✅** (anims completes : Idle lent + Walk + Cast par catégorie + Attack + Hurt + Death). **🏆 Soulrender 100% gameplay + visuel + anims** : 15 sorts + signature + passif + 3 stages animés × 2 directions NE/SE (NW/SW flipX runtime) + state machine 6 states / 6 params + mouvement constant 2.5 u/s + 17 icônes. Reste 2.13 HUD complet → 2.14-2.16 Nightseer + IA → 2.17 E2E.
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,30 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.12.bis** — Anims complètes Soulrender : walk + cast (par catégorie) + attack + hurt + death + idle ralenti (validée 12 mai 2026)
+  - **Quantum** : `Combatant.qtn` ajoute `Int32 LastCastOnTurn` (init -1) + `SpellId LastCastSpellId` (init None). `SpellSystem` set ces 2 champs à la fin de chaque cast réussi (juste avant le log de fin). Approche pull : la View pole la diff frame-par-frame pour trigger l'anim correspondante, pas besoin de Quantum Signal/Event lourd. Codegen Quantum re-run pour propager la struct Combatant C#.
+  - **BuildSoulrenderAnimator v2** : refonte complète. Chaque controller (6 au total, 3 stages × 2 directions NE/SE) a maintenant une vraie state machine :
+    - **States** : Idle (default, speed 0.4 — fix du "ultra speed" remonté par Lorenzo, donne une respiration lente naturelle), Walk (speedParameter `MoveSpeed`), Cast (speedParameter `CastSpeed` modulé par SpellCategory), Attack (mêlée), Hurt (dégâts reçus), Death (HP=0, latché).
+    - **Parameters** : `MoveSpeed` (float 0), `CastSpeed` (float 1), triggers `Cast` / `Attack` / `Hurt` / `Death`.
+    - **Transitions** : `Idle ↔ Walk` via threshold `MoveSpeed > 0.01` / `< 0.01` (no exit time, smooth 0.1s). `AnyState → Cast/Attack/Hurt/Death` sur trigger (no exit time, blend 0.05s). `Cast/Attack/Hurt → Idle` après exit time 0.95 (retour auto). `Death` n'a pas de transition retour (latched sur dernier frame).
+    - **Clip extraction** : `LoadClipSet` parse les sub-assets de chaque `.aseprite` et matche par substring (idle/walk/attack/cast/hurt/death sur `clip.name.ToLowerInvariant()`). Si un tag manque → warning console + fallback Idle au state correspondant.
+    - **Fallback sprite** : le SpriteRenderer du prefab est forcé sur le 1er Sprite extrait du `.aseprite` Stage 0 SE après build. Évite le retour au placeholder rouge si l'AnimationClip ne fire pas (frame tag mal nommé ou animation path qui ne matche pas).
+  - **CombatantView** : nouvelle API anims côté View, exposée au Renderer :
+    - `SetDesiredMoveSpeed(float)` : push la vitesse `MoveSpeed` que l'Animator utilisera pendant le Walk. Pendant le lerp, `Update()` push automatiquement cette valeur ; à l'arrêt, push 0 (transition Walk → Idle).
+    - `TriggerCast(SpellCategory)` : set `CastSpeed` selon la catégorie (Survival 0.7 / Tactical 1.0 / Offensive 1.3 / Signature 1.5) puis trigger l'anim Cast. Le designer n'a livré qu'un clip cast par direction donc on varie la vitesse pour différencier visuellement.
+    - `TriggerAttack()` / `TriggerHurt()` / `TriggerDeath()` : triggers simples.
+    - Hashes des params en static readonly (`Animator.StringToHash` une seule fois).
+  - **Mouvement constant** : remplacement de `Vector3.Lerp` (exponentiel Zeno) par `Vector3.MoveTowards` à vitesse constante `MoveSpeedUnitsPerSecond = 2.5f` (1 case = 0.4s). Avant : le lerp atteignait la case en ~0.15s et l'anim walk n'avait pas le temps de tourner (~"le perso se TP"). Maintenant : 3 cycles de walk visibles par case. `SnapDistance` relevé à 0.05.
+  - **CombatantRenderer** : `DispatchAnimTriggers(entity, combatant, view)` polle 3 deltas par frame :
+    - Diff HP : si `currHP < prevHP && currHP > 0` → `TriggerHurt`. Si `currHP == 0 && prevHP > 0` → `TriggerDeath` (Death prend priorité, pas de double-trigger Hurt+Death le même frame).
+    - Diff `LastCastOnTurn` : si change ET ≥ 0 → fetch `SpellRegistry.TryGet(LastCastSpellId)` → si `RangeMax ≤ 1` → `TriggerAttack`, sinon `TriggerCast(category)`. `CategoryForSpell(SpellId)` hardcode le mapping Soulrender Bible V7.1 (Offensive×5 / Tactical×5 / Survival×5 / Signature×1).
+    - `SetDesiredMoveSpeed(1.0f)` à chaque frame (TODO 2.12.ter : différencier 1-2 PM lent / 3+ PM rapide en regardant les cases parcourues dans la séquence).
+    - 2 dicts `_lastHP` + `_lastCastTurn` (préalloués cap 2) pour stocker l'état précédent par EntityRef. Reset dans `ClearAll`.
+  - **Fix import** : `using SpellCategory = Nymora.Core.Enums.SpellCategory;` au lieu de `using Nymora.Core.Enums` (collision avec `Quantum.NymoraClass` qui est aussi dans `Core.Enums`).
+  - **Reliquat 2.12.ter** : variation Walk speed selon PM dépensé (1-2 PM lent vs 3 PM rapide) — nécessite de tracker le nb de cases parcourues dans une séquence, pas implémenté ce soir car nécessiterait soit un signal Quantum, soit une heuristique View timing-based fragile. À voir si le besoin gameplay justifie l'effort.
 
 ---
 
@@ -802,6 +826,16 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
 
+### 12 mai 2026 (suite) — Brique 2.12.bis enchaînée dans la même session
+- Lorenzo a décidé d'enchaîner 2.12.bis avant de clôturer ("tu sais quoi go faire la 2.12.bis maintenant avant de clôturer"). Une heure de travail dans la foulée.
+- **Idle "ultra speed"** remonté par Lorenzo : l'idle 6 frames jouait à ~12 FPS Aseprite par défaut, ce qui faisait un effet trépidant. Fix : `state.speed = 0.4` sur l'Idle state dans le tool. Cycle de respiration lent ~2 sec. À ajuster si trop lent ou trop rapide.
+- **Walk imperceptible** ("le perso se TP, on voit même pas l'anim") : le `Vector3.Lerp(_, _, dt * 8)` rendait le combatant à 1% de la case en ~0.15s. Le clip walk 6 frames n'avait pas le temps de tourner. Fix : passage à `Vector3.MoveTowards` à vitesse constante 2.5 u/s = 1 case en 0.4s = ~3 cycles de walk visibles. Plus naturel.
+- **Tracking Quantum minimaliste** : approche pull plutôt que signal/event. `LastCastOnTurn` + `LastCastSpellId` sur Combatant, la View pole la diff. Évite la lourdeur d'ajouter un Quantum Signal + écoute View. Trade-off : la View doit appeler `frame.Filter<Combatant>()` à chaque CallbackUpdateView (déjà fait pour le facing, on étend).
+- **Cast par catégorie via CastSpeed** : le designer n'a livré qu'un clip cast par direction. Pour différencier visuellement Survival/Tactical/Offensive/Signature, on module `state.speed` via paramètre `CastSpeed` (0.7/1.0/1.3/1.5). Solution pragmatique en attendant des clips dédiés par catégorie (futur reliquat designer si Lorenzo le demande).
+- **Fallback sprite anti-pion-rouge** : Lorenzo a vu son perso redevenir un pion rouge à un moment ("mon perso est a nouveau un pion rouge"). C'était le placeholder original assigné au SpriteRenderer du prefab qui ressortait quand l'anim ne firait pas (clip mal taggé ou timing). Fix : le tool force `SpriteRenderer.sprite` sur le 1er Sprite extrait du `.aseprite` Stage 0 SE après build. Au pire on voit un Soulrender statique, jamais le rouge.
+- **Collision `NymoraClass`** : ajout de `using Nymora.Core.Enums` a déclenché une ambiguïté avec `Quantum.NymoraClass` (la classe est définie 2 fois — une fois Core C#, une fois généré par Quantum DSL). Fix : `using SpellCategory = Nymora.Core.Enums.SpellCategory` (alias précis sans tirer NymoraClass).
+- **6 commits cumulés pas pushés** : 2.10.a/b/c + 2.11 + 2.12 + 2.12.bis. Lorenzo signale la fin de session avec instruction explicite "push github demain" — donc on conserve en local pour l'instant, push à la prochaine session.
+
 ### 12 mai 2026 — Brique 2.12 finalisée (facing 4 directions iso) + reliquat anims pour 2.12.bis
 - Reprise de la session post-compaction du contexte. Hier la 2.12 avait été validée par Lorenzo avec idle statique et flipX P0/P1, mais en testant Lorenzo a constaté que **les 4 directions iso ne fonctionnaient pas** (un seul facing visible). Le designer avait pourtant livré 6 .aseprite (NE+SE × 3 stages).
 - **Refonte CombatantView** : abandon de `SetStage(int)` + `SetFlipX(bool)` au profit d'une seule API `SetStageAndFacing(int stage, IsoFacing facing)`. Ajout de 6 champs `_stage{0,1,2}Controller{NE,SE}` (au lieu de 3) + 6 champs sprites fallback. `IsoFacing.NW/SW` réutilisent les assets NE/SE avec `flipX = true` (pas d'asset dupliqué, pas de boulot designer en plus).
@@ -1162,40 +1196,46 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 🎯 PROCHAINE ACTION POUR LORENZO
 
-> **Session du 13 mai 2026 (demain) — Brique 2.12.bis : exploitation 100% des anims Soulrender** 🎬
+> **Session du 13 mai 2026 (demain)** 🚀
 >
-> Lorenzo a stoppé la session le 12 mai après validation du facing 4 directions iso. Demande explicite pour demain : **exploiter à 100% les frame tags Aseprite livrés par le designer** (les anims walk/attack/cast/hurt/death sont déjà dans les .aseprite mais on n'utilise que `idle` actuellement).
+> **Étape 1 — push GitHub des 6 commits cumulés** (instruction explicite Lorenzo 12 mai soir) :
+> ```
+> git -C "C:/Users/Lorenzo/Documents/Unity/Nymora/Nymora" push origin main
+> ```
+> Commits en attente :
+> - 9781816 `feat(phase2.10.a)` — Statuses framework + 5 sorts
+> - 25dffb8 `feat(phase2.10.b)` — Shields/Heals/Marques + 5 sorts
+> - d4d623a `feat(phase2.10.c)` — Terrains + mvt non-PM + 4 sorts
+> - def6e8f `feat(phase2.11)` — Signature Âme Lacérée + passif Appel du Sang
+> - 8682b11 `feat(phase2.12)` — Visuel Soulrender + facing 4 directions iso
+> - 9172f05 `feat(phase2.12.bis)` — Anims complètes walk/cast/attack/hurt/death
 >
-> **Spec 2.12.bis (à confirmer avec Lorenzo en début de session)** :
-> 1. **Walk** : déclenché à chaque déplacement case-par-case (pendant le lerp `MoveLerpSpeed`)
->    - Walk **lent** si PM dépensé sur ce déplacement = 1 ou 2
->    - Walk **rapide** si PM = 3 (ou plus, futur boost)
->    - Paramètre `Speed` (float) sur l'Animator ou 2 triggers distincts
-> 2. **Cast (par catégorie de sort)** :
->    - Sort `Survie` → anim cast douce/défensive
->    - Sort `Attack` (ou offensif) → anim cast agressive
->    - Sort `Tactical` → anim cast neutre/concentration
->    - À mapper depuis `SpellCategory` (enum existant Core/Enums)
-> 3. **Attack** : anim mêlée pour les sorts qui font du contact (Tranche-Âme, Empoignade, Charge Brutale, Âme Lacérée, etc.)
-> 4. **Hurt** : trigger sur dégâts reçus (event Quantum à exposer côté View)
-> 5. **Death** : trigger sur HP = 0 (event KO → freeze ou pas après l'anim)
+> **Étape 2 — démarrer Brique 2.13 : HUD combat complet** 🎮
 >
-> **Architecture probable** :
-> - `CombatantView` : exposer `Animator` directement + paramètres (`Speed` float, triggers `Cast`, `Attack`, `Hurt`, `Death`)
-> - 6 controllers `SoulrenderStage{0,1,2}_{NE,SE}` à enrichir avec une vraie state machine (idle/walk/cast/attack/hurt/death + transitions) — refonte de `BuildSoulrenderAnimator` pour créer les states/transitions/parameters via `AnimatorController.AddParameter` + `AddState` + `AddTransition`.
-> - Côté Quantum → View : il faut exposer des events View pour `CombatantMoved(delta, pmCost)`, `CombatantCasted(spellId, category)`, `CombatantDamaged(amount)`, `CombatantKilled`. Probablement déjà partiellement présent côté `CombatantRenderer` (le delta de position permet déjà de détecter le mouvement).
+> **Layout validé avec Lorenzo le 11 mai** :
+> - PA/PM panel **haut-gauche**
+> - Timer **haut-centre** (futur, optionnel pour l'alpha)
+> - End Turn **milieu-droite**
+> - Passif (icône + tooltip) **bas-gauche**
+> - Deck 6 sorts **bas-centre** (slots cliquables avec icône + raccourci clavier + cooldown/HG cost overlay)
+> - Timeline simple `P0 > P1` **bas-droite**
+> - Texte flottant dégâts/heals **au-dessus des combatants** (rouge dégâts, vert heal, jaune shield absorb)
+> - Prévisu PM + range sorts au survol
+> - Infobulles persos (HP/PA/PM/HG + statuses actifs) au hover
+> - Deck éditable dans l'Inspector (ScriptableObject ou liste sur un Combatant config)
 >
 > **Pré-requis (mêmes 3 fenêtres que d'habitude)** :
 > - Docker Desktop allumé + backend `npm run dev` dans `backend/`
 > - Unity Editor avec le projet Nymora ouvert
 > - Smoke tests rapides : `npm run test:auth`, `npm run test:version`
 >
-> **Ordre des briques restantes (rappel)** :
-> - 2.12.bis : anims complètes Soulrender ← **PRIORITÉ DEMAIN**
-> - 2.13 : HUD combat complet (PA/PM haut-gauche, End Turn milieu-droite, deck 6 sorts bas-centre, timeline P0 > P1, floating text dégâts/heals)
+> **Ordre des briques restantes** :
+> - 2.13 : HUD combat complet ← **PRIORITÉ DEMAIN après push**
 > - 2.14-2.16 : Nightseer (Prescience + 15 sorts + Œil + Traquenard + Brouillard de guerre)
 > - 2.17 : IA + E2E combat 1v1 vs IA
 >
-> **Reliquat designer encore en attente** : VFX Âme Lacérée 256×256 8-12f, Marque de Carnage overlay 64×64 4f, Plaie Ouverte overlay, Tile Vapeur Carmin animée 128×128 4f, Tile Sang Coagulé, Avatar profil 256×256.
+> **Reliquats en attente** :
+> - **Designer** : VFX Âme Lacérée 256×256 8-12f, Marque de Carnage overlay 64×64 4f, Plaie Ouverte overlay, Tile Vapeur Carmin animée 128×128 4f, Tile Sang Coagulé, Avatar profil 256×256.
+> - **2.12.ter** (optionnel) : Walk speed variable selon PM (1-2 = lent, 3 = rapide). Pas critique gameplay, à voir si besoin.
 >
 > **Backlog notable** : Unity CI (license) + 1.13 Hetzner (Phase 7 prep alpha) + 1.14 simulation Quantum déterministe complète (couverte naturellement par Phase 2).
