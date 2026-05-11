@@ -41,10 +41,17 @@ namespace Quantum
                 GridY = y,
                 Resource = 0,
                 LastResourceGainOnHitTurn = -1,
+                OncePerMatchUsedFlags = 0,
             };
 
             var entity = f.Create();
             f.Add(entity, combatantData);
+
+            // Garantit un etat propre pour les 8 slots de statuses (2.10.a).
+            // Important : default(Combatant) suffirait theoriquement, mais on est explicite
+            // pour eviter une dependance silencieuse a l'init Quantum des fixed arrays.
+            var combatant = f.Unsafe.GetPointer<Combatant>(entity);
+            StatusHelper.ClearAll(combatant);
 
             GridHelpers.SetOccupant(f, x, y, entity);
 

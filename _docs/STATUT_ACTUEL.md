@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026 (Brique 2.9 validée)  
+**Dernière mise à jour :** 11 mai 2026 (Brique 2.10.a validée)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.10 — 14 sorts Soulrender restants** (à démarrer, grosse brique)  
+**Brique en cours :** **2.10.b — 5 sorts Soulrender (Shields + Heals + Marques)** (à démarrer)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 9/17 briques validées (Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C 1/3)
+**Statut Phase 2 :** 9/17 briques validées + 2.10 découpée en 3 sous-briques (2.10.a ✅ validée, 2.10.b en cours, 2.10.c à venir). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C 1/3 (2.9) + sous-brique 2.10.a livrée.
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,32 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.10.a** — Statuses framework + 5 sorts Soulrender (validée 11 mai 2026, sous-brique 1/3 du Bloc C suite 2.9)
+  - **Nouveau framework Statuses** (clé de voûte des sorts complexes des 14 restants) :
+    - `Status.qtn` : `enum StatusKind` (7 valeurs : AntiHealShield, AntiTeleport, BuffNextOffensiveDmgPercent, RipostMelee, MovementMalus, RageInsatiableActive, MarkedByCarnage réservé 2.10.b) + `struct Status { Kind, Magnitude, TurnsLeft, AppliedOnTurn }`
+    - `StatusHelper.cs` : Apply/Has/GetMagnitude/SetMagnitude/Consume/ClearAll/DecrementAllOnTurnEnd
+    - Règle de décrémentation **clé** : skip si `AppliedOnTurn == currentTurn` (semantic propre : durée "N tours" = N tours réellement vécus côté owner). Décrémentation à chaque TurnEnd dans TurnSystem.
+    - `Combatant.qtn` étendu : `array<Status>[8] Statuses` + `Int32 OncePerMatchUsedFlags` (bitfield, bit 0 = Pacte de Sang)
+  - **Extensions infrastructure** :
+    - `SpellDef` étendu : `HGCostMandatory`, `HGCostMaxOptional`, `OncePerMatchBit`, `IsOffensive`
+    - `CastSpellCommand` : ajout `byte HGSpend` (joueur choisit combien de HG dépenser pour cost optionnel)
+    - `EffectiveStats.GetPACost(spell, caster)` : point d'extension central pour modificateurs PA (Rage Insatiable +1, futur passif Appel du Sang -1 en 2.11)
+    - `TurnSystem.EnterTurnStart` : applique `MovementMalus` au reset PM du joueur actif (Rugissement, Riposte chain)
+    - `SpellSystem.ApplySpellSpecificEffects` : switch SpellId pour effets non-damage (post-pipeline générique)
+    - Reflect Riposte Carmin dans damage loop : si `target` a `RipostMelee` ET sort melee → caster prend dgts reflect + MovementMalus
+    - Helper `ResolveCircleManhattan` inline (rayon 3 pour Rugissement, CircleLarge n'était pas dans TargetingResolver)
+  - **5 sorts livrés Bible V7.1 strict** :
+    - **Ouvre-Plaie** (id 11, touche `1`) : 2 PA, range 1, 110 dgts. Shift+1 = +1 HG → 230 dgts + `AntiHealShield 2 tours` sur cible
+    - **Pacte de Sang** (id 15, touche `2`) : 1 PA, self, **1/match**. -80 HP self + +3 HG (clamp cap) + `BuffNextOffensiveDmgPercent +50%` (consumed au cast offensif suivant)
+    - **Rugissement** (id 18, touche `3`) : 3 PA, AoE rayon 3 Manhattan autour caster. Sur chaque ennemi : `MovementMalus` (magnitude 1, ou 2 si cible <50% HP) + `AntiTeleport` (1 tour)
+    - **Rage Insatiable** (id 19, touche `4`) : 3 PA, self, 2 tours. `RageInsatiableActive` posé. Sorts coûtent +1 PA effectif. Après chaque offensif : caster regen +1 PA (max 1/tour, tracker via Magnitude = LastTurnPAGained)
+    - **Riposte Carmin** (id 20, touche `5`) : 2 PA, self, 1 tour. `RipostMelee:100` posé. Quand subi en mêlée : attaquant prend 100 dgts retour + reçoit MovementMalus 1
+  - **View** : CombatInputController bind touches 1-5 + Shift modifier pour HG spend. Helper `TryGetCasterCell` pour sorts self-target. CombatHUDView refactor pour afficher HP/PA/PM/HG/Statuses des 2 joueurs simultanément (`{Kind:TurnsLeft[xMag]}`).
+  - **Validation E2E (5/5 tests critiques)** : Pacte buff +50% (Damage 330) + consume ✓, Ouvre-Plaie +HG (230 dgts + AntiHealShield) ✓, Riposte reflect (P1 prend 100 dgts retour) ✓, Rage cycle (+1 PA cost et +1 PA regen) ✓, Pacte 1/match rejet ✓.
+  - Pattern de design verrouillé : SpellDef simple + switch SpellId dans SpellSystem pour effets exotiques. Scale naturellement vers 2.10.b/c et Phase 3.
 
 ---
 
@@ -576,10 +602,11 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.7 — Spell runtime engine
 - 2.8 — Premier sort Tranche-Âme Soulrender (E2E damage flow)
 
-**Bloc C — Soulrender (3 briques)**
+**Bloc C — Soulrender (3 briques, 2.10 découpée en a/b/c)**
 - 2.9 — Ressource Hémoglyphe (cap 5) ✅ VALIDÉE 11 mai 2026
-- 2.10 — 14 sorts Soulrender restants ⏳ PROCHAINE
-- 2.10 — 14 sorts Soulrender restants + marques + Vapeur Carmin
+- 2.10.a — Framework Statuses + 5 sorts (Ouvre-Plaie, Pacte de Sang, Rugissement, Rage Insatiable, Riposte Carmin) ✅ VALIDÉE 11 mai 2026
+- 2.10.b — Shields + Heals + Marques + 5 sorts (Peau de Fer, Sève Vive, Dernier Souffle, Marque de Carnage, Empoignade) ⏳ EN COURS
+- 2.10.c — Terrains (Vapeur Carmin, Sang Coagulé) + Mvt non-PM + Kill detection + 4 sorts (Charge Brutale, Détonation Sanglante, Curée, Cautérisation) + effet bonus Tranche-Âme
 - 2.11 — Signature Âme Lacérée + Passif Appel du Sang
 
 **Bloc D — Nightseer (3 briques)**
@@ -592,7 +619,7 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.16 — IA Medium (heuristique multi-tour)
 - 2.17 — Scène `30_CombatIA` + test E2E combat 1v1 jouable 🎯
 
-**Prochaine étape :** Démarrer brique 2.10 — 14 sorts Soulrender restants (Ouvre-Plaie, Charge Brutale, Empoignade, Pacte de Sang, etc.) + système de marques + terrain Vapeur Carmin. **GROSSE BRIQUE** : potentiellement à découper en 2.10.a/b/c.
+**Prochaine étape :** Démarrer 2.10.b — Shields (Peau de Fer 200 HP), Heals (Sève Vive, Dernier Souffle), Marques (Marque de Carnage donne +1 HG bonus sur cast Soulrender), Pull (Empoignade). 5 sorts à livrer. Le framework Statuses de 2.10.a est réutilisé tel quel. Architecture clarifiée : Shields = champs `ShieldHP`/`ShieldTurnsLeft` sur Combatant (pas un Status, plus simple et lisible). Heals = nouvelle branche dans SpellSystem (effet Heal) avec check AntiHealShield. Marques = `StatusKind.MarkedByCarnage` déjà déclaré.
 
 ---
 
@@ -686,6 +713,21 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 2.10.a (Framework Statuses + 5 sorts Soulrender) — grosse session
+- **Pivot architectural** : la brique 2.10 (14 sorts restants Bible V7.1) est découpée en 3 sous-briques pour rester gérable dans le workflow "1 brique = validation E2E" :
+  - **2.10.a** : Framework Statuses + 5 sorts simples (livrée ce jour)
+  - **2.10.b** : Shields + Heals + Marques + 5 sorts (prochaine)
+  - **2.10.c** : Terrains (Vapeur Carmin, Sang Coagulé) + Mouvement non-PM + Kill detection + 4 sorts + effet bonus Tranche-Âme
+- **12 fichiers livrés** : 2 nouveaux (Status.qtn, StatusHelper.cs) + 10 modifiés (Combatant.qtn, CombatantSystem, TurnSystem, Spell.qtn, CastSpellCommand, SpellRegistry, SpellSystem, MovementSystem indirectement via TurnSystem.ResetPM, CombatInputController, CombatHUDView).
+- **Découverte importante (Quantum 3 DSL)** : les fixed-size arrays `array<T>[N]` dans les composants s'accèdent **directement via pointer indexer** (`c->Statuses[i].Kind = ...`), pas via `f.ResolveList` (qui est pour les list dynamiques). J'avais d'abord utilisé `f.ResolveList` par confusion, corrigé après avoir lu le pattern existant `array<Tile>[255]` dans Grid.qtn / GridHelpers.
+- **Sémantique de durée Statuses** : règle "skip si `AppliedOnTurn == currentTurn`" à la décrémentation TurnEnd. Permet d'avoir une lecture intuitive de "X tours" Bible V7.1 (= X tours réellement vécus du POV de l'owner). Vérifié sur Rage Insatiable (2 tours du caster), Riposte Carmin (1 tour adverse), Ouvre-Plaie debuff (2 tours de la cible).
+- **Design `MovementMalus` au reset PM** : appliqué dans `TurnSystem.EnterTurnStart` (sur le combattant qui démarre son tour) plutôt que dans MovementSystem. Plus propre : pas de calcul "effective PM" dispersé, le PM stocké reflète directement ce qui est disponible.
+- **Pattern verrouillé pour les sorts complexes** : SpellDef reste simple (cost + targeting + damage + variants HG + once-per-match bit + IsOffensive). Effets exotiques (statuses appliqués, self-effects, conditionnels) dans `SpellSystem.ApplySpellSpecificEffects` (switch SpellId). Scale naturellement vers 2.10.b/c et Phase 3 sans data-driven Effect Composition Engine prématuré.
+- **Reflect Riposte Carmin** : trigger dans le damage loop, condition `isMelee && target.Has(RipostMelee)`. Inflige `Magnitude` dgts au caster + applique MovementMalus 1 sur lui. Validé E2E : P1 Tranche-Âme 220 sur P0 (HP 1500→1280), P1 prend 100 dgts retour (HP 1500→1400).
+- **HUD refactor** : affiche P0 + P1 simultanément avec HP/PA/PM/HG/Statuses formattés `{Kind:TurnsLeft[xMag]}`. Lorenzo voit en permanence les buffs/debuffs en action. Bug mineur résolu : caractère `▶` (U+25B6) absent de LiberationSans SDF → remplacé par `> ` ASCII.
+- **5/5 tests E2E validés** : Pacte +50% buff appliqué + consumed sur cast offensif (Damage 330), Ouvre-Plaie Shift+1 = 230 dgts + AntiHealShield 2 tours, Riposte reflect 100 dgts, Rage cycle (+1 PA cost / +1 PA regen, vérifié via log "regen 1 PA (1 -> 2)" et PA effectif), Pacte 1/match rejet.
+- **Brique 2.10.a complète et propre**. Aucun bug runtime. Tous les hooks scaleront pour 2.10.b (Shields, Heals, Marks réutilisent le framework Statuses).
 
 ### 11 mai 2026 — Brique 2.9 (Ressource Hémoglyphe Soulrender)
 - 5 modifs : DSL Combatant.qtn (Resource + LastResourceGainOnHitTurn), CombatantStats (caps 5 classes), CombatantSystem (init au spawn), SpellSystem (gain caster/cible), CombatHUDView (affichage [HG x/5])

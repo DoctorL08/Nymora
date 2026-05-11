@@ -1,0 +1,36 @@
+// Systeme de statuses Nymora (buffs / debuffs temporises) — Bible V7.1.
+//
+// Un Combatant porte jusqu'a STATUS_SLOTS statuses simultanes via array<Status>.
+// Chaque status a une duree exprimee en TOURS, decrementee a TurnEnd.
+//
+// La regle "AppliedOnTurn" permet de skipper la decrementation au tour ou le
+// status vient d'etre pose. Cela donne une semantic intuitive pour les buffs
+// reactifs (Riposte Carmin) et les durees Bible V7.1 ("2 tours" = 2 tours actifs
+// effectifs cote owner).
+//
+// StatusKind : extensible. Les valeurs sont verrouillees comme contrat avec
+// CombatRulesVersion — ne PAS reorganiser les ints existants.
+
+enum StatusKind : Byte
+{
+    None = 0,
+
+    // Soulrender (2.10.a)
+    AntiHealShield               = 1,  // bloque heal/shield recu (Ouvre-Plaie + 1 HG)
+    AntiTeleport                 = 2,  // bloque teleport prochain tour (Rugissement, Empoignade)
+    BuffNextOffensiveDmgPercent  = 3,  // Magnitude = % multiplier (Pacte de Sang = 50)
+    RipostMelee                  = 4,  // Magnitude = dgts reflect (Riposte Carmin = 100)
+    MovementMalus                = 5,  // Magnitude = -PM (Rugissement -1, ou -2 si HP<50%)
+    RageInsatiableActive         = 6,  // Magnitude = LastTurnPAGained tracker (init -1)
+
+    // Soulrender (2.10.b)
+    MarkedByCarnage              = 7,  // cible marquee, +1 HG bonus sur cast Soulrender
+}
+
+struct Status
+{
+    StatusKind Kind;
+    Int32 Magnitude;
+    Int32 TurnsLeft;
+    Int32 AppliedOnTurn;
+}

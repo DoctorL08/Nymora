@@ -9,9 +9,8 @@
 //   70-89  : Necram (Phase 3)
 //   90-109 : Ghostra (Phase 3)
 //
-// SpellEffectKind : tous les types d'effets possibles. En 2.7, seul Damage
-// est implemente. Les autres (Heal, ApplyMark, Push, Pull, Spawn) seront
-// ajoutes au fur et a mesure des sorts qui en ont besoin (2.10/2.11).
+// SpellEffectKind : tous les types d'effets possibles. En 2.10.a, Damage et
+// Heal (preparation 2.10.b). Les autres seront ajoutes selon les besoins.
 
 enum SpellId : Byte
 {
@@ -21,11 +20,22 @@ enum SpellId : Byte
     // 2-9 reserves pour autres sorts de dev
 
     // SOULRENDER (Bible V7.1 — 5 offensifs + 5 tactiques + 5 survie + signature)
-    SoulrenderTrancheAme = 10,
-    // 11-14 reserves pour autres sorts offensifs Soulrender (Ouvre-Plaie, Charge Brutale, Detonation Sanglante, Curee)
-    // 15-19 sorts tactiques (Empoignade, Pacte de Sang, Marque de Carnage, Rugissement, Rage Insatiable)
-    // 20-24 sorts survie
-    // 25 SIGNATURE : Ame Laceree
+    SoulrenderTrancheAme        = 10,  // 2.8  — Offensif : 3 PA, melee 1, 220 dgts
+    SoulrenderOuvrePlaie        = 11,  // 2.10.a — Offensif : 2 PA, range 1, 110 dgts (+120 si 1 HG, anti-heal)
+    // 12 reserve (Charge Brutale,   2.10.c)
+    // 13 reserve (Detonation Sangl, 2.10.c)
+    // 14 reserve (Curee,            2.10.c)
+    SoulrenderPacteDeSang       = 15,  // 2.10.a — Tactique : 1 PA, self, -80 HP +3 HG +50% next offensif, 1/match
+    // 16 reserve (Marque de Carnage, 2.10.b)
+    // 17 reserve (Empoignade,        2.10.b)
+    SoulrenderRugissement       = 18,  // 2.10.a — Tactique : 3 PA, AoE rayon 3, -1 PM + anti-tp (ou -2 si <50%)
+    SoulrenderRageInsatiable    = 19,  // 2.10.a — Tactique : 3 PA, self, 2 tours +1 PA cost / +1 PA regen offensif
+    SoulrenderRiposteCarmin     = 20,  // 2.10.a — Survie  : 2 PA, self, 1 tour reflect 100 dgts melee + -1 PM attaquant
+    // 21 reserve (Cautérisation,    2.10.c)
+    // 22 reserve (Peau de Fer,      2.10.b)
+    // 23 reserve (Seve Vive,        2.10.b)
+    // 24 reserve (Dernier Souffle,  2.10.b)
+    // 25 SIGNATURE : Ame Laceree (2.11)
 }
 
 enum SpellEffectKind : Byte

@@ -99,7 +99,22 @@ namespace Nymora.Combat.View
             // Qualifie UnityEngine.Input : Quantum a aussi un type "Input" (struct DSL).
             bool mouseDown = UnityEngine.Input.GetMouseButtonDown(0);
             bool spaceDown = UnityEngine.Input.GetKeyDown(KeyCode.Space);
-            if (!mouseDown && !spaceDown) return;
+
+            // 2.10.a : touches 1-5 pour les 5 sorts Soulrender de la brique.
+            //   1 = Ouvre-Plaie       (range 1, melee)  — Shift+1 = depense 1 HG (Glyphe)
+            //   2 = Pacte de Sang     (self, 1/match)
+            //   3 = Rugissement       (AoE rayon 3, self target)
+            //   4 = Rage Insatiable   (self)
+            //   5 = Riposte Carmin    (self)
+            bool key1 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha1);
+            bool key2 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha2);
+            bool key3 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha3);
+            bool key4 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha4);
+            bool key5 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha5);
+            bool shiftHeld = UnityEngine.Input.GetKey(KeyCode.LeftShift) || UnityEngine.Input.GetKey(KeyCode.RightShift);
+
+            bool anySpellKey = key1 || key2 || key3 || key4 || key5;
+            if (!mouseDown && !spaceDown && !anySpellKey) return;
 
             // Calcule la case sous la souris (partagee entre mvt et cast).
             Vector3 mouseWorld = _camera.ScreenToWorldPoint(UnityEngine.Input.mousePosition);
@@ -121,13 +136,47 @@ namespace Nymora.Combat.View
                 }
             }
 
-            // Espace : cast Tranche-Ame Soulrender (brique 2.8, Bible V7.1 : 3 PA, melee 1, 220 dgts).
-            // En 2.10+ remplace par "sort selectionne dans la barre de sorts" + clic (UI quickcast).
+            // Espace : cast Tranche-Ame Soulrender (brique 2.8).
             if (spaceDown)
             {
-                var castCmd = new CastSpellCommand { Spell = SpellId.SoulrenderTrancheAme, TargetX = gx, TargetY = gy };
+                var castCmd = new CastSpellCommand { Spell = SpellId.SoulrenderTrancheAme, TargetX = gx, TargetY = gy, HGSpend = 0 };
                 game.SendCommand(senderPlayer, castCmd);
-                Debug.Log($"[Nymora.CombatInput] Sent CastSpellCommand TrancheAme player={senderPlayer} target=({gx},{gy})");
+                Debug.Log($"[Nymora.CombatInput] Sent Cast TrancheAme player={senderPlayer} target=({gx},{gy})");
+                return;
+            }
+
+            // Touches 1-5 : sorts 2.10.a. Cible = case sous la souris (relevant uniquement
+            // pour Ouvre-Plaie ; les autres sont self-target, mais on envoie quand meme la
+            // case mouse pour rester coherent avec la signature CastSpellCommand).
+            if (key1)
+            {
+                byte hg = (byte)(shiftHeld ? 1 : 0);
+                SendSpellAt(game, senderPlayer, SpellId.SoulrenderOuvrePlaie, gx, gy, hg);
+                return;
+            }
+            if (key2)
+            {
+                // Pacte de Sang = self, range 0. Cible = caster lui-meme (cherche le combatant actif).
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.SoulrenderPacteDeSang, cx, cy, 0);
+                return;
+            }
+            if (key3)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.SoulrenderRugissement, cx, cy, 0);
+                return;
+            }
+            if (key4)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.SoulrenderRageInsatiable, cx, cy, 0);
+                return;
+            }
+            if (key5)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.SoulrenderRiposteCarmin, cx, cy, 0);
                 return;
             }
 
@@ -138,6 +187,34 @@ namespace Nymora.Combat.View
                 game.SendCommand(senderPlayer, moveCmd);
                 Debug.Log($"[Nymora.CombatInput] Sent MoveCommand player={senderPlayer} target=({gx},{gy})");
             }
+        }
+
+        private static void SendSpellAt(QuantumGame game, int sender, SpellId spell, int tx, int ty, byte hgSpend)
+        {
+            var cmd = new CastSpellCommand { Spell = spell, TargetX = tx, TargetY = ty, HGSpend = hgSpend };
+            game.SendCommand(sender, cmd);
+            Debug.Log($"[Nymora.CombatInput] Sent Cast {spell} player={sender} target=({tx},{ty}) HGSpend={hgSpend}");
+        }
+
+        /// <summary>
+        /// Resoud la case du caster (joueur passe en argument) en lisant la Frame verified.
+        /// Utilise pour les sorts self-target : on envoie sa propre case comme TargetX/Y.
+        /// </summary>
+        private static bool TryGetCasterCell(QuantumGame game, int playerIndex, out int x, out int y)
+        {
+            x = 0; y = 0;
+            var frame = game.Frames.Verified;
+            var filter = frame.Filter<Quantum.Combatant>();
+            while (filter.Next(out Quantum.EntityRef _, out Quantum.Combatant c))
+            {
+                if (c.PlayerIndex == playerIndex)
+                {
+                    x = c.GridX;
+                    y = c.GridY;
+                    return true;
+                }
+            }
+            return false;
         }
     }
 }

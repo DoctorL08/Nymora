@@ -49,4 +49,15 @@ component Combatant
     // pour pouvoir accueillir toutes les classes sans refactor majeur.
     Int32 Resource;
     Int32 LastResourceGainOnHitTurn;
+
+    // 2.10.a — Statuses (buffs / debuffs temporises). 8 slots fixes.
+    // Slot libre = Kind == None. Cf StatusHelper pour les acces.
+    array<Status>[8] Statuses;
+
+    // 2.10.a — Bitfield des sorts "1 fois par match" deja utilises par CE combattant.
+    //   Bit 0 = Pacte de Sang (SpellId.SoulrenderPacteDeSang)
+    //   Bit 1 = Dernier Souffle (SpellId.SoulrenderDernierSouffle) — reserve 2.10.b
+    //   Bits 2-31 reserves pour futurs sorts 1/match (Phase 2.13+, Phase 3)
+    // Pas reset entre tours (par definition once-per-match). Reset uniquement au spawn.
+    Int32 OncePerMatchUsedFlags;
 }

@@ -78,6 +78,17 @@ namespace Quantum
                 {
                     combatant->PA = combatant->MaxPA;
                     combatant->PM = combatant->MaxPM;
+
+                    // 2.10.a : MovementMalus (Rugissement -1/-2, Riposte Carmin -1)
+                    // reduit le PM disponible pour CE tour. Le status reste actif jusqu'a
+                    // son TurnEnd ; il sera decrement la et expire normalement.
+                    int pmMalus = StatusHelper.GetMagnitude(combatant, StatusKind.MovementMalus, 0);
+                    if (pmMalus > 0)
+                    {
+                        combatant->PM -= pmMalus;
+                        if (combatant->PM < 0) combatant->PM = 0;
+                        Log.Info($"[TurnSystem] MovementMalus -{pmMalus} PM applique sur P{combatant->PlayerIndex} (PM={combatant->PM}/{combatant->MaxPM})");
+                    }
                 }
             }
 
@@ -97,6 +108,11 @@ namespace Quantum
 
         private static void EnterTurnEnd(Frame f, CombatState* state)
         {
+            // 2.10.a : decremente les statuses de tous les combattants. La regle
+            // "skip si AppliedOnTurn == currentTurn" assure une semantic intuitive
+            // pour les durees Bible V7.1 (cf StatusHelper.DecrementAllOnTurnEnd).
+            StatusHelper.DecrementAllOnTurnEnd(f, state->TurnNumber);
+
             // Alternance stricte des 2 joueurs (1v1 en Phase 2). Pour 2v2/3v3 (Phase 6),
             // la rotation devra suivre l'ordre d'initiative et non un simple modulo.
             state->ActivePlayerIndex = (state->ActivePlayerIndex + 1) % TurnConstants.PlayerCount;

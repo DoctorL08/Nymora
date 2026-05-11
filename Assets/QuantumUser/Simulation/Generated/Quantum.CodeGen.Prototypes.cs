@@ -85,6 +85,9 @@ namespace Quantum.Prototypes {
     public Int32 GridY;
     public Int32 Resource;
     public Int32 LastResourceGainOnHitTurn;
+    [ArrayLengthAttribute(8)]
+    public Quantum.Prototypes.StatusPrototype[] Statuses = new Quantum.Prototypes.StatusPrototype[8];
+    public Int32 OncePerMatchUsedFlags;
     partial void MaterializeUser(Frame frame, ref Quantum.Combatant result, in PrototypeMaterializationContext context);
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.Combatant component = default;
@@ -104,6 +107,10 @@ namespace Quantum.Prototypes {
         result.GridY = this.GridY;
         result.Resource = this.Resource;
         result.LastResourceGainOnHitTurn = this.LastResourceGainOnHitTurn;
+        for (int i = 0, count = PrototypeValidator.CheckLength(Statuses, 8, in context); i < count; ++i) {
+          this.Statuses[i].Materialize(frame, ref *result.Statuses.GetPointer(i), in context);
+        }
+        result.OncePerMatchUsedFlags = this.OncePerMatchUsedFlags;
         MaterializeUser(frame, ref result, in context);
     }
   }
@@ -134,6 +141,22 @@ namespace Quantum.Prototypes {
     public Int32 _empty_prototype_dummy_field_;
     partial void MaterializeUser(Frame frame, ref Quantum.Input result, in PrototypeMaterializationContext context);
     public void Materialize(Frame frame, ref Quantum.Input result, in PrototypeMaterializationContext context = default) {
+        MaterializeUser(frame, ref result, in context);
+    }
+  }
+  [System.SerializableAttribute()]
+  [Quantum.Prototypes.Prototype(typeof(Quantum.Status))]
+  public unsafe partial class StatusPrototype : StructPrototype {
+    public Quantum.QEnum8<StatusKind> Kind;
+    public Int32 Magnitude;
+    public Int32 TurnsLeft;
+    public Int32 AppliedOnTurn;
+    partial void MaterializeUser(Frame frame, ref Quantum.Status result, in PrototypeMaterializationContext context);
+    public void Materialize(Frame frame, ref Quantum.Status result, in PrototypeMaterializationContext context = default) {
+        result.Kind = this.Kind;
+        result.Magnitude = this.Magnitude;
+        result.TurnsLeft = this.TurnsLeft;
+        result.AppliedOnTurn = this.AppliedOnTurn;
         MaterializeUser(frame, ref result, in context);
     }
   }

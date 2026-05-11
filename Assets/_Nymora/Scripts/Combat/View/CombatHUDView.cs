@@ -35,32 +35,67 @@ namespace Nymora.Combat.View
                 ? state.TurnTimerTicks / (float)updateRate
                 : 0f;
 
-            // Resolution de la classe et ressource du joueur actif.
-            string activeClassLabel = "?";
-            string resourceLabel = "";
+            // Resolution de la classe / ressource / statuses du joueur actif ET de l'autre.
+            // 2.10.a : affichage compact des statuses (utile pour valider visuellement).
+            string p0Block = "";
+            string p1Block = "";
             var filter = frame.Filter<Combatant>();
             while (filter.Next(out EntityRef _, out Combatant combatant))
             {
-                if (combatant.PlayerIndex == state.ActivePlayerIndex)
-                {
-                    activeClassLabel = combatant.Class.ToString();
-                    int maxResource = Quantum.CombatantStats.GetMaxResource(combatant.Class);
-                    if (maxResource > 0)
-                    {
-                        // Tag court de ressource selon la classe (Bible V7.1).
-                        string tag = combatant.Class == NymoraClass.Soulrender ? "HG"
-                                   : combatant.Class == NymoraClass.Nightseer  ? "PR"
-                                   : combatant.Class == NymoraClass.Colossar   ? "FD"
-                                   : combatant.Class == NymoraClass.Necram     ? "PT"
-                                   : combatant.Class == NymoraClass.Ghostra    ? "RM"
-                                   : "?";
-                        resourceLabel = $"  [{tag} {combatant.Resource}/{maxResource}]";
-                    }
-                    break;
-                }
+                string block = FormatCombatantInfo(combatant);
+                if (combatant.PlayerIndex == 0) p0Block = block;
+                else if (combatant.PlayerIndex == 1) p1Block = block;
             }
 
-            _label.text = $"Phase: {state.CurrentPhase}  |  Tour {state.TurnNumber}  |  Joueur P{state.ActivePlayerIndex} {activeClassLabel}{resourceLabel}  |  Timer {secondsRemaining:0.0}s";
+            string activeMarker0 = state.ActivePlayerIndex == 0 ? "> " : "  ";
+            string activeMarker1 = state.ActivePlayerIndex == 1 ? "> " : "  ";
+
+            _label.text =
+                $"Tour {state.TurnNumber}  |  {state.CurrentPhase}  |  {secondsRemaining:0.0}s\n" +
+                $"{activeMarker0}P0 {p0Block}\n" +
+                $"{activeMarker1}P1 {p1Block}";
+        }
+
+        private static string FormatCombatantInfo(Combatant c)
+        {
+            int maxResource = Quantum.CombatantStats.GetMaxResource(c.Class);
+            string resourceLabel = "";
+            if (maxResource > 0)
+            {
+                string tag = c.Class == NymoraClass.Soulrender ? "HG"
+                           : c.Class == NymoraClass.Nightseer  ? "PR"
+                           : c.Class == NymoraClass.Colossar   ? "FD"
+                           : c.Class == NymoraClass.Necram     ? "PT"
+                           : c.Class == NymoraClass.Ghostra    ? "RM"
+                           : "?";
+                resourceLabel = $" [{tag} {c.Resource}/{maxResource}]";
+            }
+
+            string statuses = FormatStatuses(c);
+            string statusLine = string.IsNullOrEmpty(statuses) ? "" : $"  {{{statuses}}}";
+
+            return $"{c.Class} HP {c.HP}/{c.MaxHP} PA {c.PA}/{c.MaxPA} PM {c.PM}/{c.MaxPM}{resourceLabel}{statusLine}";
+        }
+
+        private static string FormatStatuses(Combatant c)
+        {
+            // Concatene les statuses actifs en format court "Kind:TurnsLeft[xMag]".
+            var sb = new System.Text.StringBuilder();
+            for (int i = 0; i < 8; i++)
+            {
+                var s = c.Statuses[i];
+                if (s.Kind == StatusKind.None || s.TurnsLeft <= 0) continue;
+                if (sb.Length > 0) sb.Append(", ");
+                sb.Append(s.Kind.ToString());
+                sb.Append(':');
+                sb.Append(s.TurnsLeft);
+                if (s.Magnitude != 0 && s.Kind != StatusKind.RageInsatiableActive)
+                {
+                    sb.Append('x');
+                    sb.Append(s.Magnitude);
+                }
+            }
+            return sb.ToString();
         }
     }
 }
