@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Nymora.Combat.Grid;
 using Quantum;
 using UnityEngine;
+using SpellCategory = Nymora.Core.Enums.SpellCategory;
 
 namespace Nymora.Combat.View
 {
@@ -33,6 +34,9 @@ namespace Nymora.Combat.View
         // mouvement, et le dernier facing pour conserver l'orientation a l'arret.
         private readonly Dictionary<EntityRef, GridPos> _lastGridPos = new Dictionary<EntityRef, GridPos>(2);
         private readonly Dictionary<EntityRef, IsoFacing> _lastFacings = new Dictionary<EntityRef, IsoFacing>(2);
+        // 2.12.bis : tracking HP et LastCastOnTurn pour declencher les anims Hurt/Death/Cast/Attack.
+        private readonly Dictionary<EntityRef, int> _lastHP = new Dictionary<EntityRef, int>(2);
+        private readonly Dictionary<EntityRef, int> _lastCastTurn = new Dictionary<EntityRef, int>(2);
         private Vector3 _centerOffset;
         private bool _gridReady;
 
@@ -126,6 +130,102 @@ namespace Nymora.Combat.View
                 // 2.12 : push stage visuel (selon ressource Bible V7.1) + facing iso selon mouvement.
                 IsoFacing facing = ResolveFacing(entity, combatant);
                 view.SetStageAndFacing(ComputeStage(combatant), facing);
+
+                // 2.12.bis : detection des changements d'etat -> triggers anims.
+                DispatchAnimTriggers(entity, combatant, view);
+            }
+        }
+
+        /// <summary>
+        /// 2.12.bis : compare le snapshot courant au dernier snapshot vu et trigger les
+        /// anims appropriees (Hurt sur perte de HP, Death sur HP=0, Cast/Attack sur
+        /// nouveau cast, MoveSpeed adapte pendant le mouvement).
+        ///
+        /// Polling-based : on lit Combatant.LastCastOnTurn + LastCastSpellId pour detecter
+        /// les casts, et on compare HP au dernier vu pour detecter les degats. Aucun
+        /// event Quantum requis, donc pas de modif lourde de la sim.
+        /// </summary>
+        private void DispatchAnimTriggers(EntityRef entity, Combatant combatant, CombatantView view)
+        {
+            // --- HP delta : Hurt / Death ---
+            int prevHP = _lastHP.TryGetValue(entity, out var hp) ? hp : combatant.HP;
+            int currHP = combatant.HP;
+            if (currHP == 0 && prevHP > 0)
+            {
+                view.TriggerDeath();
+            }
+            else if (currHP < prevHP)
+            {
+                view.TriggerHurt();
+            }
+            _lastHP[entity] = currHP;
+
+            // --- Cast delta : Attack (range 1) / Cast (range >1) ---
+            int prevCastTurn = _lastCastTurn.TryGetValue(entity, out var ct) ? ct : -1;
+            int currCastTurn = combatant.LastCastOnTurn;
+            if (currCastTurn != prevCastTurn && currCastTurn >= 0)
+            {
+                var spellId = combatant.LastCastSpellId;
+                if (SpellRegistry.TryGet(spellId, out var def))
+                {
+                    if (def.RangeMax <= 1)
+                    {
+                        view.TriggerAttack();
+                    }
+                    else
+                    {
+                        view.TriggerCast(CategoryForSpell(spellId));
+                    }
+                }
+            }
+            _lastCastTurn[entity] = currCastTurn;
+
+            // --- Walk speed pendant le lerp ---
+            // TODO 2.12.ter : differentier 1-2 PM (lent 0.8) vs 3+ PM (rapide 1.5) en regardant
+            // le nb de cases parcourues dans la "sequence" de mouvement courante. Pour l'instant
+            // on push 1.0 fixe quand l'entity vient de bouger. Le state Walk gere automatiquement
+            // les transitions via MoveSpeed (CombatantView.Update push MoveSpeed pendant le lerp).
+            view.SetDesiredMoveSpeed(1.0f);
+        }
+
+        /// <summary>
+        /// Mappe SpellId -> SpellCategory pour driver la vitesse de l'anim Cast.
+        /// Hardcode Soulrender (Bible V7.1). A etendre quand les autres classes arrivent.
+        /// </summary>
+        private static SpellCategory CategoryForSpell(SpellId id)
+        {
+            switch (id)
+            {
+                // SOULRENDER — Offensifs (5)
+                case SpellId.SoulrenderTrancheAme:
+                case SpellId.SoulrenderOuvrePlaie:
+                case SpellId.SoulrenderChargeBrutale:
+                case SpellId.SoulrenderDetonationSanglante:
+                case SpellId.SoulrenderCuree:
+                    return SpellCategory.Offensive;
+
+                // SOULRENDER — Tactiques (5)
+                case SpellId.SoulrenderPacteDeSang:
+                case SpellId.SoulrenderMarqueDeCarnage:
+                case SpellId.SoulrenderEmpoignade:
+                case SpellId.SoulrenderRugissement:
+                case SpellId.SoulrenderRageInsatiable:
+                    return SpellCategory.Tactical;
+
+                // SOULRENDER — Survie (5)
+                case SpellId.SoulrenderRiposteCarmin:
+                case SpellId.SoulrenderCauterisation:
+                case SpellId.SoulrenderPeauDeFer:
+                case SpellId.SoulrenderSeveVive:
+                case SpellId.SoulrenderDernierSouffle:
+                    return SpellCategory.Survival;
+
+                // SOULRENDER — Signature
+                case SpellId.SoulrenderAmeLaceree:
+                    return SpellCategory.Signature;
+
+                default:
+                    return SpellCategory.Tactical;
             }
         }
 
@@ -269,6 +369,8 @@ namespace Nymora.Combat.View
             _views.Clear();
             _lastGridPos.Clear();
             _lastFacings.Clear();
+            _lastHP.Clear();
+            _lastCastTurn.Clear();
             _gridReady = false;
         }
     }

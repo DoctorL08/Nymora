@@ -70,4 +70,12 @@ component Combatant
     // Cooldown 4 tours. Initial : -1000 (pas de cooldown au spawn).
     // Detonation Sanglante avec 5 HG total set aussi ce champ (interdit Ame Laceree + reset cooldown).
     Int32 LastAmeLaceeUsedOnTurn;
+
+    // 2.12.bis — Tracking du dernier cast (View pole la diff pour trigger les anims cast/attack).
+    // LastCastOnTurn : tour du dernier cast (init -1, increment a chaque cast reussi).
+    // LastCastSpellId : SpellId du dernier cast (init None). La View map SpellId -> SpellCategory
+    // pour choisir l'anim (Survival/Tactical/Offensive/Signature) et discriminer Cast vs Attack
+    // selon RangeMax (melee = Attack, range = Cast).
+    Int32 LastCastOnTurn;
+    SpellId LastCastSpellId;
 }

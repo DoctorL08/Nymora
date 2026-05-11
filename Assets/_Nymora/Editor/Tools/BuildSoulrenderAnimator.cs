@@ -7,23 +7,37 @@ using UnityEngine;
 namespace Nymora.Editor.Tools
 {
     /// <summary>
-    /// Editor tool : automatise le setup des animations Soulrender (2.12).
+    /// Editor tool : automatise le setup des animations Soulrender (2.12 + 2.12.bis).
     ///
     /// Inputs (livres par le designer) :
     ///   Assets/_Nymora/Art/Sprites/Soulrender/Base/sources/SR_animation_stage{0,1,2}_{NE,SE}.aseprite
-    ///   - Pre-requis : ces .aseprite doivent etre configures (PPU 128, pivot custom
-    ///     compatible iso) avec frame tags Aseprite (idle/walk/attack/cast/hurt/death).
+    ///   Frame tags Aseprite attendus dans chaque fichier : idle / walk / attack / cast / hurt / death.
+    ///   Si un tag manque, fallback sur idle (warning console mais pas d'erreur).
     ///
     /// Outputs (genere automatiquement) :
-    ///   Assets/_Nymora/Animations/Soulrender/SoulrenderStage{0,1,2}_{NE,SE}.controller
-    ///     - 6 AnimatorController total (1 par stage x 1 par direction iso).
-    ///     - Default state = clip 'idle' du .aseprite correspondant.
+    ///   Assets/_Nymora/Animations/Soulrender/SoulrenderStage{0,1,2}_{NE,SE}.controller (6 controllers)
+    ///     Chaque controller a la meme state machine :
+    ///       - Idle (default, speed 0.4 — respiration lente, pas hyperactif)
+    ///       - Walk (speed = parametre MoveSpeed, anim selon vitesse)
+    ///       - Cast (speed = parametre CastSpeed, set par la View selon SpellCategory)
+    ///       - Attack (melee, speed 1)
+    ///       - Hurt (degats recus, speed 1)
+    ///       - Death (HP=0, latched, pas de retour)
+    ///     Parametres :
+    ///       - MoveSpeed (float, 0) : driver Idle <-> Walk + speed du Walk
+    ///       - CastSpeed (float, 1) : module la vitesse du Cast (Survival lent, Offensive rapide)
+    ///       - Cast / Attack / Hurt / Death (triggers)
+    ///     Transitions :
+    ///       - Idle -> Walk si MoveSpeed > 0.01
+    ///       - Walk -> Idle si MoveSpeed < 0.01
+    ///       - AnyState -> Cast/Attack/Hurt/Death sur trigger
+    ///       - Cast/Attack/Hurt -> Idle apres exit time 0.95
+    ///       - Death : latched (pas de transition retour)
     ///   Update du prefab Combatant_Soulrender :
-    ///     - Ajout Animator component (si absent)
+    ///     - Add Animator si absent
     ///     - Bind CombatantView : _animator + 6 fields _stage{0,1,2}Controller{NE,SE}
     ///
-    /// Les directions NW et SW ne sont PAS generees : elles sont obtenues runtime
-    /// par flipX sur les controllers NE/SE (cf CombatantView.SetStageAndFacing).
+    /// Les directions NW et SW sont obtenues runtime par flipX (cf CombatantView.SetStageAndFacing).
     ///
     /// Usage : Menu Nymora > Setup > Build Soulrender Animator
     /// Le tool est idempotent : si les AnimatorController existent deja, ecrases.
@@ -62,13 +76,26 @@ namespace Nymora.Editor.Tools
 
         private const string PrefabPath = "Assets/_Nymora/Prefabs/Combat/Combatants/Combatant_Soulrender.prefab";
 
+        // Parametres et noms d'etats : duplique cote CombatantView (Animator.StringToHash).
+        // Si tu modifies ici, modifie aussi CombatantView (Param*Hash).
+        public const string ParamMoveSpeed = "MoveSpeed";
+        public const string ParamCastSpeed = "CastSpeed";
+        public const string ParamCast = "Cast";
+        public const string ParamAttack = "Attack";
+        public const string ParamHurt = "Hurt";
+        public const string ParamDeath = "Death";
+
+        // Idle speed bas : Lorenzo a constate que l'idle en speed 1 etait ultra speedy (~6 FPS x10 cycles/s).
+        // 0.4 donne une vraie respiration (~2-3 cycles/s). A ajuster si trop lent.
+        private const float IdleSpeed = 0.4f;
+
         [MenuItem("Nymora/Setup/Build Soulrender Animator")]
         public static void Run()
         {
             int n = AsepritePaths.Length;
 
-            // 1. Pre-flight : verifier que les .aseprite existent et trouver les clips idle.
-            AnimationClip[] idleClips = new AnimationClip[n];
+            // 1. Pre-flight : verifier que les .aseprite existent et collecter les clips par tag.
+            var clipSets = new ClipSet[n];
             for (int i = 0; i < n; i++)
             {
                 if (!File.Exists(AsepritePaths[i]))
@@ -76,24 +103,15 @@ namespace Nymora.Editor.Tools
                     Debug.LogError($"[BuildSoulrenderAnimator] Fichier introuvable : {AsepritePaths[i]}");
                     return;
                 }
-                idleClips[i] = FindIdleClip(AsepritePaths[i]);
-                if (idleClips[i] == null)
-                {
-                    Debug.LogWarning($"[BuildSoulrenderAnimator] Aucune AnimationClip dans {AsepritePaths[i]}. " +
-                        "Verifie dans l'Inspector AsepriteImporter que les frames sont taguees (idle/walk/etc.) " +
-                        "et que 'Generate Animation Clips' est coche.");
-                }
-                else
-                {
-                    Debug.Log($"[BuildSoulrenderAnimator] {Path.GetFileNameWithoutExtension(AsepritePaths[i])} idle clip : {idleClips[i].name}");
-                }
+                clipSets[i] = LoadClipSet(AsepritePaths[i]);
+                LogClipSetSummary(AsepritePaths[i], clipSets[i]);
             }
 
             // 2. Cree le dossier Animations/Soulrender si absent.
             EnsureFolderRecursive(AnimFolder);
 
-            // 3. Cree les 6 AnimatorController.
-            RuntimeAnimatorController[] controllers = new RuntimeAnimatorController[n];
+            // 3. Cree les 6 AnimatorController avec state machine complete.
+            var controllers = new RuntimeAnimatorController[n];
             for (int i = 0; i < n; i++)
             {
                 if (File.Exists(CtrlPaths[i]))
@@ -101,17 +119,9 @@ namespace Nymora.Editor.Tools
                     AssetDatabase.DeleteAsset(CtrlPaths[i]); // overwrite
                 }
                 var ctrl = AnimatorController.CreateAnimatorControllerAtPath(CtrlPaths[i]);
-                if (idleClips[i] != null)
-                {
-                    // AddMotion cree un state avec le clip ET le set comme default state.
-                    ctrl.AddMotion(idleClips[i]);
-                    Debug.Log($"[BuildSoulrenderAnimator] Cree {CtrlPaths[i]} (idle : {idleClips[i].name})");
-                }
-                else
-                {
-                    Debug.LogWarning($"[BuildSoulrenderAnimator] Cree {CtrlPaths[i]} VIDE (pas d'idle clip). Configure le .aseprite et relance.");
-                }
+                BuildStateMachine(ctrl, clipSets[i]);
                 controllers[i] = ctrl;
+                Debug.Log($"[BuildSoulrenderAnimator] Cree {CtrlPaths[i]} (state machine complete)");
             }
 
             // 4. Update le prefab Combatant_Soulrender.
@@ -143,6 +153,24 @@ namespace Nymora.Editor.Tools
                 animator.runtimeAnimatorController = controllers[0]; // default = stage 0 SE
                 animator.applyRootMotion = false;
 
+                // Fallback : si l'anim ne fire pas (tags Aseprite mal nommes / clip ciblant un autre
+                // path), le SpriteRenderer affichait le placeholder rouge historique. On force le
+                // sprite statique au 1er frame du .aseprite Stage 0 SE pour avoir au moins le bon
+                // visuel par defaut.
+                if (sr != null)
+                {
+                    var fallbackSprite = LoadFirstSpriteFromAseprite(AseSE0);
+                    if (fallbackSprite != null)
+                    {
+                        sr.sprite = fallbackSprite;
+                        Debug.Log($"[BuildSoulrenderAnimator] SpriteRenderer fallback sprite : {fallbackSprite.name}");
+                    }
+                    else
+                    {
+                        Debug.LogWarning("[BuildSoulrenderAnimator] Aucun Sprite extrait du .aseprite Stage 0 SE — le prefab garde son sprite courant.");
+                    }
+                }
+
                 // Bind CombatantView.
                 var view = prefab.GetComponentInChildren<CombatantView>();
                 if (view != null)
@@ -172,29 +200,177 @@ namespace Nymora.Editor.Tools
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
-            // Selection finale pour confort visuel.
             Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(CtrlPaths[0]);
-            Debug.Log("[BuildSoulrenderAnimator] DONE. Test en jeu : l'idle doit s'animer dans les 4 directions iso.");
+            Debug.Log("[BuildSoulrenderAnimator] DONE. Idle lent, walk/cast/attack/hurt/death pretes a etre triggerees.");
         }
 
         /// <summary>
-        /// Cherche l'AnimationClip "idle" dans les sub-assets d'un .aseprite. Fallback :
-        /// premiere clip trouvee (cas ou le designer n'a pas tagge mais a quand meme genere
-        /// un clip global).
+        /// Set des AnimationClip pour 1 .aseprite (1 stage + 1 direction).
+        /// Le designer tag chaque sequence avec un nom (idle/walk/attack/cast/hurt/death). On les
+        /// retrouve par substring. Si un tag manque, le champ reste null et le fallback Idle est
+        /// applique au build de la state machine.
         /// </summary>
-        private static AnimationClip FindIdleClip(string asepritePath)
+        private struct ClipSet
+        {
+            public AnimationClip Idle;
+            public AnimationClip Walk;
+            public AnimationClip Attack;
+            public AnimationClip Cast;
+            public AnimationClip Hurt;
+            public AnimationClip Death;
+        }
+
+        private static ClipSet LoadClipSet(string asepritePath)
         {
             var assets = AssetDatabase.LoadAllAssetsAtPath(asepritePath);
-            AnimationClip firstClip = null;
-            foreach (var asset in assets)
+            var set = new ClipSet();
+            foreach (var a in assets)
             {
-                if (asset is AnimationClip clip)
+                if (!(a is AnimationClip clip)) continue;
+                string lower = clip.name.ToLowerInvariant();
+                if (set.Idle == null && lower.Contains("idle")) set.Idle = clip;
+                else if (set.Walk == null && lower.Contains("walk")) set.Walk = clip;
+                else if (set.Attack == null && lower.Contains("attack")) set.Attack = clip;
+                else if (set.Cast == null && lower.Contains("cast")) set.Cast = clip;
+                else if (set.Hurt == null && lower.Contains("hurt")) set.Hurt = clip;
+                else if (set.Death == null && lower.Contains("death")) set.Death = clip;
+            }
+            // Fallback : si pas d'Idle trouve mais qu'il y a au moins 1 clip, prend le 1er comme idle.
+            if (set.Idle == null)
+            {
+                foreach (var a in assets)
                 {
-                    if (firstClip == null) firstClip = clip;
-                    if (clip.name.ToLowerInvariant().Contains("idle")) return clip;
+                    if (a is AnimationClip clip) { set.Idle = clip; break; }
                 }
             }
-            return firstClip;
+            return set;
+        }
+
+        private static void LogClipSetSummary(string asepritePath, ClipSet set)
+        {
+            string name = Path.GetFileNameWithoutExtension(asepritePath);
+            string list =
+                $"idle={ClipName(set.Idle)} walk={ClipName(set.Walk)} attack={ClipName(set.Attack)} " +
+                $"cast={ClipName(set.Cast)} hurt={ClipName(set.Hurt)} death={ClipName(set.Death)}";
+            Debug.Log($"[BuildSoulrenderAnimator] {name} clips : {list}");
+            int missing = 0;
+            if (set.Idle == null) missing++;
+            if (set.Walk == null) missing++;
+            if (set.Attack == null) missing++;
+            if (set.Cast == null) missing++;
+            if (set.Hurt == null) missing++;
+            if (set.Death == null) missing++;
+            if (missing > 0)
+            {
+                Debug.LogWarning($"[BuildSoulrenderAnimator] {name} : {missing} clip(s) manquant(s) — fallback Idle. " +
+                    "Verifie les tags Aseprite (idle/walk/attack/cast/hurt/death) et 'Generate Animation Clips'.");
+            }
+        }
+
+        private static string ClipName(AnimationClip c) => c != null ? c.name : "(null)";
+
+        /// <summary>
+        /// Recupere le 1er Sprite sub-asset d'un .aseprite (utilise comme fallback pour le
+        /// SpriteRenderer du prefab si l'AnimationClip ne fire pas).
+        /// </summary>
+        private static Sprite LoadFirstSpriteFromAseprite(string asepritePath)
+        {
+            var assets = AssetDatabase.LoadAllAssetsAtPath(asepritePath);
+            foreach (var a in assets)
+            {
+                if (a is Sprite sprite) return sprite;
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Construit la state machine complete d'un controller (Idle/Walk/Cast/Attack/Hurt/Death)
+        /// avec les transitions necessaires. Le default state est Idle (speed 0.4).
+        /// </summary>
+        private static void BuildStateMachine(AnimatorController ctrl, ClipSet clips)
+        {
+            // Parametres.
+            ctrl.AddParameter(ParamMoveSpeed, AnimatorControllerParameterType.Float);
+            // CastSpeed default 1 : on doit explicitement le set car AddParameter ne prend pas de defaultFloat.
+            ctrl.AddParameter(ParamCastSpeed, AnimatorControllerParameterType.Float);
+            var parameters = ctrl.parameters;
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                if (parameters[i].name == ParamCastSpeed) parameters[i].defaultFloat = 1f;
+            }
+            ctrl.parameters = parameters;
+            ctrl.AddParameter(ParamCast, AnimatorControllerParameterType.Trigger);
+            ctrl.AddParameter(ParamAttack, AnimatorControllerParameterType.Trigger);
+            ctrl.AddParameter(ParamHurt, AnimatorControllerParameterType.Trigger);
+            ctrl.AddParameter(ParamDeath, AnimatorControllerParameterType.Trigger);
+
+            var sm = ctrl.layers[0].stateMachine;
+
+            // States. Fallback Idle si un clip manque (le state existe mais joue idle).
+            var idle = sm.AddState("Idle");
+            idle.motion = clips.Idle;
+            idle.speed = IdleSpeed; // 0.4 = respiration lente
+
+            var walk = sm.AddState("Walk");
+            walk.motion = clips.Walk != null ? clips.Walk : clips.Idle;
+            walk.speedParameter = ParamMoveSpeed;
+            walk.speedParameterActive = true;
+
+            var cast = sm.AddState("Cast");
+            cast.motion = clips.Cast != null ? clips.Cast : clips.Idle;
+            cast.speedParameter = ParamCastSpeed;
+            cast.speedParameterActive = true;
+
+            var attack = sm.AddState("Attack");
+            attack.motion = clips.Attack != null ? clips.Attack : clips.Idle;
+
+            var hurt = sm.AddState("Hurt");
+            hurt.motion = clips.Hurt != null ? clips.Hurt : clips.Idle;
+
+            var death = sm.AddState("Death");
+            death.motion = clips.Death != null ? clips.Death : clips.Idle;
+
+            sm.defaultState = idle;
+
+            // Transitions Idle <-> Walk.
+            var idleToWalk = idle.AddTransition(walk);
+            idleToWalk.hasExitTime = false;
+            idleToWalk.duration = 0.1f;
+            idleToWalk.AddCondition(AnimatorConditionMode.Greater, 0.01f, ParamMoveSpeed);
+
+            var walkToIdle = walk.AddTransition(idle);
+            walkToIdle.hasExitTime = false;
+            walkToIdle.duration = 0.1f;
+            walkToIdle.AddCondition(AnimatorConditionMode.Less, 0.01f, ParamMoveSpeed);
+
+            // AnyState -> Cast/Attack/Hurt/Death sur trigger.
+            AddTriggerFromAny(sm, cast, ParamCast);
+            AddTriggerFromAny(sm, attack, ParamAttack);
+            AddTriggerFromAny(sm, hurt, ParamHurt);
+            AddTriggerFromAny(sm, death, ParamDeath);
+
+            // Cast/Attack/Hurt -> Idle apres exit time (le clip joue jusqu'au bout puis on revient).
+            AddBackToIdle(cast, idle);
+            AddBackToIdle(attack, idle);
+            AddBackToIdle(hurt, idle);
+            // Death : pas de transition retour. Le perso reste sur le dernier frame du clip.
+        }
+
+        private static void AddTriggerFromAny(AnimatorStateMachine sm, AnimatorState target, string trigger)
+        {
+            var t = sm.AddAnyStateTransition(target);
+            t.hasExitTime = false;
+            t.duration = 0.05f;
+            t.canTransitionToSelf = false;
+            t.AddCondition(AnimatorConditionMode.If, 0f, trigger);
+        }
+
+        private static void AddBackToIdle(AnimatorState from, AnimatorState idle)
+        {
+            var t = from.AddTransition(idle);
+            t.hasExitTime = true;
+            t.exitTime = 0.95f;
+            t.duration = 0.1f;
         }
 
         private static void SetObjectRef(SerializedObject so, string propertyName, Object value)

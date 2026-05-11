@@ -790,41 +790,45 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct Combatant : Quantum.IComponent {
-    public const Int32 SIZE = 188;
+    public const Int32 SIZE = 192;
     public const Int32 ALIGNMENT = 4;
-    [FieldOffset(52)]
+    [FieldOffset(56)]
     public Int32 PlayerIndex;
     [FieldOffset(0)]
     public NymoraClass Class;
     [FieldOffset(16)]
     public Int32 HP;
-    [FieldOffset(28)]
-    public Int32 MaxHP;
-    [FieldOffset(44)]
-    public Int32 PA;
     [FieldOffset(32)]
-    public Int32 MaxPA;
+    public Int32 MaxHP;
     [FieldOffset(48)]
-    public Int32 PM;
+    public Int32 PA;
     [FieldOffset(36)]
+    public Int32 MaxPA;
+    [FieldOffset(52)]
+    public Int32 PM;
+    [FieldOffset(40)]
     public Int32 MaxPM;
     [FieldOffset(8)]
     public Int32 GridX;
     [FieldOffset(12)]
     public Int32 GridY;
-    [FieldOffset(56)]
-    public Int32 Resource;
-    [FieldOffset(24)]
-    public Int32 LastResourceGainOnHitTurn;
     [FieldOffset(60)]
+    public Int32 Resource;
+    [FieldOffset(28)]
+    public Int32 LastResourceGainOnHitTurn;
+    [FieldOffset(64)]
     [FramePrinter.FixedArrayAttribute(typeof(Status), 8)]
     private fixed Byte _Statuses_[128];
-    [FieldOffset(40)]
+    [FieldOffset(44)]
     public Int32 OncePerMatchUsedFlags;
     [FieldOffset(4)]
     public Int32 BonusPANextTurn;
     [FieldOffset(20)]
     public Int32 LastAmeLaceeUsedOnTurn;
+    [FieldOffset(24)]
+    public Int32 LastCastOnTurn;
+    [FieldOffset(1)]
+    public SpellId LastCastSpellId;
     public readonly FixedArray<Status> Statuses {
       get {
         fixed (byte* p = _Statuses_) { return new FixedArray<Status>(p, 16, 8); }
@@ -849,17 +853,21 @@ namespace Quantum {
         hash = hash * 31 + OncePerMatchUsedFlags.GetHashCode();
         hash = hash * 31 + BonusPANextTurn.GetHashCode();
         hash = hash * 31 + LastAmeLaceeUsedOnTurn.GetHashCode();
+        hash = hash * 31 + LastCastOnTurn.GetHashCode();
+        hash = hash * 31 + (Byte)LastCastSpellId;
         return hash;
       }
     }
     public static void Serialize(void* ptr, FrameSerializer serializer) {
         var p = (Combatant*)ptr;
         serializer.Stream.Serialize((Byte*)&p->Class);
+        serializer.Stream.Serialize((Byte*)&p->LastCastSpellId);
         serializer.Stream.Serialize(&p->BonusPANextTurn);
         serializer.Stream.Serialize(&p->GridX);
         serializer.Stream.Serialize(&p->GridY);
         serializer.Stream.Serialize(&p->HP);
         serializer.Stream.Serialize(&p->LastAmeLaceeUsedOnTurn);
+        serializer.Stream.Serialize(&p->LastCastOnTurn);
         serializer.Stream.Serialize(&p->LastResourceGainOnHitTurn);
         serializer.Stream.Serialize(&p->MaxHP);
         serializer.Stream.Serialize(&p->MaxPA);

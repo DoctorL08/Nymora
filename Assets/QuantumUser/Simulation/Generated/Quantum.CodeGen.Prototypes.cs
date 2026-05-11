@@ -90,6 +90,8 @@ namespace Quantum.Prototypes {
     public Int32 OncePerMatchUsedFlags;
     public Int32 BonusPANextTurn;
     public Int32 LastAmeLaceeUsedOnTurn;
+    public Int32 LastCastOnTurn;
+    public Quantum.QEnum8<SpellId> LastCastSpellId;
     partial void MaterializeUser(Frame frame, ref Quantum.Combatant result, in PrototypeMaterializationContext context);
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.Combatant component = default;
@@ -115,6 +117,8 @@ namespace Quantum.Prototypes {
         result.OncePerMatchUsedFlags = this.OncePerMatchUsedFlags;
         result.BonusPANextTurn = this.BonusPANextTurn;
         result.LastAmeLaceeUsedOnTurn = this.LastAmeLaceeUsedOnTurn;
+        result.LastCastOnTurn = this.LastCastOnTurn;
+        result.LastCastSpellId = this.LastCastSpellId;
         MaterializeUser(frame, ref result, in context);
     }
   }

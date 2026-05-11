@@ -1,5 +1,6 @@
 using Quantum;
 using UnityEngine;
+using SpellCategory = Nymora.Core.Enums.SpellCategory;
 
 namespace Nymora.Combat.View
 {
@@ -36,10 +37,13 @@ namespace Nymora.Combat.View
     /// </summary>
     public class CombatantView : MonoBehaviour
     {
-        // Lerp ~0.15s pour 1 case d'eloignement (assez rapide pour rester reactif, assez visible pour qu'on suive le pion a l'oeil).
-        private const float MoveLerpSpeed = 8f;
-        // En dessous de ce seuil on snap directement (evite de lerp eternellement sur des distances infimes).
-        private const float SnapDistance = 0.01f;
+        // 2.12.bis : vitesse constante (Vector3.MoveTowards) en unites/seconde.
+        // 1 case = 1 unite Unity. A 2.5 u/s -> 1 case en 0.4s, soit ~3 cycles de walk
+        // (clip walk 6 frames * 12 FPS Aseprite default = 0.5s par cycle). L'anim walk
+        // tourne assez de fois pour etre visible. Plus tard on pourra moduler selon PM.
+        private const float MoveSpeedUnitsPerSecond = 2.5f;
+        // Snap quand on est tres proche (0.05 = 5% case). Limite l'oscillation finale.
+        private const float SnapDistance = 0.05f;
 
         [SerializeField] private SpriteRenderer _sprite;
         [Tooltip("Optionnel. Si fourni avec des AnimatorController par stage, prend la priorite sur les sprites statiques.")]
@@ -86,6 +90,19 @@ namespace Nymora.Combat.View
         private bool _hasTarget;
         private int _currentStage = -1; // -1 = pas encore initialise
         private IsoFacing _currentFacing = (IsoFacing)(-1); // sentinelle invalide pour forcer le premier set
+
+        // 2.12.bis : Animator parameter hashes (perf, evite Animator.StringToHash a chaque call).
+        // Doit matcher les const du BuildSoulrenderAnimator (ParamMoveSpeed, etc.).
+        private static readonly int ParamMoveSpeedHash = Animator.StringToHash("MoveSpeed");
+        private static readonly int ParamCastSpeedHash = Animator.StringToHash("CastSpeed");
+        private static readonly int ParamCastHash = Animator.StringToHash("Cast");
+        private static readonly int ParamAttackHash = Animator.StringToHash("Attack");
+        private static readonly int ParamHurtHash = Animator.StringToHash("Hurt");
+        private static readonly int ParamDeathHash = Animator.StringToHash("Death");
+
+        // Vitesse desiree pendant le lerp de mouvement. Le Renderer la set selon le PM
+        // depense (1-2 PM -> walk lent, 3+ PM -> walk rapide). 0 = arret (state Idle).
+        private float _desiredMoveSpeed = 1f;
 
         public void Bind(EntityRef entity, NymoraClass nymoraClass)
         {
@@ -196,12 +213,99 @@ namespace Nymora.Combat.View
         {
             if (!_hasTarget) return;
             Vector3 current = transform.position;
-            if ((current - _targetWorldPosition).sqrMagnitude < SnapDistance * SnapDistance)
+            bool moving = (current - _targetWorldPosition).sqrMagnitude >= SnapDistance * SnapDistance;
+            if (!moving)
             {
                 transform.position = _targetWorldPosition;
+                PushAnimMoveSpeed(0f);
                 return;
             }
-            transform.position = Vector3.Lerp(current, _targetWorldPosition, Time.deltaTime * MoveLerpSpeed);
+            // Vitesse constante (vs Lerp exponentiel Zeno) : mouvement uniforme = clip walk
+            // lisible. On clamp aussi a un step max pour eviter de teleporter sur une frame
+            // de gros dt (lag spike).
+            transform.position = Vector3.MoveTowards(
+                current, _targetWorldPosition, MoveSpeedUnitsPerSecond * Time.deltaTime);
+            PushAnimMoveSpeed(_desiredMoveSpeed);
+        }
+
+        // ======================================================================
+        // 2.12.bis : API anims pour driver l'Animator depuis le Renderer.
+        //
+        // Tous ces helpers sont safe-by-default :
+        //   - no-op si _animator est null (cas placeholder ou prefab non bind)
+        //   - no-op si runtimeAnimatorController est null (controller pas encore pose)
+        // Donc le Renderer peut spammer sans verif.
+        // ======================================================================
+
+        /// <summary>
+        /// Set la vitesse desiree pendant le walk (1.0 = normal, &lt;1 = lent, &gt;1 = rapide).
+        /// Sera pushee a l'Animator a chaque frame pendant le lerp de mouvement.
+        /// Convention Bible : 1-2 PM depense = 0.8 (lent), 3 PM = 1.5 (rapide).
+        /// </summary>
+        public void SetDesiredMoveSpeed(float speed)
+        {
+            if (speed < 0f) speed = 0f;
+            _desiredMoveSpeed = speed;
+        }
+
+        /// <summary>
+        /// Trigger l'anim Cast (sort a distance). La vitesse depend de la SpellCategory :
+        ///   - Survival  : 0.7 (lent, geste defensif)
+        ///   - Tactical  : 1.0 (neutre)
+        ///   - Offensive : 1.3 (agressif)
+        ///   - Signature : 1.5 (incantation puissante)
+        /// </summary>
+        public void TriggerCast(SpellCategory category)
+        {
+            if (!IsAnimatorReady()) return;
+            _animator.SetFloat(ParamCastSpeedHash, CastSpeedForCategory(category));
+            _animator.SetTrigger(ParamCastHash);
+        }
+
+        /// <summary>
+        /// Trigger l'anim Attack (mêlée). Pour les sorts Range=1 (Tranche-Ame, Empoignade,
+        /// Charge Brutale terminale, Ame Lacéree, etc.). Le Renderer choisit Cast vs Attack
+        /// selon RangeMax du SpellDef.
+        /// </summary>
+        public void TriggerAttack()
+        {
+            if (!IsAnimatorReady()) return;
+            _animator.SetTrigger(ParamAttackHash);
+        }
+
+        public void TriggerHurt()
+        {
+            if (!IsAnimatorReady()) return;
+            _animator.SetTrigger(ParamHurtHash);
+        }
+
+        public void TriggerDeath()
+        {
+            if (!IsAnimatorReady()) return;
+            _animator.SetTrigger(ParamDeathHash);
+        }
+
+        private void PushAnimMoveSpeed(float speed)
+        {
+            if (!IsAnimatorReady()) return;
+            _animator.SetFloat(ParamMoveSpeedHash, speed);
+        }
+
+        private bool IsAnimatorReady()
+        {
+            return _animator != null && _animator.runtimeAnimatorController != null;
+        }
+
+        private static float CastSpeedForCategory(SpellCategory category)
+        {
+            switch (category)
+            {
+                case SpellCategory.Survival: return 0.7f;
+                case SpellCategory.Tactical: return 1.0f;
+                case SpellCategory.Offensive: return 1.3f;
+                case SpellCategory.Signature: return 1.5f;
+                default: return 1.0f;
+            }
         }
     }
 }

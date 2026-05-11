@@ -400,6 +400,12 @@ namespace Quantum
                 }
             }
 
+            // 2.12.bis : tracker du dernier cast pour driver les anims cote View (cast/attack).
+            // La View pole la diff `LastCastOnTurn` et map `LastCastSpellId` vers SpellCategory pour
+            // choisir l'anim (Survival/Tactical/Offensive/Signature) + range pour Attack vs Cast.
+            caster->LastCastOnTurn = currentTurn;
+            caster->LastCastSpellId = cmd.Spell;
+
             Log.Info($"[Spell] P{playerIndex} cast {cmd.Spell} target=({cmd.TargetX},{cmd.TargetY}) PA restant={caster->PA}");
         }
 

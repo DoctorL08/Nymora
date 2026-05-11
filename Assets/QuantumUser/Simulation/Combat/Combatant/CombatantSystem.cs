@@ -44,6 +44,8 @@ namespace Quantum
                 OncePerMatchUsedFlags = 0,
                 BonusPANextTurn = 0,
                 LastAmeLaceeUsedOnTurn = -1000, // pas de cooldown au spawn (Bible : signature jouable des HG=5)
+                LastCastOnTurn = -1,             // 2.12.bis : aucun cast au spawn (View detecte diff > 0)
+                LastCastSpellId = SpellId.None,  // 2.12.bis
             };
 
             var entity = f.Create();
