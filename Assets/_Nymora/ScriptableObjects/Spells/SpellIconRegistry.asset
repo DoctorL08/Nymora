@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba3c65acbac310d4db5a03832fe02e37, type: 3}
+  m_Name: SpellIconRegistry
+  m_EditorClassIdentifier: 
+  _entries:
+  - Spell: 25
+    Icon: {fileID: 21300000, guid: cb67810643002f44cbb28a734b5088ac, type: 3}
+  - Spell: 21
+    Icon: {fileID: 21300000, guid: 1bfd4be4ee92f464e9c0e27f54f68805, type: 3}
+  - Spell: 12
+    Icon: {fileID: 21300000, guid: 42eb5c642a861f2468e9e0b27236d024, type: 3}
+  - Spell: 14
+    Icon: {fileID: 21300000, guid: 4e854a459119c1f48976404ab5db6550, type: 3}
+  - Spell: 24
+    Icon: {fileID: 21300000, guid: 2807cb681c8a2a94b8c86d5a8f8be925, type: 3}
+  - Spell: 13
+    Icon: {fileID: 21300000, guid: eb83950984866424aa5b299cdc9a01e0, type: 3}
+  - Spell: 17
+    Icon: {fileID: 21300000, guid: 94e8c4fd8e0f30c4dacab8630aee6e94, type: 3}
+  - Spell: 16
+    Icon: {fileID: 21300000, guid: 389ba80aef2658343a0c7e6acc5e9076, type: 3}
+  - Spell: 11
+    Icon: {fileID: 21300000, guid: 78883985173bc20458ca1b389764ef4e, type: 3}
+  - Spell: 15
+    Icon: {fileID: 21300000, guid: 0ce8f5ed15939bf4a93f5b14c61e9e2b, type: 3}
+  - Spell: 22
+    Icon: {fileID: 21300000, guid: c950ce5e96a73b544b8bdbd9513b3f20, type: 3}
+  - Spell: 19
+    Icon: {fileID: 21300000, guid: 58e5fba93e4941e49932955b16078bae, type: 3}
+  - Spell: 20
+    Icon: {fileID: 21300000, guid: 7c8fe6cd38b1ad04cb06803076bf9dcd, type: 3}
+  - Spell: 18
+    Icon: {fileID: 21300000, guid: ad54cdbdcef435b48b8ed1eaebb351c7, type: 3}
+  - Spell: 23
+    Icon: {fileID: 21300000, guid: 5e40e987d08ebb7478790186023771ce, type: 3}
+  - Spell: 10
+    Icon: {fileID: 21300000, guid: 083094a95f31e574ca657d0312dc0980, type: 3}
+  _passifSoulrenderIcon: {fileID: 21300000, guid: 7eed818221811164da380957901fb2b0, type: 3}

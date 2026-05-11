@@ -26,8 +26,29 @@ namespace Nymora.Combat.View
         [SerializeField] private GameObject _ghostraPrefab;
 
         private readonly Dictionary<EntityRef, CombatantView> _views = new Dictionary<EntityRef, CombatantView>();
+        // Reuse buffer pour eviter les allocations dans OnUpdateView (appele a chaque frame view).
+        // Capacite 2 suffit pour le 1v1 actuel ; sera grow auto si on passe en 2v2/3v3 plus tard.
+        private readonly List<CombatantSnapshot> _frameCombatants = new List<CombatantSnapshot>(2);
+        // Tracking facing : on retient la derniere position grille pour deduire le sens du
+        // mouvement, et le dernier facing pour conserver l'orientation a l'arret.
+        private readonly Dictionary<EntityRef, GridPos> _lastGridPos = new Dictionary<EntityRef, GridPos>(2);
+        private readonly Dictionary<EntityRef, IsoFacing> _lastFacings = new Dictionary<EntityRef, IsoFacing>(2);
         private Vector3 _centerOffset;
         private bool _gridReady;
+
+        private readonly struct GridPos
+        {
+            public readonly int X;
+            public readonly int Y;
+            public GridPos(int x, int y) { X = x; Y = y; }
+        }
+
+        private readonly struct CombatantSnapshot
+        {
+            public readonly EntityRef Entity;
+            public readonly Combatant Data;
+            public CombatantSnapshot(EntityRef entity, Combatant data) { Entity = entity; Data = data; }
+        }
 
         private void Awake()
         {
@@ -72,9 +93,23 @@ namespace Nymora.Combat.View
             if (!_gridReady) return;
 
             var frame = game.Frames.Verified;
+
+            // Pass 1 : snapshot tous les combatants vivants (besoin de la position adverse
+            // pour calculer le facing iso de chacun).
+            _frameCombatants.Clear();
             var filter = frame.Filter<Combatant>();
             while (filter.Next(out EntityRef entity, out Combatant combatant))
             {
+                _frameCombatants.Add(new CombatantSnapshot(entity, combatant));
+            }
+
+            // Pass 2 : sync position + stage + facing (auto-aim vers le 1er autre combatant).
+            for (int i = 0; i < _frameCombatants.Count; i++)
+            {
+                var snap = _frameCombatants[i];
+                var entity = snap.Entity;
+                var combatant = snap.Data;
+
                 if (!_views.TryGetValue(entity, out var view) || view == null)
                 {
                     // Entity apparue apres GameStarted (ex : invocations futures, leurres Ghostra) — spawn a la volee.
@@ -87,7 +122,98 @@ namespace Nymora.Combat.View
                     _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight) + _centerOffset + transform.position;
 
                 view.UpdateGridPosition(combatant.GridX, combatant.GridY, world);
+
+                // 2.12 : push stage visuel (selon ressource Bible V7.1) + facing iso selon mouvement.
+                IsoFacing facing = ResolveFacing(entity, combatant);
+                view.SetStageAndFacing(ComputeStage(combatant), facing);
             }
+        }
+
+        /// <summary>
+        /// Determine le facing iso du combatant selon son dernier deplacement :
+        ///   - Si la position grille a change depuis le dernier frame : nouveau facing
+        ///     deduit du sens du mouvement.
+        ///   - Sinon : on conserve le facing precedent (le perso ne se retourne pas).
+        ///   - Au tout premier frame (juste apres spawn) : facing initial dirige vers
+        ///     l'ennemi pour que les deux combatants se regardent au depart.
+        /// </summary>
+        private IsoFacing ResolveFacing(EntityRef entity, Combatant self)
+        {
+            int gx = self.GridX;
+            int gy = self.GridY;
+
+            if (_lastGridPos.TryGetValue(entity, out var last))
+            {
+                int dxGrid = gx - last.X;
+                int dyGrid = gy - last.Y;
+                if (dxGrid != 0 || dyGrid != 0)
+                {
+                    var moved = FacingFromGridDelta(dxGrid, dyGrid);
+                    _lastFacings[entity] = moved;
+                    _lastGridPos[entity] = new GridPos(gx, gy);
+                    return moved;
+                }
+                // Pas de mouvement : conserve le dernier facing connu.
+                return _lastFacings.TryGetValue(entity, out var prev) ? prev : IsoFacing.SE;
+            }
+
+            // 1er frame : pas de position precedente -> facing initial vers l'ennemi.
+            var initial = FacingTowardEnemy(entity, self);
+            _lastGridPos[entity] = new GridPos(gx, gy);
+            _lastFacings[entity] = initial;
+            return initial;
+        }
+
+        /// <summary>
+        /// Mappe un delta grille (dxGrid, dyGrid) au quadrant ecran iso (NE/SE/NW/SW).
+        ///
+        /// Math iso (cf IsoProjection.cs) :
+        ///   worldX = (gx - gy) * (tw/2)   -> dx_world = dx_grid - dy_grid
+        ///   worldY = (gx + gy) * (th/2)   -> dy_world = dx_grid + dy_grid
+        /// Quadrant ecran -> facing :
+        ///   droite + haut -> NE
+        ///   droite + bas  -> SE
+        ///   gauche + haut -> NW
+        ///   gauche + bas  -> SW
+        /// Cas pile aligne (0) : on prefere east (sans flip) et north (par defaut).
+        /// </summary>
+        private static IsoFacing FacingFromGridDelta(int dxGrid, int dyGrid)
+        {
+            int dxWorld = dxGrid - dyGrid;
+            int dyWorld = dxGrid + dyGrid;
+            bool east = dxWorld >= 0;
+            bool north = dyWorld >= 0;
+            if (east && north) return IsoFacing.NE;
+            if (east && !north) return IsoFacing.SE;
+            if (!east && north) return IsoFacing.NW;
+            return IsoFacing.SW;
+        }
+
+        private IsoFacing FacingTowardEnemy(EntityRef selfEntity, Combatant self)
+        {
+            for (int j = 0; j < _frameCombatants.Count; j++)
+            {
+                if (_frameCombatants[j].Entity == selfEntity) continue;
+                var enemy = _frameCombatants[j].Data;
+                return FacingFromGridDelta(enemy.GridX - self.GridX, enemy.GridY - self.GridY);
+            }
+            return IsoFacing.SE;
+        }
+
+        /// <summary>
+        /// Mappe la ressource du combatant a un stage visuel [0..2].
+        /// Convention Bible V7.1 :
+        ///   Soulrender (HG cap 5) : 0 si HG<2, 1 si 2-4, 2 si HG=5 (fissures ecarlates).
+        /// Pour les autres classes (cap different), on garde la meme heuristique :
+        ///   stage 0 si ressource &lt; cap*0.4, stage 2 si au cap, stage 1 entre.
+        /// </summary>
+        private static int ComputeStage(Combatant combatant)
+        {
+            int max = Quantum.CombatantStats.GetMaxResource(combatant.Class);
+            if (max <= 0) return 0;
+            if (combatant.Resource >= max) return 2;
+            // Stage 0 si < 40% du cap, stage 1 sinon.
+            return combatant.Resource * 5 < max * 2 ? 0 : 1;
         }
 
         private void SpawnView(EntityRef entity, Combatant combatant)
@@ -141,6 +267,8 @@ namespace Nymora.Combat.View
                 if (pair.Value != null) Destroy(pair.Value.gameObject);
             }
             _views.Clear();
+            _lastGridPos.Clear();
+            _lastFacings.Clear();
             _gridReady = false;
         }
     }

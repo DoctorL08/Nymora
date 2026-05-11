@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026 (Brique 2.11 validée — Soulrender 100% Bible V7.1)  
+**Dernière mise à jour :** 12 mai 2026 (Brique 2.12 finalisée — facing 4 directions iso NE/SE/NW/SW)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.12 — Assets visuels Soulrender (sprites + icônes)** (à démarrer)  
+**Brique en cours :** **2.13 — HUD combat complet** (à démarrer) + reliquat 2.12.bis (anims walk/spell par catégorie/PM speed)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 11/17 briques validées. Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11). **🏆 Soulrender 100% Bible V7.1** : 15 sorts + signature Âme Lacérée + passif Appel du Sang (paliers 70/40/20% avec PA cost -1, +1 PM Rage Ouverte, 50% shield bypass mêlée, LE CRI Sang Coagulé croix 5). Reste Bloc D (Nightseer 2.12-2.14 → renuméroté 2.14-2.16 avec sprites/HUD intercalés) + Bloc E (IA + E2E 2.17). Architecture combat solide.
+**Statut Phase 2 :** 12/17 briques validées. Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11) + **2.12 ✅** (sprites Soulrender + icônes + Animator + facing 4 directions iso). **🏆 Soulrender 100% gameplay + visuel base** : 15 sorts + signature Âme Lacérée + passif Appel du Sang + 3 stages animés idle (HG palier) + facing 4 dirs (NE/SE livrés par designer, NW/SW miroir flipX runtime) + 17 icônes. Reste 2.12.bis (anims walk/cast/attack/hurt/death + vitesse selon PM), 2.13 HUD complet → 2.14-2.16 Nightseer + IA → 2.17 E2E.
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,28 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.12** — Intégration visuelle Soulrender : sprites + Animator idle + icônes + facing 4 directions iso (validée 12 mai 2026, Soulrender visuellement complet pour idle)
+  - **Aseprite Importer** (`com.unity.2d.aseprite 1.1.11`) installé via `Packages/manifest.json` — gère les `.aseprite` natifs livrés par le designer avec tags de frames.
+  - **AssetPostprocessor `NymoraSpriteImporterSettings`** : scope restreint à `Sprites/Soulrender/Base/` (sprites perso, pivot custom (0.5, 0.5)) + `Sprites/Soulrender/soulrender_icons/` + `UI/Icons/` (pivot Center). PPU=128, Point, FullRect mesh, alpha is transparency. Volontairement scopé pour ne pas écraser `TilePlaceholder.png` (PPU=64, Tight) qui cassait la grille auparavant.
+  - **SpellIconRegistry** (ScriptableObject `Assets/_Nymora/ScriptableObjects/Spells/SpellIconRegistry.asset`) : mapping `SpellId → Sprite` + `PassifIconFor(NymoraClass)`. Populé via Editor Tool `Nymora > Setup > Populate Spell Icon Registry` (scan `icon_*.png`, dictionary nom fichier → SpellId).
+  - **17 icônes 128×128** intégrées (15 sorts + signature Âme Lacérée + passif Appel du Sang).
+  - **Stage swap idle** : `CombatantView` retient la `Resource` du combatant (Bible V7.1 HG paliers 0-1 / 2-4 / 5). Stage 0 = peau normale, Stage 1 = aura rouge progressive, Stage 2 = fissures écarlates (HG cap). Pushé depuis `CombatantRenderer.OnUpdateView` via `ComputeStage(combatant)`.
+  - **Animator par stage** : Editor Tool `Nymora > Setup > Build Soulrender Animator` charge les `.aseprite` du designer et génère 6 `AnimatorController` (3 stages × 2 directions NE/SE) dans `Assets/_Nymora/Animations/Soulrender/`. AddMotion du clip `idle` extrait des sub-assets de chaque `.aseprite`. Bind les 6 controllers + l'Animator sur le prefab `Combatant_Soulrender` via `SerializedObject` + `PrefabUtility.SaveAsPrefabAsset`. Idempotent.
+  - **Facing 4 directions iso** : enum `IsoFacing { NE, SE, NW, SW }`. Le designer ne livre que NE+SE ; NW = NE flipX, SW = SE flipX (runtime, pas d'asset dupliqué).
+    - `CombatantView.SetStageAndFacing(stage, facing)` : pick controller selon (stage, NE/SE) + applique `flipX = facing in {NW, SW}`. Priorité AnimatorController, fallback Sprite statique.
+    - `CombatantRenderer.ResolveFacing(entity, combatant)` : retient la dernière position grille + le dernier facing par entity. Si mouvement détecté → nouveau facing dérivé du delta. Si immobile → garde le dernier facing. Au tout 1er frame post-spawn : facing initial dirigé vers l'ennemi (les 2 combatants se regardent au départ).
+    - Math iso : delta grille `(dx, dy)` → `dxWorld = dx − dy`, `dyWorld = dx + dy`. Signe(dxWorld) → est/ouest, signe(dyWorld) → nord/sud. Quadrant écran → NE/SE/NW/SW.
+  - **Combat Damier corrigé** : pivot character changé en (0.5, 0.5) (test final visuel Lorenzo). `TilePlaceholder.png` rétabli manuellement à PPU=64 + Tight mesh après scope restreint de l'AssetPostprocessor.
+  - **TMP fix** : remplacement du caractère `▶` U+25B6 (manquait dans la police) par `> ` ASCII dans `CombatHUDView` pour stopper le warning permanent.
+  - **Reliquat designer (Brique 2.12.bis future)** : VFX Âme Lacérée 256×256 8-12f, Marque de Carnage overlay 64×64 4f, Plaie Ouverte overlay, Tile Vapeur Carmin animée 128×128 4f, Tile Sang Coagulé, Avatar profil 256×256. À intégrer quand le designer livre.
+  - **Reliquat anims (Brique 2.12.bis prochaine session)** : exploiter à 100% les frame tags livrés (idle/walk/attack/cast/hurt/death dans les 6 .aseprite NE+SE × 3 stages) :
+    - Walk lent 1-2 PM / walk rapide 3 PM (paramètre `Speed` sur Animator)
+    - Anim cast par catégorie de sort (Survie/Attack/Tactical) avec triggers distincts
+    - Hurt sur damage, death sur HP=0
+    - Transitions Animator par stage + hook depuis events Quantum (CommandMove, CommandCast, CombatantDamaged, CombatantKilled)
 
 ---
 
@@ -780,6 +802,18 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
 
+### 12 mai 2026 — Brique 2.12 finalisée (facing 4 directions iso) + reliquat anims pour 2.12.bis
+- Reprise de la session post-compaction du contexte. Hier la 2.12 avait été validée par Lorenzo avec idle statique et flipX P0/P1, mais en testant Lorenzo a constaté que **les 4 directions iso ne fonctionnaient pas** (un seul facing visible). Le designer avait pourtant livré 6 .aseprite (NE+SE × 3 stages).
+- **Refonte CombatantView** : abandon de `SetStage(int)` + `SetFlipX(bool)` au profit d'une seule API `SetStageAndFacing(int stage, IsoFacing facing)`. Ajout de 6 champs `_stage{0,1,2}Controller{NE,SE}` (au lieu de 3) + 6 champs sprites fallback. `IsoFacing.NW/SW` réutilisent les assets NE/SE avec `flipX = true` (pas d'asset dupliqué, pas de boulot designer en plus).
+- **BuildSoulrenderAnimator étendu** : charge maintenant les 6 .aseprite (au lieu de 3), génère 6 `.controller` `SoulrenderStage{0,1,2}_{NE,SE}.controller`, bind les 6 fields via `SerializedObject` sur le prefab. Le tool reste idempotent (overwrite via `AssetDatabase.DeleteAsset`).
+- **Refonte CombatantRenderer pour le facing** :
+  - Première itération : auto-aim ennemi (le combatant regarde toujours vers l'ennemi). Lorenzo a corrigé : **le facing doit suivre la direction du déplacement**, pas l'ennemi.
+  - Version finale : `ResolveFacing(entity, combatant)` retient `_lastGridPos` + `_lastFacings` par EntityRef. Si pos change depuis le dernier frame → nouveau facing depuis le delta. Si pas de mouvement → keep last facing. Au tout 1er frame post-spawn : facing initial dirigé vers l'ennemi (pour que les 2 combatants se regardent au départ).
+  - Helper `FacingFromGridDelta(dx, dy)` : math iso `dxWorld = dx - dy`, `dyWorld = dx + dy`, puis quadrant → IsoFacing. Pure static, réutilisable.
+- **Allocations zéro dans OnUpdateView** : `_frameCombatants` (List<CombatantSnapshot>) préalloué capacité 2 + `_lastGridPos`/`_lastFacings` (Dictionary) préallocs aussi. ClearAll les nettoie au démarrage/destroy.
+- **Reliquat pour demain** : Lorenzo veut exploiter à 100% les frame tags livrés (idle/walk/attack/cast/hurt/death). Walk lent (1-2 PM) vs walk rapide (3 PM), anim cast par catégorie (Survie/Attack/Tactical), hurt/death sur events. Sera la Brique 2.12.bis (avant 2.13 HUD ou en parallèle selon priorité).
+- **Décision design verrouillée** : facing = sens du mouvement, pas auto-aim. C'est plus naturel pour un tactical iso (le perso ne se tourne pas téléportiquement vers l'ennemi à chaque mouvement adverse).
+
 ### 11 mai 2026 — Brique 2.11 (Signature Âme Lacérée + Passif Appel du Sang) — Soulrender 100% complete
 - Suite directe de 2.10.c dans la même méga-session. Bloc C clôturé.
 - **Choix de design : passif sans état persistent par-tour** : le passif Appel du Sang relit le HP cible à chaque cast (pour PA cost) et à chaque TurnStart Soulrender (pour +1 PM). Pas de Status dédié ; les paliers sont des seuils statiques. Si la cible heal au-dessus de 70%, le bonus PA disparaît au prochain cast. Cohérent avec Bible (effet dépend dynamiquement de l'état HP cible).
@@ -1128,14 +1162,40 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 
 ## 🎯 PROCHAINE ACTION POUR LORENZO
 
-> 1. À la prochaine session, dire : **"On démarre la Phase 2 chef"** 🎮
-> 2. **Pré-requis Phase 2** (mêmes 3 fenêtres que d'habitude, pas de nouveau setup) :
->    - Docker Desktop allumé (`docker compose ps` depuis `backend/` montre Postgres + Redis Up)
->    - Backend Express : `cd backend && npm run dev` dans une fenêtre cmd (laisser tourner)
->    - Unity Editor avec le projet Nymora ouvert
-> 3. Pas besoin de ngrok pour la Phase 2 (le combat est local jusqu'à la fin Phase 3)
-> 4. Smoke tests rapides (sanity check) au démarrage :
->    - `cd backend && npm run test:auth` → "Auth smoke test PASSED."
->    - `cd backend && npm run test:version` → "Version smoke test PASSED."
-> 5. Claude lira `01_BIBLE_V7.1_Combat.md` (stats, sorts, classes) + `05_Roadmap_V2_Novice.md` pour cadrer la Phase 2 et te livrer la liste des briques 2.x. Probablement on commencera par : système de grille 15×17 + Position2D + Tile data + visualisation grille.
-> 6. **Backlog notable** à reprendre plus tard : Unity CI (license) + 1.13 Hetzner (Phase 7 prep alpha) + 1.14 simulation Quantum déterministe complète (sera couverte naturellement par Phase 2 quand on aura du combat à tester).
+> **Session du 13 mai 2026 (demain) — Brique 2.12.bis : exploitation 100% des anims Soulrender** 🎬
+>
+> Lorenzo a stoppé la session le 12 mai après validation du facing 4 directions iso. Demande explicite pour demain : **exploiter à 100% les frame tags Aseprite livrés par le designer** (les anims walk/attack/cast/hurt/death sont déjà dans les .aseprite mais on n'utilise que `idle` actuellement).
+>
+> **Spec 2.12.bis (à confirmer avec Lorenzo en début de session)** :
+> 1. **Walk** : déclenché à chaque déplacement case-par-case (pendant le lerp `MoveLerpSpeed`)
+>    - Walk **lent** si PM dépensé sur ce déplacement = 1 ou 2
+>    - Walk **rapide** si PM = 3 (ou plus, futur boost)
+>    - Paramètre `Speed` (float) sur l'Animator ou 2 triggers distincts
+> 2. **Cast (par catégorie de sort)** :
+>    - Sort `Survie` → anim cast douce/défensive
+>    - Sort `Attack` (ou offensif) → anim cast agressive
+>    - Sort `Tactical` → anim cast neutre/concentration
+>    - À mapper depuis `SpellCategory` (enum existant Core/Enums)
+> 3. **Attack** : anim mêlée pour les sorts qui font du contact (Tranche-Âme, Empoignade, Charge Brutale, Âme Lacérée, etc.)
+> 4. **Hurt** : trigger sur dégâts reçus (event Quantum à exposer côté View)
+> 5. **Death** : trigger sur HP = 0 (event KO → freeze ou pas après l'anim)
+>
+> **Architecture probable** :
+> - `CombatantView` : exposer `Animator` directement + paramètres (`Speed` float, triggers `Cast`, `Attack`, `Hurt`, `Death`)
+> - 6 controllers `SoulrenderStage{0,1,2}_{NE,SE}` à enrichir avec une vraie state machine (idle/walk/cast/attack/hurt/death + transitions) — refonte de `BuildSoulrenderAnimator` pour créer les states/transitions/parameters via `AnimatorController.AddParameter` + `AddState` + `AddTransition`.
+> - Côté Quantum → View : il faut exposer des events View pour `CombatantMoved(delta, pmCost)`, `CombatantCasted(spellId, category)`, `CombatantDamaged(amount)`, `CombatantKilled`. Probablement déjà partiellement présent côté `CombatantRenderer` (le delta de position permet déjà de détecter le mouvement).
+>
+> **Pré-requis (mêmes 3 fenêtres que d'habitude)** :
+> - Docker Desktop allumé + backend `npm run dev` dans `backend/`
+> - Unity Editor avec le projet Nymora ouvert
+> - Smoke tests rapides : `npm run test:auth`, `npm run test:version`
+>
+> **Ordre des briques restantes (rappel)** :
+> - 2.12.bis : anims complètes Soulrender ← **PRIORITÉ DEMAIN**
+> - 2.13 : HUD combat complet (PA/PM haut-gauche, End Turn milieu-droite, deck 6 sorts bas-centre, timeline P0 > P1, floating text dégâts/heals)
+> - 2.14-2.16 : Nightseer (Prescience + 15 sorts + Œil + Traquenard + Brouillard de guerre)
+> - 2.17 : IA + E2E combat 1v1 vs IA
+>
+> **Reliquat designer encore en attente** : VFX Âme Lacérée 256×256 8-12f, Marque de Carnage overlay 64×64 4f, Plaie Ouverte overlay, Tile Vapeur Carmin animée 128×128 4f, Tile Sang Coagulé, Avatar profil 256×256.
+>
+> **Backlog notable** : Unity CI (license) + 1.13 Hetzner (Phase 7 prep alpha) + 1.14 simulation Quantum déterministe complète (couverte naturellement par Phase 2).

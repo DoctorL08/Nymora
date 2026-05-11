@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 2053765818318650840}
   - component: {fileID: 7426321370519178106}
   - component: {fileID: 3649726130255237925}
+  - component: {fileID: 8504059999331474511}
   m_Layer: 0
   m_Name: Combatant_Soulrender
   m_TagString: Untagged
@@ -98,3 +99,37 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _sprite: {fileID: 7426321370519178106}
+  _animator: {fileID: 8504059999331474511}
+  _stage0SpriteSE: {fileID: 0}
+  _stage1SpriteSE: {fileID: 0}
+  _stage2SpriteSE: {fileID: 0}
+  _stage0SpriteNE: {fileID: 0}
+  _stage1SpriteNE: {fileID: 0}
+  _stage2SpriteNE: {fileID: 0}
+  _stage0ControllerSE: {fileID: 9100000, guid: d13a403b88b93914582d12afd7a827d7, type: 2}
+  _stage1ControllerSE: {fileID: 9100000, guid: 718f777d620b871469e9c3859102f27e, type: 2}
+  _stage2ControllerSE: {fileID: 9100000, guid: ef7f5023bb3d97d41b1a7c1844087c43, type: 2}
+  _stage0ControllerNE: {fileID: 9100000, guid: 3ef06f216e43c3c48b9e7b407099ef19, type: 2}
+  _stage1ControllerNE: {fileID: 9100000, guid: e8cdacce5a110a04bb75bc82f9edfb5f, type: 2}
+  _stage2ControllerNE: {fileID: 9100000, guid: aa1828ddab06a674fbbe45ec486d62a8, type: 2}
+--- !u!95 &8504059999331474511
+Animator:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1937457057080640798}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: d13a403b88b93914582d12afd7a827d7, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
