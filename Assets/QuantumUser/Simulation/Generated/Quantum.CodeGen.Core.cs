@@ -64,6 +64,19 @@ namespace Quantum {
     Necram = 4,
     Ghostra = 5,
   }
+  public enum SpellEffectKind : byte {
+    None = 0,
+    Damage = 1,
+    Heal = 2,
+    ApplyMark = 10,
+    Push = 20,
+    Pull = 21,
+    Spawn = 30,
+  }
+  public enum SpellId : byte {
+    None = 0,
+    TestZap = 1,
+  }
   public enum TargetingFilter : byte {
     None = 0,
     Self = 1,
@@ -953,6 +966,8 @@ namespace Quantum {
       typeRegistry.Register(typeof(RNGSession), RNGSession.SIZE);
       typeRegistry.Register(typeof(Shape2D), Shape2D.SIZE);
       typeRegistry.Register(typeof(Shape3D), Shape3D.SIZE);
+      typeRegistry.Register(typeof(Quantum.SpellEffectKind), 1);
+      typeRegistry.Register(typeof(Quantum.SpellId), 1);
       typeRegistry.Register(typeof(SpringJoint), SpringJoint.SIZE);
       typeRegistry.Register(typeof(SpringJoint3D), SpringJoint3D.SIZE);
       typeRegistry.Register(typeof(Quantum.TargetingFilter), 1);
@@ -980,6 +995,8 @@ namespace Quantum {
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.InputButtons>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.NymoraClass>();
       FramePrinter.EnsurePrimitiveNotStripped<QueryOptions>();
+      FramePrinter.EnsurePrimitiveNotStripped<Quantum.SpellEffectKind>();
+      FramePrinter.EnsurePrimitiveNotStripped<Quantum.SpellId>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.TargetingFilter>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.TargetingShape>();
     }

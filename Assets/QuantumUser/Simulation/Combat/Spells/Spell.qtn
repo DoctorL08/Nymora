@@ -1,0 +1,33 @@
+// Catalogue des sorts Nymora (Bible V7.1).
+//
+// SpellId : enum cle. Plages reservees :
+//   0      : None
+//   1-9    : Sorts de test / dev
+//   10-29  : Soulrender (15 sorts + signature = 16, marge a 20)
+//   30-49  : Nightseer
+//   50-69  : Colossar (Phase 3)
+//   70-89  : Necram (Phase 3)
+//   90-109 : Ghostra (Phase 3)
+//
+// SpellEffectKind : tous les types d'effets possibles. En 2.7, seul Damage
+// est implemente. Les autres (Heal, ApplyMark, Push, Pull, Spawn) seront
+// ajoutes au fur et a mesure des sorts qui en ont besoin (2.10/2.11).
+
+enum SpellId : Byte
+{
+    None = 0,
+
+    TestZap = 1,
+    // 2-9 reserves pour autres sorts de dev
+}
+
+enum SpellEffectKind : Byte
+{
+    None = 0,
+    Damage = 1,
+    Heal = 2,
+    ApplyMark = 10,
+    Push = 20,
+    Pull = 21,
+    Spawn = 30,
+}

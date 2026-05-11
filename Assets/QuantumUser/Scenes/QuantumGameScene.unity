@@ -1082,9 +1082,9 @@ MonoBehaviour:
   _debugAllPlayersMovable: 1
   _autoAddLocalPlayers: 1
   _autoAddPlayerCount: 2
-  _debugShowTargeting: 1
-  _debugShape: 1
-  _debugFilter: 4
+  _debugShowTargeting: 0
+  _debugShape: 50
+  _debugFilter: 9
   _debugRangeMin: 1
   _debugRangeMax: 4
 --- !u!4 &1761138240

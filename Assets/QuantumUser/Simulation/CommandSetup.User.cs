@@ -9,6 +9,7 @@
         {
             // Phase 2 — Combat
             factories.Add(new MoveCommand());
+            factories.Add(new CastSpellCommand());
         }
     }
 }

@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026 (Brique 2.6 validée)  
+**Dernière mise à jour :** 11 mai 2026 (Brique 2.7 validée)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.7 — Spell runtime engine** (à démarrer)  
+**Brique en cours :** **2.8 — Premier sort Tranche-Âme Soulrender** (à démarrer)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 6/17 briques validées (Bloc A ✅ 5/5, Bloc B 1/3)
+**Statut Phase 2 :** 7/17 briques validées (Bloc A ✅ 5/5, Bloc B 2/3)
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,26 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.7** — Spell runtime engine (validée 11 mai 2026)
+  - `Assets/QuantumUser/Simulation/Combat/Spells/Spell.qtn` : `enum SpellId : Byte` (None=0, TestZap=1, Soulrender 10-29 réservé, Nightseer 30-49 réservé, Colossar 50-69, Necram 70-89, Ghostra 90-109) + `enum SpellEffectKind : Byte` (Damage, Heal, ApplyMark, Push, Pull, Spawn)
+  - `CastSpellCommand.cs` : `DeterministicCommand` avec `SpellId Spell, int TargetX, int TargetY`. Serialize : `byte spellByte = (byte)Spell; stream.Serialize(ref spellByte); Spell = (SpellId)spellByte;` puis serialize TargetX/Y (int).
+  - `SpellRegistry.cs` : struct `SpellDef { PACost, TargetingShape Shape, TargetingFilter Filter, RangeMin/Max, DamageAmount }` + static `TryGet(SpellId, out SpellDef)` via switch déterministe (pas de Dictionary heap-alloc). En 2.7 : seul TestZap (3 PA, SingleTile, Enemy, Range 1-5, 100 dmg).
+  - `SpellSystem.cs` (`SystemMainThread`, unsafe) : pipeline
+    - Check phase TurnActive
+    - Iterate playerIndex 0..PlayerCount, récupère `f.GetPlayerCommand(playerIndex) is CastSpellCommand cmd`
+    - `TryCastSpell` : validation joueur actif → SpellRegistry.TryGet → trouve Combatant du caster → PA >= PACost → range Manhattan [Min..Max] → TargetingResolver.MatchesFilter → consomme PA → `int* effectBuffer = stackalloc int[GridConstants.Count]` → ResolveEffectCells → applique damage à chaque Combatant dans la zone (HP clampé à 0)
+  - `CommandSetup.User.cs` : `factories.Add(new CastSpellCommand())` (au-dessus de la MoveCommand)
+  - `SystemSetup.User.cs` : Add SpellSystem après MovementSystem (l'ordre entre eux n'importe pas car ils lisent les commands en read-only)
+  - `CombatInputController` enrichi : touche Espace cast TestZap sur case sous souris pour le joueur actif. Le clic gauche reste pour le mvt (sauf si mode targeting preview)
+  - **🚨 Découverte importante outils Quantum** :
+    - Les méthodes `Log.Info/Warn/Error` de Quantum sont **stripped par `[Conditional]` attributes** si les defines `QUANTUM_LOGLEVEL_INFO/WARN/ERROR/DEBUG` ne sont pas activés dans **Player Settings > Other Settings > Scripting Define Symbols**.
+    - Sans ces defines, AUCUN log côté simu n'apparaît dans la console Unity → debug aveugle. C'est extrêmement piégeux car ça ne génère pas d'erreur, juste un silence.
+    - **Fix Phase 2 verrouillé** : ajout de `QUANTUM_LOGLEVEL_INFO` dans les Scripting Define Symbols.
+    - À documenter pour les nouveaux developers / phases ultérieures.
+  - Validation E2E : touche Espace sur Nightseer (après mvt à portée 1-5) → console affiche `[Spell] Damage 100 sur P1 (11,8) HP 1500 -> 1400` + `[Spell] P0 cast TestZap target=(11,8) PA restant=5`. Tous les cas de rejet (PA insuffisant, hors range, filter no-match) loggent un `Log.Warn` traçable.
 
 ---
 
@@ -516,7 +536,8 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 
 **Bloc B — Sorts & ciblage générique (3 briques)**
 - 2.6 — Système de targeting (Shape + Filter) ✅ VALIDÉE 11 mai 2026
-- 2.7 — Spell runtime engine ⏳ PROCHAINE
+- 2.7 — Spell runtime engine ✅ VALIDÉE 11 mai 2026
+- 2.8 — Premier sort Tranche-Âme Soulrender ⏳ PROCHAINE
 - 2.7 — Spell runtime engine
 - 2.8 — Premier sort Tranche-Âme Soulrender (E2E damage flow)
 
@@ -535,7 +556,7 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.16 — IA Medium (heuristique multi-tour)
 - 2.17 — Scène `30_CombatIA` + test E2E combat 1v1 jouable 🎯
 
-**Prochaine étape :** Démarrer brique 2.7 — Spell runtime engine (exécution générique des SpellEffect, consommation PA, events typés).
+**Prochaine étape :** Démarrer brique 2.8 — Premier sort Tranche-Âme Soulrender (vrai sort Bible V7.1 + retrait du TestZap debug).
 
 ---
 
@@ -629,6 +650,25 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 2.7 (Spell runtime engine + DÉCOUVERTE QUANTUM_LOGLEVEL)
+- 4 fichiers Quantum nouveaux (Spell.qtn, CastSpellCommand, SpellRegistry, SpellSystem) + 2 updates (CommandSetup, SystemSetup) + 1 update View (CombatInputController : touche Espace = cast TestZap)
+- DSL Quantum : `enum SpellId : Byte` (plages réservées 10-29 Soulrender, 30-49 Nightseer, 50-69 Colossar, 70-89 Necram, 90-109 Ghostra, 1-9 sorts de dev) + `enum SpellEffectKind` (Damage/Heal/ApplyMark/Push/Pull/Spawn)
+- `CastSpellCommand : DeterministicCommand` avec serialize SpellId via byte + TargetX/Y
+- `SpellRegistry` : switch déterministe (pas de Dictionary alloc heap) sur SpellId → SpellDef { PACost, Shape, Filter, RangeMin/Max, DamageAmount }
+- `SpellSystem` (SystemMainThread, unsafe) : pipeline complet validation→consommation PA→ResolveEffectCells stackalloc→damage sur chaque cible
+- TestZap (sort de dev 2.7) : 3 PA, SingleTile, Enemy, Range 1-5, 100 dmg. Sera retiré en 2.8 au profit de Tranche-Âme.
+- **🚨 DÉCOUVERTE MAJEURE OUTILS** : les logs Quantum (`Log.Info/Warn/Error`) sont **stripped à la compilation** via `[Conditional]` attributes si les **defines `QUANTUM_LOGLEVEL_INFO/WARN/ERROR/DEBUG` ne sont pas activés** dans Player Settings > Scripting Define Symbols. **Sans ces defines, AUCUN log côté simu n'apparaît dans la console Unity**, ce qui rend le debug aveugle. Fix : ajout de `QUANTUM_LOGLEVEL_INFO` dans les Scripting Define Symbols. Désormais tous les logs simu Quantum sortent avec le préfixe coloré `[Quantum]` dans la console Unity standard. À documenter dans `_docs/00_README_CLAUDE.md` pour les futures phases.
+- 1 piège diagnostic traversé (~30 min de debug) : 
+  - Symptômes initiaux : la `CastSpellCommand` partait du View (log visible) mais aucun log côté simu, même en `Log.Error`. Suspect 1 (faux) : MovementSystem consomme la command — testé en swappant l'ordre Spell/Movement, sans effet. Suspect 2 (vrai) : les logs sont strippés par le define manquant.
+  - Le diagnostic final est tombé en cherchant dans `Quantum.Log.xml` la phrase "needs to be defined" qui exposait le mécanisme.
+- Validation finale (logs visibles après ajout du define) :
+  - `[Quantum] [TurnSystem] Initiative: Joueur P0 commence`
+  - `[Quantum] [SpellSystem.DEBUG] OnInit appele` (avant cleanup)
+  - `[Quantum] [Movement] P0 -> (6,8) cost=3 PM restant=0`
+  - `[Quantum] [Spell] Damage 100 sur P1 (11,8) HP 1500 -> 1400`
+  - `[Quantum] [Spell] P0 cast TestZap target=(11,8) PA restant=5`
+- Code de debug retiré après validation : OnInit log, PING toutes les 60 frames, log RECV par player, warning "command pendant pas TurnActive". Le SpellSystem est revenu à sa forme propre.
 
 ### 11 mai 2026 — Brique 2.6 (Targeting Shape + Filter)
 - 2 fichiers Quantum (Targeting.qtn + TargetingResolver.cs) + 1 nouveau View (TargetingPreviewView) + 3 updates (TileView, GridRenderer, CombatInputController)

@@ -92,26 +92,25 @@ namespace Nymora.Combat.View
         {
             if (!_gridReady) return;
             if (_camera == null) return;
-            // Qualifie UnityEngine.Input : Quantum a aussi un type "Input" (struct DSL) et le using Quantum cree une ambiguite.
-            if (!UnityEngine.Input.GetMouseButtonDown(0)) return;
-
-            // Quand on est en mode preview targeting, le clic ne deplace plus le combattant
-            // (on bypass MoveCommand le temps de tester le ciblage). Sera retire en 2.8 quand
-            // le clic enverra un vrai CastSpellCommand.
-            if (_debugShowTargeting) return;
 
             var game = QuantumRunner.Default?.Game;
             if (game == null) return;
 
+            // Qualifie UnityEngine.Input : Quantum a aussi un type "Input" (struct DSL).
+            bool mouseDown = UnityEngine.Input.GetMouseButtonDown(0);
+            bool spaceDown = UnityEngine.Input.GetKeyDown(KeyCode.Space);
+            if (!mouseDown && !spaceDown) return;
+
+            // Calcule la case sous la souris (partagee entre mvt et cast).
             Vector3 mouseWorld = _camera.ScreenToWorldPoint(UnityEngine.Input.mousePosition);
             mouseWorld.z = 0f;
-
             var (gx, gy) = IsoProjection.WorldToGrid(
                 mouseWorld,
                 _gridSettings.TileWorldWidth,
                 _gridSettings.TileWorldHeight,
                 _centerOffset);
 
+            // Determine le sender (joueur actif si debug, sinon local).
             int senderPlayer = _localPlayerIndex;
             if (_debugAllPlayersMovable)
             {
@@ -122,10 +121,23 @@ namespace Nymora.Combat.View
                 }
             }
 
-            var cmd = new MoveCommand { TargetX = gx, TargetY = gy };
-            game.SendCommand(senderPlayer, cmd);
+            // Espace : cast TestZap sur la case sous la souris (brique 2.7).
+            // En 2.8 remplace par "sort selectionne dans la barre de sorts" + clic.
+            if (spaceDown)
+            {
+                var castCmd = new CastSpellCommand { Spell = SpellId.TestZap, TargetX = gx, TargetY = gy };
+                game.SendCommand(senderPlayer, castCmd);
+                Debug.Log($"[Nymora.CombatInput] Sent CastSpellCommand TestZap player={senderPlayer} target=({gx},{gy})");
+                return;
+            }
 
-            Debug.Log($"[Nymora.CombatInput] Sent MoveCommand player={senderPlayer} target=({gx},{gy})");
+            // Clic gauche : mouvement. Bypasse en mode targeting preview.
+            if (mouseDown && !_debugShowTargeting)
+            {
+                var moveCmd = new MoveCommand { TargetX = gx, TargetY = gy };
+                game.SendCommand(senderPlayer, moveCmd);
+                Debug.Log($"[Nymora.CombatInput] Sent MoveCommand player={senderPlayer} target=({gx},{gy})");
+            }
         }
     }
 }

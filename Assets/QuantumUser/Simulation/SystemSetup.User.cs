@@ -7,13 +7,15 @@
     {
         static partial void AddSystemsUser(ICollection<SystemBase> systems, RuntimeConfig gameConfig, SimulationConfig simulationConfig, SystemsConfig systemsConfig)
         {
-            // Phase 2 — Combat (ordre important : Grid avant Combatant car SetOccupant lit la grille,
-            // TurnSystem apres pour avoir les Combatants deja crees quand on reset leur PA/PM,
-            // MovementSystem en dernier pour traiter les commands apres la transition de phase).
+            // Phase 2 — Combat
+            // Ordre : Grid -> Combatant (SetOccupant lit la grille) -> Turn (reset PA/PM)
+            //         -> Movement -> Spell (les deux traitent les commands de player en lecture
+            //         seule via GetPlayerCommand, donc l'ordre entre eux n'a pas d'impact).
             systems.Add(new GridSystem());
             systems.Add(new CombatantSystem());
             systems.Add(new TurnSystem());
             systems.Add(new MovementSystem());
+            systems.Add(new SpellSystem());
         }
     }
 }
