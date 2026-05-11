@@ -91,6 +91,7 @@ namespace Quantum {
     SoulrenderPeauDeFer = 22,
     SoulrenderSeveVive = 23,
     SoulrenderDernierSouffle = 24,
+    SoulrenderAmeLaceree = 25,
   }
   public enum StatusKind : byte {
     None = 0,
@@ -789,39 +790,41 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct Combatant : Quantum.IComponent {
-    public const Int32 SIZE = 184;
+    public const Int32 SIZE = 188;
     public const Int32 ALIGNMENT = 4;
-    [FieldOffset(48)]
+    [FieldOffset(52)]
     public Int32 PlayerIndex;
     [FieldOffset(0)]
     public NymoraClass Class;
     [FieldOffset(16)]
     public Int32 HP;
-    [FieldOffset(24)]
-    public Int32 MaxHP;
-    [FieldOffset(40)]
-    public Int32 PA;
     [FieldOffset(28)]
-    public Int32 MaxPA;
+    public Int32 MaxHP;
     [FieldOffset(44)]
-    public Int32 PM;
+    public Int32 PA;
     [FieldOffset(32)]
+    public Int32 MaxPA;
+    [FieldOffset(48)]
+    public Int32 PM;
+    [FieldOffset(36)]
     public Int32 MaxPM;
     [FieldOffset(8)]
     public Int32 GridX;
     [FieldOffset(12)]
     public Int32 GridY;
-    [FieldOffset(52)]
-    public Int32 Resource;
-    [FieldOffset(20)]
-    public Int32 LastResourceGainOnHitTurn;
     [FieldOffset(56)]
+    public Int32 Resource;
+    [FieldOffset(24)]
+    public Int32 LastResourceGainOnHitTurn;
+    [FieldOffset(60)]
     [FramePrinter.FixedArrayAttribute(typeof(Status), 8)]
     private fixed Byte _Statuses_[128];
-    [FieldOffset(36)]
+    [FieldOffset(40)]
     public Int32 OncePerMatchUsedFlags;
     [FieldOffset(4)]
     public Int32 BonusPANextTurn;
+    [FieldOffset(20)]
+    public Int32 LastAmeLaceeUsedOnTurn;
     public readonly FixedArray<Status> Statuses {
       get {
         fixed (byte* p = _Statuses_) { return new FixedArray<Status>(p, 16, 8); }
@@ -845,6 +848,7 @@ namespace Quantum {
         hash = hash * 31 + HashCodeUtils.GetArrayHashCode(Statuses);
         hash = hash * 31 + OncePerMatchUsedFlags.GetHashCode();
         hash = hash * 31 + BonusPANextTurn.GetHashCode();
+        hash = hash * 31 + LastAmeLaceeUsedOnTurn.GetHashCode();
         return hash;
       }
     }
@@ -855,6 +859,7 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->GridX);
         serializer.Stream.Serialize(&p->GridY);
         serializer.Stream.Serialize(&p->HP);
+        serializer.Stream.Serialize(&p->LastAmeLaceeUsedOnTurn);
         serializer.Stream.Serialize(&p->LastResourceGainOnHitTurn);
         serializer.Stream.Serialize(&p->MaxHP);
         serializer.Stream.Serialize(&p->MaxPA);

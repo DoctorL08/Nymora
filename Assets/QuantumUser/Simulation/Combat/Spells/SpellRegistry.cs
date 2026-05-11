@@ -77,6 +77,15 @@ namespace Quantum
         public const int CauterisationHealMax         = 180;  // cap 3 DoTs retires
         public const int TrancheAmeKillRecul          = 2;    // 2 cases de recul si kill
 
+        // 2.11 — Signature Ame Laceree + Passif Appel du Sang.
+        public const int AmeLaceeDamage               = 320;  // dgts de base
+        public const int AmeLaceeHealPercentOfPassed  = 50;   // heal caster = X% des dgts qui passent (post-shield)
+        public const int AmeLaceeCooldownTurns        = 4;    // 4 tours de cooldown apres usage
+        public const int AppelDuSangPalierMarquage    = 70;   // cible <70% HP -> -1 PA cost
+        public const int AppelDuSangPalierRageOuverte = 40;   // cible <40% HP -> +1 PM Soulrender + 50% shield bypass melee
+        public const int AppelDuSangPalierLeCri       = 20;   // cible <20% HP -> Sang Coagule croix 5 autour caster
+        public const int AppelDuSangShieldBypassPct   = 50;   // 50% des dgts mêlée ignorent le shield si target <40%
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -382,6 +391,32 @@ namespace Quantum
                     };
                     return true;
 
+                // -------------------------------------------------------------
+                // SOULRENDER 2.11 — SIGNATURE
+                // -------------------------------------------------------------
+
+                // Ame Laceree (2.11) : signature Soulrender.
+                // 2 PA, range 1 (melee), 5 HG (consomme toute la jauge), 320 dgts.
+                // Le Soulrender heal 50% des dgts qui passent (post-shield).
+                // Si kill : Sang Coagule en croix 5 cases (caster centre + 4 cardinales).
+                // Cooldown 4 tours apres usage. Re-castable si HG remonte a 5.
+                // Slot separe du deck de 6 (touche dediee en View).
+                case SpellId.SoulrenderAmeLaceree:
+                    def = new SpellDef
+                    {
+                        PACost = 2,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 1,
+                        DamageAmount = AmeLaceeDamage,
+                        HGCostMandatory = 5, // 5/5 HG obligatoire
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
                 default:
                     def = default;
                     return false;
@@ -390,20 +425,50 @@ namespace Quantum
     }
 
     /// <summary>
-    /// Helpers de stats EFFECTIVES, qui prennent en compte les statuses actifs.
-    /// Point d'extension central pour les modificateurs (Rage Insatiable, et plus tard
-    /// passif "Appel du Sang" en 2.11 : -1 PA si cible <70% HP).
+    /// Helpers de stats EFFECTIVES, qui prennent en compte les statuses actifs et le passif.
+    /// Point d'extension central pour les modificateurs.
+    ///
+    /// 2.10.a : Rage Insatiable Active +1 PA cost.
+    /// 2.11 : Passif Appel du Sang -1 PA si cible visee <70% HP (caster Soulrender uniquement).
     /// </summary>
     public static unsafe class EffectiveStats
     {
-        public static int GetPACost(in SpellDef def, Combatant* caster)
+        /// <summary>
+        /// Cout PA effectif pour le caster sur ce sort.
+        ///
+        /// <paramref name="targetHPRatio"/> : ratio HP de la cible visee (HP * 100 / MaxHP),
+        /// ou 100 si pas de cible ennemie (sorts self/AnyTile sans ennemi). Sert au passif
+        /// Appel du Sang : -1 PA si caster Soulrender et target < 70% HP. Min 1 PA.
+        /// </summary>
+        public static int GetPACost(in SpellDef def, Combatant* caster, int targetHPRatio)
         {
             int cost = def.PACost;
             if (StatusHelper.Has(caster, StatusKind.RageInsatiableActive))
             {
-                cost += 1; // Bible V7.1 Rage Insatiable : sorts coutent +1 PA pendant 2 tours
+                cost += 1; // Rage Insatiable : sorts coutent +1 PA pendant 2 tours
+            }
+            // Passif Appel du Sang : caster Soulrender + cible <70% HP -> -1 PA (min 1).
+            if (caster->Class == NymoraClass.Soulrender
+                && targetHPRatio < SpellRegistry.AppelDuSangPalierMarquage)
+            {
+                cost -= 1;
+                if (cost < 1) cost = 1;
             }
             return cost;
+        }
+
+        /// <summary>
+        /// Calcule le ratio HP de la cible ennemie a (targetX, targetY), ou 100 si pas d'ennemi.
+        /// Utilise par GetPACost pour le passif Appel du Sang.
+        /// </summary>
+        public static int ResolveTargetHPRatio(Frame f, int targetX, int targetY, int casterPlayerIndex)
+        {
+            EntityRef occ = GridHelpers.GetOccupant(f, targetX, targetY);
+            if (occ == EntityRef.None) return 100;
+            if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* c)) return 100;
+            if (c->PlayerIndex == casterPlayerIndex) return 100; // pas un ennemi
+            if (c->MaxHP <= 0) return 100;
+            return c->HP * 100 / c->MaxHP;
         }
     }
 }

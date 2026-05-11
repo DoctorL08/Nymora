@@ -35,7 +35,7 @@ enum SpellId : Byte
     SoulrenderPeauDeFer         = 22,  // 2.10.b — Survie  : 3 PA, self, shield 200 HP / 2 tours + 30 dgts bonus melee
     SoulrenderSeveVive          = 23,  // 2.10.b — Survie  : 2 PA, self, heal 100 (+60 si 1 HG, +50 si DoT actif)
     SoulrenderDernierSouffle    = 24,  // 2.10.b — Survie  : 4 PA, self, HP<30% only, heal 200 + 3 HG, 1/match
-    // 25 SIGNATURE : Ame Laceree (2.11)
+    SoulrenderAmeLaceree        = 25,  // 2.11 — SIGNATURE : 2 PA, melee 1, 5 HG (consomme tout), 320 dgts + heal 50% dgts qui passent. Cooldown 4 tours. Kill -> Sang Coagule croix 5.
 }
 
 enum SpellEffectKind : Byte

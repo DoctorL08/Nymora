@@ -67,7 +67,10 @@ namespace Quantum
 
             var caster = f.Unsafe.GetPointer<Combatant>(casterEntity);
 
-            int effectivePACost = EffectiveStats.GetPACost(spellDef, caster);
+            // 2.11 : compute target HP ratio for passif Appel du Sang (Soulrender -1 PA si <70% HP).
+            int targetHPRatio = EffectiveStats.ResolveTargetHPRatio(f, cmd.TargetX, cmd.TargetY, playerIndex);
+
+            int effectivePACost = EffectiveStats.GetPACost(spellDef, caster, targetHPRatio);
             if (caster->PA < effectivePACost)
             {
                 Log.Warn($"[Spell] rejet : PA {caster->PA} < cost {effectivePACost} (base {spellDef.PACost})");
@@ -92,6 +95,20 @@ namespace Quantum
                 if (caster->HP * 100 >= caster->MaxHP * SpellRegistry.DernierSouffleHPThresholdPct)
                 {
                     Log.Warn($"[Spell] rejet : Dernier Souffle requiert HP < {SpellRegistry.DernierSouffleHPThresholdPct}% (actuel {caster->HP}/{caster->MaxHP})");
+                    return;
+                }
+            }
+
+            // 2.11 : Ame Laceree cooldown 4 tours apres usage. Detonation 5 HG set aussi
+            // LastAmeLaceeUsedOnTurn (interdit Ame Laceree). Bible : re-castable si HG remonte
+            // a 5 ET cooldown expire.
+            int currentTurnForCooldown = f.TryGetSingleton<CombatState>(out var stateCD) ? stateCD.TurnNumber : 0;
+            if (cmd.Spell == SpellId.SoulrenderAmeLaceree)
+            {
+                int turnsSinceUse = currentTurnForCooldown - caster->LastAmeLaceeUsedOnTurn;
+                if (turnsSinceUse < SpellRegistry.AmeLaceeCooldownTurns)
+                {
+                    Log.Warn($"[Spell] rejet : Ame Laceree en cooldown ({turnsSinceUse}/{SpellRegistry.AmeLaceeCooldownTurns} tours depuis dernier usage tour {caster->LastAmeLaceeUsedOnTurn})");
                     return;
                 }
             }
@@ -202,6 +219,8 @@ namespace Quantum
             int killedTargetX = -1;                // position de la cible tuee (pour recul Tranche-Ame)
             int killedTargetY = -1;
             bool isMelee = spellDef.RangeMax == 1; // pour trigger Riposte (Bible : attaque MELEE)
+            int lastHitHPLoss = 0;                 // 2.11 : HP loss de la derniere cible touchee (Ame Laceree heal 50%)
+            bool castTriggeredLeCri = false;       // 2.11 : passif <20% HP -> Sang Coagule croix 5
 
             if (effectiveDmg > 0)
             {
@@ -216,12 +235,24 @@ namespace Quantum
                     if (target == casterEntity) continue; // pas d'auto-damage offensif
 
                     // Shield absorption (2.10.b) : ShieldActive absorbe avant HP.
-                    // L'excedent passe au HP. Si Magnitude tombe a 0 : Consume status.
-                    int dmgRemaining = effectiveDmg;
+                    // 2.11 Passif RAGE OUVERTE : si target <40% HP pre-damage ET caster Soulrender ET
+                    // sort melee -> 50% des dgts bypass shield direct au HP. L'autre 50% va shield -> HP overflow.
+                    int targetHPRatioPreDmg = targetC->MaxHP > 0 ? (targetC->HP * 100 / targetC->MaxHP) : 100;
+                    int rageOuverteBypass = 0;
                     int shieldBefore = StatusHelper.GetMagnitude(targetC, StatusKind.ShieldActive, 0);
-                    if (shieldBefore > 0)
+                    if (caster->Class == NymoraClass.Soulrender
+                        && isMelee
+                        && shieldBefore > 0
+                        && targetHPRatioPreDmg < SpellRegistry.AppelDuSangPalierRageOuverte)
                     {
-                        int absorbed = dmgRemaining > shieldBefore ? shieldBefore : dmgRemaining;
+                        rageOuverteBypass = effectiveDmg * SpellRegistry.AppelDuSangShieldBypassPct / 100;
+                        Log.Info($"[Spell] Rage Ouverte (<{SpellRegistry.AppelDuSangPalierRageOuverte}% HP) : {rageOuverteBypass} dgts bypass shield sur P{targetC->PlayerIndex}");
+                    }
+
+                    int dmgToShield = effectiveDmg - rageOuverteBypass; // partie shield-able
+                    if (shieldBefore > 0 && dmgToShield > 0)
+                    {
+                        int absorbed = dmgToShield > shieldBefore ? shieldBefore : dmgToShield;
                         int shieldAfter = shieldBefore - absorbed;
                         if (shieldAfter == 0)
                         {
@@ -233,16 +264,18 @@ namespace Quantum
                             StatusHelper.SetMagnitude(targetC, StatusKind.ShieldActive, shieldAfter);
                             Log.Info($"[Spell] Shield absorbe {absorbed} sur P{targetC->PlayerIndex} ({cx},{cy}) (shield {shieldBefore} -> {shieldAfter})");
                         }
-                        dmgRemaining -= absorbed;
+                        dmgToShield -= absorbed;
                     }
 
-                    if (dmgRemaining > 0)
+                    int totalHPLoss = dmgToShield + rageOuverteBypass; // ce qui passe au HP
+                    if (totalHPLoss > 0)
                     {
                         int before = targetC->HP;
-                        targetC->HP -= dmgRemaining;
+                        targetC->HP -= totalHPLoss;
                         if (targetC->HP < 0) targetC->HP = 0;
                         casterHitSomething = true;
-                        Log.Info($"[Spell] Damage {effectiveDmg} (HP loss {dmgRemaining}) sur P{targetC->PlayerIndex} ({cx},{cy}) HP {before} -> {targetC->HP}");
+                        lastHitHPLoss = totalHPLoss; // 2.11 : sert au heal Ame Laceree (50% des dgts qui passent)
+                        Log.Info($"[Spell] Damage {effectiveDmg} (HP loss {totalHPLoss}, dont bypass {rageOuverteBypass}) sur P{targetC->PlayerIndex} ({cx},{cy}) HP {before} -> {targetC->HP}");
 
                         // 2.10.c : Kill detection. Tracker si au moins 1 cible est tombee a HP=0.
                         // killedTargetX/Y sert au recul Tranche-Ame (direction opposee a la cible tuee).
@@ -252,6 +285,15 @@ namespace Quantum
                             killedTargetX = cx;
                             killedTargetY = cy;
                             Log.Info($"[Spell] KILL : P{targetC->PlayerIndex} tombe a HP=0 sur ({cx},{cy})");
+                        }
+
+                        // 2.11 Passif LE CRI (<20% HP post-hit) : Sang Coagule croix 5 autour caster.
+                        // Trigger une seule fois par cast (le bool ne sert qu'a marquer, l'application se fait apres la boucle).
+                        if (caster->Class == NymoraClass.Soulrender
+                            && targetC->MaxHP > 0
+                            && targetC->HP * 100 < targetC->MaxHP * SpellRegistry.AppelDuSangPalierLeCri)
+                        {
+                            castTriggeredLeCri = true;
                         }
 
                         // Marque de Carnage tracker (bonus HG cote caster, applique 1x apres la boucle).
@@ -324,11 +366,25 @@ namespace Quantum
                 Log.Info($"[Spell] BuffNextOffensiveDmgPercent consume sur P{caster->PlayerIndex} (+{pacteBuffPct}%)");
             }
 
+            // 2.11 Passif LE CRI : si target <20% HP post-hit, pose Sang Coagule sur croix 5
+            // (caster + 4 cardinales). Une fois par cast peu importe le nb de cibles.
+            if (castTriggeredLeCri)
+            {
+                int cx0 = caster->GridX;
+                int cy0 = caster->GridY;
+                GridHelpers.SetTerrain(f, cx0,     cy0,     TerrainKind.SangCoagule, SpellRegistry.SangCoaguleTurns, currentTurn);
+                GridHelpers.SetTerrain(f, cx0 + 1, cy0,     TerrainKind.SangCoagule, SpellRegistry.SangCoaguleTurns, currentTurn);
+                GridHelpers.SetTerrain(f, cx0 - 1, cy0,     TerrainKind.SangCoagule, SpellRegistry.SangCoaguleTurns, currentTurn);
+                GridHelpers.SetTerrain(f, cx0,     cy0 + 1, TerrainKind.SangCoagule, SpellRegistry.SangCoaguleTurns, currentTurn);
+                GridHelpers.SetTerrain(f, cx0,     cy0 - 1, TerrainKind.SangCoagule, SpellRegistry.SangCoaguleTurns, currentTurn);
+                Log.Info($"[Spell] LE CRI ! Cible <{SpellRegistry.AppelDuSangPalierLeCri}% HP, Sang Coagule pose en croix 5 autour P{caster->PlayerIndex} ({cx0},{cy0})");
+            }
+
             // ===== Effets specifiques par sort (apres damage) =====
             ApplySpellSpecificEffects(f, cmd, spellDef, caster, casterEntity,
                 casterHitSomething, hgSpend, currentTurn,
                 effectBuffer, effectCount,
-                wasKill, killedTargetX, killedTargetY);
+                wasKill, killedTargetX, killedTargetY, lastHitHPLoss);
 
             // ===== Rage Insatiable : regen 1 PA si offensif (max 1 par tour) =====
             if (spellDef.IsOffensive != 0 && StatusHelper.Has(caster, StatusKind.RageInsatiableActive))
@@ -353,6 +409,7 @@ namespace Quantum
         ///
         /// 2.10.c : prend wasKill + killedTargetX/Y en parametre pour les effets conditionnels
         /// au kill (recul Tranche-Ame, Curee kill chain).
+        /// 2.11 : lastHitHPLoss sert au heal Ame Laceree (50% des dgts qui passent).
         /// </summary>
         private static void ApplySpellSpecificEffects(
             Frame f,
@@ -367,7 +424,8 @@ namespace Quantum
             int effectCount,
             bool wasKill,
             int killedTargetX,
-            int killedTargetY)
+            int killedTargetY,
+            int lastHitHPLoss)
         {
             switch (cmd.Spell)
             {
@@ -700,8 +758,14 @@ namespace Quantum
                     GridHelpers.SetTerrain(f, cmd.TargetX, cmd.TargetY, TerrainKind.SangCoagule, SpellRegistry.SangCoaguleTurns, currentTurn);
                     Log.Info($"[Spell] Detonation Sanglante : Sang Coagule pose en ({cmd.TargetX},{cmd.TargetY}) pour {SpellRegistry.SangCoaguleTurns} tours");
 
-                    // TODO 2.11 : si totalHG consomme == 5 -> interdit Ame Laceree + reset son cooldown.
-                    // Implementer quand la signature arrive en 2.11.
+                    // 2.11 : si totalHG consomme == 5 -> interdit Ame Laceree + reset son cooldown.
+                    // On set LastAmeLaceeUsedOnTurn = currentTurn comme si on l'avait utilisee.
+                    int totalHGForInterlock = spellDef.HGCostMandatory + hgSpend;
+                    if (totalHGForInterlock >= 5)
+                    {
+                        caster->LastAmeLaceeUsedOnTurn = currentTurn;
+                        Log.Info($"[Spell] Detonation 5 HG : Ame Laceree interdite, cooldown reset au tour {currentTurn} (-{SpellRegistry.AmeLaceeCooldownTurns} tours)");
+                    }
                     break;
                 }
 
@@ -737,6 +801,47 @@ namespace Quantum
                         if (caster->HP < 0) caster->HP = 0;
                         Log.Info($"[Spell] Curee MISS : -{SpellRegistry.CureeMissSelfDamage} HP self sur P{caster->PlayerIndex} HP {hpBeforeCureeMiss} -> {caster->HP}");
                     }
+                    break;
+                }
+
+                case SpellId.SoulrenderAmeLaceree:
+                {
+                    // 2.11 SIGNATURE. Damage 320 deja applique par le pipeline generique.
+                    // Effets specifiques :
+                    //   1. Heal caster = 50% des dgts qui ont passe (lastHitHPLoss, post-shield).
+                    //   2. Si KILL : Sang Coagule en croix 5 cases sur la cible tuee (centre + 4 cardinales).
+                    //   3. Set LastAmeLaceeUsedOnTurn pour cooldown 4 tours.
+
+                    int healAmt = lastHitHPLoss * SpellRegistry.AmeLaceeHealPercentOfPassed / 100;
+                    if (healAmt > 0)
+                    {
+                        if (StatusHelper.Has(caster, StatusKind.AntiHealShield))
+                        {
+                            Log.Info($"[Spell] Ame Laceree : heal {healAmt} BLOQUE par AntiHealShield sur P{caster->PlayerIndex}");
+                        }
+                        else
+                        {
+                            int hpBeforeAL = caster->HP;
+                            caster->HP += healAmt;
+                            if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
+                            Log.Info($"[Spell] Ame Laceree : heal {healAmt} ({SpellRegistry.AmeLaceeHealPercentOfPassed}% des {lastHitHPLoss} dgts passes) sur P{caster->PlayerIndex} HP {hpBeforeAL} -> {caster->HP}");
+                        }
+                    }
+
+                    if (wasKill)
+                    {
+                        // Croix 5 sur la cible tuee : centre + 4 cardinales.
+                        GridHelpers.SetTerrain(f, killedTargetX,     killedTargetY,     TerrainKind.SangCoagule, SpellRegistry.SangCoaguleTurns, currentTurn);
+                        GridHelpers.SetTerrain(f, killedTargetX + 1, killedTargetY,     TerrainKind.SangCoagule, SpellRegistry.SangCoaguleTurns, currentTurn);
+                        GridHelpers.SetTerrain(f, killedTargetX - 1, killedTargetY,     TerrainKind.SangCoagule, SpellRegistry.SangCoaguleTurns, currentTurn);
+                        GridHelpers.SetTerrain(f, killedTargetX,     killedTargetY + 1, TerrainKind.SangCoagule, SpellRegistry.SangCoaguleTurns, currentTurn);
+                        GridHelpers.SetTerrain(f, killedTargetX,     killedTargetY - 1, TerrainKind.SangCoagule, SpellRegistry.SangCoaguleTurns, currentTurn);
+                        Log.Info($"[Spell] Ame Laceree KILL : Sang Coagule croix 5 pose sur ({killedTargetX},{killedTargetY}) pour {SpellRegistry.SangCoaguleTurns} tours");
+                    }
+
+                    // Cooldown 4 tours.
+                    caster->LastAmeLaceeUsedOnTurn = currentTurn;
+                    Log.Info($"[Spell] Ame Laceree : cooldown {SpellRegistry.AmeLaceeCooldownTurns} tours depuis tour {currentTurn} sur P{caster->PlayerIndex}");
                     break;
                 }
 

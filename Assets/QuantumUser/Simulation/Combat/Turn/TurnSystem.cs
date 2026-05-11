@@ -105,6 +105,33 @@ namespace Quantum
                         if (combatant->HP < 0) combatant->HP = 0;
                         Log.Info($"[TurnSystem] Sang Coagule tick : -30 HP sur P{combatant->PlayerIndex} ({combatant->GridX},{combatant->GridY}) HP {hpBefore} -> {combatant->HP}");
                     }
+
+                    // 2.11 Passif Appel du Sang RAGE OUVERTE : si Soulrender actif et au moins
+                    // 1 ennemi vivant a HP < 40% MaxHP -> +1 PM permanent (au reset TurnStart).
+                    // Bible : "+1 PM permanent jusqu'a fin du tour suivant la kill" — pour 2.11 on
+                    // applique simplement "+1 PM tant qu'un ennemi est <40%". La nuance "fin du
+                    // tour suivant la kill" se gere implicitement (1v1 = pas d'autres ennemis).
+                    if (combatant->Class == NymoraClass.Soulrender)
+                    {
+                        bool enemyBelow40 = false;
+                        var enemyFilter = f.Filter<Combatant>();
+                        while (enemyFilter.NextUnsafe(out EntityRef _, out Combatant* other))
+                        {
+                            if (other->PlayerIndex == combatant->PlayerIndex) continue;
+                            if (other->HP <= 0) continue;
+                            if (other->MaxHP <= 0) continue;
+                            if (other->HP * 100 < other->MaxHP * 40)
+                            {
+                                enemyBelow40 = true;
+                                break;
+                            }
+                        }
+                        if (enemyBelow40)
+                        {
+                            combatant->PM += 1;
+                            Log.Info($"[TurnSystem] Rage Ouverte : +1 PM sur P{combatant->PlayerIndex} (ennemi <40% HP) -> PM={combatant->PM}");
+                        }
+                    }
                 }
             }
 

@@ -65,4 +65,9 @@ component Combatant
     // Reset a 0 dans TurnSystem.EnterTurnStart apres application. Pas un Status (parce que
     // l'effet est consume en 1 application precise, pas une duree).
     Int32 BonusPANextTurn;
+
+    // 2.11 — Tour ou ce combattant a utilise Ame Laceree (signature) la derniere fois.
+    // Cooldown 4 tours. Initial : -1000 (pas de cooldown au spawn).
+    // Detonation Sanglante avec 5 HG total set aussi ce champ (interdit Ame Laceree + reset cooldown).
+    Int32 LastAmeLaceeUsedOnTurn;
 }

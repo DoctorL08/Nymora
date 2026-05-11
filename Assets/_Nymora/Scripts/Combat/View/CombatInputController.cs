@@ -117,6 +117,8 @@ namespace Nymora.Combat.View
             //   F2 = Detonation Sanglante (range 4, croix 3, 2 HG mandatory) — Shift+F2 = HGSpend max 3 (total 5 HG)
             //   F3 = Curee                (range 2, 2 HG, kill chain)
             //   F4 = Cauterisation        (self, retire DoT + heal)
+            // 2.11 — touche B (slot signature, separe du deck 6) :
+            //   B  = Ame Laceree          (melee, 5 HG obligatoire, 320 dgts + heal 50%, cooldown 4 tours)
             bool key1 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha1);
             bool key2 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha2);
             bool key3 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha3);
@@ -131,11 +133,13 @@ namespace Nymora.Combat.View
             bool keyF2 = UnityEngine.Input.GetKeyDown(KeyCode.F2);
             bool keyF3 = UnityEngine.Input.GetKeyDown(KeyCode.F3);
             bool keyF4 = UnityEngine.Input.GetKeyDown(KeyCode.F4);
+            bool keyB  = UnityEngine.Input.GetKeyDown(KeyCode.B); // 2.11 signature Ame Laceree
             bool shiftHeld = UnityEngine.Input.GetKey(KeyCode.LeftShift) || UnityEngine.Input.GetKey(KeyCode.RightShift);
 
             bool anySpellKey = key1 || key2 || key3 || key4 || key5
                             || key6 || key7 || key8 || key9 || key0
-                            || keyF1 || keyF2 || keyF3 || keyF4;
+                            || keyF1 || keyF2 || keyF3 || keyF4
+                            || keyB;
             if (!mouseDown && !spaceDown && !anySpellKey) return;
 
             // Calcule la case sous la souris (partagee entre mvt et cast).
@@ -259,6 +263,13 @@ namespace Nymora.Combat.View
             {
                 if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
                     SendSpellAt(game, senderPlayer, SpellId.SoulrenderCauterisation, cx, cy, 0);
+                return;
+            }
+
+            // 2.11 — touche B : signature Ame Laceree (range 1, 5 HG obligatoire).
+            if (keyB)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.SoulrenderAmeLaceree, gx, gy, 0);
                 return;
             }
 

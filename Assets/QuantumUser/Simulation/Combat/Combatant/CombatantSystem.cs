@@ -43,6 +43,7 @@ namespace Quantum
                 LastResourceGainOnHitTurn = -1,
                 OncePerMatchUsedFlags = 0,
                 BonusPANextTurn = 0,
+                LastAmeLaceeUsedOnTurn = -1000, // pas de cooldown au spawn (Bible : signature jouable des HG=5)
             };
 
             var entity = f.Create();

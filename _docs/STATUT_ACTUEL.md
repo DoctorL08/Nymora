@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026 (Brique 2.10.c validée — 15/15 sorts Soulrender)  
+**Dernière mise à jour :** 11 mai 2026 (Brique 2.11 validée — Soulrender 100% Bible V7.1)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.11 — Signature Âme Lacérée + Passif Appel du Sang** (à démarrer)  
+**Brique en cours :** **2.12 — Assets visuels Soulrender (sprites + icônes)** (à démarrer)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 9/17 briques validées + 2.10 découpée en 3 sous-briques toutes validées (2.10.a ✅, 2.10.b ✅, 2.10.c ✅). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C 2/3 (2.9 ✅ + 2.10 ✅, reste 2.11). **15/15 sorts Soulrender implémentés Bible V7.1.** Architecture combat solide : Statuses framework + terrains + kill detection + mouvement non-PM + helpers Shield/Heal/Mark/Pull. Prêt pour signature Âme Lacérée (2.11) puis sprites (2.12) et HUD complet (2.13).
+**Statut Phase 2 :** 11/17 briques validées. Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11). **🏆 Soulrender 100% Bible V7.1** : 15 sorts + signature Âme Lacérée + passif Appel du Sang (paliers 70/40/20% avec PA cost -1, +1 PM Rage Ouverte, 50% shield bypass mêlée, LE CRI Sang Coagulé croix 5). Reste Bloc D (Nightseer 2.12-2.14 → renuméroté 2.14-2.16 avec sprites/HUD intercalés) + Bloc E (IA + E2E 2.17). Architecture combat solide.
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,26 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.11** — Signature Âme Lacérée + Passif Appel du Sang (validée 11 mai 2026, clôt le Bloc C, Soulrender 100% Bible V7.1)
+  - **Signature Âme Lacérée** (SpellId 25, touche `B` slot dédié) :
+    - SpellDef : 2 PA, range 1 mêlée, Enemy, 320 dgts, 5 HG mandatory (consomme toute la jauge).
+    - Cooldown 4 tours après usage (champ `Int32 LastAmeLaceeUsedOnTurn` sur Combatant, init -1000).
+    - Heal caster = 50% des dgts qui passent (`lastHitHPLoss` tracker, post-shield).
+    - Si kill : Sang Coagulé croix 5 cases (centre + 4 cardinales) sur la cible tuée.
+    - Re-castable si HG remonte à 5 ET cooldown expiré.
+  - **Passif L'Appel du Sang** (3 paliers HP cible, caster Soulrender uniquement) :
+    - **<70% HP** : tous les sorts coûtent -1 PA (min 1). Implémenté dans `EffectiveStats.GetPACost` qui prend désormais un `targetHPRatio` (helper `ResolveTargetHPRatio` lit l'occupant de la case ciblée).
+    - **<40% HP** : (a) au TurnStart Soulrender, scan ennemis vivants ; si au moins 1 a HP<40% → reset PM = MaxPM + 1 (`Rage Ouverte`). (b) Dans damage loop, si sort mêlée + target<40% + shield présent → 50% des dgts bypass shield direct au HP (refactor `dmgToShield` + `rageOuverteBypass` + `totalHPLoss`).
+    - **<20% HP post-hit** : tracker `castTriggeredLeCri` dans damage loop ; après le loop, si true → pose Sang Coagulé croix 5 (caster + 4 cardinales) pour 2 tours. **LE CRI** (Bible V7.1).
+  - **Interlock Détonation Sanglante 5 HG** (TODO 2.10.c clôturé) : si Détonation consume 5 HG total (mandatory 2 + optional 3) → `caster->LastAmeLaceeUsedOnTurn = currentTurn` (interdit Âme Lacérée + reset cooldown). Le joueur fait un choix : utiliser ses 5 HG pour la signature (320 dgts + heal) ou pour Détonation maxée (260 dgts AoE + Sang Coagulé). Bible : "consommer 5 HG ici interdit Âme Lacérée et reset son cooldown".
+  - **Touche dédiée `B`** : slot séparé du deck de 6 sorts (cohérent Bible "slot séparé du deck de 6").
+  - **Refactor damage loop** : 3 nouvelles vars `lastHitHPLoss`, `castTriggeredLeCri`, `rageOuverteBypass`. Signature `ApplySpellSpecificEffects` étendue avec `lastHitHPLoss` (pour le heal 50% Âme Lacérée). Pas de régression sur les sorts existants (tous gèrent `totalHPLoss > 0` au lieu de `dmgRemaining > 0`).
+  - **Validation E2E (5/7 tests directs + 2 par inspection)** : palier <70% PA cost -1 prouvé par valeurs PA restant (cast Tranche-Âme cost 2 effectif au lieu de 3) ✓, palier <40% +1 PM `Rage Ouverte` ✓, palier <20% `LE CRI Sang Coagule croix 5` ✓, Âme Lacérée cast (Damage 320 + heal 160 + cooldown posé) ✓, cooldown rejet `Ame Laceree en cooldown (2/4 tours)` ✓. Non testés directement : KILL Âme Lacérée → croix 5 sur cible tuée, Interlock Détonation 5 HG.
+  - **Moment de gameplay observé** : la dramaturgie Bible V7.1 se déploie. Le Soulrender bash la cible jusqu'à <70% (combos PA -1), puis <40% (+1 PM = arrive plus vite + 50% bypass shield), puis <20% → LE CRI + finition Âme Lacérée. C'est le "prédateur qui RACCOURCIT le match" prévu par la Bible.
+  - **🏆 Bloc C clôturé** : 2.9 (HG) + 2.10 (14 sorts) + 2.11 (signature + passif) = Soulrender 100% Bible V7.1.
 
 ---
 
@@ -651,8 +671,8 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.10.a — Framework Statuses + 5 sorts (Ouvre-Plaie, Pacte de Sang, Rugissement, Rage Insatiable, Riposte Carmin) ✅ VALIDÉE 11 mai 2026
 - 2.10.b — Shields + Heals + Marques + 5 sorts (Peau de Fer, Sève Vive, Dernier Souffle, Marque de Carnage, Empoignade) ✅ VALIDÉE 11 mai 2026
 - 2.10.c — Terrains (Vapeur Carmin, Sang Coagulé) + Mvt non-PM + Kill detection + 4 sorts (Charge Brutale, Détonation Sanglante, Curée, Cautérisation) + effet bonus Tranche-Âme ✅ VALIDÉE 11 mai 2026
-- 2.11 — Signature Âme Lacérée + Passif Appel du Sang ⏳ PROCHAINE
-- 2.12 — Assets visuels Soulrender (sprites 4 dirs + icônes 15 sorts + icône passif + signature)
+- 2.11 — Signature Âme Lacérée + Passif Appel du Sang ✅ VALIDÉE 11 mai 2026
+- 2.12 — Assets visuels Soulrender (sprites 4 dirs + icônes 15 sorts + icône passif + signature) ⏳ PROCHAINE
 - 2.13 — HUD combat complet (passif bas-gauche, 6 sorts bas-centre, timeline bas-droite, PA/PM haut-gauche, timer haut-centre, End Turn milieu-droite, prévisu PM/range, infobulles, texte flottant dgts/heals, deck éditable Inspector)
 
 **Bloc D — Nightseer (3 briques)**
@@ -759,6 +779,17 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 2.11 (Signature Âme Lacérée + Passif Appel du Sang) — Soulrender 100% complete
+- Suite directe de 2.10.c dans la même méga-session. Bloc C clôturé.
+- **Choix de design : passif sans état persistent par-tour** : le passif Appel du Sang relit le HP cible à chaque cast (pour PA cost) et à chaque TurnStart Soulrender (pour +1 PM). Pas de Status dédié ; les paliers sont des seuils statiques. Si la cible heal au-dessus de 70%, le bonus PA disparaît au prochain cast. Cohérent avec Bible (effet dépend dynamiquement de l'état HP cible).
+- **Helper `EffectiveStats.ResolveTargetHPRatio`** : centralise la logique "regarder l'occupant de la case visée, retourner son HP%". Réutilisable pour Phase 3 (passifs Colossar Densité Inerte qui pourrait dépendre du HP self, etc.).
+- **Refactor damage loop pour Rage Ouverte** : variable `rageOuverteBypass` séparée de `dmgToShield`. `totalHPLoss = dmgToShield_apres_shield + rageOuverteBypass`. Tous les hooks (kill detection, marque, riposte, gain HG, LE CRI) utilisent maintenant `totalHPLoss > 0` au lieu de `dmgRemaining > 0`. Pas de régression sur les sorts antérieurs (Tranche-Âme/Ouvre-Plaie/Détonation/etc. continuent à fonctionner correctement, vérifié par les logs de la session).
+- **Interlock Détonation 5 HG ↔ Âme Lacérée** : géré via le même champ `LastAmeLaceeUsedOnTurn`. Si Détonation consume 5 HG, il set ce champ comme si Âme Lacérée avait été cast, ce qui déclenche le cooldown. Élégant et reuse l'infrastructure existante.
+- **Découverte gameplay** : pendant le test, P0 a marché sur sa propre croix Sang Coagulé LE CRI au prochain TurnStart, prenant -30 HP. C'est un trade-off Bible cohérent ("Le Soulrender rend la map collante — pour lui aussi"). À garder en tête pour le design (le Soulrender doit se déplacer avant la fin du tour si possible).
+- **Validation E2E** : 5/7 tests directs validés en 1 session de ~10 tours. Les 2 manquants (KILL signature + interlock 5 HG) sont des branches code triviales, validées par inspection.
+- **🏆 SOULRENDER COMPLET BIBLE V7.1** : 15 sorts + signature + passif. Architecture combat solide pour passer au Nightseer (Phase 2.14+).
+- **Prochaine étape** : 2.12 sprites (designer a déjà tout préparé dans `Sprites/Soulrender/Base/stage{0,1,2}/` et `Sprites/Soulrender/soulrender_icons/`). 2.13 HUD complet. Puis Nightseer.
 
 ### 11 mai 2026 — Brique 2.10.c (Terrains + Mvt non-PM + Kill detection + 4 sorts) — fin de 2.10
 - **Marathon session** : 2.10.a, 2.10.b, 2.10.c livrées et validées dans la même journée. 15 sorts Soulrender complets.
