@@ -38,5 +38,24 @@ namespace Nymora.Combat.View
             Vector3 center = (bl + br + tl + tr) * 0.25f;
             return -center;
         }
+
+        /// <summary>
+        /// Inverse de GridToWorld : trouve la case (gx, gy) sous une position world (clic souris).
+        ///
+        /// Math : on resout le systeme
+        ///   worldX = (gx - gy) * (tileW / 2)
+        ///   worldY = (gx + gy) * (tileH / 2)
+        /// Donc a = gx - gy = 2 * wx / tw  et  b = gx + gy = 2 * wy / th
+        /// D'ou gx = (a + b) / 2 et gy = (b - a) / 2.
+        /// </summary>
+        public static (int gx, int gy) WorldToGrid(Vector3 worldPos, float tileWorldWidth, float tileWorldHeight, Vector3 centerOffset)
+        {
+            Vector3 local = worldPos - centerOffset;
+            float a = 2f * local.x / tileWorldWidth;
+            float b = 2f * local.y / tileWorldHeight;
+            int gx = Mathf.RoundToInt((a + b) * 0.5f);
+            int gy = Mathf.RoundToInt((b - a) * 0.5f);
+            return (gx, gy);
+        }
     }
 }

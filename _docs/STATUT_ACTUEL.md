@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026 (Brique 2.3 validée)  
+**Dernière mise à jour :** 11 mai 2026 (Brique 2.4 validée)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.4 — Mouvement case par case (PM)** (à démarrer)  
+**Brique en cours :** **2.5 — Pathfinding A* déterministe** (à démarrer)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 3/17 briques validées
+**Statut Phase 2 :** 4/17 briques validées
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,27 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.4** — Mouvement case par case via DeterministicCommand (validée 11 mai 2026)
+  - DeterministicCommand `MoveCommand` sous `Assets/QuantumUser/Simulation/Combat/Movement/MoveCommand.cs` : extends `DeterministicCommand`, contient `int TargetX, TargetY`, override `Serialize(BitStream)` qui sérialise les 2 int via `stream.Serialize(ref TargetX/TargetY)`
+  - `MovementSystem.cs` (`SystemMainThread`, unsafe) :
+    - `Update(Frame f)` : vérifie phase TurnActive (sinon return), itère sur `playerIndex 0..PlayerCount-1`, récupère `f.GetPlayerCommand(playerIndex) is MoveCommand cmd`
+    - Validations strictes : `playerIndex == ActivePlayerIndex` (anti-cheat), Combatant existe pour ce player, `PM > 0`, `GridHelpers.InBounds(targetX, targetY)`, `IsWalkable`, `GetOccupant == None`, adjacence Manhattan stricte `|dx| + |dy| == 1` (4-connexité, pas de diagonale)
+    - Application : libère ancienne case, MAJ GridX/GridY du Combatant, `PM--`, occupe nouvelle case
+    - Log warning détaillé à chaque rejet pour faciliter le debug
+  - `CommandSetup.User.cs` (update) : `factories.Add(new MoveCommand())` — le command sert de factory pour lui-même via `DeterministicCommand.GetCommandInstance`
+  - Inscrit dans `SystemSetup.User.cs` après TurnSystem
+  - Côté View :
+    - `IsoProjection.WorldToGrid(Vector3 worldPos, float tileW, float tileH, Vector3 centerOffset) → (int gx, int gy)` : inverse arithmétique de `GridToWorld`. Math : annule l'offset de centrage, puis résout le système `a = 2*wx/tw, b = 2*wy/th, gx = (a+b)/2, gy = (b-a)/2` avec `Mathf.RoundToInt` final pour snap.
+    - `CombatantView` (update) : lerp `transform.position` vers `_targetWorldPosition` à `Time.deltaTime * 8f` (~0.15s/case). `SnapDistance = 0.01f` pour éviter le lerp infini sur micro-distances. Snap direct au tout premier `UpdateGridPosition` post-`Bind` (sinon animation de spawn depuis 0,0,0).
+    - `CombatInputController.cs` (nouveau) : MonoBehaviour qui s'abonne à `CallbackGameStarted` pour ajouter les players locaux + récupérer le `centerOffset`, puis dans `Update` détecte `UnityEngine.Input.GetMouseButtonDown(0)`, convertit via `_camera.ScreenToWorldPoint` → `IsoProjection.WorldToGrid` → `game.SendCommand(senderPlayer, new MoveCommand{TargetX,TargetY})`. 3 toggles : `_localPlayerIndex` (default 0), `_debugAllPlayersMovable` (default true, envoie au joueur ACTIF pour tester P0/P1 alternativement), `_autoAddLocalPlayers` + `_autoAddPlayerCount` (default true/2 pour sortir du mode spectator).
+  - Pièges à retenir :
+    1. **`Quantum.Input` vs `UnityEngine.Input` ambiguïté** : `using Quantum` importe le struct `Input` Quantum (DSL input continu) qui collide avec la classe `UnityEngine.Input`. Fix : toujours qualifier explicitement `UnityEngine.Input.X` dans les scripts View qui touchent à l'input clavier/souris.
+    2. **Mode spectator Quantum** : sans `game.AddPlayer(slot, RuntimePlayer)` au démarrage, le runner est en mode spectator et rejette tous les `SendCommand` avec "Can't send commands in spectating mode". Solution Phase 2 : auto-add depuis `CombatInputController` au `CallbackGameStarted`. Solution Phase 6 : flow menu/matchmaking via `QuantumRunnerLocalDebug.Players[]` ou les RuntimePlayers du runner Photon.
+    3. **`Filter.NextUnsafe` vs `Filter.Next`** : utilisé `NextUnsafe(out, out Combatant*)` dans `MovementSystem` (asmref Quantum.Simulation qui a `allowUnsafeCode: true`) car on doit MODIFIER les champs du Combatant. Pour lecture seule côté View on reste sur `Next(out, out Combatant)` safe.
+    4. **Adjacence Manhattan stricte `|dx| + |dy| == 1`** : pas de diagonale en 2.4 (cohérent Bible V7.1 qui parle de "case adjacente" sans préciser diagonale). À reconsidérer en Phase 2.5+ si la Bible mentionne explicitement la diagonale pour certains sorts/déplacements.
 
 ---
 
@@ -439,7 +460,8 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.1 — Grille 15×17 (data Quantum FP + visualisation iso 2D) ✅ VALIDÉE 11 mai 2026
 - 2.2 — Entity Combatant Quantum (HP/PA/PM/Class) ✅ VALIDÉE 11 mai 2026
 - 2.3 — État machine de tour + timer 15s + initiative ✅ VALIDÉE 11 mai 2026
-- 2.4 — Mouvement case par case (PM) ⏳ PROCHAINE
+- 2.4 — Mouvement case par case (PM) ✅ VALIDÉE 11 mai 2026
+- 2.5 — Pathfinding A* déterministe ⏳ PROCHAINE
 - 2.3 — État machine de tour + timer 15s + initiative
 - 2.4 — Mouvement case par case (PM)
 - 2.5 — Pathfinding A* déterministe
@@ -464,7 +486,7 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.16 — IA Medium (heuristique multi-tour)
 - 2.17 — Scène `30_CombatIA` + test E2E combat 1v1 jouable 🎯
 
-**Prochaine étape :** Démarrer brique 2.4 — Mouvement case par case (PM).
+**Prochaine étape :** Démarrer brique 2.5 — Pathfinding A* déterministe (clic case lointaine = chemin auto cellule par cellule).
 
 ---
 
@@ -558,6 +580,22 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 2.4 (Mouvement case par case + DeterministicCommand)
+- 7 fichiers livrés (2 simu Movement + 2 updates Setup + 2 updates View + 1 nouveau input controller)
+- DeterministicCommand `MoveCommand : DeterministicCommand` avec `int TargetX, TargetY` + override `Serialize(BitStream)`
+- `MovementSystem` (`SystemMainThread`, unsafe) :
+  - Lit `frame.GetPlayerCommand(playerIndex) is MoveCommand cmd` pour chaque player slot
+  - Validations en cascade : phase TurnActive, joueur actif (rejet sinon), Combatant existe, PM>0, dans la grille, walkable, case libre, adjacence Manhattan (|dx|+|dy|==1, 4-connexité stricte, pas de diagonale en 2.4)
+  - Application : `GridHelpers.SetOccupant(ancien, None)` → MAJ GridX/GridY → `PM--` → `SetOccupant(nouveau, entity)`
+- `CommandSetup.User.cs` : `factories.Add(new MoveCommand())` (le command est sa propre factory via DeterministicCommand)
+- `IsoProjection.WorldToGrid(Vector3, tileW, tileH, centerOffset) → (int gx, int gy)` : inverse arithmétique exact de `GridToWorld` (résolution du système 2 équations 2 inconnues) + `Mathf.RoundToInt` pour snap au plus proche
+- `CombatantView` : lerp Vector3 entre `transform.position` et `_targetWorldPosition` à vitesse 8 (~0.15s/case), avec snap distance < 0.01 pour éviter de lerp infiniment. Snap direct au tout premier `UpdateGridPosition` post-Bind pour éviter une animation depuis (0,0,0) au spawn.
+- `CombatInputController` : MonoBehaviour qui écoute `UnityEngine.Input.GetMouseButtonDown(0)`, fait `_camera.ScreenToWorldPoint` → `IsoProjection.WorldToGrid` → envoie `game.SendCommand(playerSlot, new MoveCommand{TargetX,TargetY})`. Toggle `_debugAllPlayersMovable` (true par défaut Phase 2) qui envoie au joueur ACTIF courant pour pouvoir tester P0 puis P1 alternativement sans setup matchmaking. À désactiver en Phase 6.
+- 2 pièges traversés :
+  1. **Ambiguïté `Input`** : `using Quantum` importe `Quantum.Input` (struct DSL pour input continu Quantum) qui collide avec `UnityEngine.Input`. Fix : qualifier explicitement `UnityEngine.Input.GetMouseButtonDown(0)` et `UnityEngine.Input.mousePosition` dans le code View. Le `using UnityEngine` ne sauve pas car le `using Quantum` est prioritaire dans le scope local.
+  2. **Mode spectator Quantum** : par défaut un runner Quantum sans player explicitement ajouté est en mode "spectator" et rejette toutes les commands ("Can't send commands in spectating mode"). Fix : appeler `game.AddPlayer(slot, new RuntimePlayer())` pour chaque player local au `CallbackGameStarted`. Ajouté en option `_autoAddLocalPlayers` (default true Phase 2) dans `CombatInputController`. En Phase 6, ces players viendront du menu/matchmaking et on retirera ce code de debug.
+- Validation : clic case adjacente → animation lerp visible + PM-- (validé via console), clic non-adjacent → log warning + pas de move, clic case occupée → rejet, PM=0 → plus de move possible jusqu'au prochain tour (reset auto en TurnStart vu en 2.3), swap P0/P1 fonctionne sans réinitialisation.
 
 ### 11 mai 2026 — Brique 2.3 (FSM tour + timer 15s + initiative)
 - 6 fichiers livrés (3 simu Quantum + 1 update SystemSetup + 1 view + 1 editor tool) + 1 update asmdef Nymora.Combat (ref Unity.TextMeshPro pour le HUD)
