@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 11 mai 2026 (Brique 2.2 validée)  
+**Dernière mise à jour :** 11 mai 2026 (Brique 2.3 validée)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.3 — État machine de tour + timer 15s + initiative** (à démarrer)  
+**Brique en cours :** **2.4 — Mouvement case par case (PM)** (à démarrer)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 2/17 briques validées
+**Statut Phase 2 :** 3/17 briques validées
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -178,6 +178,31 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
     - `datasource.url` interdit dans schema, doit être dans `prisma.config.ts`
     - `npm`/`npx` cherche le package.json dans le CWD → toujours `cd backend` avant
     - `migrate dev` ne loggue plus la génération du client en sortie standard (mais le génère bien)
+
+---
+
+- **Brique 2.3** — FSM tour + timer 15s + initiative (validée 11 mai 2026)
+  - DSL Quantum sous `Assets/QuantumUser/Simulation/Combat/Turn/Turn.qtn` : `enum CombatPhase : Byte { PreMatch=0, TurnStart=1, TurnActive=2, TurnEnd=3, MatchEnd=4 }` + `singleton component CombatState { CombatPhase CurrentPhase; Int32 ActivePlayerIndex; Int32 TurnNumber; Int32 TurnTimerTicks; }`
+  - `TurnConstants.cs` : `TurnDurationSeconds = 15` + `PlayerCount = 2` + helper `GetTurnDurationTicks(Frame f) = TurnDurationSeconds * f.UpdateRate` (60 Hz standard → 900 ticks)
+  - `TurnSystem.cs` (`SystemMainThread`, unsafe) :
+    - `OnInit(Frame f)` : crée CombatState via `Unsafe.GetOrAddSingletonPointer<CombatState>(EntityRef.None)`, set Phase=PreMatch puis TurnStart, tire initiative via `f.RNG->Next(0, 2)`. Log "Initiative: Joueur PX commence".
+    - `Update(Frame f)` : switch sur Phase :
+      - `TurnStart` → increment TurnNumber, init timer, RESET PA/PM du joueur actif (HP et ressources de classe préservées par design Bible V7.1), transition TurnActive
+      - `TurnActive` → décrémente TurnTimerTicks chaque tick, transition TurnEnd quand <= 0
+      - `TurnEnd` → swap ActivePlayerIndex via `(idx + 1) % 2`, transition TurnStart
+      - `PreMatch` / `MatchEnd` → no-op
+  - Inscrit dans `SystemSetup.User.cs` APRÈS GridSystem et CombatantSystem (ordre important : TurnSystem reset PA/PM des Combatants déjà créés).
+  - Côté View (Nymora.Combat avec ref Unity.TextMeshPro ajoutée à l'asmdef) :
+    - `CombatHUDView.cs` : MonoBehaviour subscribe `CallbackUpdateView`, lit `frame.TryGetSingleton<CombatState>()` (safe API par valeur), filter Combatant pour trouver la classe du joueur actif, affiche `"Phase: X | Tour N | Joueur PX Class | Timer s.s s"`. Conversion ticks → secondes via `frame.UpdateRate` (float côté View OK pour affichage uniquement).
+  - Editor Tool `CreateCombatHUDTool.cs` (menu `Nymora > Setup > Create Combat HUD`) :
+    - Crée `CombatHUDCanvas` (RenderMode.ScreenSpaceOverlay, sortingOrder=100, CanvasScaler 1920×1080 matchWidthOrHeight=0.5)
+    - Crée GameObject `CombatHUD` enfant avec `TextMeshProUGUI` ancré en haut centre (anchorMin (0,1), anchorMax (1,1), pivot (0.5,1), sizeDelta (0, 60))
+    - Câble `_label` via SerializedObject + crée EventSystem si manquant
+    - Marque la scène dirty pour forcer la sauvegarde
+  - Convention de design importante (Bible V7.1) :
+    - En `TurnStart`, **seuls les PA et PM sont resettés au max** pour le joueur actif
+    - HP et ressources de classe (Hémoglyphe, Prescience, Fondation, Putréfaction, Rémanence) **persistent entre tours** — c'est le cœur du design Bible V7.1
+  - Pas de piège technique sur cette brique — implémentation fluide
 
 ---
 
@@ -413,7 +438,8 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 **Bloc A — Fondations grille & tour (5 briques)**
 - 2.1 — Grille 15×17 (data Quantum FP + visualisation iso 2D) ✅ VALIDÉE 11 mai 2026
 - 2.2 — Entity Combatant Quantum (HP/PA/PM/Class) ✅ VALIDÉE 11 mai 2026
-- 2.3 — État machine de tour + timer 15s + initiative ⏳ PROCHAINE
+- 2.3 — État machine de tour + timer 15s + initiative ✅ VALIDÉE 11 mai 2026
+- 2.4 — Mouvement case par case (PM) ⏳ PROCHAINE
 - 2.3 — État machine de tour + timer 15s + initiative
 - 2.4 — Mouvement case par case (PM)
 - 2.5 — Pathfinding A* déterministe
@@ -438,7 +464,7 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.16 — IA Medium (heuristique multi-tour)
 - 2.17 — Scène `30_CombatIA` + test E2E combat 1v1 jouable 🎯
 
-**Prochaine étape :** Démarrer brique 2.3 — État machine de tour + timer 15s + initiative.
+**Prochaine étape :** Démarrer brique 2.4 — Mouvement case par case (PM).
 
 ---
 
@@ -532,6 +558,22 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 11 mai 2026 — Brique 2.3 (FSM tour + timer 15s + initiative)
+- 6 fichiers livrés (3 simu Quantum + 1 update SystemSetup + 1 view + 1 editor tool) + 1 update asmdef Nymora.Combat (ref Unity.TextMeshPro pour le HUD)
+- DSL Quantum : `enum CombatPhase : Byte { PreMatch, TurnStart, TurnActive, TurnEnd, MatchEnd }` + `singleton component CombatState { CombatPhase CurrentPhase; Int32 ActivePlayerIndex; Int32 TurnNumber; Int32 TurnTimerTicks; }`
+- `TurnConstants` : `TurnDurationSeconds = 15` (Bible V7.1) + helper `GetTurnDurationTicks(f) = 15 * f.UpdateRate` (= 900 ticks à 60 Hz standard)
+- `TurnSystem` : `SystemMainThread`, FSM stricte en `unsafe` (manipulation pointers singleton)
+  - `OnInit` : init CombatState, tirage initiative déterministe via `f.RNG->Next(0, 2)`, transition immédiate vers TurnStart
+  - `Update` : switch sur CurrentPhase (TurnStart reset PA/PM + Turn++, TurnActive décompte ticks, TurnEnd swap player → TurnStart)
+- Côté View : `CombatHUDView` MonoBehaviour qui s'abonne à `CallbackUpdateView` et lit la singleton via `frame.TryGetSingleton<CombatState>()`. Affiche `Phase | Tour N | Joueur PX Class | Timer X.Xs`. Conversion ticks → secondes via `frame.UpdateRate`.
+- Editor Tool `CreateCombatHUDTool` génère Canvas (ScreenSpaceOverlay + CanvasScaler 1920×1080) + GameObject HUD avec TextMeshProUGUI ancré en haut centre + EventSystem si manquant. Cable `_label` via SerializedObject. Marque la scène dirty.
+- Décisions importantes :
+  1. **PA/PM reset en début de tour, PAS le HP ni la ressource de classe** (Bible V7.1 : HG/PR/FD/PT/RM persistent entre tours, c'est leur design fondamental).
+  2. **End turn auto au timer en 2.3**, input "End Turn" volontaire viendra en 2.4 avec le mouvement.
+  3. **TurnTimerTicks stocké en int** (pas FP) pour rester pur déterministe trivialement. Conversion vers secondes uniquement côté View (float OK pour l'affichage).
+- Validation : initiative reproductible (même seed → même P0/P1), timer décompte 15→0, swap automatique au timer, PA/PM reset visibles via log Quantum, HUD affiche bien la phase courante (`TurnActive`).
+- Aucun piège majeur sur cette brique — la 1.10/1.11/1.12 fluide.
 
 ### 11 mai 2026 — Brique 2.2 (Entity Combatant Quantum HP/PA/PM/Class)
 - 7 fichiers livrés + 2 updates asmdef (Nymora.Editor pour refs Quantum) + 1 update SystemSetup

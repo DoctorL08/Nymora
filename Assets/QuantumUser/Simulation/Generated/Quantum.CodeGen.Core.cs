@@ -49,6 +49,13 @@ namespace Quantum {
   using RuntimeInitializeOnLoadMethodAttribute = UnityEngine.RuntimeInitializeOnLoadMethodAttribute;
   #endif //;
   
+  public enum CombatPhase : byte {
+    PreMatch = 0,
+    TurnStart = 1,
+    TurnActive = 2,
+    TurnEnd = 3,
+    MatchEnd = 4,
+  }
   public enum NymoraClass : byte {
     None = 0,
     Soulrender = 1,
@@ -637,6 +644,36 @@ namespace Quantum {
     }
   }
   [StructLayout(LayoutKind.Explicit)]
+  public unsafe partial struct CombatState : Quantum.IComponentSingleton {
+    public const Int32 SIZE = 16;
+    public const Int32 ALIGNMENT = 4;
+    [FieldOffset(0)]
+    public CombatPhase CurrentPhase;
+    [FieldOffset(4)]
+    public Int32 ActivePlayerIndex;
+    [FieldOffset(8)]
+    public Int32 TurnNumber;
+    [FieldOffset(12)]
+    public Int32 TurnTimerTicks;
+    public override readonly Int32 GetHashCode() {
+      unchecked { 
+        var hash = 6577;
+        hash = hash * 31 + (Byte)CurrentPhase;
+        hash = hash * 31 + ActivePlayerIndex.GetHashCode();
+        hash = hash * 31 + TurnNumber.GetHashCode();
+        hash = hash * 31 + TurnTimerTicks.GetHashCode();
+        return hash;
+      }
+    }
+    public static void Serialize(void* ptr, FrameSerializer serializer) {
+        var p = (CombatState*)ptr;
+        serializer.Stream.Serialize((Byte*)&p->CurrentPhase);
+        serializer.Stream.Serialize(&p->ActivePlayerIndex);
+        serializer.Stream.Serialize(&p->TurnNumber);
+        serializer.Stream.Serialize(&p->TurnTimerTicks);
+    }
+  }
+  [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct Combatant : Quantum.IComponent {
     public const Int32 SIZE = 40;
     public const Int32 ALIGNMENT = 4;
@@ -742,6 +779,8 @@ namespace Quantum {
       BuildSignalsArrayOnComponentRemoved<CharacterController2D>();
       BuildSignalsArrayOnComponentAdded<CharacterController3D>();
       BuildSignalsArrayOnComponentRemoved<CharacterController3D>();
+      BuildSignalsArrayOnComponentAdded<Quantum.CombatState>();
+      BuildSignalsArrayOnComponentRemoved<Quantum.CombatState>();
       BuildSignalsArrayOnComponentAdded<Quantum.Combatant>();
       BuildSignalsArrayOnComponentRemoved<Quantum.Combatant>();
       BuildSignalsArrayOnComponentAdded<Quantum.GridSingleton>();
@@ -821,6 +860,8 @@ namespace Quantum {
       typeRegistry.Register(typeof(CharacterController2D), CharacterController2D.SIZE);
       typeRegistry.Register(typeof(CharacterController3D), CharacterController3D.SIZE);
       typeRegistry.Register(typeof(ColorRGBA), ColorRGBA.SIZE);
+      typeRegistry.Register(typeof(Quantum.CombatPhase), 1);
+      typeRegistry.Register(typeof(Quantum.CombatState), Quantum.CombatState.SIZE);
       typeRegistry.Register(typeof(Quantum.Combatant), Quantum.Combatant.SIZE);
       typeRegistry.Register(typeof(ComponentPrototypeRef), ComponentPrototypeRef.SIZE);
       typeRegistry.Register(typeof(ComponentTypeRef), ComponentTypeRef.SIZE);
@@ -895,8 +936,9 @@ namespace Quantum {
       typeRegistry.Register(typeof(Quantum._globals_), Quantum._globals_.SIZE);
     }
     static partial void InitComponentTypeIdGen() {
-      ComponentTypeId.Reset(ComponentTypeId.BuiltInComponentCount + 2)
+      ComponentTypeId.Reset(ComponentTypeId.BuiltInComponentCount + 3)
         .AddBuiltInComponents()
+        .Add<Quantum.CombatState>(Quantum.CombatState.Serialize, null, null, ComponentFlags.Singleton)
         .Add<Quantum.Combatant>(Quantum.Combatant.Serialize, null, null, ComponentFlags.None)
         .Add<Quantum.GridSingleton>(Quantum.GridSingleton.Serialize, null, null, ComponentFlags.Singleton)
         .Finish();
@@ -905,6 +947,7 @@ namespace Quantum {
     public static void EnsureNotStrippedGen() {
       FramePrinter.EnsureNotStripped();
       FramePrinter.EnsurePrimitiveNotStripped<CallbackFlags>();
+      FramePrinter.EnsurePrimitiveNotStripped<Quantum.CombatPhase>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.InputButtons>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.NymoraClass>();
       FramePrinter.EnsurePrimitiveNotStripped<QueryOptions>();

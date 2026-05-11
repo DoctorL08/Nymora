@@ -50,6 +50,27 @@ namespace Quantum.Prototypes {
   #endif //;
   
   [System.SerializableAttribute()]
+  [Quantum.Prototypes.Prototype(typeof(Quantum.CombatState))]
+  public unsafe partial class CombatStatePrototype : ComponentPrototype<Quantum.CombatState> {
+    public Quantum.QEnum8<CombatPhase> CurrentPhase;
+    public Int32 ActivePlayerIndex;
+    public Int32 TurnNumber;
+    public Int32 TurnTimerTicks;
+    partial void MaterializeUser(Frame frame, ref Quantum.CombatState result, in PrototypeMaterializationContext context);
+    public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
+        Quantum.CombatState component = default;
+        Materialize((Frame)f, ref component, in context);
+        return f.Set(entity, component) == SetResult.ComponentAdded;
+    }
+    public void Materialize(Frame frame, ref Quantum.CombatState result, in PrototypeMaterializationContext context = default) {
+        result.CurrentPhase = this.CurrentPhase;
+        result.ActivePlayerIndex = this.ActivePlayerIndex;
+        result.TurnNumber = this.TurnNumber;
+        result.TurnTimerTicks = this.TurnTimerTicks;
+        MaterializeUser(frame, ref result, in context);
+    }
+  }
+  [System.SerializableAttribute()]
   [Quantum.Prototypes.Prototype(typeof(Quantum.Combatant))]
   public unsafe partial class CombatantPrototype : ComponentPrototype<Quantum.Combatant> {
     public Int32 PlayerIndex;

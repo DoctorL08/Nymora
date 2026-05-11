@@ -1,0 +1,24 @@
+// Systeme de tour Nymora — Bible V7.1
+//
+// Tour de 15 secondes, alternance stricte des joueurs, tirage d'initiative au tour 1.
+// FSM : PreMatch -> TurnStart -> TurnActive -> TurnEnd -> (TurnStart suivant | MatchEnd)
+//
+// TurnTimerTicks est stocke en INT (pas FP) pour rester pur deterministe trivialement.
+// Conversion ticks -> secondes via frame.UpdateRate (60 par defaut Quantum 3).
+
+enum CombatPhase : Byte
+{
+    PreMatch = 0,
+    TurnStart = 1,
+    TurnActive = 2,
+    TurnEnd = 3,
+    MatchEnd = 4,
+}
+
+singleton component CombatState
+{
+    CombatPhase CurrentPhase;
+    Int32 ActivePlayerIndex;
+    Int32 TurnNumber;
+    Int32 TurnTimerTicks;
+}
