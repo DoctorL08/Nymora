@@ -1,4 +1,5 @@
 using Nymora.Combat.Grid;
+using Nymora.Combat.View.HUD;
 using Quantum;
 using UnityEngine;
 
@@ -18,6 +19,10 @@ namespace Nymora.Combat.View
         [Header("Configuration")]
         [SerializeField] private GridSettings _gridSettings;
         [SerializeField] private Camera _camera;
+
+        [Tooltip("HUD controller. Si set, un sort 'arme' (clic icone) intercepte le clic " +
+                 "gauche pour envoyer un Cast a la place du Move (2.13.a, option 2).")]
+        [SerializeField] private CombatHUDController _hudController;
 
         [Header("Local player")]
         [SerializeField] private int _localPlayerIndex = 0;
@@ -273,12 +278,23 @@ namespace Nymora.Combat.View
                 return;
             }
 
-            // Clic gauche : mouvement. Bypasse en mode targeting preview.
-            if (mouseDown && !_debugShowTargeting)
+            // Clic gauche : 3 chemins possibles (priorite descendante).
+            // 1) Sort arme via le HUD (2.13.a, option 2) : on cast au lieu de bouger.
+            // 2) Targeting preview debug (2.6) : bypass mouvement, l'apercu se charge du clic.
+            // 3) Mouvement classique : MoveCommand.
+            if (mouseDown)
             {
-                var moveCmd = new MoveCommand { TargetX = gx, TargetY = gy };
-                game.SendCommand(senderPlayer, moveCmd);
-                Debug.Log($"[Nymora.CombatInput] Sent MoveCommand player={senderPlayer} target=({gx},{gy})");
+                if (_hudController != null && _hudController.ConsumeArmedSpell(out SpellId armedSpell))
+                {
+                    SendSpellAt(game, senderPlayer, armedSpell, gx, gy, 0);
+                    return;
+                }
+                if (!_debugShowTargeting)
+                {
+                    var moveCmd = new MoveCommand { TargetX = gx, TargetY = gy };
+                    game.SendCommand(senderPlayer, moveCmd);
+                    Debug.Log($"[Nymora.CombatInput] Sent MoveCommand player={senderPlayer} target=({gx},{gy})");
+                }
             }
         }
 

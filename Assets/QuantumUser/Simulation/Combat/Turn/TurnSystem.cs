@@ -141,6 +141,16 @@ namespace Quantum
 
         private static void TickTurnActive(Frame f, CombatState* state)
         {
+            // 2.13.a : End Turn manuel via EndTurnCommand. Seul ActivePlayerIndex peut
+            // declencher la transition ; toute autre source = rejet silencieux.
+            if (f.GetPlayerCommand(state->ActivePlayerIndex) is EndTurnCommand)
+            {
+                Log.Info($"[TurnSystem] End Turn manuel par P{state->ActivePlayerIndex} (tour {state->TurnNumber}, timer restant {state->TurnTimerTicks} ticks)");
+                state->TurnTimerTicks = 0;
+                state->CurrentPhase = CombatPhase.TurnEnd;
+                return;
+            }
+
             state->TurnTimerTicks -= 1;
             if (state->TurnTimerTicks <= 0)
             {

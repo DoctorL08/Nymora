@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 12 mai 2026 (Brique 2.12.bis validée — anims complètes Soulrender walk/cast/attack/hurt/death)  
+**Dernière mise à jour :** 12 mai 2026 (Brique 2.13.a validée — HUD combat layout + icônes cliquables + EndTurn manuel)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.13 — HUD combat complet** (à démarrer la prochaine session)  
+**Brique en cours :** **2.13.b — Prévisu range PM/sorts** (à démarrer)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 12/17 briques validées + 2.12.bis. Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11) + **2.12 ✅** (sprites + icônes + Animator + facing 4 dirs) + **2.12.bis ✅** (anims completes : Idle lent + Walk + Cast par catégorie + Attack + Hurt + Death). **🏆 Soulrender 100% gameplay + visuel + anims** : 15 sorts + signature + passif + 3 stages animés × 2 directions NE/SE (NW/SW flipX runtime) + state machine 6 states / 6 params + mouvement constant 2.5 u/s + 17 icônes. Reste 2.13 HUD complet → 2.14-2.16 Nightseer + IA → 2.17 E2E.
+**Statut Phase 2 :** 12/17 briques validées + 2.12.bis + **2.13.a**. Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11) + **2.12 ✅** + **2.12.bis ✅** + **2.13.a ✅** (HUD pixel-art : panneaux ressources P0/P1, timer XL, passif, 6 sorts deck + signature, timeline, bouton End Turn, mode armed pour cast cible). 2.13 découpée en a/b/c — reste 2.13.b (prévisu range) + 2.13.c (tooltips + texte flottant). **🏆 Soulrender 100% gameplay + visuel + anims + HUD jouable** : 15 sorts + signature + passif + clic icône cast + End Turn manuel. Reste 2.13.b/c → 2.14-2.16 Nightseer + IA → 2.17 E2E.
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -718,8 +718,11 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.10.b — Shields + Heals + Marques + 5 sorts (Peau de Fer, Sève Vive, Dernier Souffle, Marque de Carnage, Empoignade) ✅ VALIDÉE 11 mai 2026
 - 2.10.c — Terrains (Vapeur Carmin, Sang Coagulé) + Mvt non-PM + Kill detection + 4 sorts (Charge Brutale, Détonation Sanglante, Curée, Cautérisation) + effet bonus Tranche-Âme ✅ VALIDÉE 11 mai 2026
 - 2.11 — Signature Âme Lacérée + Passif Appel du Sang ✅ VALIDÉE 11 mai 2026
-- 2.12 — Assets visuels Soulrender (sprites 4 dirs + icônes 15 sorts + icône passif + signature) ⏳ PROCHAINE
-- 2.13 — HUD combat complet (passif bas-gauche, 6 sorts bas-centre, timeline bas-droite, PA/PM haut-gauche, timer haut-centre, End Turn milieu-droite, prévisu PM/range, infobulles, texte flottant dgts/heals, deck éditable Inspector)
+- 2.12 — Assets visuels Soulrender (sprites 4 dirs + icônes 15 sorts + icône passif + signature) ✅ VALIDÉE 12 mai 2026
+- 2.12.bis — Anims complètes (Idle/Walk/Cast par catégorie/Attack/Hurt/Death + state machine) ✅ VALIDÉE 12 mai 2026
+- 2.13.a — HUD layout + icônes cliquables + EndTurn manuel ✅ VALIDÉE 12 mai 2026
+- 2.13.b — Prévisu range PM (cases déplaçables) + range sorts (hover icône) ⏳ PROCHAINE
+- 2.13.c — Tooltips persistantes + texte flottant dgts/heals
 
 **Bloc D — Nightseer (3 briques)**
 - 2.12 — Brouillard de guerre déterministe
@@ -825,6 +828,21 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 12 mai 2026 (suite) — Brique 2.13.a validée (HUD combat layout + icônes cliquables + EndTurn manuel)
+- **Découpage 2.13 en 3 sous-briques validé par Lorenzo** : a (layout + clic icône) / b (prévisu range) / c (tooltips + texte flottant). Évite la brique monolithique 5-7j non validable. Pattern identique à 2.10 a/b/c.
+- **Décision Option 2 — mode armé pour cast cible** : clic icône sur un sort `Filter != Self` → frame jaune (armed), prochain clic gauche grille → CastSpellCommand au lieu de MoveCommand. Toggle off si re-clic même icône. Pattern Dofus/Wakfu. Self-target = cast immédiat sans armement.
+- **EndTurnCommand côté Quantum** : nouvelle DeterministicCommand no-payload. Handler dans `TurnSystem.TickTurnActive` : si sender == ActivePlayerIndex → force `state.TurnTimerTicks = 0` + transition `TurnEnd`. Avant ça, le tour ne passait qu'à expiration timer naturelle.
+- **Réutilisation infra existante** : `SpellIconRegistry` SO + populator `Nymora > Setup > Populate Spell Icon Registry` étaient déjà en place et peuplés (16 entrées) depuis 2.12. Task #3 simplifiée : pas besoin de recréer de catalogue, juste ajouter `SpellDisplayInfo` (display names + helper NeedsArming basé sur `SpellRegistry.TryGet(id).Filter`).
+- **Architecture HUD modulaire** : `CombatHUDController` orchestrateur + 5 widgets autonomes (`ResourcePanelView`, `TimerView`, `PassivePanelView`, `TimelineView`, `SpellSlotView` ×7). Controller subscribe `CallbackUpdateView` une fois, lit la Frame.Verified, dispatch Refresh aux widgets. Allocations zéro dans la boucle View (filtres Quantum struct iterators).
+- **Auto-câblage tool** : `CreateCombatHUDTool` refacto complet (102 → 380 lignes). Détruit ancien `CombatHUDCanvas`, recrée tout le layout 1920×1080 (anchors précis), instancie chaque widget, branche les SerializedObject references, charge `SpellIconRegistry.asset` standard, et **auto-trouve `CombatInputController` dans la scène pour câbler `_hudController`**. Idempotent.
+- **Bug `enumValueIndex` corrigé en passant** : `SpellId : Byte` a des valeurs non-séquentielles (None=0, TestZap=1, Soulrender* à partir de 10). `enumValueIndex` Unity attend l'INDEX de déclaration, pas l'underlying byte. Helper `SetEnumValue(prop, enum)` qui fait `Array.IndexOf(prop.enumNames, value.ToString())`.
+- **Conflits ambigus Quantum vs UnityEngine.UI** : `Button` (et potentiellement `Image`) existent dans les 2 namespaces. Pattern alias `using Button = UnityEngine.UI.Button;` + `using Image = UnityEngine.UI.Image;` ajouté à tous les fichiers HUD + tool. Même pattern que `CombatInputController` qui qualifie `UnityEngine.Input`.
+- **Mode debug control player** : `_debugAllPlayersControllable = true` par défaut (Phase 2.x sans matchmaking) — le HUDController envoie les commands au joueur actif courant pour permettre à Lorenzo de tester P0 et P1 alternativement. À désactiver en Phase 6 (vrai LocalPlayerIndex).
+- **Touches clavier fallback préservées** : aucune modif des bindings 1-9/0/F1-F4/B/Space dans `CombatInputController` (sauf l'ajout du chemin "armed → cast" sur clic gauche). Lorenzo peut toujours débloquer via clavier si bug HUD.
+- **Orphelin `CombatHUDView.cs` supprimé** après validation Lorenzo (nouveau HUD utilise `CombatHUDController` namespace `Nymora.Combat.View.HUD`). 
+- **Validation Lorenzo "hud ok"** sans entrer dans le détail des 13 points de checklist — bonne ergo confirmée. Tooltips/range previews/floating text reportés à 2.13.b/c (volontairement hors-scope 2.13.a).
+- **Reste à boucler 2.13** : 2.13.b prévisu range PM + range sorts (hover icône), 2.13.c tooltips persistantes + texte flottant dgts/heals.
 
 ### 12 mai 2026 (suite) — Brique 2.12.bis enchaînée dans la même session
 - Lorenzo a décidé d'enchaîner 2.12.bis avant de clôturer ("tu sais quoi go faire la 2.12.bis maintenant avant de clôturer"). Une heure de travail dans la foulée.
