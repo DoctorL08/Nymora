@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 12 mai 2026 (Brique 2.13.a validée — HUD combat layout + icônes cliquables + EndTurn manuel)  
+**Dernière mise à jour :** 12 mai 2026 (Brique 2.13.b validée — prévisu range PM + range sorts armed + zone d'effet hover)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.13.b — Prévisu range PM/sorts** (à démarrer)  
+**Brique en cours :** **2.13.c — Tooltips + texte flottant dgts/heals** (à démarrer)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 12/17 briques validées + 2.12.bis + **2.13.a**. Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11) + **2.12 ✅** + **2.12.bis ✅** + **2.13.a ✅** (HUD pixel-art : panneaux ressources P0/P1, timer XL, passif, 6 sorts deck + signature, timeline, bouton End Turn, mode armed pour cast cible). 2.13 découpée en a/b/c — reste 2.13.b (prévisu range) + 2.13.c (tooltips + texte flottant). **🏆 Soulrender 100% gameplay + visuel + anims + HUD jouable** : 15 sorts + signature + passif + clic icône cast + End Turn manuel. Reste 2.13.b/c → 2.14-2.16 Nightseer + IA → 2.17 E2E.
+**Statut Phase 2 :** 12/17 briques validées + 2.12.bis + **2.13.a** + **2.13.b**. Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11) + **2.12 ✅** + **2.12.bis ✅** + **2.13.a ✅** + **2.13.b ✅** (preview range PM en vert pâle via BFS / preview sort armed en bleu Manhattan complète / zone d'effet rouge clair au hover / arming généralisé à tous les sorts y compris Self). Reste 2.13.c (tooltips + texte flottant) avant Nightseer. **🏆 Soulrender 100% gameplay + visuel + anims + HUD jouable + previews lisibles** : 15 sorts + signature + passif. Reste 2.13.c → 2.14-2.16 Nightseer + IA → 2.17 E2E.
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -721,8 +721,8 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.12 — Assets visuels Soulrender (sprites 4 dirs + icônes 15 sorts + icône passif + signature) ✅ VALIDÉE 12 mai 2026
 - 2.12.bis — Anims complètes (Idle/Walk/Cast par catégorie/Attack/Hurt/Death + state machine) ✅ VALIDÉE 12 mai 2026
 - 2.13.a — HUD layout + icônes cliquables + EndTurn manuel ✅ VALIDÉE 12 mai 2026
-- 2.13.b — Prévisu range PM (cases déplaçables) + range sorts (hover icône) ⏳ PROCHAINE
-- 2.13.c — Tooltips persistantes + texte flottant dgts/heals
+- 2.13.b — Prévisu range PM (BFS) + range sort armed (Manhattan) + zone d'effet hover ✅ VALIDÉE 12 mai 2026
+- 2.13.c — Tooltips persistantes + texte flottant dgts/heals ⏳ PROCHAINE
 
 **Bloc D — Nightseer (3 briques)**
 - 2.12 — Brouillard de guerre déterministe
@@ -828,6 +828,18 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 12 mai 2026 (suite) — Brique 2.13.b validée (preview range PM + range sort armed + zone d'effet hover)
+- **Infra de highlight déjà 80% en place** : `TargetingPreviewView` (créé en 2.6) + `TileView.ApplyHighlight/ClearHighlight` + `GridRenderer.GetTileView(x,y)` + `TargetingResolver.ResolveCastableCells/ResolveEffectCells`. Refacto léger plutôt que tout réécrire.
+- **`TargetingPreviewView` refacto — priorité armed > debug > rien** : ajout de `_hudController` SerializedField. Si `ArmedSpell.HasValue` → resolve via `SpellRegistry.TryGet(id)` (shape, range). Si pas d'armé mais `_debugShowTargeting=true` → fallback debug 2.6.
+- **`MovementRangePreview` nouveau (BFS/SPFA)** : preview vert pâle des cases atteignables avec le PM courant. Algo SPFA avec relaxation (coût variable Vapeur Carmin +1). Buffers préalloués `_bestCost[255]` et `_queueBuf[1020]` → zéro alloc par tick. Skip si `ArmedSpell.HasValue` (priorité au spell preview).
+- **Tool auto-câblage** : `CreateCombatHUDTool` étendu pour wirer `_hudController` sur `TargetingPreviewView` + ajouter `MovementRangePreview` comme sibling component (partage `_gridRenderer` du sibling).
+- **Bug "clic icône = cast direct"** signalé par Lorenzo : trace montrait que `[Nymora.HUD] Sent Cast` ET `[Spell] Peau de Fer` firaient dans la même frame en boucle. Cause : `CombatInputController.Update` polle `Input.GetMouseButtonDown(0)` qui est `true` même quand le clic atterrit sur la UI. Fix : check `EventSystem.current.IsPointerOverGameObject()` → si pointeur sur UI, `mouseDown = false`. Les inputs clavier restent traités normalement.
+- **Bug "Tranche-Âme n'affiche pas la zone"** : la preview filtrait les cases bleues par `MatchesFilter` (Filter=Enemy → seulement cases avec ennemi). Sans ennemi adjacent à range 1 → 0 cases bleues. Fix : afficher la **portée Manhattan complète** indépendamment du filter ; Quantum filtre au cast (clic invalide = rejet silencieux). Plus lisible et cohérent avec Dofus/Wakfu.
+- **Bug "Peau de Fer cast direct sans visu"** : design original avait Self filter = cast immédiat sans armement (gain 1 clic). Lorenzo a demandé la cohérence visuelle : `faudrait montrer une zone de 0, zone sur la case du personnage`. Fix : **arming généralisé à tous les sorts** (y compris Self). Click icône → frame jaune + range bleue (caster cell pour Self). Click n'importe où sur la grille = confirme cast. Pour Self : le `CombatInputController` redirige `TargetX/Y` vers la case du caster avant `SendCommand`.
+- **Nettoyage `CombatHUDController`** : suppression de `SendCast` et `TryGetCasterCell` (n'étaient plus appelés après le pivot arming). `SpellDisplayInfo.NeedsArming` n'est plus appelé non plus mais conservé pour usage futur 2.13.c (tooltips qui pourraient afficher "Self" sur les self-target).
+- **Validation Lorenzo "tout est ok"** : 4 spells testés sur la session (Tranche-Âme, Peau de Fer, Détonation Sanglante, mvt PM). Aucun screenshot mais flow validé en jeu.
+- **Reste à boucler 2.13** : 2.13.c tooltips persistantes (hover icône → nom + coût PA + range + description Bible) + texte flottant dgts/heals sur les sprites combatants.
 
 ### 12 mai 2026 (suite) — Brique 2.13.a validée (HUD combat layout + icônes cliquables + EndTurn manuel)
 - **Découpage 2.13 en 3 sous-briques validé par Lorenzo** : a (layout + clic icône) / b (prévisu range) / c (tooltips + texte flottant). Évite la brique monolithique 5-7j non validable. Pattern identique à 2.10 a/b/c.

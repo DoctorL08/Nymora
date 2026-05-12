@@ -187,36 +187,24 @@ namespace Nymora.Combat.View.HUD
             return false;
         }
 
-        /// <summary>Click sur un slot : cast direct (Self) ou arming (Enemy/AnyTile).</summary>
+        /// <summary>
+        /// Click sur un slot : passe le HUD en mode armed. Le prochain clic grille (gere
+        /// par CombatInputController) envoie le CastSpellCommand. Pour les sorts Filter=Self,
+        /// l'input controller redirige la cible vers la case du caster, donc Lorenzo peut
+        /// cliquer n'importe ou pour confirmer.
+        ///
+        /// Re-clic sur le sort deja arme = annulation.
+        /// </summary>
         public void OnSlotClicked(SpellId spell)
         {
             if (spell == SpellId.None) return;
-            var game = QuantumRunner.Default?.Game;
-            if (game == null) return;
-            var frame = game.Frames.Verified;
-            if (frame == null) return;
-            if (!frame.TryGetSingleton<CombatState>(out var state)) return;
 
-            int senderPlayer = ResolveControlPlayer(state.ActivePlayerIndex);
-
-            // Toggle armed si on reclique le sort deja arme.
             if (_armedSpell.HasValue && _armedSpell.Value == spell)
             {
                 Disarm();
                 return;
             }
 
-            if (!SpellDisplayInfo.NeedsArming(spell))
-            {
-                // Self-target : cast immediat sur la case du caster.
-                if (TryGetCasterCell(frame, senderPlayer, out int cx, out int cy))
-                {
-                    SendCast(game, senderPlayer, spell, cx, cy, 0);
-                }
-                return;
-            }
-
-            // Sort cible : passe en mode armed, le prochain clic grille envoie le cast.
             _armedSpell = spell;
             ArmedSpellChanged?.Invoke();
             Debug.Log($"[Nymora.HUD] Armed {spell} (cliquez sur une case pour lancer)");
@@ -265,29 +253,6 @@ namespace Nymora.Combat.View.HUD
         private int ResolveControlPlayer(int activePlayer)
         {
             return _debugAllPlayersControllable ? activePlayer : _localPlayerIndex;
-        }
-
-        private static void SendCast(QuantumGame game, int sender, SpellId spell, int tx, int ty, byte hg)
-        {
-            var cmd = new CastSpellCommand { Spell = spell, TargetX = tx, TargetY = ty, HGSpend = hg };
-            game.SendCommand(sender, cmd);
-            Debug.Log($"[Nymora.HUD] Sent Cast {spell} player={sender} target=({tx},{ty}) HGSpend={hg}");
-        }
-
-        private static bool TryGetCasterCell(Frame frame, int playerIndex, out int x, out int y)
-        {
-            x = 0; y = 0;
-            var filter = frame.Filter<Combatant>();
-            while (filter.Next(out EntityRef _, out Combatant c))
-            {
-                if (c.PlayerIndex == playerIndex)
-                {
-                    x = c.GridX;
-                    y = c.GridY;
-                    return true;
-                }
-            }
-            return false;
         }
     }
 }

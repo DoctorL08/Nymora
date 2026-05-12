@@ -170,6 +170,36 @@ namespace Nymora.Editor.Setup
                                  "Cable manuellement HUDController dans son Inspector.");
             }
 
+            // 7.b — 2.13.b : auto-wire les previews de range.
+            //   - TargetingPreviewView : ajouter _hudController pour piloter le preview armed.
+            //   - MovementRangePreview : ajouter comme sibling component si absent, wire GridRenderer + _hudController.
+            var targetingPreview = Object.FindObjectOfType<TargetingPreviewView>();
+            if (targetingPreview != null)
+            {
+                var tpSo = new SerializedObject(targetingPreview);
+                // Recupere le GridRenderer deja reference (partage avec MovementRangePreview).
+                GridRenderer sharedGridRenderer = tpSo.FindProperty("_gridRenderer")?.objectReferenceValue as GridRenderer;
+                SetObjectRef(tpSo, "_hudController", controller);
+                tpSo.ApplyModifiedPropertiesWithoutUndo();
+
+                var movementPreview = targetingPreview.GetComponent<MovementRangePreview>();
+                if (movementPreview == null)
+                {
+                    movementPreview = Undo.AddComponent<MovementRangePreview>(targetingPreview.gameObject);
+                    Debug.Log("[CreateCombatHUDTool] MovementRangePreview ajoute comme sibling de TargetingPreviewView.");
+                }
+                var mpSo = new SerializedObject(movementPreview);
+                SetObjectRef(mpSo, "_hudController", controller);
+                if (sharedGridRenderer != null) SetObjectRef(mpSo, "_gridRenderer", sharedGridRenderer);
+                mpSo.ApplyModifiedPropertiesWithoutUndo();
+                Debug.Log("[CreateCombatHUDTool] Auto-cable HUDController + GridRenderer sur previews (Targeting + Movement).");
+            }
+            else
+            {
+                Debug.LogWarning("[CreateCombatHUDTool] TargetingPreviewView introuvable dans la scene. " +
+                                 "La 2.13.b necessite l'objet du 2.6 ; sinon cable manuellement.");
+            }
+
             // 8. EventSystem (necessaire pour UI Unity).
             var eventSystem = Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>();
             if (eventSystem == null)

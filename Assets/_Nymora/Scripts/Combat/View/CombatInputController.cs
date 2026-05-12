@@ -105,6 +105,18 @@ namespace Nymora.Combat.View
             bool mouseDown = UnityEngine.Input.GetMouseButtonDown(0);
             bool spaceDown = UnityEngine.Input.GetKeyDown(KeyCode.Space);
 
+            // 2.13.a fix : si le clic gauche tombe sur un GameObject UI (icone HUD, bouton
+            // End Turn, etc.), on l'ignore cote grille. Sinon le meme clic
+            //   1) arme un sort via SpellSlotView.OnClick (event UI)
+            //   2) ET, dans la meme frame, serait consume comme clic grille -> cast instantane.
+            // Les inputs clavier restent traites normalement (UI ne capture pas les keys).
+            if (mouseDown
+                && UnityEngine.EventSystems.EventSystem.current != null
+                && UnityEngine.EventSystems.EventSystem.current.IsPointerOverGameObject())
+            {
+                mouseDown = false;
+            }
+
             // 2.10.a — touches 1-5 :
             //   1 = Ouvre-Plaie       (range 1, melee)  — Shift+1 = depense 1 HG (Glyphe)
             //   2 = Pacte de Sang     (self, 1/match)
@@ -280,13 +292,24 @@ namespace Nymora.Combat.View
 
             // Clic gauche : 3 chemins possibles (priorite descendante).
             // 1) Sort arme via le HUD (2.13.a, option 2) : on cast au lieu de bouger.
+            //    Si Filter=Self : la case cliquee est ignoree, target redirigee vers caster cell.
+            //    Sinon : la case cliquee est utilisee telle quelle (Quantum validera la portee).
             // 2) Targeting preview debug (2.6) : bypass mouvement, l'apercu se charge du clic.
             // 3) Mouvement classique : MoveCommand.
             if (mouseDown)
             {
                 if (_hudController != null && _hudController.ConsumeArmedSpell(out SpellId armedSpell))
                 {
-                    SendSpellAt(game, senderPlayer, armedSpell, gx, gy, 0);
+                    int tx = gx;
+                    int ty = gy;
+                    if (Quantum.SpellRegistry.TryGet(armedSpell, out Quantum.SpellDef def)
+                        && def.Filter == TargetingFilter.Self
+                        && TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    {
+                        tx = cx;
+                        ty = cy;
+                    }
+                    SendSpellAt(game, senderPlayer, armedSpell, tx, ty, 0);
                     return;
                 }
                 if (!_debugShowTargeting)

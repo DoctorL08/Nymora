@@ -1,23 +1,24 @@
 using System.Collections.Generic;
 using Nymora.Combat.Grid;
+using Nymora.Combat.View.HUD;
 using Quantum;
 using UnityEngine;
 
 namespace Nymora.Combat.View
 {
     /// <summary>
-    /// Preview de targeting cote View (brique 2.6).
+    /// Preview de targeting cote View.
     ///
-    /// A chaque update verifie :
-    ///   1. Clear les highlights precedents
-    ///   2. Si mode debug actif sur le CombatInputController :
-    ///      - Recupere le combattant du joueur actif (caster)
-    ///      - Calcule les CASES VISABLES (range Manhattan) via TargetingResolver
-    ///      - Highlight bleu clair
-    ///      - Si la souris survole une case visable : highlight rouge clair la ZONE D'EFFET (shape autour de cette case)
+    /// Priorite a chaque OnUpdateView :
+    ///   1. Si _hudController.ArmedSpell est set (2.13.b mode armed) -> resolve la def via
+    ///      SpellRegistry.TryGet et utilise Shape/Filter/RangeMin/RangeMax.
+    ///   2. Sinon si _inputController.DebugShowTargeting (2.6 mode dev) -> utilise les
+    ///      valeurs DebugShape/DebugFilter/DebugRangeMin/DebugRangeMax exposees par
+    ///      CombatInputController.
+    ///   3. Sinon : aucune preview, clear.
     ///
-    /// La 2.6 fait juste du visuel — pas d'effet gameplay, pas de cast. Sera utilise par les
-    /// vrais sorts en 2.8 (Tranche-Ame Soulrender) en lieu et place du mode debug.
+    /// Toujours : caster = combattant du joueur actif. Highlight bleu pour range castable,
+    /// rouge clair pour zone d'effet au hover.
     /// </summary>
     public class TargetingPreviewView : MonoBehaviour
     {
@@ -26,6 +27,10 @@ namespace Nymora.Combat.View
         [SerializeField] private GridRenderer _gridRenderer;
         [SerializeField] private CombatInputController _inputController;
         [SerializeField] private Camera _camera;
+
+        [Tooltip("HUD controller (2.13.b). Si set, sa propriete ArmedSpell pilote la preview " +
+                 "en priorite (devant le mode debug du CombatInputController).")]
+        [SerializeField] private CombatHUDController _hudController;
 
         [Header("Couleurs de preview")]
         [SerializeField] private Color _castableColor = new Color(0.55f, 0.75f, 1.00f, 1f);
@@ -62,52 +67,62 @@ namespace Nymora.Combat.View
             // Clear previous highlights
             ClearHighlights();
 
-            if (_inputController == null || !_inputController.DebugShowTargeting) return;
             if (_camera == null) return;
+
+            // Resolution de la source de preview : armed spell > debug mode > rien.
+            // Note 2.13.b : on n'utilise plus le Filter cote View pour le highlight bleu.
+            // La portee Manhattan complete est affichee ; Quantum filtre au cast.
+            TargetingShape shape;
+            int rangeMin, rangeMax;
+            if (_hudController != null && _hudController.ArmedSpell.HasValue
+                && SpellRegistry.TryGet(_hudController.ArmedSpell.Value, out SpellDef def))
+            {
+                shape = def.Shape;
+                rangeMin = def.RangeMin;
+                rangeMax = def.RangeMax;
+            }
+            else if (_inputController != null && _inputController.DebugShowTargeting)
+            {
+                shape = _inputController.DebugShape;
+                rangeMin = _inputController.DebugRangeMin;
+                rangeMax = _inputController.DebugRangeMax;
+            }
+            else
+            {
+                return; // rien a montrer
+            }
 
             var frame = game.Frames.Verified;
             if (!frame.TryGetSingleton<CombatState>(out var state)) return;
 
-            // Trouve le caster = combattant du joueur actif
+            // Trouve le caster = combattant du joueur actif.
             int casterX = -1, casterY = -1;
-            EntityRef casterEntity = EntityRef.None;
-            int casterPlayerIndex = state.ActivePlayerIndex;
+            bool hasCaster = false;
             var filter = frame.Filter<Combatant>();
-            while (filter.Next(out EntityRef entity, out Combatant combatant))
+            while (filter.Next(out EntityRef _, out Combatant combatant))
             {
                 if (combatant.PlayerIndex == state.ActivePlayerIndex)
                 {
-                    casterEntity = entity;
                     casterX = combatant.GridX;
                     casterY = combatant.GridY;
+                    hasCaster = true;
                     break;
                 }
             }
-            if (casterEntity == EntityRef.None) return;
+            if (!hasCaster) return;
 
-            // 1) Castable cells (range Manhattan) — wrapper safe int[]
-            int rangeMin = _inputController.DebugRangeMin;
-            int rangeMax = _inputController.DebugRangeMax;
+            // 1) Castable cells (range Manhattan) — wrapper safe int[].
+            // 2.13.b : on affiche TOUTE la range Manhattan, peu importe le Filter du sort.
+            // Le filter est evalue cote Quantum au moment du cast (case sans ennemi pour
+            // un sort Filter=Enemy = cast rejete silencieusement). Lorenzo voit ainsi
+            // toujours sa portee, ce qui est plus lisible que filtrer cote View.
             int[] castableBuffer = new int[GridConstants.Count];
             TargetingResolver.ResolveCastableCells(frame, casterX, casterY, rangeMin, rangeMax, castableBuffer, out int castableCount);
 
-            // Applique le filter sur les castable cells (on n'affiche que celles qui matchent le filter du sort).
-            var visibleCastable = new List<int>(castableCount);
-            var filterEnum = _inputController.DebugFilter;
+            var visibleCastable = new HashSet<int>();
             for (int i = 0; i < castableCount; i++)
             {
                 int idx = castableBuffer[i];
-                int gx = idx % GridConstants.Width;
-                int gy = idx / GridConstants.Width;
-                if (TargetingResolver.MatchesFilter(frame, gx, gy, filterEnum, casterEntity, casterPlayerIndex))
-                {
-                    visibleCastable.Add(idx);
-                }
-            }
-
-            // Highlight castable cells (bleu)
-            foreach (var idx in visibleCastable)
-            {
                 int gx = idx % GridConstants.Width;
                 int gy = idx / GridConstants.Width;
                 var tile = _gridRenderer.GetTileView(gx, gy);
@@ -115,10 +130,11 @@ namespace Nymora.Combat.View
                 {
                     tile.ApplyHighlight(_castableColor);
                     _highlighted.Add(idx);
+                    visibleCastable.Add(idx);
                 }
             }
 
-            // 2) Hover : effect cells
+            // 2) Hover : effect cells au survol de la case visee.
             Vector3 mouseWorld = _camera.ScreenToWorldPoint(UnityEngine.Input.mousePosition);
             mouseWorld.z = 0f;
             var (hoverGx, hoverGy) = IsoProjection.WorldToGrid(
@@ -131,11 +147,11 @@ namespace Nymora.Combat.View
                 ? hoverGy * GridConstants.Width + hoverGx
                 : -1;
 
-            // Le hover doit etre sur une castable cell visible pour declencher la preview d'effet.
+            // Effect zone affichee uniquement si on survole une case dans la range castable.
             if (hoverIdx >= 0 && visibleCastable.Contains(hoverIdx))
             {
                 int[] effectBuffer = new int[GridConstants.Count];
-                TargetingResolver.ResolveEffectCells(frame, casterX, casterY, hoverGx, hoverGy, _inputController.DebugShape, effectBuffer, out int effectCount);
+                TargetingResolver.ResolveEffectCells(frame, casterX, casterY, hoverGx, hoverGy, shape, effectBuffer, out int effectCount);
 
                 for (int i = 0; i < effectCount; i++)
                 {
