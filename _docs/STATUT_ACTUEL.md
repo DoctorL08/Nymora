@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 12 mai 2026 (Brique 2.13.c validée — tooltips Bible V7.1 + texte flottant dgts/heals + cooldown signature)  
+**Dernière mise à jour :** 12 mai 2026 (Brique 2.13.d validée — caméra zoom molette + pan clic molette + reset) — **BLOC C HUD COMPLET CLÔTURÉ** 🎉  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.13.d — Caméra zoom/pan** (XS, à démarrer)  
+**Brique en cours :** **2.14 — Nightseer (15 sorts + passif Prescience + brouillard de guerre)** (à démarrer la prochaine session)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 12/17 briques validées + 2.12.bis + **2.13.a/b/c**. Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11) + **2.12 ✅** + **2.12.bis ✅** + **2.13.a/b/c ✅**. **🏆 Soulrender 100% complet** : 15 sorts + signature + passif + HUD pixel-art + previews PM/range/effet + tooltips Bible V7.1 + texte flottant dgts/heals + cooldown signature. 2.13.d caméra (zoom/pan) ajoutée à la demande de Lorenzo (confort de jeu). Reste 2.13.d → 2.14-2.16 Nightseer + IA → 2.17 E2E.
+**Statut Phase 2 :** 13/17 briques validées + 2.12.bis + **2.13.a/b/c/d** (= brique 2.13 entière clôturée). Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11) + **2.12 ✅** + **2.12.bis ✅** + **2.13 ✅ TERMINÉE** (a layout HUD, b previews range, c tooltips + floating text, d caméra). **🏆 Soulrender 100% complet, jouable, lisible, confortable** : 15 sorts + signature + passif + HUD pixel-art + previews PM/range/effet + tooltips Bible V7.1 + texte flottant dgts/heals + cooldown signature + caméra zoom/pan. Reste **Bloc D Nightseer** (2.14-2.16) + **Bloc E IA** (déjà 2.15/2.16/2.17 dans roadmap mais numérotation à clarifier post-Soulrender) → puis 2.17 E2E.
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -723,7 +723,7 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.13.a — HUD layout + icônes cliquables + EndTurn manuel ✅ VALIDÉE 12 mai 2026
 - 2.13.b — Prévisu range PM (BFS) + range sort armed (Manhattan) + zone d'effet hover ✅ VALIDÉE 12 mai 2026
 - 2.13.c — Tooltips Bible V7.1 + texte flottant dgts/heals + cooldown signature ✅ VALIDÉE 12 mai 2026
-- 2.13.d — Caméra zoom molette + pan clic molette ⏳ PROCHAINE
+- 2.13.d — Caméra zoom molette + pan clic molette + reset (Home / double-clic molette) ✅ VALIDÉE 12 mai 2026
 
 **Bloc D — Nightseer (3 briques)**
 - 2.12 — Brouillard de guerre déterministe
@@ -829,6 +829,16 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 12 mai 2026 (suite) — Brique 2.13.d validée + 🏁 2.13 ENTIÈRE TERMINÉE
+- **CameraController** (1 fichier ~110 lignes, brique XS) : zoom molette centré sur curseur + pan clic molette maintenu + reset Home/double-clic molette.
+- **Zoom anchored sur curseur** : capture `mouseWorldBefore = ScreenToWorldPoint(mouse)`, change `orthographicSize *= (1 - wheel * speed)`, clamp [2, 15], recalcule `mouseWorldAfter`, translate camera de `(before - after)`. Sensation "pivot mouse" comme Dofus/Wakfu/Civ.
+- **Pan grab-and-drag** : capture `panAnchorWorld` au middle-mouse-down. Chaque frame du drag, calcule `delta = (anchor - currentMouseWorld) * panSensitivity` et translate la camera. Math : si le point monde original reste sous le curseur, delta tend vers 0 → stable. Si curseur bouge, camera suit.
+- **Reset double-clic molette** : fenêtre 0.35s entre 2 mouseDown(2). Si dans la fenêtre → ResetView. Sinon → start nouveau drag.
+- **Tool auto-add idempotent** : `Camera.main.GetComponent<CameraController>()` check, sinon `Undo.AddComponent`. Re-run tool sans risque de duplication.
+- **Validation Lorenzo "ok"** : tout fonctionnel.
+- **🏁 2.13 ENTIÈRE CLÔTURÉE** : 4 sous-briques validées sur la session 12 mai (a layout HUD, b previews range, c tooltips + floating text, d caméra). Soulrender 100% jouable + lisible + confortable.
+- **Prochain pas** : Bloc D Nightseer (2.14). Roadmap initiale liste 2.12/2.13/2.14 pour Nightseer mais ces numéros sont maintenant pris par le HUD. À renuméroter ou continuer en suffixe.
 
 ### 12 mai 2026 (suite) — Brique 2.13.c validée (tooltips Bible + texte flottant + cooldown signature)
 - **5 fichiers livrés** (SpellDescriptions, SpellTooltipView, FloatingText, FloatingTextManager, CombatantHPWatcher) + 3 modifiés (SpellSlotView, CombatHUDController, CreateCombatHUDTool).

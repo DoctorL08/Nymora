@@ -207,6 +207,9 @@ namespace Nymora.Editor.Setup
             // 7.c — 2.13.c : floating text canvas + manager + HP watcher.
             BuildFloatingTextStack(scene);
 
+            // 7.d — 2.13.d : auto-add CameraController sur Camera.main.
+            AttachCameraController();
+
             // 8. EventSystem (necessaire pour UI Unity).
             var eventSystem = Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>();
             if (eventSystem == null)
@@ -591,6 +594,39 @@ namespace Nymora.Editor.Setup
             Undo.RegisterCreatedObjectUndo(canvasGo, "Create Floating Text Stack");
             EditorSceneManager.MarkSceneDirty(scene);
             Debug.Log("[CreateCombatHUDTool] FloatingTextCanvas + Manager + HPWatcher crees.");
+        }
+
+        /// <summary>
+        /// 2.13.d : ajoute CameraController sur Camera.main si pas deja present. Idempotent.
+        /// </summary>
+        private static void AttachCameraController()
+        {
+            var camera = Camera.main;
+            if (camera == null)
+            {
+                // Fallback : cherche n'importe quelle Camera dans la scene.
+                camera = Object.FindObjectOfType<Camera>();
+            }
+            if (camera == null)
+            {
+                Debug.LogWarning("[CreateCombatHUDTool] Aucune Camera trouvee dans la scene. Skip CameraController.");
+                return;
+            }
+
+            var existing = camera.GetComponent<CameraController>();
+            if (existing != null)
+            {
+                Debug.Log("[CreateCombatHUDTool] CameraController deja present sur la camera, skip.");
+                return;
+            }
+
+            var controller = Undo.AddComponent<CameraController>(camera.gameObject);
+            // Cable la reference Camera vers celle qu'on a trouvee (par defaut le component
+            // cherche dans Awake mais on prefere le set explicitement).
+            var so = new SerializedObject(controller);
+            SetObjectRef(so, "_camera", camera);
+            so.ApplyModifiedPropertiesWithoutUndo();
+            Debug.Log($"[CreateCombatHUDTool] CameraController ajoute sur '{camera.name}'.");
         }
 
         // ----------------------------------------------------------------------
