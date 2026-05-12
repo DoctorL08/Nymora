@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 12 mai 2026 (Brique 2.13.b validée — prévisu range PM + range sorts armed + zone d'effet hover)  
+**Dernière mise à jour :** 12 mai 2026 (Brique 2.13.c validée — tooltips Bible V7.1 + texte flottant dgts/heals + cooldown signature)  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.13.c — Tooltips + texte flottant dgts/heals** (à démarrer)  
+**Brique en cours :** **2.13.d — Caméra zoom/pan** (XS, à démarrer)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 12/17 briques validées + 2.12.bis + **2.13.a** + **2.13.b**. Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11) + **2.12 ✅** + **2.12.bis ✅** + **2.13.a ✅** + **2.13.b ✅** (preview range PM en vert pâle via BFS / preview sort armed en bleu Manhattan complète / zone d'effet rouge clair au hover / arming généralisé à tous les sorts y compris Self). Reste 2.13.c (tooltips + texte flottant) avant Nightseer. **🏆 Soulrender 100% gameplay + visuel + anims + HUD jouable + previews lisibles** : 15 sorts + signature + passif. Reste 2.13.c → 2.14-2.16 Nightseer + IA → 2.17 E2E.
+**Statut Phase 2 :** 12/17 briques validées + 2.12.bis + **2.13.a/b/c**. Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11) + **2.12 ✅** + **2.12.bis ✅** + **2.13.a/b/c ✅**. **🏆 Soulrender 100% complet** : 15 sorts + signature + passif + HUD pixel-art + previews PM/range/effet + tooltips Bible V7.1 + texte flottant dgts/heals + cooldown signature. 2.13.d caméra (zoom/pan) ajoutée à la demande de Lorenzo (confort de jeu). Reste 2.13.d → 2.14-2.16 Nightseer + IA → 2.17 E2E.
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -722,7 +722,8 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 - 2.12.bis — Anims complètes (Idle/Walk/Cast par catégorie/Attack/Hurt/Death + state machine) ✅ VALIDÉE 12 mai 2026
 - 2.13.a — HUD layout + icônes cliquables + EndTurn manuel ✅ VALIDÉE 12 mai 2026
 - 2.13.b — Prévisu range PM (BFS) + range sort armed (Manhattan) + zone d'effet hover ✅ VALIDÉE 12 mai 2026
-- 2.13.c — Tooltips persistantes + texte flottant dgts/heals ⏳ PROCHAINE
+- 2.13.c — Tooltips Bible V7.1 + texte flottant dgts/heals + cooldown signature ✅ VALIDÉE 12 mai 2026
+- 2.13.d — Caméra zoom molette + pan clic molette ⏳ PROCHAINE
 
 **Bloc D — Nightseer (3 briques)**
 - 2.12 — Brouillard de guerre déterministe
@@ -828,6 +829,21 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 12 mai 2026 (suite) — Brique 2.13.c validée (tooltips Bible + texte flottant + cooldown signature)
+- **5 fichiers livrés** (SpellDescriptions, SpellTooltipView, FloatingText, FloatingTextManager, CombatantHPWatcher) + 3 modifiés (SpellSlotView, CombatHUDController, CreateCombatHUDTool).
+- **SpellDescriptions** : descriptions Bible V7.1 condensées par SpellId. 1-2 phrases courtes par sort, mention de la variante HG. Pas de ScriptableObject — static class C# pour zéro asset à maintenir et accès instant.
+- **SpellTooltipView** : Panel UI avec VerticalLayoutGroup + ContentSizeFitter pour auto-size selon contenu (description courte = panel court, description longue = panel grand). Format : Titre (bold 20) / Cout PA + HG + filter + portée (orange 14) / Description Bible (grey 14).
+- **Auto-flip tooltip** : si l'affichage au-dessus du slot dépasse le haut du canvas, flip pivot et position en dessous. Calcul via `GetWorldCorners` du slot + tooltip + canvas. Pratique pour la signature/sorts en haut de l'écran (futurs layouts).
+- **SpellSlotView refacto** : IPointerEnterHandler/IPointerExitHandler + coroutine `WaitForSeconds(0.2f)` avant `ShowTooltip` (anti-clignotement). Stop coroutine + Hide sur exit ou OnDisable.
+- **Cooldown signature Âme Lacérée** : lecture `Combatant.LastAmeLaceeUsedOnTurn` + `state.TurnNumber`. Helper `ResolveCooldownTurnsLeft(spell, c, valid, turnNumber)` retourne nombre tours restants. Label rouge `Xt` overlay sur l'icône via `SetCooldownLabel(n)` ; slot grisé tant que cooldown > 0.
+- **1/match grisage** : check `OncePerMatchUsedFlags & (1 << def.OncePerMatchBit)`. Couvre Pacte de Sang et Dernier Souffle automatiquement (Bible V7.1).
+- **FloatingText** : MonoBehaviour qui Lerp Y +60px sur 1.0s + fade alpha 0.7-1.0s, puis Destroy. `GetComponent<TMP_Text>()` au runtime pour récupérer le label (cleaner que reflection — première version avait reflection, refactor avant commit).
+- **FloatingTextManager** : Spawn dynamique de GameObjects UI avec TMP_Text + FloatingText sur un Canvas dédié `CombatFloatingTextCanvas` (sortingOrder 90, sous le HUD à 100). `WorldToScreenPoint` depuis Camera.main pour convertir position grille → pixel canvas.
+- **CombatantHPWatcher** : pattern polling (vs Quantum Signal). `Dictionary<EntityRef, int> _lastHP` + diff par tick → spawn FloatingText. Cleared sur CallbackGameStarted. Limitation connue : ne distingue PAS shield absorb (HP ne bouge pas pendant absorb) — reportée à une future brique avec Signal dédié si Lorenzo en a besoin.
+- **Tool extensions** : `BuildTooltip` (nouveau builder) + `BuildFloatingTextStack` (nouveau builder, crée Canvas séparé + Manager + Watcher sur la même GO, copie GridSettings depuis TargetingPreviewView pour éviter re-câblage manuel). Cooldown label ajouté dans `BuildSpellSlot` (TMP rouge 36px bold center, hidden par défaut).
+- **Validation Lorenzo "parfait"** : flow ergo complet (hover → tooltip → cast → texte flottant → cooldown visible).
+- **Suite** : Lorenzo demande une **brique 2.13.d caméra** (zoom molette + pan clic molette) pour le confort de jeu, ajoutée à la roadmap.
 
 ### 12 mai 2026 (suite) — Brique 2.13.b validée (preview range PM + range sort armed + zone d'effet hover)
 - **Infra de highlight déjà 80% en place** : `TargetingPreviewView` (créé en 2.6) + `TileView.ApplyHighlight/ClearHighlight` + `GridRenderer.GetTileView(x,y)` + `TargetingResolver.ResolveCastableCells/ResolveEffectCells`. Refacto léger plutôt que tout réécrire.

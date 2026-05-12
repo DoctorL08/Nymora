@@ -45,6 +45,7 @@ namespace Nymora.Combat.View.HUD
         [SerializeField] private SpellSlotView[] _spellSlots = new SpellSlotView[6];
         [SerializeField] private SpellSlotView _signatureSlot;
         [SerializeField] private Button _endTurnButton;
+        [SerializeField] private SpellTooltipView _tooltip;
 
         // Etat armed (Option 2). Consume via ConsumeArmedSpell() pour le CombatInputController.
         private SpellId? _armedSpell;
@@ -130,7 +131,8 @@ namespace Nymora.Combat.View.HUD
             if (_timeline != null) _timeline.Refresh(activePlayer);
 
             // Slots : grisage selon PA / HG dispo du combattant qu'on controle, etat armed.
-            RefreshSlots(hasLocal ? local : default, hasLocal);
+            // 2.13.c : passe aussi le turnNumber pour calcul du cooldown signature.
+            RefreshSlots(hasLocal ? local : default, hasLocal, state.TurnNumber);
 
             // End Turn : seul le joueur actif peut le presser. (Si _debugAllPlayersControllable
             // est false et qu'on n'est pas le joueur actif, on grise le bouton.)
@@ -142,21 +144,23 @@ namespace Nymora.Combat.View.HUD
             }
         }
 
-        private void RefreshSlots(in Combatant c, bool valid)
+        private void RefreshSlots(in Combatant c, bool valid, int turnNumber)
         {
             for (int i = 0; i < _spellSlots.Length; i++)
             {
                 var slot = _spellSlots[i];
                 if (slot == null) continue;
-                slot.SetState(ResolveSlotState(slot.Spell, c, valid));
+                slot.SetState(ResolveSlotState(slot.Spell, c, valid, turnNumber));
+                slot.SetCooldownLabel(ResolveCooldownTurnsLeft(slot.Spell, c, valid, turnNumber));
             }
             if (_signatureSlot != null)
             {
-                _signatureSlot.SetState(ResolveSlotState(_signatureSlot.Spell, c, valid));
+                _signatureSlot.SetState(ResolveSlotState(_signatureSlot.Spell, c, valid, turnNumber));
+                _signatureSlot.SetCooldownLabel(ResolveCooldownTurnsLeft(_signatureSlot.Spell, c, valid, turnNumber));
             }
         }
 
-        private SpellSlotView.SlotState ResolveSlotState(SpellId spell, in Combatant c, bool valid)
+        private SpellSlotView.SlotState ResolveSlotState(SpellId spell, in Combatant c, bool valid, int turnNumber)
         {
             if (_armedSpell.HasValue && _armedSpell.Value == spell)
             {
@@ -174,7 +178,27 @@ namespace Nymora.Combat.View.HUD
             if (c.PA < paCost) return SpellSlotView.SlotState.Disabled;
             if (c.Resource < def.HGCostMandatory) return SpellSlotView.SlotState.Disabled;
 
+            // 2.13.c : cooldown (signature Ame Laceree) et 1/match (Pacte de Sang, Dernier Souffle).
+            if (ResolveCooldownTurnsLeft(spell, c, valid: true, turnNumber) > 0) return SpellSlotView.SlotState.Disabled;
+            if (def.OncePerMatchBit != SpellRegistry.OncePerMatchBitNone
+                && (c.OncePerMatchUsedFlags & (1 << def.OncePerMatchBit)) != 0)
+            {
+                return SpellSlotView.SlotState.Disabled;
+            }
+
             return SpellSlotView.SlotState.Normal;
+        }
+
+        /// <summary>
+        /// Tours de cooldown restants pour un sort, ou 0 s'il est dispo. Pour 2.13.c,
+        /// seule la signature Ame Laceree a un cooldown de 4 tours. Les autres retournent 0.
+        /// </summary>
+        private static int ResolveCooldownTurnsLeft(SpellId spell, in Combatant c, bool valid, int turnNumber)
+        {
+            if (!valid || spell != SpellId.SoulrenderAmeLaceree) return 0;
+            int sinceLast = turnNumber - c.LastAmeLaceeUsedOnTurn;
+            int remaining = SpellRegistry.AmeLaceeCooldownTurns - sinceLast;
+            return remaining > 0 ? remaining : 0;
         }
 
         private static bool HasStatus(in Combatant c, StatusKind kind)
@@ -234,6 +258,18 @@ namespace Nymora.Combat.View.HUD
                 _armedSpell = null;
                 ArmedSpellChanged?.Invoke();
             }
+        }
+
+        // -- Tooltip API (2.13.c) --
+
+        public void ShowTooltip(SpellId spell, RectTransform anchor)
+        {
+            if (_tooltip != null) _tooltip.Show(spell, anchor);
+        }
+
+        public void HideTooltip()
+        {
+            if (_tooltip != null) _tooltip.Hide();
         }
 
         private void OnEndTurnClicked()

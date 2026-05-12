@@ -94,6 +94,9 @@ namespace Nymora.Editor.Setup
             SpellSlotView signatureSlot;
             BuildSpellBar(hudRoot, out deckSlots, out signatureSlot);
 
+            // 4.b — 2.13.c : tooltip panel (hidden par defaut, dans le meme canvas).
+            SpellTooltipView tooltip = BuildTooltip(hudRoot);
+
             // 5. Charge le SpellIconRegistry asset standard.
             var iconRegistry = AssetDatabase.LoadAssetAtPath<SpellIconRegistry>(SpellIconRegistryPath);
             if (iconRegistry == null)
@@ -113,6 +116,7 @@ namespace Nymora.Editor.Setup
             SetObjectRef(so, "_timeline", timeline);
             SetObjectRef(so, "_endTurnButton", endTurnButton);
             SetObjectRef(so, "_signatureSlot", signatureSlot);
+            SetObjectRef(so, "_tooltip", tooltip);
 
             // Array _spellSlots (6).
             var slotsProp = so.FindProperty("_spellSlots");
@@ -199,6 +203,9 @@ namespace Nymora.Editor.Setup
                 Debug.LogWarning("[CreateCombatHUDTool] TargetingPreviewView introuvable dans la scene. " +
                                  "La 2.13.b necessite l'objet du 2.6 ; sinon cable manuellement.");
             }
+
+            // 7.c — 2.13.c : floating text canvas + manager + HP watcher.
+            BuildFloatingTextStack(scene);
 
             // 8. EventSystem (necessaire pour UI Unity).
             var eventSystem = Object.FindObjectOfType<UnityEngine.EventSystems.EventSystem>();
@@ -454,14 +461,136 @@ namespace Nymora.Editor.Setup
             keyLabel.fontStyle = FontStyles.Bold;
             keyLabel.raycastTarget = false;
 
+            // 2.13.c — CooldownLabel (centre, visible si en cooldown).
+            var cooldownLabel = CreateText(go.transform, "CooldownLabel",
+                anchorMin: new Vector2(0f, 0f), anchorMax: new Vector2(1f, 1f),
+                pivot: new Vector2(0.5f, 0.5f), anchoredPos: Vector2.zero, size: Vector2.zero,
+                content: "", fontSize: 36f, align: TextAlignmentOptions.Center,
+                color: new Color(1.00f, 0.25f, 0.25f, 1f));
+            cooldownLabel.fontStyle = FontStyles.Bold;
+            cooldownLabel.raycastTarget = false;
+            cooldownLabel.gameObject.SetActive(false);
+
             var slot = go.AddComponent<SpellSlotView>();
             var so = new SerializedObject(slot);
             SetObjectRef(so, "_iconImage", iconImg);
             SetObjectRef(so, "_frameImage", frame);
             SetObjectRef(so, "_keyLabel", keyLabel);
+            SetObjectRef(so, "_cooldownLabel", cooldownLabel);
             SetObjectRef(so, "_button", btn);
             so.ApplyModifiedPropertiesWithoutUndo();
             return slot;
+        }
+
+        private static SpellTooltipView BuildTooltip(RectTransform parent)
+        {
+            // Panel hidden par defaut, sortingOrder dans la hierarchy = dernier enfant (au-dessus).
+            var go = NewUIGameObject("SpellTooltip", parent);
+            SetAnchors(go.GetComponent<RectTransform>(),
+                anchorMin: new Vector2(0.5f, 0f), anchorMax: new Vector2(0.5f, 0f),
+                pivot: new Vector2(0.5f, 0f), anchoredPos: Vector2.zero, size: new Vector2(340f, 160f));
+
+            var bg = go.AddComponent<Image>();
+            bg.color = new Color(0f, 0f, 0f, 0.92f);
+            bg.raycastTarget = false;
+
+            // VerticalLayoutGroup auto-size pour adapter la hauteur au contenu.
+            var vlg = go.AddComponent<UnityEngine.UI.VerticalLayoutGroup>();
+            vlg.padding = new RectOffset(14, 14, 10, 10);
+            vlg.spacing = 6f;
+            vlg.childAlignment = TextAnchor.UpperLeft;
+            vlg.childControlWidth = true;
+            vlg.childControlHeight = true;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+
+            var fitter = go.AddComponent<UnityEngine.UI.ContentSizeFitter>();
+            fitter.horizontalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+            fitter.verticalFit = UnityEngine.UI.ContentSizeFitter.FitMode.PreferredSize;
+
+            var title = CreateText(go.transform, "Title",
+                anchorMin: new Vector2(0f, 0f), anchorMax: new Vector2(1f, 0f),
+                pivot: new Vector2(0f, 0f), anchoredPos: Vector2.zero, size: new Vector2(0f, 28f),
+                content: "Nom du sort", fontSize: 20f, align: TextAlignmentOptions.TopLeft, color: Color.white);
+            title.fontStyle = FontStyles.Bold;
+
+            var cost = CreateText(go.transform, "Cost",
+                anchorMin: new Vector2(0f, 0f), anchorMax: new Vector2(1f, 0f),
+                pivot: new Vector2(0f, 0f), anchoredPos: Vector2.zero, size: new Vector2(0f, 22f),
+                content: "X PA | Portee Y", fontSize: 14f, align: TextAlignmentOptions.TopLeft,
+                color: new Color(1.00f, 0.85f, 0.40f, 1f));
+
+            var description = CreateText(go.transform, "Description",
+                anchorMin: new Vector2(0f, 0f), anchorMax: new Vector2(1f, 0f),
+                pivot: new Vector2(0f, 0f), anchoredPos: Vector2.zero, size: new Vector2(0f, 60f),
+                content: "Description Bible.", fontSize: 14f, align: TextAlignmentOptions.TopLeft,
+                color: new Color(0.88f, 0.88f, 0.88f, 1f));
+            description.enableWordWrapping = true;
+
+            var tooltip = go.AddComponent<SpellTooltipView>();
+            var so = new SerializedObject(tooltip);
+            SetObjectRef(so, "_panel", go.GetComponent<RectTransform>());
+            SetObjectRef(so, "_titleText", title);
+            SetObjectRef(so, "_costText", cost);
+            SetObjectRef(so, "_descriptionText", description);
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            // Hidden par defaut. La visibilite est pilotee par Show()/Hide().
+            go.SetActive(false);
+            return tooltip;
+        }
+
+        /// <summary>
+        /// 2.13.c : cree un Canvas dedie pour les floating texts (sortingOrder &lt; HUD)
+        /// + FloatingTextManager + CombatantHPWatcher sur le meme GameObject.
+        /// Recupere GridSettings depuis le TargetingPreviewView de la scene.
+        /// </summary>
+        private static void BuildFloatingTextStack(UnityEngine.SceneManagement.Scene scene)
+        {
+            const string CanvasName = "CombatFloatingTextCanvas";
+
+            // Supprime l'ancien si present (idempotent).
+            var existing = GameObject.Find(CanvasName);
+            if (existing != null) Object.DestroyImmediate(existing);
+
+            var canvasGo = new GameObject(CanvasName,
+                typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            var canvas = canvasGo.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 90; // sous le HUD (100), au-dessus du reste
+
+            var scaler = canvasGo.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920, 1080);
+            scaler.matchWidthOrHeight = 0.5f;
+
+            // GraphicRaycaster : on le neutralise pour ne pas capturer les clics.
+            var raycaster = canvasGo.GetComponent<GraphicRaycaster>();
+            raycaster.enabled = false;
+
+            var manager = canvasGo.AddComponent<FloatingTextManager>();
+            var managerSo = new SerializedObject(manager);
+            SetObjectRef(managerSo, "_canvas", canvas);
+            SetObjectRef(managerSo, "_worldCamera", Camera.main);
+            managerSo.ApplyModifiedPropertiesWithoutUndo();
+
+            var watcher = canvasGo.AddComponent<CombatantHPWatcher>();
+            var watcherSo = new SerializedObject(watcher);
+            SetObjectRef(watcherSo, "_manager", manager);
+
+            // Recupere GridSettings depuis le TargetingPreviewView (deja cable en scene).
+            var targetingPreview = Object.FindObjectOfType<TargetingPreviewView>();
+            if (targetingPreview != null)
+            {
+                var tpSo = new SerializedObject(targetingPreview);
+                var gridSettings = tpSo.FindProperty("_gridSettings")?.objectReferenceValue;
+                if (gridSettings != null) SetObjectRef(watcherSo, "_gridSettings", gridSettings);
+            }
+            watcherSo.ApplyModifiedPropertiesWithoutUndo();
+
+            Undo.RegisterCreatedObjectUndo(canvasGo, "Create Floating Text Stack");
+            EditorSceneManager.MarkSceneDirty(scene);
+            Debug.Log("[CreateCombatHUDTool] FloatingTextCanvas + Manager + HPWatcher crees.");
         }
 
         // ----------------------------------------------------------------------
