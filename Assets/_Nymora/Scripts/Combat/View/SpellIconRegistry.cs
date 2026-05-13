@@ -35,12 +35,16 @@ namespace Nymora.Combat.View
         [Header("Icones de passifs (1 par classe)")]
         [Tooltip("Hemoglyphe Soulrender (icon_passif_hemoglyphe.png).")]
         [SerializeField] private Sprite _passifSoulrenderIcon;
-        // Phase 3 : _passifNightseerIcon, _passifColossarIcon, _passifNecramIcon, _passifGhostraIcon
+        [Tooltip("L'Oeil qui n'est pas — Nightseer (icon_passif_oeil_qui_nest_pas.png).")]
+        [SerializeField] private Sprite _passifNightseerIcon;
+        // Phase 3 : _passifColossarIcon, _passifNecramIcon, _passifGhostraIcon
 
         [Header("Avatars (portrait HUD, 1 par classe — 2.13.e)")]
         [Tooltip("Portrait Soulrender (SR_avatar_128px.png).")]
         [SerializeField] private Sprite _avatarSoulrenderIcon;
-        // Phase 3 : _avatarNightseerIcon, _avatarColossarIcon, _avatarNecramIcon, _avatarGhostraIcon
+        [Tooltip("Portrait Nightseer (NS_avatar_128px.png).")]
+        [SerializeField] private Sprite _avatarNightseerIcon;
+        // Phase 3 : _avatarColossarIcon, _avatarNecramIcon, _avatarGhostraIcon
 
         private Dictionary<SpellId, Sprite> _cache;
 
@@ -55,6 +59,7 @@ namespace Nymora.Combat.View
             switch (nymoraClass)
             {
                 case NymoraClass.Soulrender: return _passifSoulrenderIcon;
+                case NymoraClass.Nightseer:  return _passifNightseerIcon;
                 // Phase 3 : autres classes
                 default: return null;
             }
@@ -69,6 +74,7 @@ namespace Nymora.Combat.View
             switch (nymoraClass)
             {
                 case NymoraClass.Soulrender: return _avatarSoulrenderIcon;
+                case NymoraClass.Nightseer:  return _avatarNightseerIcon;
                 // Phase 3 : autres classes
                 default: return null;
             }
@@ -79,11 +85,18 @@ namespace Nymora.Combat.View
         /// Setter Editor uniquement (utilise par l'auto-populate). NE PAS appeler en runtime.
         /// avatarSoulrenderIcon peut etre null si non trouve — laissera le slot vide.
         /// </summary>
-        public void EditorSetEntries(Entry[] entries, Sprite passifSoulrenderIcon, Sprite avatarSoulrenderIcon = null)
+        public void EditorSetEntries(
+            Entry[] entries,
+            Sprite passifSoulrenderIcon,
+            Sprite avatarSoulrenderIcon = null,
+            Sprite avatarNightseerIcon = null,
+            Sprite passifNightseerIcon = null)
         {
             _entries = entries ?? Array.Empty<Entry>();
             _passifSoulrenderIcon = passifSoulrenderIcon;
             _avatarSoulrenderIcon = avatarSoulrenderIcon;
+            _avatarNightseerIcon = avatarNightseerIcon;
+            _passifNightseerIcon = passifNightseerIcon;
             _cache = null; // force rebuild au prochain GetIcon
         }
 #endif

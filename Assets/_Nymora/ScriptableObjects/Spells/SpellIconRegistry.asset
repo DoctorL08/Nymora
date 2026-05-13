@@ -45,4 +45,39 @@ MonoBehaviour:
     Icon: {fileID: 21300000, guid: 5e40e987d08ebb7478790186023771ce, type: 3}
   - Spell: 10
     Icon: {fileID: 21300000, guid: 083094a95f31e574ca657d0312dc0980, type: 3}
+  - Spell: 38
+    Icon: {fileID: 21300000, guid: 3743e6bc30adbf145b08f97cd36753c5, type: 3}
+  - Spell: 42
+    Icon: {fileID: 21300000, guid: bc351b69e59c687478432867dbb1980a, type: 3}
+  - Spell: 37
+    Icon: {fileID: 21300000, guid: 7ff5c166da2ee3544b43dd22c7ec313d, type: 3}
+  - Spell: 32
+    Icon: {fileID: 21300000, guid: 3fdd2beb90d66d84e8c14f745d334f4d, type: 3}
+  - Spell: 44
+    Icon: {fileID: 21300000, guid: bbc8ea309f815654694f1fd3742285bd, type: 3}
+  - Spell: 36
+    Icon: {fileID: 21300000, guid: 3f2119518139afe4bbf3c0b0160e9268, type: 3}
+  - Spell: 33
+    Icon: {fileID: 21300000, guid: bfc54f3b972344a45b5dabeb0c326815, type: 3}
+  - Spell: 35
+    Icon: {fileID: 21300000, guid: 52ba33e8721255947b58fa5044483469, type: 3}
+  - Spell: 41
+    Icon: {fileID: 21300000, guid: 074360b2c992e14459b2d40695b672ef, type: 3}
+  - Spell: 34
+    Icon: {fileID: 21300000, guid: a9ce94dbed9fdab4e92885412bdd07d3, type: 3}
+  - Spell: 43
+    Icon: {fileID: 21300000, guid: b5cd5932e6a70694dbb7900404e7c062, type: 3}
+  - Spell: 39
+    Icon: {fileID: 21300000, guid: 809ee397f16267143ba6c630ceb09704, type: 3}
+  - Spell: 30
+    Icon: {fileID: 21300000, guid: 3a41b275ad231134dabc8d1a3afd871d, type: 3}
+  - Spell: 45
+    Icon: {fileID: 21300000, guid: 9c1a34930e5c7044d80274b8c839af56, type: 3}
+  - Spell: 40
+    Icon: {fileID: 21300000, guid: d85380713dca1354dad31a5613d767c3, type: 3}
+  - Spell: 31
+    Icon: {fileID: 21300000, guid: 75447d6a77840eb49a064e02fb2974d8, type: 3}
   _passifSoulrenderIcon: {fileID: 21300000, guid: 7eed818221811164da380957901fb2b0, type: 3}
+  _passifNightseerIcon: {fileID: 21300000, guid: 78b6a6f1bb567b74cbe1bf104d4bff05, type: 3}
+  _avatarSoulrenderIcon: {fileID: 21300000, guid: 3f95fbb52494a3f4d93d0b30fd208db0, type: 3}
+  _avatarNightseerIcon: {fileID: 21300000, guid: 2dbbd3972343fde4b81be760fc498e48, type: 3}
