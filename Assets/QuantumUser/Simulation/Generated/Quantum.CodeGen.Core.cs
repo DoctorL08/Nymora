@@ -123,6 +123,8 @@ namespace Quantum {
     ColossarMarteauPunisseur = 52,
     ColossarChocSismique = 53,
     ColossarRepresailles = 54,
+    ColossarPilier = 55,
+    ColossarMurDePierre = 56,
   }
   public enum StatusKind : byte {
     None = 0,

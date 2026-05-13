@@ -181,6 +181,15 @@ namespace Quantum
         public const int ChocSismiquePMTurns          = 1;
         public const int ChocSismiqueRange            = 4;    // portee Manhattan
 
+        // 3.3.b.i — Pilier (sort tactique Colossar).
+        public const int PilierHP                     = 200;  // HP du Pilier pose
+        public const int PilierTurns                  = 3;    // duree avant expiration auto (TurnEnd)
+
+        // 3.3.b.i — Mur de Pierre (sort tactique Colossar).
+        public const int MurDePierreSegmentHP         = 150;  // HP par segment de mur
+        public const int MurDePierreTurns             = 2;    // duree avant expiration auto
+        public const int MurDePierreSegments          = 3;    // nombre de cases en ligne perpendiculaire
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -923,6 +932,47 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,                   // 0 pour bypass damage loop standard (handler custom)
+                    };
+                    return true;
+
+                // -------------------------------------------------------------
+                // COLOSSAR — Bible V7.1 (3.3.b.i) — TACTIQUES
+                // -------------------------------------------------------------
+
+                // Pilier : 3 PA, range 1 (case adjacente vide), pose 1 obstacle Pilier 200 HP / 3 tours.
+                // +1 FD via SpawnObstacle hook (3.2). Bloque mouvement + LoS (helper LoS hook).
+                case SpellId.ColossarPilier:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.EmptyTile, // case vide obligatoire
+                        RangeMin = 1,
+                        RangeMax = 1,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Mur de Pierre : 5 PA, range 2, pose ligne 3 cases (perpendiculaire axe caster->cible)
+                // chaque case = 150 HP / 2 tours. +1 FD par case posee (jusqu'a 3 FD via SpawnObstacle hook).
+                // Cases occupees ou deja obstacle = skipped (no spawn, pas de FD).
+                case SpellId.ColossarMurDePierre:
+                    def = new SpellDef
+                    {
+                        PACost = 5,
+                        Shape = TargetingShape.SingleTile, // handler custom pose 3 segments
+                        Filter = TargetingFilter.EmptyTile, // case centre du mur doit etre vide
+                        RangeMin = 1,
+                        RangeMax = 2,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
                     };
                     return true;
 

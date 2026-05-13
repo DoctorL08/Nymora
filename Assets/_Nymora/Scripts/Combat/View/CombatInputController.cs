@@ -155,11 +155,12 @@ namespace Nymora.Combat.View
             // Sera retiree en 2.15 quand les sorts Nightseer (Pas Furtif, Voile d'Ombre, Champ
             // de Mines) feront ca proprement via SpellSystem.
             bool keyT  = UnityEngine.Input.GetKeyDown(KeyCode.T);
-            // 3.1 — DEBUG framework obstacles (P/U identiques AZERTY/QWERTY) :
-            //   P = Spawn Pillar 200 HP persistent sur la case sous la souris (du joueur actif).
-            //   U = Damage 50 sur l'obstacle de la case sous la souris (4 hits = destroy).
-            // Seront retirees en 3.3.b quand les sorts Pilier/Mur Colossar arrivent.
+            // 3.3.b.i — Colossar TACTIQUES (touches P/O identiques AZERTY/QWERTY) :
+            //   P = Pilier               (3 PA, range 1 case vide, 200 HP / 3 tours, +1 FD, bloque LoS+mvt)
+            //   O = Mur de Pierre        (5 PA, range 2, ligne 3 cases perp, 150 HP/case / 2 tours, +1 FD/case)
+            //   U = DEBUG damage 50 sur obstacle sous souris (gardee pour test destruction +30 HP Densite Inerte)
             bool keyP  = UnityEngine.Input.GetKeyDown(KeyCode.P);
+            bool keyO  = UnityEngine.Input.GetKeyDown(KeyCode.O);
             bool keyU  = UnityEngine.Input.GetKeyDown(KeyCode.U);
             // 3.3.a.i — COLOSSAR OFFENSIFS (touches H/J identiques AZERTY/QWERTY) :
             //   H = Frappe Lourde       (3 PA, melee 1, 180 dgts +100 si epinglee)
@@ -218,7 +219,7 @@ namespace Nymora.Combat.View
                             || keyAzA || keyAzZ || keyE || keyR || keyV
                             || keyAzQ || keyS || keyD || keyF || keyG
                             || keyAzW || keyX || keyC || keyN || keyAzM
-                            || keyP || keyU // 3.1 debug obstacles
+                            || keyP || keyO || keyU // 3.3.b.i Colossar tactiques (P=Pilier, O=Mur) + debug obstacle (U)
                             || keyH || keyJ // 3.3.a.i Colossar offensifs
                             || keyI || keyK || keyL; // 3.3.a.ii Colossar offensifs AoE
             if (!mouseDown && !spaceDown && !anySpellKey) return;
@@ -373,14 +374,17 @@ namespace Nymora.Combat.View
                 return;
             }
 
-            // 3.1 — touche P : DEBUG spawn Pilier 200 HP sur case sous souris (joueur actif).
-            // Touche U : DEBUG damage 50 sur l'obstacle de la case sous souris.
-            // ObstacleSystem accepte uniquement si senderPlayer == joueur actif.
+            // 3.3.b.i — touche P : Pilier (sort tactique Colossar, remplace ancien debug spawn 3.1).
+            //           touche O : Mur de Pierre (3 cases perpendiculaires axe caster->cible).
+            //           touche U : DEBUG damage 50 sur obstacle (gardee pour test destruction Densite Inerte +30 HP).
             if (keyP)
             {
-                var spawnCmd = new DebugSpawnObstacleCommand { TargetX = gx, TargetY = gy };
-                game.SendCommand(senderPlayer, spawnCmd);
-                Debug.Log($"[Nymora.CombatInput] Sent DEBUG SpawnObstacle player={senderPlayer} target=({gx},{gy})");
+                SendSpellAt(game, senderPlayer, SpellId.ColossarPilier, gx, gy, 0);
+                return;
+            }
+            if (keyO)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.ColossarMurDePierre, gx, gy, 0);
                 return;
             }
             if (keyU)

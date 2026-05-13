@@ -166,6 +166,49 @@ namespace Quantum
         }
 
         // ====================================================================
+        // 3.3.b.i — Line of Sight (Bresenham 2D deterministe int-only).
+        //
+        // Bible V7.1 : "Pilier/Mur bloque les lignes de vue/tir". Convention retenue :
+        // les obstacles OWN du caster ne bloquent PAS sa LoS (sinon le Colossar
+        // bloque ses propres sorts entre ses Murs — gameplay-killing). Les obstacles
+        // adverses bloquent toujours. casterPlayerIndex = -1 -> tout obstacle bloque
+        // (utile pour des checks neutres si jamais).
+        //
+        // Algo Bresenham strict : trace ligne (x0,y0)->(x1,y1), inspecte chaque case
+        // INTERMEDIAIRE (skip endpoints). Retourne false des qu'un obstacle bloquant
+        // est rencontre. Cas degenere x0==x1 && y0==y1 : retourne true.
+        // ====================================================================
+
+        public static bool HasLineOfSight(Frame f, int x0, int y0, int x1, int y1, int casterPlayerIndex = -1)
+        {
+            if (x0 == x1 && y0 == y1) return true;
+            int dx = x1 > x0 ? x1 - x0 : x0 - x1;
+            int dy = y1 > y0 ? y1 - y0 : y0 - y1;
+            int sx = x0 < x1 ? 1 : -1;
+            int sy = y0 < y1 ? 1 : -1;
+            int err = dx - dy;
+            int cx = x0;
+            int cy = y0;
+            // Safety : Manhattan + 2 garantit un nombre fini d'iterations meme en edge case.
+            int safety = dx + dy + 2;
+            while (safety-- > 0)
+            {
+                int e2 = err * 2;
+                if (e2 > -dy) { err -= dy; cx += sx; }
+                if (e2 < dx)  { err += dx; cy += sy; }
+                if (cx == x1 && cy == y1) return true; // arrivee : la case cible elle-meme ne bloque pas
+                // Case intermediaire : check obstacle bloquant.
+                EntityRef obsE = GetObstacleAt(f, cx, cy);
+                if (obsE == EntityRef.None) continue;
+                if (casterPlayerIndex < 0) return false; // mode strict : tout obstacle bloque
+                if (!f.Unsafe.TryGetPointer<Obstacle>(obsE, out var obsP)) return false;
+                if (obsP->OwnerPlayerIndex != casterPlayerIndex) return false; // obstacle ennemi bloque
+                // Sinon obstacle OWN : on traverse (Colossar voit a travers ses propres murs).
+            }
+            return true; // safety reached (ne devrait pas arriver)
+        }
+
+        // ====================================================================
         // Damage (utilise par DebugDamageObstacleCommand en 3.1, par SpellSystem en 3.3.b).
         // ====================================================================
 

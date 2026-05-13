@@ -67,6 +67,10 @@ enum SpellId : Byte
     ColossarMarteauPunisseur      = 52,  // 3.3.a.ii — Offensif anti-caster : 4 PA, range 2, 160 dgts (240 + TRAUMA -2 PA si target PA<4)
     ColossarChocSismique          = 53,  // 3.3.a.ii — Offensif ligne 4 : 4 PA, 130 dgts ligne + -1 PM cibles, traverse Pilier/Mur OWN +50 dgts next
     ColossarRepresailles          = 54,  // 3.3.a.i — Offensif/Defensif : 3 PA, melee 1, 100 dgts. 2 tours : reflect 80 dgts melee (cap 4 TODO)
+
+    // COLOSSAR 3.3.b — TACTIQUES
+    ColossarPilier                = 55,  // 3.3.b.i — Tactique : 3 PA, range 1 case vide, pose Pilier 200 HP / 3 tours. +1 FD (via SpawnObstacle hook). Bloque mouvement + LoS.
+    ColossarMurDePierre           = 56,  // 3.3.b.i — Tactique : 5 PA, range 2, pose ligne 3 cases (perpendiculaire axe caster->cible) Mur 150 HP/case / 2 tours. +1 FD par case posee. Bloque mouvement + LoS.
 }
 
 enum SpellEffectKind : Byte

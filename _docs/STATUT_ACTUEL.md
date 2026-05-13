@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 14 mai 2026 nuit profonde (⚒️ **Brique 3.3.a.ii Onde de Choc + Marteau Punisseur + Choc Sismique ✅ LIVRÉE + E2E VALIDÉE** — 3 sorts AoE Colossar, refactor PushAndTriggerEx avec out stoppedAgainstObstacleOrBorder, match complet joué jusqu'à KILL. Onde de Choc 80 dmg + push 2 → bloqué Pilier = +80 bonus + TRAUMA confirmés ; Marteau Punisseur DEPLETED 240 + TRAUMA -2 PA confirmés ; Choc Sismique 130 + MovementMalus confirmés. CombatRulesVersion 14) — **READY 3.3.b (5 sorts tactiques Colossar + fix LoS Pilier/Mur)** ⚒️  
+**Dernière mise à jour :** 14 mai 2026 nuit profonde (⚒️ **Brique 3.3.b.i Pilier + Mur de Pierre + helper LoS + fix Charge Brutale ✅ LIVRÉE + E2E VALIDÉE** — 2 sorts tactiques Colossar (Pilier 200HP/3T, Mur 3 segments 150HP/2T perpendiculaire), helper HasLineOfSight Bresenham 2D dans ObstacleHelpers, hook LoS check pré-cast pour 14 sorts whitelistés, fix Charge Brutale break sur obstacle, fix Choc Sismique stop sur obstacle non-OWN. E2E confirmé : Pilier (4,8) FD 1/3, Mur centre+(4,7)+(4,9) → FD 3/3 cap, Choc Sismique traverse Pilier OWN +50=180 dmg sur P1, Charge Brutale ennemie bloquée par Mur (8 PA gaspillés en 2 tours = power Colossar défensif validé). CombatRulesVersion 15) — **READY 3.3.b.ii (Ancrage + Provocation + Brisure)** ⚒️  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,15 +11,16 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** 🚧 **Phase 3 EN COURS** — Combat Colossar + Necram + Ghostra (~16 briques en 5 blocs)
-**Brique en cours :** **3.3.b Sorts tactiques Colossar** (5 sorts : Pilier, Mur de Pierre, Ancrage, Provocation, Brisure) + **fix LoS Pilier/Mur**. 3.3.a.iii cap Représailles 4 retours en backlog.
+**Brique en cours :** **3.3.b.ii Sorts tactiques Colossar (suite)** : Ancrage (self immune) + Provocation (force ennemi cibler caster) + Brisure (détruit Pilier/Mur ennemi + AoE). 3.3.a.iii cap Représailles 4 retours en backlog.
 **Bloc A Phase 3 :** ✅ **3.1 framework obstacles VALIDÉE** + ✅ **3.1.bis Colossar assets VALIDÉE** (14 mai 2026)
-**Bloc B Phase 3 (en cours)** : ✅ **3.2 Stats + FD + Densité Inerte VALIDÉE** + ✅ **3.3.a.i Frappe Lourde + Représailles + bonus adjacence VALIDÉE** + ✅ **3.3.a.ii Onde de Choc + Marteau Punisseur + Choc Sismique VALIDÉE** (14 mai 2026 nuit). 5/5 sorts offensifs Colossar livrés et testés E2E (match complet P0 mort). Représailles reflect E2E à valider plus tard.
-**Bug connu (à fix en 3.3.b)** : Pilier ne bloque pas les LoS des sorts à distance (Bible V7.1 dit "Pilier bloque lignes de vue/tir"), et Charge Brutale Soulrender traverse le Pilier. **Sera fixé en 3.3.b quand les sorts Pilier/Mur arrivent.**
+**Bloc B Phase 3 (en cours)** : ✅ **3.2 Stats + FD + Densité Inerte VALIDÉE** + ✅ **3.3.a.i Frappe Lourde + Représailles + bonus adjacence VALIDÉE** + ✅ **3.3.a.ii Onde de Choc + Marteau Punisseur + Choc Sismique VALIDÉE** + ✅ **3.3.b.i Pilier + Mur + LoS fix VALIDÉE** (14 mai 2026 nuit). 5/5 sorts offensifs + 2/5 tactiques Colossar livrés et E2E validés. Représailles reflect E2E à valider plus tard.
+**Bug LoS Pilier/Mur ✅ FIX 3.3.b.i** : helper `ObstacleHelpers.HasLineOfSight` (Bresenham 2D OWN-friendly), hook pré-cast `SpellNeedsLineOfSight` pour 14 sorts directs distance, Charge Brutale break sur obstacle, Choc Sismique stop sur non-OWN.
+**Backlog IA 3.8** : `AISystem.TryGreedyCastSingle` ne check pas LoS dans son estim → l'IA gaspille des PA en castant des sorts à travers obstacles (observé : Charge Brutale 2× contre Mur en un tour). Pas bloquant pour Phase 3, à fix en 3.8 IA Hard MCTS.
 **Cadrage Phase 3** : 5 blocs (A préreqs / B Colossar / C Necram / D Ghostra / E IA Hard+Replay+Debug) — séquentiel par classe
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)
 **Statut Phase 2 :** ✅ **CLÔTURÉE le 13 mai 2026 soir**. 17/17 briques validées + 2.12.bis + 2.13.a/b/c/d/e + 2.14 + 2.15.a/b/c + **2.16.a/b/c complets** (Bloc E IA). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C ✅ 3/3, 2.13 ✅, 2.14 ✅, 2.15 ✅, **2.16 ✅ TERMINÉ** (IA Easy random + IA Medium greedy + scène 30_CombatIA + overlay Victory/Defeat + selecteur difficulté + AI pacing + mouvement cardinal cell-by-cell). **🏆 Soulrender + Nightseer 100% jouables, combat 1v1 vs IA E2E**.
 
-**CombatRulesVersion :** **14** (bump 3.3.a.ii — ajout 3 sorts Colossar AoE : Onde de Choc + Marteau Punisseur + Choc Sismique, refactor PushAndTriggerEx avec out stoppedAgainstObstacleOrBorder pour détecter VERROU bonus wall).
+**CombatRulesVersion :** **15** (bump 3.3.b.i — ajout 2 sorts tactiques Colossar Pilier+Mur, helper LoS Bresenham 2D, hook LoS pré-cast 14 sorts whitelistés, fix Charge Brutale break sur obstacle, fix Choc Sismique stop sur non-OWN).
 
 **Convention temporelle (depuis 2.14) :** **TurnNumber = round complet** (P0+P1 = 1 round, sémantique Dofus). Toutes les durées Bible V7.1 "N tours" = N rounds. Décrémentation statuses/marques/voiles/terrains uniquement en fin de dernier sous-tour du round. Cf memory `project_turn_semantics.md`.
 
@@ -837,6 +838,23 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 14 mai 2026 nuit profonde (3) — ⚒️ Brique 3.3.b.i ✅ Pilier + Mur de Pierre + helper LoS + fix Charge Brutale
+- **Découpage** : brique 3.3.b (5 sorts tactiques Colossar + fix LoS bug deferred 3.3.a) sous-divisée en 3.3.b.i (Pilier + Mur + LoS infra) + 3.3.b.ii (Ancrage + Provocation + Brisure) pour limiter surface bug. Pattern Phase 2 reproduit.
+- **7 fichiers** : `Spell.qtn` (SpellId 55 Pilier + 56 MurDePierre), `SpellRegistry.cs` (constantes PilierHP=200/3T + MurSegmentHP=150/2T/3 segments + 2 SpellDef Filter EmptyTile), `ObstacleHelpers.cs` (NEW `HasLineOfSight` Bresenham 2D int-only deterministe, OWN obstacles ne bloquent pas le owner), `SpellSystem.cs` (hook LoS pré-cast + helper `SpellNeedsLineOfSight` whitelist 14 sorts directs distance + 2 cases handlers Pilier/Mur perpendiculaire + fix Charge Brutale `break` sur HasObstacleAt + fix Choc Sismique stop sur obstacle non-OWN), `CombatInputController.cs` (touche P=Pilier remplace ancien debug spawn 3.1, touche O=Mur, U gardé pour debug damage destruction +30 HP), `GameVersion.cs` (14→15).
+- **Décisions clés** :
+  - **LoS OWN-friendly** : Bible "Pilier/Mur bloque LoS" interprété comme adversaire-uniquement bloque le caster. Sinon Colossar empêcherait ses propres sorts entre ses Murs (gameplay-killing). Param `casterPlayerIndex` au helper, OWN obstacles traversés.
+  - **Liste sorts LoS hardcoded** dans `SpellNeedsLineOfSight` switch (vs flag dans SpellDef) — patterns existant en Phase 2/3, plus simple à lire et maintenir. 14 sorts whitelistés (Soulrender 4 + Nightseer 8 + Colossar 2). Sorts en LIGNE custom (Charge/Volée/Choc) gèrent leur propre arrêt obstacle dans handler → exclus.
+  - **Mur perpendiculaire** : axe-dominant Manhattan caster→cible inversé pour direction du mur. Cohérent Bible (mur perpendiculaire à l'angle d'attaque). Si centre occupé → log warn `Spawn rejete` mais autres segments passent (ex 2/3).
+  - **Charge Brutale fix** : `break` ajouté dans loop step si `HasObstacleAt(cx, cy)` AVANT check occupant. Caster s'arrête juste avant obstacle, pas de damage (Bible : seule la cible vivante prend dgts, l'obstacle absorbe l'impact mais n'est pas blessé par la charge).
+- **E2E validé** :
+  - **Pilier (P)** sur (4,8) → Spawn HP=200 + +1 FD : 0→1/3 ✅. Charge Brutale ennemie au tour suivant s'arrête à (5,8) au lieu d'aller jusqu'à P0 en (3,8) ✅
+  - **Mur (O)** sur (4,8) qui était déjà Pilier → segments (4,7)+(4,9) posés, centre (4,8) skippé proprement → "2/3 segments poses (centre 4,8, axe perp 0,1)" + 2× +1 FD → cap 3/3 atteint ✅
+  - **Choc Sismique (L)** sur (4,8) → traverse Pilier OWN +50 ✅, hit P1 (5,8) **180 dgts** (130 base + 50 wall bonus) ✅ + MovementMalus -1 PM appliqué tour suivant ✅
+  - **Power gameplay validé** : Charge Brutale ennemie 2× contre le Mur = 8 PA P1 gaspillés en un tour. Colossar défensif Bible-correct.
+- **Bug IA observé** : `AISystem.TryGreedyCastSingle` n'utilise pas `HasLineOfSight` dans son estim → l'IA continue à choisir Charge Brutale sur cible derrière obstacle. Pas un bug du sort (Bible-correct), mais imperfection IA. Reporté en backlog 3.8 (IA Hard MCTS).
+
+---
 
 ### 14 mai 2026 nuit profonde (suite) — ⚒️ Brique 3.3.a.ii ✅ Onde de Choc + Marteau Punisseur + Choc Sismique
 - **Livraison** : 5 fichiers MOD : `Spell.qtn` (SpellId 51/52/53), `SpellRegistry.cs` (constantes + 3 SpellDef), `SpellSystem.cs` (refactor PushAndTriggerEx avec `out bool stoppedAgainstObstacleOrBorder`, blocs damage compute Marteau Punisseur DEPLETED 240+TRAUMA-2PA, case Onde de Choc dans Resolve AoE rayon 1 like Rugissement, case Onde de Choc dans ApplySpellSpecificEffects qui itère 4 cases adjacentes + push 2 + bonus +80 + TRAUMA si stoppé, case Choc Sismique line iteration custom +50 si traverse Pilier OWN), `CombatInputController.cs` (touches I/K/L), `GameVersion.cs` (13→14).

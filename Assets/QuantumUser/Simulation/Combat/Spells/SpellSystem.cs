@@ -176,6 +176,23 @@ namespace Quantum
                 }
             }
 
+            // 3.3.b.i — Line of Sight check : Bible V7.1 "Pilier/Mur bloque lignes de vue/tir".
+            // Pour les sorts directs a distance (range >= 2), on verifie qu'aucun obstacle non-OWN
+            // ne se trouve sur la ligne caster -> case ciblee. Les obstacles du caster lui-meme
+            // ne bloquent PAS sa LoS (sinon Colossar empeche ses propres sorts entre ses Murs).
+            // Sorts en LIGNE custom (Charge Brutale, Volee d'Epines, Choc Sismique) gerent leur
+            // propre arret obstacle dans leur handler -> exclus de ce check generique.
+            if (SpellNeedsLineOfSight(cmd.Spell))
+            {
+                if (!ObstacleHelpers.HasLineOfSight(f,
+                    caster->GridX, caster->GridY, cmd.TargetX, cmd.TargetY,
+                    caster->PlayerIndex))
+                {
+                    Log.Warn($"[Spell] rejet : ligne de vue bloquee par obstacle entre ({caster->GridX},{caster->GridY}) et ({cmd.TargetX},{cmd.TargetY})");
+                    return;
+                }
+            }
+
             // 2.16 — Traquenard : cooldown 4 tours + pre-validation case adjacente libre.
             if (cmd.Spell == SpellId.NightseerTraquenard)
             {
@@ -902,6 +919,14 @@ namespace Quantum
                         if (!GridHelpers.InBounds(cx, cy)) break;
                         if (!GridHelpers.IsWalkable(f, cx, cy)) break;
 
+                        // 3.3.b.i — Bible V7.1 : Pilier/Mur bloque la charge. Le caster s'arrete
+                        // sur la case precedente, pas de damage (l'obstacle absorbe l'impact mais
+                        // n'est pas blesse par la charge — Bible : seule la cible vivante prend dgts).
+                        if (ObstacleHelpers.HasObstacleAt(f, cx, cy))
+                        {
+                            break;
+                        }
+
                         EntityRef occ = GridHelpers.GetOccupant(f, cx, cy);
                         if (occ != EntityRef.None && occ != casterEntity)
                         {
@@ -1518,15 +1543,21 @@ namespace Quantum
                         curYCs += stepYCs;
                         if (!GridHelpers.InBounds(curXCs, curYCs)) break;
 
-                        // Obstacle Colossar OWN sur la case ? Traverse + flag bonus a la cible suivante.
+                        // Obstacle sur la case ? OWN -> traverse + flag bonus a la cible suivante (Bible).
+                        // NON-OWN (obstacle adverse) -> stop la ligne (3.3.b.i fix LoS Bible-cohérent).
                         EntityRef obsEntity = ObstacleHelpers.GetObstacleAt(f, curXCs, curYCs);
                         if (obsEntity != EntityRef.None
-                            && f.Unsafe.TryGetPointer<Obstacle>(obsEntity, out Obstacle* obs)
-                            && obs->OwnerPlayerIndex == caster->PlayerIndex)
+                            && f.Unsafe.TryGetPointer<Obstacle>(obsEntity, out Obstacle* obs))
                         {
-                            pendingThroughWallBonus = true;
-                            Log.Info($"[Spell] Choc Sismique traverse obstacle OWN ({curXCs},{curYCs}) -> +{SpellRegistry.ChocSismiqueBonusThroughWall} dgts a la cible suivante");
-                            continue; // traverse sans s'arreter
+                            if (obs->OwnerPlayerIndex == caster->PlayerIndex)
+                            {
+                                pendingThroughWallBonus = true;
+                                Log.Info($"[Spell] Choc Sismique traverse obstacle OWN ({curXCs},{curYCs}) -> +{SpellRegistry.ChocSismiqueBonusThroughWall} dgts a la cible suivante");
+                                continue; // traverse sans s'arreter
+                            }
+                            // Obstacle adverse : stop la ligne.
+                            Log.Info($"[Spell] Choc Sismique stoppe par obstacle adverse ({curXCs},{curYCs})");
+                            break;
                         }
 
                         // Combatant sur la case ? Hit.
@@ -1570,6 +1601,119 @@ namespace Quantum
                     }
                     break;
                 }
+
+                // -------------------------------------------------------------
+                // 3.3.b.i — Colossar Tactiques : Pilier + Mur de Pierre
+                // -------------------------------------------------------------
+
+                case SpellId.ColossarPilier:
+                {
+                    // Bible : pose 1 Pilier 200 HP / 3 tours sur la case adjacente ciblee.
+                    // Le filter EmptyTile (SpellDef) garantit deja que la case n'a pas de combatant ;
+                    // SpawnObstacle refuse en plus si obstacle deja present + log warn defensif.
+                    // +1 FD est branche dans SpawnObstacle (cf 3.2 hook GainFondation).
+                    EntityRef pillarEntity = ObstacleHelpers.SpawnObstacle(
+                        f,
+                        ObstacleKind.Pillar, SpellRegistry.PilierHP,
+                        cmd.TargetX, cmd.TargetY,
+                        owner: casterEntity, ownerPlayerIndex: caster->PlayerIndex,
+                        expiresOnTurn: currentTurn + SpellRegistry.PilierTurns);
+                    if (pillarEntity == EntityRef.None)
+                    {
+                        Log.Warn($"[Spell] Pilier : SpawnObstacle a echoue sur ({cmd.TargetX},{cmd.TargetY})");
+                    }
+                    break;
+                }
+
+                case SpellId.ColossarMurDePierre:
+                {
+                    // Bible : pose une LIGNE de 3 cases de Mur (150 HP / 2 tours / case) centree sur
+                    // (cmd.TargetX, cmd.TargetY), ORIENTEE PERPENDICULAIREMENT a l'axe caster->cible.
+                    // Cases occupees ou deja obstacle : skip silencieux (SpawnObstacle refuse + log warn).
+                    // Chaque spawn reussi declenche +1 FD via le hook (max 3 FD posables d'un coup).
+                    int wsx = caster->GridX;
+                    int wsy = caster->GridY;
+                    int wdx = cmd.TargetX - wsx;
+                    int wdy = cmd.TargetY - wsy;
+                    int wadx = wdx < 0 ? -wdx : wdx;
+                    int wady = wdy < 0 ? -wdy : wdy;
+                    // Axe principal caster->cible -> orientation perpendiculaire pour la ligne du mur.
+                    // Si l'axe principal est X (horizontal) -> mur sur axe Y (vertical) et inversement.
+                    int wPerpStepX, wPerpStepY;
+                    if (wadx >= wady)
+                    {
+                        // Axe caster->cible majoritairement X -> mur perpendiculaire en Y.
+                        wPerpStepX = 0;
+                        wPerpStepY = 1;
+                    }
+                    else
+                    {
+                        // Axe caster->cible majoritairement Y -> mur perpendiculaire en X.
+                        wPerpStepX = 1;
+                        wPerpStepY = 0;
+                    }
+
+                    // Pose 3 segments : centre (offset 0), -1, +1 sur axe perpendiculaire.
+                    int segmentsSpawned = 0;
+                    for (int offset = -(SpellRegistry.MurDePierreSegments / 2);
+                             offset <= SpellRegistry.MurDePierreSegments / 2;
+                             offset++)
+                    {
+                        int wx = cmd.TargetX + wPerpStepX * offset;
+                        int wy = cmd.TargetY + wPerpStepY * offset;
+                        EntityRef wallEntity = ObstacleHelpers.SpawnObstacle(
+                            f,
+                            ObstacleKind.Wall, SpellRegistry.MurDePierreSegmentHP,
+                            wx, wy,
+                            owner: casterEntity, ownerPlayerIndex: caster->PlayerIndex,
+                            expiresOnTurn: currentTurn + SpellRegistry.MurDePierreTurns);
+                        if (wallEntity != EntityRef.None) segmentsSpawned++;
+                    }
+                    Log.Info($"[Spell] Mur de Pierre : {segmentsSpawned}/{SpellRegistry.MurDePierreSegments} segments poses (centre {cmd.TargetX},{cmd.TargetY}, axe perp {wPerpStepX},{wPerpStepY})");
+                    break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// 3.3.b.i — Liste explicite des sorts qui requierent une ligne de vue claire
+        /// caster -> case ciblee. Bible V7.1 : "Pilier/Mur bloque lignes de vue/tir".
+        ///
+        /// Sont concernes les sorts DIRECTS a distance (range >= 2) qui visent une case
+        /// precise (Single/AoE centree sur target). Sont EXCLUS :
+        ///   - Sorts melee (range 1, pas d'intermediaire) : Tranche-Ame, Ouvre-Plaie,
+        ///     Frappe Lourde, Represailles, Ame Laceree.
+        ///   - Sorts Self / AoE caster (Filter Self) : Pacte de Sang, Rugissement, Souffle
+        ///     Glacial, Onde de Choc, Peau de Fer, Rage Insatiable, Riposte Carmin, etc.
+        ///   - Sorts en LIGNE custom qui gerent leur propre arret obstacle dans leur handler :
+        ///     Charge Brutale, Volee d'Epines, Choc Sismique.
+        ///   - Teleport (Bible : "ignore les obstacles") : Pas Furtif, Evanescence, Traquenard.
+        ///   - Sorts qui posent quelque chose a courte portee non bloque (Pilier 3.3.b range 1).
+        /// </summary>
+        private static bool SpellNeedsLineOfSight(SpellId id)
+        {
+            switch (id)
+            {
+                // Soulrender distance.
+                case SpellId.SoulrenderMarqueDeCarnage:    // range 5, single target
+                case SpellId.SoulrenderEmpoignade:         // range 3, pull
+                case SpellId.SoulrenderDetonationSanglante: // range 4, AoE croix
+                case SpellId.SoulrenderCuree:              // range 2, single target
+                // Nightseer distance.
+                case SpellId.NightseerTirPrecis:           // range 6
+                case SpellId.NightseerFrappeDeLOmbre:      // range 3
+                case SpellId.NightseerDetonationOnirique:  // range 5, AoE 2x2
+                case SpellId.NightseerSalveMortelle:       // range 6, croix 5
+                case SpellId.NightseerMarqueDuChasseur:    // range 5
+                case SpellId.NightseerFiletDeRonces:       // range 4, pose trap
+                case SpellId.NightseerChampDeMines:        // range 3, AoE 3x3
+                case SpellId.NightseerBourrasque:          // range 5, push
+                // Colossar distance.
+                case SpellId.ColossarMarteauPunisseur:     // range 2
+                case SpellId.ColossarMurDePierre:          // range 2 (pose, mais Bible : on doit voir l'emplacement)
+                    return true;
+                default:
+                    return false;
             }
         }
 
