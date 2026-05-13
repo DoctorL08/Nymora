@@ -111,6 +111,39 @@ namespace Quantum
             return data->OwnerPlayerIndex == playerIndex;
         }
 
+        /// <summary>
+        /// 3.3.a.i — Bible Frappe Lourde "epinglee" : la case juste DERRIERE la cible
+        /// (cote oppose au caster sur l'axe dominant) est-elle un obstacle ou un bord ?
+        ///
+        /// Direction calculee axe-dominant (Manhattan), comme PushAndTrigger pour coherence.
+        /// Si delta caster->target == (0,0) : pas epinglee (cas degenere).
+        /// </summary>
+        public static bool IsTargetPinnedFromCaster(Frame f, Combatant* caster, Combatant* targetC)
+        {
+            int dx = targetC->GridX - caster->GridX;
+            int dy = targetC->GridY - caster->GridY;
+            int absDx = dx < 0 ? -dx : dx;
+            int absDy = dy < 0 ? -dy : dy;
+            int stepX = 0, stepY = 0;
+            if (absDx >= absDy)
+            {
+                stepX = dx > 0 ? 1 : (dx < 0 ? -1 : 0);
+            }
+            else
+            {
+                stepY = dy > 0 ? 1 : (dy < 0 ? -1 : 0);
+            }
+            if (stepX == 0 && stepY == 0) return false;
+            int behindX = targetC->GridX + stepX;
+            int behindY = targetC->GridY + stepY;
+            // Bord de map = epingle.
+            if (!GridHelpers.InBounds(behindX, behindY)) return true;
+            // Obstacle (Pilier/Mur) = epingle. Bible ne specifie pas owner (Pilier ennemi
+            // futur compte aussi, ce qui est coherent : c'est la geometrie qui compte).
+            if (ObstacleHelpers.HasObstacleAt(f, behindX, behindY)) return true;
+            return false;
+        }
+
         // ====================================================================
         // Ressource Fondation (FD) — gain helper.
         // ====================================================================

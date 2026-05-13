@@ -161,6 +161,12 @@ namespace Nymora.Combat.View
             // Seront retirees en 3.3.b quand les sorts Pilier/Mur Colossar arrivent.
             bool keyP  = UnityEngine.Input.GetKeyDown(KeyCode.P);
             bool keyU  = UnityEngine.Input.GetKeyDown(KeyCode.U);
+            // 3.3.a.i — COLOSSAR OFFENSIFS (touches H/J identiques AZERTY/QWERTY) :
+            //   H = Frappe Lourde       (3 PA, melee 1, 180 dgts +100 si epinglee)
+            //   J = Represailles        (3 PA, melee 1, 100 dgts + reflect 80 dgts melee 2 tours)
+            // Les 3 sorts AoE/complexes Colossar viendront en 3.3.a.ii (touches K/L/I).
+            bool keyH  = UnityEngine.Input.GetKeyDown(KeyCode.H);
+            bool keyJ  = UnityEngine.Input.GetKeyDown(KeyCode.J);
             // BIND AZERTY FR (Lorenzo) : les Unity KeyCode reflètent la position physique
             // (= scancode QWERTY US) ; on map ici à la LETTRE AFFICHEE sur clavier AZERTY.
             //
@@ -206,7 +212,8 @@ namespace Nymora.Combat.View
                             || keyAzA || keyAzZ || keyE || keyR || keyV
                             || keyAzQ || keyS || keyD || keyF || keyG
                             || keyAzW || keyX || keyC || keyN || keyAzM
-                            || keyP || keyU; // 3.1 debug obstacles
+                            || keyP || keyU // 3.1 debug obstacles
+                            || keyH || keyJ; // 3.3.a.i Colossar offensifs
             if (!mouseDown && !spaceDown && !anySpellKey) return;
 
             // Calcule la case sous la souris (partagee entre mvt et cast).
@@ -374,6 +381,18 @@ namespace Nymora.Combat.View
                 var dmgCmd = new DebugDamageObstacleCommand { TargetX = gx, TargetY = gy };
                 game.SendCommand(senderPlayer, dmgCmd);
                 Debug.Log($"[Nymora.CombatInput] Sent DEBUG DamageObstacle player={senderPlayer} target=({gx},{gy})");
+                return;
+            }
+
+            // 3.3.a.i — Colossar offensifs (target = case sous souris, doit etre adjacente).
+            if (keyH)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.ColossarFrappeLourde, gx, gy, 0);
+                return;
+            }
+            if (keyJ)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.ColossarRepresailles, gx, gy, 0);
                 return;
             }
 

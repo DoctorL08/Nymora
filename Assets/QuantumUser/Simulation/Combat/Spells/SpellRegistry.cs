@@ -145,6 +145,20 @@ namespace Quantum
         public const int TraquenardPRGainOnConsumeMark = 2;   // +2 PR au caster si bonus marque declenche
         public const int TraquenardRangeMax           = 5;    // portee Manhattan caster -> cible
 
+        // 3.3.a.i — Colossar Offensifs (Bible V7.1).
+        public const int FrappeLourdeDmgBase          = 180;  // base mêlée
+        public const int FrappeLourdeDmgIfPinned      = 280;  // 180+100 si cible epinglee (case opposee au caster bloquee)
+        public const int RepresaillesDmgImmediate     = 100;  // dgts directs au cast
+        public const int RepresaillesReflectDmg       = 80;   // dgts reflectes sur attaque melee subie
+        public const int RepresaillesReflectTurns     = 2;    // 2 tours de reflect actif
+        // public const int RepresaillesReflectMaxTriggers = 4; // TODO 3.3.a.iii cap Bible (edge case)
+
+        // 3.3.a.i — Passif Densite Inerte bonus adjacence (Bible V7.1).
+        // Branche dans le damage compute des sorts Colossar : si caster Colossar adjacent
+        // a un de ses obstacles ET sort range max <= 2 -> +20 dmg.
+        public const int DensiteInerteAdjacenceBonus  = 20;   // cf ColossarPassif.AdjacentObstacleBonusDamage
+        public const int DensiteInerteAdjacenceMaxRange = 2;  // sorts portee 1-2 (melee + courte)
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -779,6 +793,51 @@ namespace Quantum
                         RangeMax = TraquenardRangeMax,
                         DamageAmount = TraquenardDmgBase,
                         HGCostMandatory = (byte)TraquenardPRCost, // 4 PR mandatory
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // -------------------------------------------------------------
+                // COLOSSAR — Bible V7.1 (3.3.a.i)
+                // -------------------------------------------------------------
+
+                // Frappe Lourde (3.3.a.i) : 3 PA, melee 1, 180 dgts.
+                // Bonus "epinglee" : +100 dgts (= 280) si la case OPPOSEE au caster derriere
+                // la cible contient un obstacle (Pilier/Mur Colossar) OU est hors grille (bord).
+                // Bonus passif Densite Inerte adjacence : +20 dmg si caster adjacent a son obstacle
+                // (range <= 2 ; FrappeLourde range 1, donc OK). Apply dans le handler.
+                case SpellId.ColossarFrappeLourde:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 1,
+                        DamageAmount = FrappeLourdeDmgBase,  // 180 base, modifie en handler
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Represailles (3.3.a.i) : 3 PA, melee 1, 100 dgts immediat + applique
+                // RipostMelee 80 dmg sur le CASTER pour 2 tours (reflect sur attaque melee subie).
+                // Bible cap 4 retours non implemente (edge case, TODO 3.3.a.iii ou Phase 6).
+                // Bonus passif Densite Inerte adjacence : +20 dmg sur les 100 dgts immediats si caster adjacent.
+                case SpellId.ColossarRepresailles:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 1,
+                        DamageAmount = RepresaillesDmgImmediate, // 100, +20 adjacence en handler
+                        HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,

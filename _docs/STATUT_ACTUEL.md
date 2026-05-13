@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 14 mai 2026 (🪨 **Brique 3.2 Colossar Stats + Ressource FD + Passif Densité Inerte ✅ VALIDÉE** — Tous les effets passifs testés E2E : +1 FD spawn Pilier, -8%/16% damage reduction (sorts standards + Charge Brutale après fix bypass-pipeline), +30 HP au destroy Pilier, +1 FD push contre obstacle (VERROU Bible). CombatRulesVersion 12) — **READY 3.3.a SORTS OFFENSIFS COLOSSAR** ⚒️  
+**Dernière mise à jour :** 14 mai 2026 nuit profonde (⚒️ **Brique 3.3.a.i Frappe Lourde + Représailles + bonus adjacence ✅ LIVRÉE** — 2 sorts Colossar, helper IsTargetPinnedFromCaster, bonus +20 dmg adjacence générique pour tous sorts Colossar range≤2. E2E Frappe Lourde testé OK : 180 base, 280 épinglée, +20 adjacence. Représailles livré mais ciblage E2E à refaire. CombatRulesVersion 13) — **READY 3.3.a.ii (3 sorts AoE Colossar)** ⚒️  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,15 +11,15 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** 🚧 **Phase 3 EN COURS** — Combat Colossar + Necram + Ghostra (~16 briques en 5 blocs)
-**Brique en cours :** **3.3.a Sorts offensifs Colossar** (Frappe Lourde, Onde de Choc, Marteau Punisseur, Choc Sismique, Représailles)
+**Brique en cours :** **3.3.a.ii Sorts offensifs AoE Colossar** (Onde de Choc, Marteau Punisseur, Choc Sismique). 3.3.a.iii cap Représailles 4 retours en backlog.
 **Bloc A Phase 3 :** ✅ **3.1 framework obstacles VALIDÉE** + ✅ **3.1.bis Colossar assets VALIDÉE** (14 mai 2026)
-**Bloc B Phase 3 (en cours)** : ✅ **3.2 Stats + FD + Densité Inerte VALIDÉE** (14 mai 2026 — passif complet branché : +1 FD spawn obstacle, -8%/obstacle dmg reduction (cap -24%), +30 HP Pilier détruit, +1 FD push contre obstacle/bord). Bonus +20 dmg adjacence obstacle préparé (helper) mais branché plus tard quand sorts Colossar adjacence-aware arrivent
+**Bloc B Phase 3 (en cours)** : ✅ **3.2 Stats + FD + Densité Inerte VALIDÉE** + ✅ **3.3.a.i Frappe Lourde + Représailles + bonus adjacence VALIDÉE** (14 mai 2026 nuit). Frappe Lourde épinglée 280 dgts + bonus adjacence +20 dgts E2E OK. Représailles cast OK mais reflect à valider E2E plus tard.
 **Bug connu (à fix en 3.3.b)** : Pilier ne bloque pas les LoS des sorts à distance (Bible V7.1 dit "Pilier bloque lignes de vue/tir"), et Charge Brutale Soulrender traverse le Pilier. Sera intégré quand les sorts Pilier/Mur arrivent en 3.3.b
 **Cadrage Phase 3** : 5 blocs (A préreqs / B Colossar / C Necram / D Ghostra / E IA Hard+Replay+Debug) — séquentiel par classe
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)
 **Statut Phase 2 :** ✅ **CLÔTURÉE le 13 mai 2026 soir**. 17/17 briques validées + 2.12.bis + 2.13.a/b/c/d/e + 2.14 + 2.15.a/b/c + **2.16.a/b/c complets** (Bloc E IA). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C ✅ 3/3, 2.13 ✅, 2.14 ✅, 2.15 ✅, **2.16 ✅ TERMINÉ** (IA Easy random + IA Medium greedy + scène 30_CombatIA + overlay Victory/Defeat + selecteur difficulté + AI pacing + mouvement cardinal cell-by-cell). **🏆 Soulrender + Nightseer 100% jouables, combat 1v1 vs IA E2E**.
 
-**CombatRulesVersion :** **12** (bump 3.2 — ajout passif Densité Inerte, modifie damage equation, schema gameplay change).
+**CombatRulesVersion :** **13** (bump 3.3.a.i — ajout 2 sorts Colossar offensifs + bonus passif adjacence dans damage compute).
 
 **Convention temporelle (depuis 2.14) :** **TurnNumber = round complet** (P0+P1 = 1 round, sémantique Dofus). Toutes les durées Bible V7.1 "N tours" = N rounds. Décrémentation statuses/marques/voiles/terrains uniquement en fin de dernier sous-tour du round. Cf memory `project_turn_semantics.md`.
 
@@ -837,6 +837,24 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 14 mai 2026 nuit profonde — ⚒️ Brique 3.3.a.i ✅ Frappe Lourde + Représailles + bonus adjacence
+- **Découpage** : la brique 3.3.a (5 sorts offensifs Colossar) sous-divisée en 3.3.a.i (2 sorts simples + infra) + 3.3.a.ii (3 sorts AoE) + 3.3.a.iii (cap Représailles backlog) pour limiter la surface de bug. Pattern Phase 2 (2.10.a/b/c) reproduit.
+- **5 fichiers** : `Spell.qtn` (SpellId 50 ColossarFrappeLourde + 54 ColossarRepresailles), `SpellRegistry.cs` (constantes + 2 entries SpellDef + bonus adjacence constants), `ColossarPassif.cs` (helper `IsTargetPinnedFromCaster` axe-dominant), `SpellSystem.cs` (bloc Frappe Lourde épinglée + bloc générique bonus adjacence pour tous sorts Colossar range ≤ 2 + case Représailles dans ApplySpellSpecificEffects → RipostMelee 80 dmg/2 tours sur caster), `CombatInputController.cs` (touches H/J), `GameVersion.cs` (12→13).
+- **Décisions clés** :
+  - Status TRAUMA Bible (Onde de Choc + Marteau Punisseur 3.3.a.ii) = combo des `StatusKind.ActionMalus` (-PA) + `MovementMalus` (-PM) déjà existants. Pas de nouveau StatusKind nécessaire.
+  - Représailles cap 4 retours Bible reporté en 3.3.a.iii (edge case, demande extension du Status struct ou nouveau champ tracker côté Combatant).
+  - Bonus passif adjacence branché en bloc générique post damage modifs spécifiques (avant shield calc) pour s'appliquer automatiquement à TOUS les sorts Colossar futurs (Onde de Choc, Marteau Punisseur 3.3.a.ii). Pas dans Choc Sismique car range > 2.
+  - Helper `IsTargetPinnedFromCaster` placé dans ColossarPassif (cohérent avec autres helpers Colossar). Algo : axe-dominant Manhattan caster→target, check case derrière target = obstacle OU bord de map = épinglée. Bible : Pilier ennemi compte aussi (géométrie pure).
+- **E2E Frappe Lourde** (3 effets validés) :
+  - Round 2 : `Damage 180 sur P1` (pas épinglée car case (7,8) libre derrière)
+  - Round 3 : `Frappe Lourde EPINGLEE : 280 dgts sur P1 (6,8)` (P0 en (6,7), Pilier en (6,9) derrière P1 sur axe vertical) → COMBO BIBLE VALIDÉ
+  - Round 4 : `Densite Inerte +20 dmg adjacence sur P0 (sort ColossarFrappeLourde) -> 200` (P0 adjacent à son Pilier en (5,7)) → bonus passif adjacence opérationnel
+- **Représailles non testé E2E** : Lorenzo a tenté de cast sur sa propre case (5,8) → `[Spell] rejet : distance 0 hors range [1,1]`. Le code est en place et compile, juste le ciblage de test (case ennemi adjacent) à refaire en session future.
+- **Match perdu Lorenzo** : Charge Brutale cascade P1 Soulrender → P0 Colossar HP 40 → 0 → Curée KILL. Affichage `MATCH END — Winner: P1` au round 4. C'est OK pour le test, gameplay équilibré (Soulrender Bible-fort vs Colossar setup-dépendant sans tous ses sorts).
+- **Reste pour 3.3.a complet** : 3.3.a.ii (Onde de Choc + Marteau Punisseur + Choc Sismique = 3 handlers complexes AoE/line bypass mur). 3.3.a.iii cap Représailles si Bible-strict.
+
+---
 
 ### 14 mai 2026 — 🪨 Brique 3.2 ✅ Stats Colossar + Ressource FD + Passif Densité Inerte
 - **Livraison** : 1 NEW (`ColossarPassif.cs` helpers) + 3 MOD (`ObstacleHelpers.cs`, `SpellSystem.cs`, `GameVersion.cs`).

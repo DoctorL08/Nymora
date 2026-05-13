@@ -60,6 +60,13 @@ enum SpellId : Byte
 
     // NIGHTSEER 2.16 — SIGNATURE
     NightseerTraquenard           = 45,  // 2 PA, range 5, 4/4 PR, teleport adjacent + 280 dgts + Paralysie -3PM/-2PA. Bonus +80 dgts + 2 PR si target Traque/Voile/Empreinte (consume marque). Cooldown 4 tours.
+
+    // COLOSSAR (Bible V7.1 — 5 offensifs + 5 tactiques + 5 survie + signature) — Phase 3.3.a/b/c
+    ColossarFrappeLourde          = 50,  // 3.3.a.i — Offensif : 3 PA, melee 1, 180 dgts (+100 = 280 si cible epinglee = obstacle/bord cote oppose au caster)
+    ColossarRepresailles          = 54,  // 3.3.a.i — Offensif/Defensif : 3 PA, melee 1, 100 dgts. 2 tours : reflect 80 dgts sur attaques melee subies (cap 4 retours TODO)
+    // ColossarOndeDeChoc          = 51,  // 3.3.a.ii — Offensif AoE
+    // ColossarMarteauPunisseur    = 52,  // 3.3.a.ii — Offensif anti-caster
+    // ColossarChocSismique        = 53,  // 3.3.a.ii — Offensif ligne 4
 }
 
 enum SpellEffectKind : Byte

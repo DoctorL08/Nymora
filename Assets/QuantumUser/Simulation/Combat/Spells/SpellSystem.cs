@@ -355,6 +355,31 @@ namespace Quantum
                             Log.Info($"[Spell] Detonation Onirique dechire Voile sur ({cx},{cy})");
                         }
                     }
+                    else if (cmd.Spell == SpellId.ColossarFrappeLourde)
+                    {
+                        // 3.3.a.i — Bible Frappe Lourde : 180 base, +100 si cible epinglee
+                        // (case opposee au caster contient obstacle/bord).
+                        if (ColossarPassif.IsTargetPinnedFromCaster(f, caster, targetC))
+                        {
+                            dmgThisTarget = SpellRegistry.FrappeLourdeDmgIfPinned;
+                            Log.Info($"[Spell] Frappe Lourde EPINGLEE : {SpellRegistry.FrappeLourdeDmgIfPinned} dgts sur P{targetC->PlayerIndex} ({cx},{cy})");
+                        }
+                    }
+
+                    // 3.3.a.i — Passif Densite Inerte bonus adjacence : si caster Colossar
+                    // adjacent a un de ses obstacles ET sort range max <= 2 -> +20 dmg.
+                    // S'applique a TOUS les sorts Colossar (Frappe Lourde, Represailles,
+                    // Onde de Choc 3.3.a.ii, Marteau Punisseur 3.3.a.ii). Pas Choc Sismique
+                    // (range 4) ni sorts survie. Bible : "Quand le Colossar est adjacent a
+                    // un de ses Piliers/Murs : ses sorts a portee 1-2 gagnent +20 degats".
+                    if (caster->Class == NymoraClass.Colossar
+                        && spellDef.RangeMax <= SpellRegistry.DensiteInerteAdjacenceMaxRange
+                        && spellDef.RangeMax >= 1 // exclut self-target (range 0)
+                        && ColossarPassif.IsAdjacentToOwnObstacle(f, caster, caster->PlayerIndex))
+                    {
+                        dmgThisTarget += SpellRegistry.DensiteInerteAdjacenceBonus;
+                        Log.Info($"[Densite Inerte] +{SpellRegistry.DensiteInerteAdjacenceBonus} dmg adjacence sur P{caster->PlayerIndex} (sort {cmd.Spell}) -> {dmgThisTarget}");
+                    }
 
                     // 2.15.a — Volee d'Epines : on retient la derniere case touchee (pour pose
                     // Filet apres la boucle). En Line, l'iteration suit l'ordre de proximite
@@ -1378,6 +1403,22 @@ namespace Quantum
                     Log.Info($"[Spell] Traquenard cooldown {SpellRegistry.TraquenardCooldownTurns} tours actif (utilisable a partir du tour {currentTurn + SpellRegistry.TraquenardCooldownTurns})");
                     break;
                 }
+
+                // -------------------------------------------------------------
+                // COLOSSAR — 3.3.a.i
+                // -------------------------------------------------------------
+
+                case SpellId.ColossarRepresailles:
+                    // 3.3.a.i — Bible : 100 dgts immediat (deja inflige par damage loop standard,
+                    // + bonus adjacence Densite Inerte si applicable). Apres : applique RipostMelee
+                    // 80 dgts pendant 2 tours sur le CASTER (reflect sur attaques melee subies).
+                    // Bible cap 4 retours non implemente (TODO 3.3.a.iii).
+                    StatusHelper.Apply(caster, StatusKind.RipostMelee,
+                        magnitude: SpellRegistry.RepresaillesReflectDmg,
+                        turnsLeft: SpellRegistry.RepresaillesReflectTurns,
+                        currentTurn);
+                    Log.Info($"[Spell] Represailles : RipostMelee {SpellRegistry.RepresaillesReflectDmg} dgts ({SpellRegistry.RepresaillesReflectTurns} tours) sur P{caster->PlayerIndex}");
+                    break;
             }
         }
 

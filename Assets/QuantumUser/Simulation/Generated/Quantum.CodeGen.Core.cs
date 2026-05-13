@@ -118,6 +118,8 @@ namespace Quantum {
     NightseerSeveSauvage = 43,
     NightseerEvanescence = 44,
     NightseerTraquenard = 45,
+    ColossarFrappeLourde = 50,
+    ColossarRepresailles = 54,
   }
   public enum StatusKind : byte {
     None = 0,
