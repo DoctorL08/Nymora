@@ -5783,8 +5783,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _gridSettings: {fileID: 11400000, guid: e28dde8a0c27b744889dfe45f498a670, type: 2}
-  _pillarPrefab: {fileID: 2393079106959268074, guid: f34a57677af893f45a938eba06ca368b, type: 3}
-  _wallPrefab: {fileID: 2393079106959268074, guid: f34a57677af893f45a938eba06ca368b, type: 3}
+  _pillarPrefab: {fileID: 4215405980490732012, guid: f34a57677af893f45a938eba06ca368b, type: 3}
+  _wallPrefab: {fileID: 1901966709116348956, guid: 9206baf38ed96314f8b3d1119472d323, type: 3}
 --- !u!4 &1445919801
 Transform:
   m_ObjectHideFlags: 0

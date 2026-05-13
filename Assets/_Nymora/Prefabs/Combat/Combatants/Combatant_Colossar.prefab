@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 3118237499348369844}
   - component: {fileID: 8871268827306915363}
   - component: {fileID: 891929711039536769}
+  - component: {fileID: 668035223687283352}
   m_Layer: 0
   m_Name: Combatant_Colossar
   m_TagString: Untagged
@@ -74,7 +75,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 100
-  m_Sprite: {fileID: 21300000, guid: abd9d22d6d325144fb59f294df475660, type: 3}
+  m_Sprite: {fileID: 7347929772872648432, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -98,3 +99,37 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _sprite: {fileID: 8871268827306915363}
+  _animator: {fileID: 668035223687283352}
+  _stage0SpriteSE: {fileID: 0}
+  _stage1SpriteSE: {fileID: 0}
+  _stage2SpriteSE: {fileID: 0}
+  _stage0SpriteNE: {fileID: 0}
+  _stage1SpriteNE: {fileID: 0}
+  _stage2SpriteNE: {fileID: 0}
+  _stage0ControllerSE: {fileID: 9100000, guid: 5124ac4f69a6c4148a392ccc3964664f, type: 2}
+  _stage1ControllerSE: {fileID: 0}
+  _stage2ControllerSE: {fileID: 0}
+  _stage0ControllerNE: {fileID: 9100000, guid: a23528b7bf33fbb4dac1d427a5024109, type: 2}
+  _stage1ControllerNE: {fileID: 0}
+  _stage2ControllerNE: {fileID: 0}
+--- !u!95 &668035223687283352
+Animator:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4001644256250217770}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: 5124ac4f69a6c4148a392ccc3964664f, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0

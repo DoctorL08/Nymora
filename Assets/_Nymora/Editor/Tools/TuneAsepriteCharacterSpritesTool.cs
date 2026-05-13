@@ -40,7 +40,8 @@ namespace Nymora.Editor.Tools
         {
             "Assets/_Nymora/Art/Sprites/Soulrender/Base/sources",
             "Assets/_Nymora/Art/Sprites/Nightseer/Base/sources",
-            // Phase 3 : Colossar/Necram/Ghostra sources/
+            "Assets/_Nymora/Art/Sprites/Colossar/Base/sources",   // 3.1.bis
+            // Phase 3 : Necram/Ghostra sources/
         };
 
         [MenuItem("Nymora/Setup/Tune Aseprite Character Sprites")]

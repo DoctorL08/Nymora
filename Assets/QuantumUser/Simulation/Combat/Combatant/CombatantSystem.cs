@@ -17,10 +17,14 @@ namespace Quantum
 
         public override void OnInit(Frame f)
         {
-            // 2.16.a.iii : P1 passe Nightseer -> Soulrender le temps de tester l'IA Easy
-            // qui est Soulrender-only. Reviens a Nightseer (ou tout autre choix) en
-            // 2.17 polyvalence + Phase 3, ou modifie ici pour tes propres tests.
-            SpawnCombatant(f, playerIndex: 0, nymoraClass: NymoraClass.Soulrender, x: P1SpawnX, y: P1SpawnY);
+            // 3.1.bis : P0 passe en Colossar (Lorenzo demande de tester visuellement les
+            // anims Colossar livrees par le designer + valider le rendu en jeu). Le Colossar
+            // a 2 PM (-1 vs autres classes) et n'a pas encore de logique gameplay propre
+            // (ressource FD + passif Densite Inerte arrivent en 3.2). Donc P0 Colossar peut
+            // bouger / cast les sorts Soulrender (pas de check class encore) / poser des
+            // Piliers via touche P (3.1 framework). P1 reste Soulrender pour avoir un
+            // adversaire avec lequel tester. Reviens a la config qui te convient en 3.2+.
+            SpawnCombatant(f, playerIndex: 0, nymoraClass: NymoraClass.Colossar, x: P1SpawnX, y: P1SpawnY);
             SpawnCombatant(f, playerIndex: 1, nymoraClass: NymoraClass.Soulrender, x: P2SpawnX, y: P2SpawnY);
         }
 

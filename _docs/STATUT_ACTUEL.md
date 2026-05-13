@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 13 mai 2026 nuit (🧱 **Brique 3.1 Phase 3 ✅ VALIDÉE** — Framework obstacles dynamiques : DSL Quantum `Obstacle.qtn` + ObstacleHelpers/System + extension MovementSystem/AStarPathfinder + ObstacleRenderer/View + Editor Tool prefab + bump CombatRulesVersion 11. E2E OK : Pilier impossible à traverser, A* contourne, HP descend par damage debug U, destroy à HP=0) — **PHASE 3 LANCÉE** 🚧  
+**Dernière mise à jour :** 14 mai 2026 (🎨 **Brique 3.1.bis Colossar assets ✅ VALIDÉE** — anims stage0 NE/SE intégrées via BuildColossarAnimator, sprites/avatar/marques/tiles/VFX/icons copiés, switch P0 Colossar pour test, sprite tiles_fondation utilisé pour le prefab Pilier via CreateObstaclePrefabTool. Bug connu repoussé à 3.3.b : Pilier ne bloque pas LoS sorts ni Charge Brutale Soulrender) — **READY 3.2 STATS COLOSSAR** 🪨  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,8 +11,10 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** 🚧 **Phase 3 EN COURS** — Combat Colossar + Necram + Ghostra (~16 briques en 5 blocs)
-**Brique en cours :** Bloc B Colossar à venir (3.2 stats + ressource FD + passif Densité Inerte). 3.1.bis Colossar assets en parallèle (intégration sprites designer)
-**Bloc A Phase 3 :** ✅ **3.1 framework obstacles VALIDÉE** (13 mai 2026 nuit) — Pilier/Mur posables via entity Quantum + singleton mapping case→EntityRef + tick expirations TurnEnd. Cadrage Phase 3 : 5 blocs (A préreqs / B Colossar / C Necram / D Ghostra / E IA Hard+Replay+Debug) — séquentiel par classe
+**Brique en cours :** **3.2 Stats Colossar** (2 PM + ressource Fondation FD cap 3 + passif Densité Inerte -8% dmg/obstacle cap -24%, +30 HP/Pilier détruit, +20 dmg melee si adjacent obstacle)
+**Bloc A Phase 3 :** ✅ **3.1 framework obstacles VALIDÉE** + ✅ **3.1.bis Colossar assets VALIDÉE** (14 mai 2026)
+**Bug connu (à fix en 3.3.b)** : Pilier ne bloque pas les LoS des sorts à distance (Bible V7.1 dit "Pilier bloque lignes de vue/tir"), et Charge Brutale Soulrender traverse le Pilier (Bible : devrait être bloquée par obstacle sur trajectoire). Sera intégré quand les sorts Pilier/Mur arrivent en 3.3.b
+**Cadrage Phase 3** : 5 blocs (A préreqs / B Colossar / C Necram / D Ghostra / E IA Hard+Replay+Debug) — séquentiel par classe
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)
 **Statut Phase 2 :** ✅ **CLÔTURÉE le 13 mai 2026 soir**. 17/17 briques validées + 2.12.bis + 2.13.a/b/c/d/e + 2.14 + 2.15.a/b/c + **2.16.a/b/c complets** (Bloc E IA). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C ✅ 3/3, 2.13 ✅, 2.14 ✅, 2.15 ✅, **2.16 ✅ TERMINÉ** (IA Easy random + IA Medium greedy + scène 30_CombatIA + overlay Victory/Defeat + selecteur difficulté + AI pacing + mouvement cardinal cell-by-cell). **🏆 Soulrender + Nightseer 100% jouables, combat 1v1 vs IA E2E**.
 
@@ -834,6 +836,28 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 14 mai 2026 — 🎨 Brique 3.1.bis ✅ Assets Colossar intégrés + switch P0 Colossar
+- **Livraison designer** : 35 fichiers (2 .aseprite stage0 NE/SE + 12 GIFs preview + 1 avatar + 1 marque FD + 1 tile fondation + 1 VFX strates + 17 icons sorts/passif/signature). Stages 1+2 viendront plus tard comme pour le Nightseer.
+- **Outputs** :
+  - Tous les assets copiés sous `Sprites/Colossar/` (Base/sources, Base/stage0, Avatar, Marques, Tiles, VFX, colossar_icons)
+  - Nouveau `BuildColossarAnimator.cs` (clone simplifié Nightseer 2.12.bis) — stage0 only car designer n'a livré que ça. Bind les 2 controllers `ColossarStage0_{NE,SE}.controller` sur le prefab `Combatant_Colossar`. Les fields _stage1/2Controller du CombatantView restent null (PickController fallback).
+  - Modif `CombatantSystem.OnInit` : P0 spawn = Colossar (au lieu de Soulrender 2.16.a.iii). P1 reste Soulrender pour avoir un adversaire de test.
+  - Modif `CreateObstaclePrefabTool` : utilise `tiles_fondation.png` du designer (PPU 180 + pivot Center, après 3 itérations de tuning visuel) pour le prefab Pilier.
+  - Modif `TuneAsepriteCharacterSpritesTool` : ajout du dossier Colossar/Base/sources (le designer a sauvegardé Aseprite avec PPU 100 default au lieu de 96 convention projet → forçage via le tool existant).
+- **3 itérations visuelles tuning Pilier** (Lorenzo en mode designer en chambre) :
+  - Itération 1 : PPU 128 → "2x trop grand" (cube débordait sur cases voisines)
+  - Itération 2 : PPU 256 → "trop petit" (cube paraissait flotter au milieu)
+  - Itération 3 : PPU 180 (moyenne géométrique) + scale Y=2 + pivot BottomCenter → "smear stretch" laid (étirement pixel art interdit sur sprite carré sans côtés visuels à étirer)
+  - Final : PPU 180 + scale 1 + pivot Center → dalle iso correcte posée sur la case. Visuel placeholder honnête, le vrai pilier vertical viendra en 3.3.b avec le VFX `strates_qui_sempilent` du designer.
+- **2 pièges traversés** :
+  - `TextureImporter.spriteAlignment` n'existe pas en API directe → passer par `TextureImporterSettings` (read/modify/write en 1 fois), sinon `SetTextureSettings` écrase les modifs directes faites juste avant sur l'importer (textureType, PPU). 1ère version mélangeait les 2 APIs → settings du sprite cassés (textureType retombait à Default → tool fallback sur placeholder gris).
+  - Aseprite a son propre importer (`AsepriteImporter` du package `com.unity.2d.aseprite`), pas le `TextureImporter` standard. Le designer a sauvegardé Colossar avec PPU 100 (Aseprite default) au lieu de 96 (convention projet) → Colossar mal aligné sur sa case visuel. Heureusement il existait déjà un Editor Tool dédié (`TuneAsepriteCharacterSpritesTool`) qui force pivot custom (0.5, 0.1) + PPU 96 sur les .aseprite — on a juste ajouté le dossier Colossar à sa liste.
+- **Validation Lorenzo** : "c'est bon c'est ok chef" — Colossar bien aligné, Pilier bien aligné. Soulrender + Nightseer pas cassés (idempotent grâce à mêmes settings).
+- **Bug Bible-correct identifié pendant le test** : le Pilier ne bloque pas les lignes de mire des sorts à distance, et Charge Brutale Soulrender passe à travers. Bible V7.1 dit "Pilier bloque lignes de vue/tir des sorts directs". **Reporté à 3.3.b** (quand les vrais sorts Pilier/Mur Colossar arrivent et qu'on devra anyway intégrer obstacles ↔ SpellSystem).
+- **Aucun changement gameplay** : juste assets visuels + switch class P0 + setup tool. CombatRulesVersion reste à 11.
+
+---
 
 ### 13 mai 2026 nuit — 🧱 Brique 3.1 ✅ Framework obstacles dynamiques (Bloc A Phase 3)
 - **Cadrage Phase 3 publié** : 5 blocs en ~16 briques (~18 max avec marge sous-découpages). Bloc A préreqs cross-classe (3.1) / Bloc B Colossar (3.2-3.3.x) / Bloc C Necram (3.4-3.5.x) / Bloc D Ghostra (3.6-3.7.x) / Bloc E IA Hard MCTS + Replay + Debug (3.8-3.10). Séquentiel par classe (Colossar → Necram → Ghostra) car identités structurellement très différentes. CombatRulesVersion bump à 11.
