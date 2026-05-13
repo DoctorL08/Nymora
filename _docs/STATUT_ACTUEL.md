@@ -3,19 +3,19 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 13 mai 2026 soir (Bloc D Nightseer ✅ CLÔTURÉ — 2.13.e + 2.14 + 2.15.a/b/c validées, assets integrés, HUD wiring complet, repo commité) — **🏆 NIGHTSEER 100% FONCTIONNEL EN COMBAT** 🌫️  
+**Dernière mise à jour :** 13 mai 2026 soir tardif (🏁 **PHASE 2 ENTIÈREMENT CLÔTURÉE** — Bloc E IA complet : 2.16.a Easy + 2.16.b Medium + 2.16.c.i→vi scène + UI + polish) — **🏆 PHASE 2 DONE, READY FOR PHASE 3** 🎮  
 **Mis à jour par :** Claude (session courante)
 
 ---
 
 ## 🎯 OÙ ON EN EST
 
-**Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **Bloc E — IA + E2E combat 1v1 vs IA** (à démarrer la prochaine session)  
-**Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 17/17 briques validées + 2.12.bis + 2.13.a/b/c/d/e + 2.14 + 2.15.a/b/c. Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C ✅ 3/3 + 2.13 ✅, 2.14 ✅, **2.15.a/b/c ✅ TERMINÉES** (Nightseer 16 sorts + Prescience + passif L'Œil qui n'est pas + signature Traquenard). **🏆 Soulrender 100% + Nightseer 100% jouables sim+view+HUD**. Reste **Bloc E IA** (anciennement 2.16/2.17 ; à renuméroter en 2.16.x).
+**Phase actuelle :** ✅ **Phase 2 CLÔTURÉE** — Combat 1v1 vs IA jouable bout en bout
+**Brique en cours :** **Phase 3 — Reste des classes** (Colossar, Necram, Ghostra) à démarrer la prochaine session
+**Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)
+**Statut Phase 2 :** ✅ **CLÔTURÉE le 13 mai 2026 soir**. 17/17 briques validées + 2.12.bis + 2.13.a/b/c/d/e + 2.14 + 2.15.a/b/c + **2.16.a/b/c complets** (Bloc E IA). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C ✅ 3/3, 2.13 ✅, 2.14 ✅, 2.15 ✅, **2.16 ✅ TERMINÉ** (IA Easy random + IA Medium greedy + scène 30_CombatIA + overlay Victory/Defeat + selecteur difficulté + AI pacing + mouvement cardinal cell-by-cell). **🏆 Soulrender + Nightseer 100% jouables, combat 1v1 vs IA E2E**.
 
-**CombatRulesVersion :** **9** (cumul depuis 2.13.e : LastCastTargetX/Y + LastCastSequence, FogSingleton + MarkKind/TrapKind, SubTurnInRound, Prescience + DamageTakenThisRound, LastTraquenardUsedOnTurn, statuses Nightseer Paralysie/Untargetable/Slow, terrain types). Bumps non-individuellement tracés au-delà de 4.
+**CombatRulesVersion :** **10** (cumul depuis 2.13.e + WinnerPlayerIndex en 2.16.c.i).
 
 **Convention temporelle (depuis 2.14) :** **TurnNumber = round complet** (P0+P1 = 1 round, sémantique Dofus). Toutes les durées Bible V7.1 "N tours" = N rounds. Décrémentation statuses/marques/voiles/terrains uniquement en fin de dernier sous-tour du round. Cf memory `project_turn_semantics.md`.
 
@@ -833,6 +833,36 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 13 mai 2026 soir tardif — 🏁 **PHASE 2 ENTIÈREMENT CLÔTURÉE** (Bloc E IA + polish E2E)
+- **Session marathon** : ouverture du Bloc D backlog (commits non-poussés du backlog 2.13.e→2.15.c) jusqu'à la clôture complète Phase 2 (Bloc E IA). Phase 2 = 8 mois selon la roadmap initiale, finie au bout de seulement ~5 jours intenses.
+- **Bloc E IA — sous-briques i à c.vi** :
+  - **2.16.a.i** : squelette AISystem + EndTurn auto (P1 hardcoded bot, 0.5s delay).
+  - **2.16.a.ii** : TryGreedyMove + AIEvaluator (rapprochement Manhattan, A* check, Vapeur Carmin cost, tie-break index).
+  - **2.16.a.iii** : TryGreedyCast random pick (Easy) + skip signature + cap 2 + HGSpend=0. Decks par difficulté (Lorenzo "les IA Easy/Medium vont dévoiler les metas").
+  - **2.16.b** : enum AIDifficulty + Medium greedy max-score + SoulrenderMediumDeck. Constate empiriquement que OuvrePlaie+HG = auto-sustaining META exploit → HGSpend=0 force pour les 2 niveaux.
+  - **2.16.c.i** : MatchEnd detection sim (TurnSystem.EnterTurnEnd) + Int32 WinnerPlayerIndex dans CombatState. CombatRulesVersion 9→10.
+  - **2.16.c.ii** : UI MatchEndOverlay (VICTOIRE/DÉFAITE/MATCH NUL) + Restart button. Fix `QuantumRunner.ShutdownAll()` requis avant SceneManager.LoadScene (sinon DontDestroyOnLoad fait survivre le runner).
+  - **2.16.c.iii** : rename scène QuantumGameScene → 30_CombatIA (`git mv` préserve GUID, update QuantumMap.asset/QuantumMapSceneInfo.asset/EditorBuildSettings/tools dialogs).
+  - **2.16.c.iv** : 2 boutons Easy/Medium sur l'overlay MatchEnd. CurrentDifficulty passe const→static (mutable runtime). 1 click set difficulty + ShutdownAll + reload.
+  - **2.16.c.v** : AI pacing — ActionIntervalTicks=60 (1s/action). Refactor TryGreedyCast → TryGreedyCastSingle (1 cast max), AISystem.Update planifie tick 0 move + tick N*60 casts. Bot turn 3-9s au lieu d'instant. Sensation "vrai joueur".
+  - **2.16.c.vi** : mouvement cardinal cell-by-cell style Dofus. CombatantView refactor queue de waypoints + IsMoving + facing per segment (East→NE iso, North→NW iso, etc.). CombatantRenderer calcule Manhattan path X-puis-Y. Bug critique trouvé+fixé : `UpdateGridPosition` resetait la queue à CHAQUE frame du Renderer, jetant les intermédiaires posés au tick du move. Fix : ne rebuild queue que si destination change OU nouveaux intermédiaires fournis.
+- **Décisions design clés** :
+  - **Decks IA cachent le meta** : Easy = 6 sorts faibles (2 offensifs + 4 utility no-damage), Medium = 6 modérés (sans TrancheAme/DétonationSanglante/AmeLaceree). Vrai meta deck réservé IA Hard (futur, post-Phase 3).
+  - **HGSpend=0 forcé en Easy ET Medium** : Ouvre-Plaie+1 HG = 230 dgts pour 2 PA est auto-sustaining (gain +1 HG par hit) → 1100+ dgts/tour. C'est une combo META à cacher.
+  - **MaxCastsPerTurn Easy=2, Medium=8** : Easy ~150 dgts/tour, Medium ~400-500 dgts/tour. Combat dure 3-7 tours.
+- **Commits de la session** (chronologique) :
+  - `0950feb feat(phase2.16.a.i)`: squelette IA + EndTurn auto
+  - `65c9856 feat(phase2.16.a.ii)`: déplacement greedy + AIEvaluator
+  - `680fb52 feat(phase2.16.a.iii)`: random + cap 2 + skip signature
+  - `7761339 feat(phase2.16.b)`: Medium greedy + AIDifficulty + decks par difficulté
+  - `74713a2 feat(phase2.16.c.i)`: MatchEnd detection sim + WinnerPlayerIndex
+  - `6554110 feat(phase2.16.c.ii)`: UI MatchEndOverlay + restart scene
+  - `8bf5377 chore(phase2.16.c.iii)`: rename scene QuantumGameScene → 30_CombatIA
+  - `5e5f620 feat(phase2.16.c.iv-v)`: sélecteur Easy/Medium + AI pacing
+  - `615ee72 feat(phase2.16.c.vi)`: mouvement cardinal cell-by-cell + walk orientation
+- **🏁 PHASE 2 100% TERMINÉE**. Soulrender + Nightseer 100% jouables côté sim, IA Easy/Medium fonctionnelle, combat 1v1 vs IA E2E avec UI Victory/Defeat + restart + difficulty selector.
+- **Prochain pas** : **Phase 3 — Les 3 classes restantes** (Colossar, Necram, Ghostra). Roadmap initiale prévoyait 2 mois pour Phase 3. Bibliothèque V7.1 + framework combat éprouvé → devrait aller vite.
 
 ### 13 mai 2026 soir — 🏁 Bloc D Nightseer CLÔTURÉ + ménage Git
 - **Contexte** : 2.13.e + 2.14 + 2.15.a/b/c avaient été développés dans une autre conversation Claude Code mais le STATUT n'avait pas été mis à jour et rien n'était commité dans le repo Git. ~80 fichiers modifiés + 25 untracked en attente.
