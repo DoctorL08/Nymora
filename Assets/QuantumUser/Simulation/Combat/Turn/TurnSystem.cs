@@ -26,6 +26,7 @@ namespace Quantum
             state->TurnNumber = 0;
             state->TurnTimerTicks = 0;
             state->SubTurnInRound = 0; // 2.14 : 1er sous-tour du round 1
+            state->WinnerPlayerIndex = -1; // 2.16.c.i : -1 = match en cours / pas de winner
 
             // Tirage d'initiative deterministe (Bible V7.1 : random tour 1, alternance ensuite).
             // f.RNG->Next(0, max) retourne un int dans [0, max) - donc [0, 2) = 0 ou 1.
@@ -236,6 +237,32 @@ namespace Quantum
                         }
                     }
                 }
+            }
+
+            // 2.16.c.i — MATCH END check : si au moins un combattant a HP=0, fin du combat.
+            // Le vainqueur est le dernier vivant ; en cas de double KO (e.g. Sang Coagule tick
+            // simultane), WinnerPlayerIndex reste -1 (draw).
+            int aliveCount = 0;
+            int lastAlivePlayer = -1;
+            var matchEndFilter = f.Filter<Combatant>();
+            while (matchEndFilter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->HP > 0)
+                {
+                    aliveCount++;
+                    lastAlivePlayer = c->PlayerIndex;
+                }
+            }
+
+            if (aliveCount <= 1)
+            {
+                state->WinnerPlayerIndex = aliveCount == 1 ? lastAlivePlayer : -1;
+                state->CurrentPhase = CombatPhase.MatchEnd;
+                string verdict = state->WinnerPlayerIndex >= 0
+                    ? $"Winner: P{state->WinnerPlayerIndex}"
+                    : "Draw (double KO)";
+                Log.Info($"[TurnSystem] MATCH END — {verdict} (round {state->TurnNumber}, aliveCount={aliveCount})");
+                return;
             }
 
             // Avance le compteur de sous-tour (wrap a 0 au debut du round suivant).

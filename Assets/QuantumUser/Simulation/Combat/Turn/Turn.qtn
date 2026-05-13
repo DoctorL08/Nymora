@@ -32,4 +32,9 @@ singleton component CombatState
     //   Sert a determiner quand declencher la decrementation des statuses/marques/voiles/terrains
     //   (= UNIQUEMENT a la fin du dernier sous-tour du round, pas a chaque swap de joueur).
     Int32 SubTurnInRound;
+
+    // 2.16.c.i — Index du joueur vainqueur (-1 si match en cours ou double KO).
+    //   Mis a jour par TurnSystem.EnterTurnEnd quand un combattant atteint HP=0.
+    //   La View pole ce champ + CombatPhase == MatchEnd pour afficher Victory/Defeat.
+    Int32 WinnerPlayerIndex;
 }
