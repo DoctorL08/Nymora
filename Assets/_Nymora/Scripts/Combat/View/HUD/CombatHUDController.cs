@@ -46,6 +46,7 @@ namespace Nymora.Combat.View.HUD
         [SerializeField] private SpellSlotView _signatureSlot;
         [SerializeField] private Button _endTurnButton;
         [SerializeField] private SpellTooltipView _tooltip;
+        [SerializeField] private MatchEndOverlay _matchEndOverlay;
 
         // Etat armed (Option 2). Consume via ConsumeArmedSpell() pour le CombatInputController.
         private SpellId? _armedSpell;
@@ -144,6 +145,13 @@ namespace Nymora.Combat.View.HUD
                 bool canEnd = state.CurrentPhase == CombatPhase.TurnActive
                               && controlPlayer == activePlayer;
                 _endTurnButton.interactable = canEnd;
+            }
+
+            // 2.16.c.ii — Overlay Victory/Defeat affiche sur MatchEnd. Polled chaque frame
+            // mais Refresh() est idempotent (no-op tant qu'on est deja dans le bon etat).
+            if (_matchEndOverlay != null)
+            {
+                _matchEndOverlay.Refresh(state.CurrentPhase, state.WinnerPlayerIndex, _localPlayerIndex, state.TurnNumber);
             }
         }
 

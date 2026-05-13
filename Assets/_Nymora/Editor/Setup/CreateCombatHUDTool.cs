@@ -97,6 +97,9 @@ namespace Nymora.Editor.Setup
             // 4.b — 2.13.c : tooltip panel (hidden par defaut, dans le meme canvas).
             SpellTooltipView tooltip = BuildTooltip(hudRoot);
 
+            // 4.c — 2.16.c.ii : overlay Victory/Defeat (hidden par defaut).
+            MatchEndOverlay matchEndOverlay = BuildMatchEndOverlay(hudRoot);
+
             // 5. Charge le SpellIconRegistry asset standard.
             var iconRegistry = AssetDatabase.LoadAssetAtPath<SpellIconRegistry>(SpellIconRegistryPath);
             if (iconRegistry == null)
@@ -117,6 +120,7 @@ namespace Nymora.Editor.Setup
             SetObjectRef(so, "_endTurnButton", endTurnButton);
             SetObjectRef(so, "_signatureSlot", signatureSlot);
             SetObjectRef(so, "_tooltip", tooltip);
+            SetObjectRef(so, "_matchEndOverlay", matchEndOverlay);
 
             // Array _spellSlots (6).
             var slotsProp = so.FindProperty("_spellSlots");
@@ -554,6 +558,88 @@ namespace Nymora.Editor.Setup
             // Hidden par defaut. La visibilite est pilotee par Show()/Hide().
             go.SetActive(false);
             return tooltip;
+        }
+
+        /// <summary>
+        /// 2.16.c.ii : overlay Victory/Defeat. Hierarchie :
+        ///   MatchEndOverlay (GO root, toujours actif, script attache)
+        ///   └── Panel (GO enfant, inactif par defaut, contient les visuels)
+        ///       ├── Background (Image fullscreen alpha 0.85 noir)
+        ///       ├── Title TMP (centre, 96px, "VICTOIRE"/"DEFAITE"/"MATCH NUL")
+        ///       ├── Subtitle TMP (24px, "Round X")
+        ///       └── RestartButton ("Rejouer")
+        /// </summary>
+        private static MatchEndOverlay BuildMatchEndOverlay(RectTransform parent)
+        {
+            // Root GO toujours actif (porte le script + listeners button).
+            var rootGo = NewUIGameObject("MatchEndOverlay", parent);
+            SetAnchors(rootGo.GetComponent<RectTransform>(),
+                anchorMin: Vector2.zero, anchorMax: Vector2.one,
+                pivot: new Vector2(0.5f, 0.5f), anchoredPos: Vector2.zero, size: Vector2.zero);
+
+            // Panel enfant : visible quand le match se termine.
+            var panelGo = NewUIGameObject("Panel", rootGo.transform);
+            SetAnchors(panelGo.GetComponent<RectTransform>(),
+                anchorMin: Vector2.zero, anchorMax: Vector2.one,
+                pivot: new Vector2(0.5f, 0.5f), anchoredPos: Vector2.zero, size: Vector2.zero);
+
+            // Background dim sur tout l'ecran (bloque les clicks via raycastTarget=true).
+            var bg = panelGo.AddComponent<Image>();
+            bg.color = new Color(0f, 0f, 0f, 0.85f);
+            bg.raycastTarget = true;
+
+            // Title central.
+            var title = CreateText(panelGo.transform, "Title",
+                anchorMin: new Vector2(0.5f, 0.5f), anchorMax: new Vector2(0.5f, 0.5f),
+                pivot: new Vector2(0.5f, 0.5f), anchoredPos: new Vector2(0f, 80f), size: new Vector2(800f, 120f),
+                content: "VICTOIRE", fontSize: 96f, align: TextAlignmentOptions.Center, color: Color.white);
+            title.fontStyle = FontStyles.Bold;
+
+            // Subtitle juste en dessous du titre.
+            var subtitle = CreateText(panelGo.transform, "Subtitle",
+                anchorMin: new Vector2(0.5f, 0.5f), anchorMax: new Vector2(0.5f, 0.5f),
+                pivot: new Vector2(0.5f, 0.5f), anchoredPos: new Vector2(0f, -10f), size: new Vector2(800f, 40f),
+                content: "Round 0", fontSize: 28f, align: TextAlignmentOptions.Center,
+                color: new Color(0.85f, 0.85f, 0.85f, 1f));
+
+            // Restart button.
+            var btnGo = NewUIGameObject("RestartButton", panelGo.transform);
+            SetAnchors(btnGo.GetComponent<RectTransform>(),
+                anchorMin: new Vector2(0.5f, 0.5f), anchorMax: new Vector2(0.5f, 0.5f),
+                pivot: new Vector2(0.5f, 0.5f), anchoredPos: new Vector2(0f, -120f), size: new Vector2(280f, 70f));
+
+            var btnBg = btnGo.AddComponent<Image>();
+            btnBg.color = new Color(0.65f, 0.15f, 0.10f, 0.95f);
+
+            var btn = btnGo.AddComponent<Button>();
+            btn.targetGraphic = btnBg;
+            var colors = btn.colors;
+            colors.normalColor      = new Color(1f, 1f, 1f, 1f);
+            colors.highlightedColor = new Color(1.0f, 0.85f, 0.85f, 1f);
+            colors.pressedColor     = new Color(0.85f, 0.65f, 0.65f, 1f);
+            colors.disabledColor    = new Color(0.40f, 0.40f, 0.40f, 0.8f);
+            btn.colors = colors;
+
+            CreateText(btnGo.transform, "Label",
+                anchorMin: Vector2.zero, anchorMax: Vector2.one,
+                pivot: new Vector2(0.5f, 0.5f), anchoredPos: Vector2.zero, size: Vector2.zero,
+                content: "Rejouer", fontSize: 32f, align: TextAlignmentOptions.Center, color: Color.white)
+                .fontStyle = FontStyles.Bold;
+
+            // Composant + cablage.
+            var overlay = rootGo.AddComponent<MatchEndOverlay>();
+            var so = new SerializedObject(overlay);
+            SetObjectRef(so, "_panel", panelGo);
+            SetObjectRef(so, "_titleText", title);
+            SetObjectRef(so, "_subtitleText", subtitle);
+            SetObjectRef(so, "_restartButton", btn);
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            // Panel hidden par defaut. MatchEndOverlay.Refresh() le toggle quand
+            // CombatState.CurrentPhase == MatchEnd.
+            panelGo.SetActive(false);
+
+            return overlay;
         }
 
         /// <summary>
