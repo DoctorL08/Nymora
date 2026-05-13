@@ -42,6 +42,11 @@ namespace Nymora.Combat.View
         private Vector3 _centerOffset;
         private bool _gridReady;
 
+        // 2.16.c.vi — Buffer reutilise pour computer le path Manhattan (X puis Y) entre
+        // 2 GridX/Y consecutifs d'un combatant. Capacite 16 = max ~10 cases + marge. Si
+        // un move depasse (peu probable), le code re-alloue un nouveau buffer.
+        private Vector3[] _waypointScratch = new Vector3[16];
+
         private readonly struct GridPos
         {
             public readonly int X;
@@ -127,11 +132,78 @@ namespace Nymora.Combat.View
                     combatant.GridX, combatant.GridY,
                     _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight) + _centerOffset + transform.position;
 
-                view.UpdateGridPosition(combatant.GridX, combatant.GridY, world);
+                // 2.16.c.vi — Path cardinal cell-by-cell (style Dofus). Si le combatant
+                // a teleporte sur une case non-adjacente (sim instantane), on construit
+                // la liste des cases intermediaires en X puis Y et on les pousse comme
+                // waypoints. Resultat : le visuel anime chaque case meme si la sim
+                // teleporte. Pour les moves d'1 case (mvt PM normal), pas d'intermediaires.
+                Vector3[] intermediates = null;
+                int intermediatesCount = 0;
+                int prevGx = view.GridX;
+                int prevGy = view.GridY;
+                int dx = combatant.GridX - prevGx;
+                int dy = combatant.GridY - prevGy;
+                int absDx = dx < 0 ? -dx : dx;
+                int absDy = dy < 0 ? -dy : dy;
+                int totalSteps = absDx + absDy;
+                // Skip si pas encore de position posee (cas spawn 1er frame, prevGx/Gy = 0).
+                // CombatantView.UpdateGridPosition snap au final dans ce cas (!_hasTarget),
+                // donc les waypoints seraient ignores. Pas un bug mais on s'epargne le compute.
+                if (totalSteps > 1 && (prevGx != 0 || prevGy != 0))
+                {
+                    // Approximation visuelle Manhattan X-puis-Y. Ne reproduit pas le path A*
+                    // exact en cas d'obstacle, mais convient pour Phase 2 (open grid). Cas
+                    // edge (Sang Coagule traversee) : visual passera "through walls" sans
+                    // consequence gameplay puisque la sim a deja calcule le vrai cost.
+                    int intermediatesCapacity = totalSteps - 1; // dernier point = final, pas un intermediaire
+                    intermediates = _waypointScratch;
+                    if (intermediates.Length < intermediatesCapacity)
+                    {
+                        intermediates = new Vector3[intermediatesCapacity];
+                        _waypointScratch = intermediates;
+                    }
+                    int stepX = dx > 0 ? 1 : -1;
+                    int stepY = dy > 0 ? 1 : -1;
+                    int cx = prevGx;
+                    int cy = prevGy;
+                    // Phase 1 : delta X puis delta Y (style Dofus : direction droite puis haut).
+                    while (cx != combatant.GridX)
+                    {
+                        cx += stepX;
+                        if (cx == combatant.GridX && cy == combatant.GridY) break; // final, ne pas push en intermediaire
+                        intermediates[intermediatesCount++] = IsoProjection.GridToWorld(
+                            cx, cy, _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight)
+                            + _centerOffset + transform.position;
+                    }
+                    while (cy != combatant.GridY)
+                    {
+                        cy += stepY;
+                        if (cx == combatant.GridX && cy == combatant.GridY) break;
+                        intermediates[intermediatesCount++] = IsoProjection.GridToWorld(
+                            cx, cy, _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight)
+                            + _centerOffset + transform.position;
+                    }
+                }
+
+                view.UpdateGridPosition(combatant.GridX, combatant.GridY, world, intermediates, intermediatesCount);
 
                 // 2.12 : push stage visuel (selon ressource Bible V7.1) + facing iso selon mouvement.
-                IsoFacing facing = ResolveFacing(entity, combatant);
-                view.SetStageAndFacing(ComputeStage(combatant), facing);
+                // 2.16.c.vi : pendant que le View consomme ses waypoints (animation cardinal
+                // cell-by-cell), c'est lui qui owns le facing — chaque segment du path peut
+                // avoir une orientation differente (East puis North = NE puis NW iso). Renderer
+                // ne reprend la main qu'a l'arret (IsMoving = false).
+                int stage = ComputeStage(combatant);
+                if (!view.IsMoving)
+                {
+                    IsoFacing facing = ResolveFacing(entity, combatant);
+                    view.SetStageAndFacing(stage, facing);
+                }
+                else
+                {
+                    // Stage peut changer pendant un move (gain HG en chemin via cast trap, etc.)
+                    // — on push juste le stage avec le facing courant pour eviter de l'oublier.
+                    view.SetStageAndFacing(stage, view.CurrentFacing);
+                }
 
                 // 2.12.bis : detection des changements d'etat -> triggers anims.
                 DispatchAnimTriggers(entity, combatant, view);

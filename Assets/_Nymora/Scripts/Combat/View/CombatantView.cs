@@ -86,10 +86,30 @@ namespace Nymora.Combat.View
         public int GridY { get; private set; }
         public NymoraClass Class { get; private set; }
 
-        private Vector3 _targetWorldPosition;
+        // 2.16.c.vi — Animation cardinal cell-by-cell : queue de waypoints au lieu
+        // d'un single target. Le Renderer push une liste de cases intermediaires en
+        // X puis Y (style Dofus), et l'Update consomme un waypoint a la fois via
+        // MoveTowards. Resultat : meme si la sim teleporte le combattant, le visuel
+        // animate chaque case du trajet.
+        private const int MaxWaypoints = 16; // max ~10 cases path + marge
+        private readonly Vector3[] _waypoints = new Vector3[MaxWaypoints];
+        private int _waypointCount = 0;
+        private int _waypointIdx = 0;
+        private int _facingAppliedForWaypointIdx = -1; // pour ne re-calculer le facing qu'au changement de segment
         private bool _hasTarget;
         private int _currentStage = -1; // -1 = pas encore initialise
         private IsoFacing _currentFacing = (IsoFacing)(-1); // sentinelle invalide pour forcer le premier set
+
+        /// <summary>
+        /// 2.16.c.vi — True tant qu'il reste des waypoints a consommer. Utilise par
+        /// le Renderer pour ceder le controle du facing au View pendant le mouvement
+        /// (chaque segment de path peut avoir une orientation iso differente).
+        /// </summary>
+        public bool IsMoving => _waypointIdx < _waypointCount;
+
+        /// <summary>Facing iso courant (defaut SE si jamais set). Lu par le Renderer
+        /// pendant les moves pour preserver le facing entre 2 updates de stage.</summary>
+        public IsoFacing CurrentFacing => _currentFacing == (IsoFacing)(-1) ? IsoFacing.SE : _currentFacing;
 
         // 2.12.bis : Animator parameter hashes (perf, evite Animator.StringToHash a chaque call).
         // Doit matcher les const du BuildSoulrenderAnimator (ParamMoveSpeed, etc.).
@@ -114,11 +134,44 @@ namespace Nymora.Combat.View
             SetStageAndFacing(0, IsoFacing.SE);
         }
 
-        public void UpdateGridPosition(int gx, int gy, Vector3 worldPosition)
+        /// <summary>
+        /// 2.16.c.vi — Maj position + path cardinal cell-by-cell.
+        ///
+        /// `worldPosition` est la destination finale. Si waypoints != null et > 0, l'animation
+        /// passera par chaque case intermediaire avant d'arriver a la destination (style Dofus).
+        /// Si waypoints null/vide, comportement legacy : un seul target final (lerp direct).
+        ///
+        /// Appele par CombatantRenderer chaque frame. Le Renderer detecte si GridX/Y a change
+        /// et calcule le path Manhattan en consequence.
+        /// </summary>
+        public void UpdateGridPosition(int gx, int gy, Vector3 worldPosition, Vector3[] intermediates = null, int intermediatesCount = 0)
         {
+            // BUG fix 2.16.c.vi : ne reset la queue de waypoints QUE si la destination
+            // grille change ou si un nouveau path est fourni. Sinon le Renderer (qui
+            // appelle ici chaque frame) ecrase l'intermediaire pose au tick precedent
+            // et le visuel revient en ligne droite (perception diagonale).
+            bool destinationChanged = (GridX != gx || GridY != gy);
+            bool newPath = intermediates != null && intermediatesCount > 0;
+
             GridX = gx;
             GridY = gy;
-            _targetWorldPosition = worldPosition;
+
+            if (destinationChanged || newPath)
+            {
+                _waypointCount = 0;
+                if (intermediates != null)
+                {
+                    int copy = intermediatesCount;
+                    if (copy > MaxWaypoints - 1) copy = MaxWaypoints - 1; // garde 1 slot pour final
+                    for (int i = 0; i < copy; i++)
+                    {
+                        _waypoints[_waypointCount++] = intermediates[i];
+                    }
+                }
+                _waypoints[_waypointCount++] = worldPosition;
+                _waypointIdx = 0;
+                _facingAppliedForWaypointIdx = -1; // force le recalcul facing pour le 1er segment
+            }
 
             // Au tout premier set (juste apres Bind), snap directement pour eviter une animation
             // de spawn depuis (0,0,0) vers la case initiale.
@@ -126,6 +179,7 @@ namespace Nymora.Combat.View
             {
                 transform.position = worldPosition;
                 _hasTarget = true;
+                _waypointIdx = _waypointCount; // tout consomme (snap)
             }
 
             if (_sprite != null)
@@ -212,20 +266,67 @@ namespace Nymora.Combat.View
         private void Update()
         {
             if (!_hasTarget) return;
-            Vector3 current = transform.position;
-            bool moving = (current - _targetWorldPosition).sqrMagnitude >= SnapDistance * SnapDistance;
-            if (!moving)
+            if (_waypointIdx >= _waypointCount)
             {
-                transform.position = _targetWorldPosition;
                 PushAnimMoveSpeed(0f);
                 return;
             }
+
+            Vector3 target = _waypoints[_waypointIdx];
+            Vector3 current = transform.position;
+
+            // 2.16.c.vi — Set le facing iso pour ce segment dès qu'on entre dedans.
+            // Recalcule uniquement quand on change de waypoint (sinon spam SetStageAndFacing
+            // a chaque frame). Le Renderer ne touche pas au facing pendant IsMoving (cf bloc
+            // de garde dans CombatantRenderer).
+            if (_facingAppliedForWaypointIdx != _waypointIdx)
+            {
+                Vector3 delta = target - current;
+                IsoFacing segmentFacing = IsoFacingFromWorldDelta(delta, _currentFacing);
+                SetStageAndFacing(_currentStage < 0 ? 0 : _currentStage, segmentFacing);
+                _facingAppliedForWaypointIdx = _waypointIdx;
+            }
+
+            bool reached = (current - target).sqrMagnitude < SnapDistance * SnapDistance;
+            if (reached)
+            {
+                transform.position = target;
+                _waypointIdx++;
+                if (_waypointIdx >= _waypointCount)
+                {
+                    PushAnimMoveSpeed(0f);
+                }
+                return;
+            }
+
             // Vitesse constante (vs Lerp exponentiel Zeno) : mouvement uniforme = clip walk
             // lisible. On clamp aussi a un step max pour eviter de teleporter sur une frame
             // de gros dt (lag spike).
             transform.position = Vector3.MoveTowards(
-                current, _targetWorldPosition, MoveSpeedUnitsPerSecond * Time.deltaTime);
+                current, target, MoveSpeedUnitsPerSecond * Time.deltaTime);
             PushAnimMoveSpeed(_desiredMoveSpeed);
+        }
+
+        /// <summary>
+        /// 2.16.c.vi — Mappe un world delta (vecteur vers le prochain waypoint) sur une
+        /// des 4 directions iso. En projection iso 2:1, les 4 cardinaux grille tombent
+        /// pile sur les 4 quadrants ecran :
+        ///   East  grille (gx+1) -> world (+x, +y) -> iso NE
+        ///   West  grille (gx-1) -> world (-x, -y) -> iso SW
+        ///   North grille (gy+1) -> world (-x, +y) -> iso NW
+        ///   South grille (gy-1) -> world (+x, -y) -> iso SE
+        ///
+        /// Si delta est negligeable (waypoint quasi-atteint), conserve le facing courant
+        /// pour eviter un flicker.
+        /// </summary>
+        private static IsoFacing IsoFacingFromWorldDelta(Vector3 delta, IsoFacing fallback)
+        {
+            const float Eps = 0.01f;
+            if (delta.sqrMagnitude < Eps * Eps) return fallback;
+            if (delta.x >= 0f && delta.y >= 0f) return IsoFacing.NE;
+            if (delta.x <  0f && delta.y >= 0f) return IsoFacing.NW;
+            if (delta.x >= 0f && delta.y <  0f) return IsoFacing.SE;
+            return IsoFacing.SW;
         }
 
         // ======================================================================
