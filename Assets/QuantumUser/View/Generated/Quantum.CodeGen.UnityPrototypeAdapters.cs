@@ -66,6 +66,54 @@ namespace Quantum.Prototypes.Unity {
     }
   }
   [System.SerializableAttribute()]
+  public unsafe partial class ObstaclePrototype : Quantum.QuantumUnityPrototypeAdapter<Quantum.Prototypes.ObstaclePrototype> {
+    public Quantum.QuantumEntityPrototype Owner;
+    public Int32 OwnerPlayerIndex;
+    public Quantum.QEnum8<ObstacleKind> Kind;
+    public Int32 HP;
+    public Int32 MaxHP;
+    public Int32 GridX;
+    public Int32 GridY;
+    public Int32 ExpiresOnTurn;
+    partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.ObstaclePrototype prototype);
+    public override Quantum.Prototypes.ObstaclePrototype Convert(Quantum.QuantumEntityPrototypeConverter converter) {
+      var result = new Quantum.Prototypes.ObstaclePrototype();
+      converter.Convert(this.Owner, out result.Owner);
+      converter.Convert(this.OwnerPlayerIndex, out result.OwnerPlayerIndex);
+      converter.Convert(this.Kind, out result.Kind);
+      converter.Convert(this.HP, out result.HP);
+      converter.Convert(this.MaxHP, out result.MaxHP);
+      converter.Convert(this.GridX, out result.GridX);
+      converter.Convert(this.GridY, out result.GridY);
+      converter.Convert(this.ExpiresOnTurn, out result.ExpiresOnTurn);
+      ConvertUser(converter, ref result);
+      return result;
+    }
+  }
+  [System.SerializableAttribute()]
+  public unsafe partial class ObstacleSingletonPrototype : Quantum.QuantumUnityPrototypeAdapter<Quantum.Prototypes.ObstacleSingletonPrototype> {
+    [ArrayLengthAttribute(255)]
+    public Quantum.Prototypes.Unity.ObstacleTilePrototype[] Tiles = new Quantum.Prototypes.Unity.ObstacleTilePrototype[255];
+    partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.ObstacleSingletonPrototype prototype);
+    public override Quantum.Prototypes.ObstacleSingletonPrototype Convert(Quantum.QuantumEntityPrototypeConverter converter) {
+      var result = new Quantum.Prototypes.ObstacleSingletonPrototype();
+      converter.Convert(this.Tiles, out result.Tiles);
+      ConvertUser(converter, ref result);
+      return result;
+    }
+  }
+  [System.SerializableAttribute()]
+  public unsafe partial class ObstacleTilePrototype : Quantum.QuantumUnityPrototypeAdapter<Quantum.Prototypes.ObstacleTilePrototype> {
+    public Quantum.QuantumEntityPrototype Obstacle;
+    partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.ObstacleTilePrototype prototype);
+    public override Quantum.Prototypes.ObstacleTilePrototype Convert(Quantum.QuantumEntityPrototypeConverter converter) {
+      var result = new Quantum.Prototypes.ObstacleTilePrototype();
+      converter.Convert(this.Obstacle, out result.Obstacle);
+      ConvertUser(converter, ref result);
+      return result;
+    }
+  }
+  [System.SerializableAttribute()]
   public unsafe partial class TilePrototype : Quantum.QuantumUnityPrototypeAdapter<Quantum.Prototypes.TilePrototype> {
     public Byte Walkable;
     public Quantum.QuantumEntityPrototype Occupant;

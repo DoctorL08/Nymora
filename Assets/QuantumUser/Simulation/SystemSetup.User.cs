@@ -23,6 +23,10 @@
             systems.Add(new SpellSystem());
             // 2.14 — process DebugApplyVeilCommand (sera retire en 2.15+ via sorts Nightseer).
             systems.Add(new FogSystem());
+            // 3.1 — framework obstacles dynamiques (Pilier/Mur Colossar, plus tard Necram).
+            // Init ObstacleSingleton + tick expirations + process des commandes DEBUG
+            // (Spawn/Damage). Sera repris par les sorts Pilier/Mur en 3.3.b.
+            systems.Add(new ObstacleSystem());
         }
     }
 }

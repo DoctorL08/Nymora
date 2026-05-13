@@ -80,6 +80,13 @@ namespace Quantum
                 Log.Warn($"[Movement] rejet : ({targetX},{targetY}) deja occupee");
                 return;
             }
+            // 3.1 — refus si obstacle Colossar (Pilier/Mur). Le combattant ne peut pas
+            // traverser ses propres murs (seul Choc Sismique le peut, sort 3.3.b).
+            if (ObstacleHelpers.HasObstacleAt(f, targetX, targetY))
+            {
+                Log.Warn($"[Movement] rejet : ({targetX},{targetY}) bloquee par un obstacle");
+                return;
+            }
 
             // Heuristique rapide : si meme la distance Manhattan optimale depasse PM, inutile d'appeler A*.
             int dx = targetX - combatant->GridX;

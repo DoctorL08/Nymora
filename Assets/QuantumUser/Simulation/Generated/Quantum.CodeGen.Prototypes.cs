@@ -215,6 +215,57 @@ namespace Quantum.Prototypes {
     }
   }
   [System.SerializableAttribute()]
+  [Quantum.Prototypes.Prototype(typeof(Quantum.Obstacle))]
+  public unsafe class ObstaclePrototype : ComponentPrototype<Quantum.Obstacle> {
+    public MapEntityId Owner;
+    public Int32 OwnerPlayerIndex;
+    public Quantum.QEnum8<ObstacleKind> Kind;
+    public Int32 HP;
+    public Int32 MaxHP;
+    public Int32 GridX;
+    public Int32 GridY;
+    public Int32 ExpiresOnTurn;
+    public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
+        Quantum.Obstacle component = default;
+        Materialize((Frame)f, ref component, in context);
+        return f.Set(entity, component) == SetResult.ComponentAdded;
+    }
+    public void Materialize(Frame frame, ref Quantum.Obstacle result, in PrototypeMaterializationContext context = default) {
+        PrototypeValidator.FindMapEntity(this.Owner, in context, out result.Owner);
+        result.OwnerPlayerIndex = this.OwnerPlayerIndex;
+        result.Kind = this.Kind;
+        result.HP = this.HP;
+        result.MaxHP = this.MaxHP;
+        result.GridX = this.GridX;
+        result.GridY = this.GridY;
+        result.ExpiresOnTurn = this.ExpiresOnTurn;
+    }
+  }
+  [System.SerializableAttribute()]
+  [Quantum.Prototypes.Prototype(typeof(Quantum.ObstacleSingleton))]
+  public unsafe class ObstacleSingletonPrototype : ComponentPrototype<Quantum.ObstacleSingleton> {
+    [ArrayLengthAttribute(255)]
+    public Quantum.Prototypes.ObstacleTilePrototype[] Tiles = new Quantum.Prototypes.ObstacleTilePrototype[255];
+    public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
+        Quantum.ObstacleSingleton component = default;
+        Materialize((Frame)f, ref component, in context);
+        return f.Set(entity, component) == SetResult.ComponentAdded;
+    }
+    public void Materialize(Frame frame, ref Quantum.ObstacleSingleton result, in PrototypeMaterializationContext context = default) {
+        for (int i = 0, count = PrototypeValidator.CheckLength(Tiles, 255, in context); i < count; ++i) {
+          this.Tiles[i].Materialize(frame, ref *result.Tiles.GetPointer(i), in context);
+        }
+    }
+  }
+  [System.SerializableAttribute()]
+  [Quantum.Prototypes.Prototype(typeof(Quantum.ObstacleTile))]
+  public unsafe class ObstacleTilePrototype : StructPrototype {
+    public MapEntityId Obstacle;
+    public void Materialize(Frame frame, ref Quantum.ObstacleTile result, in PrototypeMaterializationContext context = default) {
+        PrototypeValidator.FindMapEntity(this.Obstacle, in context, out result.Obstacle);
+    }
+  }
+  [System.SerializableAttribute()]
   [Quantum.Prototypes.Prototype(typeof(Quantum.Status))]
   public unsafe partial class StatusPrototype : StructPrototype {
     public Quantum.QEnum8<StatusKind> Kind;

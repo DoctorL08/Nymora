@@ -155,6 +155,12 @@ namespace Nymora.Combat.View
             // Sera retiree en 2.15 quand les sorts Nightseer (Pas Furtif, Voile d'Ombre, Champ
             // de Mines) feront ca proprement via SpellSystem.
             bool keyT  = UnityEngine.Input.GetKeyDown(KeyCode.T);
+            // 3.1 — DEBUG framework obstacles (P/U identiques AZERTY/QWERTY) :
+            //   P = Spawn Pillar 200 HP persistent sur la case sous la souris (du joueur actif).
+            //   U = Damage 50 sur l'obstacle de la case sous la souris (4 hits = destroy).
+            // Seront retirees en 3.3.b quand les sorts Pilier/Mur Colossar arrivent.
+            bool keyP  = UnityEngine.Input.GetKeyDown(KeyCode.P);
+            bool keyU  = UnityEngine.Input.GetKeyDown(KeyCode.U);
             // BIND AZERTY FR (Lorenzo) : les Unity KeyCode reflètent la position physique
             // (= scancode QWERTY US) ; on map ici à la LETTRE AFFICHEE sur clavier AZERTY.
             //
@@ -199,7 +205,8 @@ namespace Nymora.Combat.View
                             || keyB || keyT
                             || keyAzA || keyAzZ || keyE || keyR || keyV
                             || keyAzQ || keyS || keyD || keyF || keyG
-                            || keyAzW || keyX || keyC || keyN || keyAzM;
+                            || keyAzW || keyX || keyC || keyN || keyAzM
+                            || keyP || keyU; // 3.1 debug obstacles
             if (!mouseDown && !spaceDown && !anySpellKey) return;
 
             // Calcule la case sous la souris (partagee entre mvt et cast).
@@ -349,6 +356,24 @@ namespace Nymora.Combat.View
                 var veilCmd = new DebugApplyVeilCommand { TargetX = gx, TargetY = gy };
                 game.SendCommand(senderPlayer, veilCmd);
                 Debug.Log($"[Nymora.CombatInput] Sent DEBUG ApplyVeil player={senderPlayer} target=({gx},{gy})");
+                return;
+            }
+
+            // 3.1 — touche P : DEBUG spawn Pilier 200 HP sur case sous souris (joueur actif).
+            // Touche U : DEBUG damage 50 sur l'obstacle de la case sous souris.
+            // ObstacleSystem accepte uniquement si senderPlayer == joueur actif.
+            if (keyP)
+            {
+                var spawnCmd = new DebugSpawnObstacleCommand { TargetX = gx, TargetY = gy };
+                game.SendCommand(senderPlayer, spawnCmd);
+                Debug.Log($"[Nymora.CombatInput] Sent DEBUG SpawnObstacle player={senderPlayer} target=({gx},{gy})");
+                return;
+            }
+            if (keyU)
+            {
+                var dmgCmd = new DebugDamageObstacleCommand { TargetX = gx, TargetY = gy };
+                game.SendCommand(senderPlayer, dmgCmd);
+                Debug.Log($"[Nymora.CombatInput] Sent DEBUG DamageObstacle player={senderPlayer} target=({gx},{gy})");
                 return;
             }
 

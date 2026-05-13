@@ -1,0 +1,56 @@
+// 3.1 — Framework obstacles dynamiques (Colossar Pilier/Mur, futur Necram Brume Toxique
+// persistante en variante, etc.).
+//
+// Pattern miroir de Fog (FogSingleton) : la struct Tile est pleine (~10kB GridSingleton),
+// donc on stocke ailleurs. Ici :
+//   - Un Obstacle = une entity Quantum (component Obstacle) avec HP/Owner/Kind/Pos.
+//   - ObstacleSingleton mappe Index(x,y) -> EntityRef pour le lookup rapide depuis
+//     MovementSystem / AStarPathfinder (IsBlocked check O(1)).
+//   - 1 obstacle = 1 case (un Mur 3-cases sera 3 entities partageant Owner + Kind).
+//
+// Lifecycle :
+//   - Spawn  : ObstacleHelpers.SpawnObstacle(...) cree l'entity + ecrit le slot singleton.
+//   - Damage : un sort (ou DebugDamageObstacleCommand) decremente HP via le helper.
+//   - Destroy: ObstacleSystem detecte HP<=0 OU ExpiresOnTurn==currentTurn, destroy entity
+//              + clear le slot singleton + signale OnObstacleDestroyed (passif Colossar
+//              Densite Inerte : +30 HP/Pilier detruit, branche en 3.2).
+
+// Kind d'obstacle. Verrouille — ne PAS reorganiser les ints (CombatRulesVersion).
+enum ObstacleKind : Byte
+{
+    None    = 0,
+    Pillar  = 1,  // Colossar Pilier : 200 HP, 1 case, persistent (ExpiresOnTurn=0).
+    Wall    = 2,  // Colossar Mur de Pierre : 1 case par segment, 2 rounds (ExpiresOnTurn>0).
+}
+
+// Slot par-case dans le singleton. 8 bytes (EntityRef) * 255 tiles = ~2 KB, OK.
+struct ObstacleTile {
+    EntityRef Obstacle;
+}
+
+singleton component ObstacleSingleton {
+    array<ObstacleTile>[255] Tiles;
+}
+
+// Component porte par chaque entity Obstacle.
+//   Owner            : EntityRef du combattant qui a pose l'obstacle (= caster du sort).
+//                      Utilise par le passif Colossar (+30 HP/Pilier detruit a l'owner).
+//   OwnerPlayerIndex : redondant pour eviter de resolve Owner si l'entity caster est detruite
+//                      avant que l'obstacle soit detruit (cas Soulrender LE CRI -> kill cible
+//                      qui avait pose des obstacles, edge case mais propre).
+//   Kind             : ObstacleKind.
+//   HP / MaxHP       : 200/200 par defaut pour Pilier (Bible V7.1).
+//   GridX / GridY    : position grille (redondant avec slot singleton mais permet Filter<Obstacle>
+//                      sans avoir a scan le singleton — pattern denormalise classique Quantum).
+//   ExpiresOnTurn    : 0 = persistent (Pilier), sinon TurnNumber a partir duquel l'obstacle
+//                      expire automatiquement au TurnEnd (Mur 2 rounds = currentTurn + 2).
+component Obstacle {
+    EntityRef Owner;
+    Int32 OwnerPlayerIndex;
+    ObstacleKind Kind;
+    Int32 HP;
+    Int32 MaxHP;
+    Int32 GridX;
+    Int32 GridY;
+    Int32 ExpiresOnTurn;
+}

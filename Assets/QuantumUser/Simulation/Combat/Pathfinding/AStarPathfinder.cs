@@ -48,6 +48,8 @@ namespace Quantum
             if (!GridHelpers.InBounds(targetX, targetY)) return false;
             if (!GridHelpers.IsWalkable(f, targetX, targetY)) return false;
             if (GridHelpers.GetOccupant(f, targetX, targetY) != EntityRef.None) return false;
+            // 3.1 — refus si obstacle (Pilier/Mur Colossar) sur la case cible.
+            if (ObstacleHelpers.HasObstacleAt(f, targetX, targetY)) return false;
 
             int startIdx = GridHelpers.Index(startX, startY);
             int targetIdx = GridHelpers.Index(targetX, targetY);
@@ -119,6 +121,11 @@ namespace Quantum
                     // validee comme libre plus haut, mais redondance defensive).
                     if (nIdx != startIdx && nIdx != targetIdx
                         && GridHelpers.GetOccupant(f, nx, ny) != EntityRef.None) continue;
+                    // 3.1 — un obstacle (Pilier/Mur) bloque le passage. Pas d'exception
+                    // pour startIdx/targetIdx : si un obstacle est sur le start, le
+                    // combattant n'est pas la (impossible par construction). Si sur le
+                    // target, on a deja rejete plus haut.
+                    if (ObstacleHelpers.HasObstacleAt(f, nx, ny)) continue;
 
                     int tentativeG = gScore[currentIdx] + 1;
                     if (tentativeG >= gScore[nIdx]) continue;

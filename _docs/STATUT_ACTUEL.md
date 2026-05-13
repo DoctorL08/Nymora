@@ -3,19 +3,20 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 13 mai 2026 fin soirée (🎨 **Brique 2.12.bis Nightseer** — anims stages 1+2 livrées par le designer, intégration via `BuildNightseerAnimator` mirror du Soulrender, 6 controllers générés, prefab bind, Phase 2 reste clôturée) — **READY FOR PHASE 3** 🎮  
+**Dernière mise à jour :** 13 mai 2026 nuit (🧱 **Brique 3.1 Phase 3 ✅ VALIDÉE** — Framework obstacles dynamiques : DSL Quantum `Obstacle.qtn` + ObstacleHelpers/System + extension MovementSystem/AStarPathfinder + ObstacleRenderer/View + Editor Tool prefab + bump CombatRulesVersion 11. E2E OK : Pilier impossible à traverser, A* contourne, HP descend par damage debug U, destroy à HP=0) — **PHASE 3 LANCÉE** 🚧  
 **Mis à jour par :** Claude (session courante)
 
 ---
 
 ## 🎯 OÙ ON EN EST
 
-**Phase actuelle :** ✅ **Phase 2 CLÔTURÉE** — Combat 1v1 vs IA jouable bout en bout
-**Brique en cours :** **Phase 3 — Reste des classes** (Colossar, Necram, Ghostra) à démarrer la prochaine session
+**Phase actuelle :** 🚧 **Phase 3 EN COURS** — Combat Colossar + Necram + Ghostra (~16 briques en 5 blocs)
+**Brique en cours :** Bloc B Colossar à venir (3.2 stats + ressource FD + passif Densité Inerte). 3.1.bis Colossar assets en parallèle (intégration sprites designer)
+**Bloc A Phase 3 :** ✅ **3.1 framework obstacles VALIDÉE** (13 mai 2026 nuit) — Pilier/Mur posables via entity Quantum + singleton mapping case→EntityRef + tick expirations TurnEnd. Cadrage Phase 3 : 5 blocs (A préreqs / B Colossar / C Necram / D Ghostra / E IA Hard+Replay+Debug) — séquentiel par classe
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)
 **Statut Phase 2 :** ✅ **CLÔTURÉE le 13 mai 2026 soir**. 17/17 briques validées + 2.12.bis + 2.13.a/b/c/d/e + 2.14 + 2.15.a/b/c + **2.16.a/b/c complets** (Bloc E IA). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C ✅ 3/3, 2.13 ✅, 2.14 ✅, 2.15 ✅, **2.16 ✅ TERMINÉ** (IA Easy random + IA Medium greedy + scène 30_CombatIA + overlay Victory/Defeat + selecteur difficulté + AI pacing + mouvement cardinal cell-by-cell). **🏆 Soulrender + Nightseer 100% jouables, combat 1v1 vs IA E2E**.
 
-**CombatRulesVersion :** **10** (cumul depuis 2.13.e + WinnerPlayerIndex en 2.16.c.i).
+**CombatRulesVersion :** **11** (bump 3.1 — ajout DSL Obstacle + ObstacleSingleton, schema combat impacte la compat replay).
 
 **Convention temporelle (depuis 2.14) :** **TurnNumber = round complet** (P0+P1 = 1 round, sémantique Dofus). Toutes les durées Bible V7.1 "N tours" = N rounds. Décrémentation statuses/marques/voiles/terrains uniquement en fin de dernier sous-tour du round. Cf memory `project_turn_semantics.md`.
 
@@ -833,6 +834,25 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 13 mai 2026 nuit — 🧱 Brique 3.1 ✅ Framework obstacles dynamiques (Bloc A Phase 3)
+- **Cadrage Phase 3 publié** : 5 blocs en ~16 briques (~18 max avec marge sous-découpages). Bloc A préreqs cross-classe (3.1) / Bloc B Colossar (3.2-3.3.x) / Bloc C Necram (3.4-3.5.x) / Bloc D Ghostra (3.6-3.7.x) / Bloc E IA Hard MCTS + Replay + Debug (3.8-3.10). Séquentiel par classe (Colossar → Necram → Ghostra) car identités structurellement très différentes. CombatRulesVersion bump à 11.
+- **3.1 livraison** (14 fichiers : 8 NEW + 6 MOD) :
+  - DSL Quantum `Obstacle.qtn` : `enum ObstacleKind { None, Pillar, Wall }`, `struct ObstacleTile { EntityRef Obstacle }` (8 bytes), `singleton ObstacleSingleton { array<ObstacleTile>[255] }` (~2KB), `component Obstacle { Owner, OwnerPlayerIndex, Kind, HP, MaxHP, GridX, GridY, ExpiresOnTurn }`.
+  - **Pattern singleton séparé** (vs extension `Tile`) : la struct `Tile` est marquée "ne pas étendre" (limite 10kB GridSingleton, cf 2.14 FogSingleton). Mirror du Fog : un ObstacleSingleton à part, pareil pattern lookup O(1) par case.
+  - **Pattern entity-based** (vs data-only Fog) : un Obstacle = une entity Quantum + composant. Justifié par : (a) HP/destruction par damage = lifecycle entity naturel, (b) Filter<Obstacle> classique pour systèmes futurs, (c) destroy via `f.Destroy(entity)` propre.
+  - `ObstacleHelpers` : `SpawnObstacle/DestroyObstacle/DamageAt/HasObstacleAt/GetObstacleAt`. Refus spawn si case occupée par combatant ou autre obstacle.
+  - `ObstacleSystem` : OnInit init singleton 255 slots, Update process commands debug + tick expirations en TurnEnd. Stackalloc EntityRef[16] zero-heap pour collecter destroy queue (1ère utilisation de stackalloc EntityRef dans le projet — EntityRef étant unmanaged en Quantum 3, OK).
+  - **MovementSystem + AStarPathfinder** : ajout du check `ObstacleHelpers.HasObstacleAt` aux endroits du check `GetOccupant`. Pas de refacto vers `IsBlocked` global pour minimiser le risque de régression.
+  - **CombatInputController** : touches P (Spawn Pilier) + U (Damage 50). P/U identiques AZERTY/QWERTY donc pas de scancode mapping. DebugSpawnObstacleCommand + DebugDamageObstacleCommand processed by ObstacleSystem. Sera retiré en 3.3.b.
+  - **View** : ObstacleView (TMP HP world space + sprite) + ObstacleRenderer (Filter<Obstacle> à chaque CallbackUpdateView, spawn/despawn dict-tracked). Pas de pooling (max ~5 obstacles concurrents en pratique).
+  - **Editor Tool `CreateObstaclePrefabTool`** : génère sprite procédural pierre #7A6B5C (carré 64×64 PPU 64 avec bord noir) + prefab placeholder Obstacle_Pillar avec sprite + label TMP "200/200" world space.
+- **1 piège traversé** : 1ère version d'`ObstacleRenderer` appelait `IsoProjection.GridToWorld(...)` avec 5 args (j'avais inventé une signature avec centerOffset intégré). Erreur compil CS1501. Pattern réel : 4 args + `+ centerOffset` en post (cohérent avec CombatantRenderer/GridRenderer/HUD/Watcher). Fix 1 ligne.
+- **Validation E2E par Lorenzo** : touche P sur (7,8) → Pilier visuel apparaît (carré gris #7A6B5C + label "200/200"), case bloquée pour mouvement (`[Movement] rejet : (7,8) bloquee par un obstacle`), A* contourne automatiquement quand on clique derrière, touche U → damage 50 → label HP descend (200→150→100→50→0), à HP 0 → destroy auto + sprite disparaît. Confiance Lorenzo : "test ok pas possible de passer dessus et 200hp qui baisse en fonction des attaques".
+- **Pas d'impact gameplay réel** : aucun sort Colossar/Necram n'utilise encore le framework. Sera branché en 3.3.b (sorts Pilier/Mur de Pierre Colossar).
+- **Prochaine étape** : 3.1.bis Colossar assets (sprites livrés par designer pendant la 3.1) + switch P0 Colossar pour test. Puis 3.2 stats/ressource/passif Densité Inerte.
+
+---
 
 ### 13 mai 2026 fin soirée — 🎨 Brique 2.12.bis Nightseer (anims stages 1+2 intégrées)
 - **Contexte** : Lorenzo (avec son designer) livre les anims évolutives Nightseer pour les stages 1 et 2. Le stage0 avait été setup en 2.12 (2 controllers manuels `NightseerStage0_{NE,SE}.controller`) mais pas via un Editor Tool dédié — contrairement au Soulrender qui a `BuildSoulrenderAnimator` depuis 2.12.bis.

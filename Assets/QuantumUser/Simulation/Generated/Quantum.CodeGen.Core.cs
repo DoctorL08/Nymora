@@ -69,6 +69,11 @@ namespace Quantum {
     Necram = 4,
     Ghostra = 5,
   }
+  public enum ObstacleKind : byte {
+    None = 0,
+    Pillar = 1,
+    Wall = 2,
+  }
   public enum SpellEffectKind : byte {
     None = 0,
     Damage = 1,
@@ -694,6 +699,24 @@ namespace Quantum {
     }
   }
   [StructLayout(LayoutKind.Explicit)]
+  public unsafe partial struct ObstacleTile {
+    public const Int32 SIZE = 8;
+    public const Int32 ALIGNMENT = 8;
+    [FieldOffset(0)]
+    public EntityRef Obstacle;
+    public override readonly Int32 GetHashCode() {
+      unchecked { 
+        var hash = 12641;
+        hash = hash * 31 + Obstacle.GetHashCode();
+        return hash;
+      }
+    }
+    public static void Serialize(void* ptr, FrameSerializer serializer) {
+        var p = (ObstacleTile*)ptr;
+        EntityRef.Serialize(&p->Obstacle, serializer);
+    }
+  }
+  [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct Status {
     public const Int32 SIZE = 16;
     public const Int32 ALIGNMENT = 4;
@@ -1051,6 +1074,76 @@ namespace Quantum {
         FixedArray.Serialize(p->Tiles, serializer, Statics.SerializeTile);
     }
   }
+  [StructLayout(LayoutKind.Explicit)]
+  public unsafe partial struct Obstacle : Quantum.IComponent {
+    public const Int32 SIZE = 40;
+    public const Int32 ALIGNMENT = 8;
+    [FieldOffset(32)]
+    public EntityRef Owner;
+    [FieldOffset(24)]
+    public Int32 OwnerPlayerIndex;
+    [FieldOffset(0)]
+    public ObstacleKind Kind;
+    [FieldOffset(16)]
+    public Int32 HP;
+    [FieldOffset(20)]
+    public Int32 MaxHP;
+    [FieldOffset(8)]
+    public Int32 GridX;
+    [FieldOffset(12)]
+    public Int32 GridY;
+    [FieldOffset(4)]
+    public Int32 ExpiresOnTurn;
+    public override readonly Int32 GetHashCode() {
+      unchecked { 
+        var hash = 16787;
+        hash = hash * 31 + Owner.GetHashCode();
+        hash = hash * 31 + OwnerPlayerIndex.GetHashCode();
+        hash = hash * 31 + (Byte)Kind;
+        hash = hash * 31 + HP.GetHashCode();
+        hash = hash * 31 + MaxHP.GetHashCode();
+        hash = hash * 31 + GridX.GetHashCode();
+        hash = hash * 31 + GridY.GetHashCode();
+        hash = hash * 31 + ExpiresOnTurn.GetHashCode();
+        return hash;
+      }
+    }
+    public static void Serialize(void* ptr, FrameSerializer serializer) {
+        var p = (Obstacle*)ptr;
+        serializer.Stream.Serialize((Byte*)&p->Kind);
+        serializer.Stream.Serialize(&p->ExpiresOnTurn);
+        serializer.Stream.Serialize(&p->GridX);
+        serializer.Stream.Serialize(&p->GridY);
+        serializer.Stream.Serialize(&p->HP);
+        serializer.Stream.Serialize(&p->MaxHP);
+        serializer.Stream.Serialize(&p->OwnerPlayerIndex);
+        EntityRef.Serialize(&p->Owner, serializer);
+    }
+  }
+  [StructLayout(LayoutKind.Explicit)]
+  public unsafe partial struct ObstacleSingleton : Quantum.IComponentSingleton {
+    public const Int32 SIZE = 2040;
+    public const Int32 ALIGNMENT = 8;
+    [FieldOffset(0)]
+    [FramePrinter.FixedArrayAttribute(typeof(ObstacleTile), 255)]
+    private fixed Byte _Tiles_[2040];
+    public readonly FixedArray<ObstacleTile> Tiles {
+      get {
+        fixed (byte* p = _Tiles_) { return new FixedArray<ObstacleTile>(p, 8, 255); }
+      }
+    }
+    public override readonly Int32 GetHashCode() {
+      unchecked { 
+        var hash = 14011;
+        hash = hash * 31 + HashCodeUtils.GetArrayHashCode(Tiles);
+        return hash;
+      }
+    }
+    public static void Serialize(void* ptr, FrameSerializer serializer) {
+        var p = (ObstacleSingleton*)ptr;
+        FixedArray.Serialize(p->Tiles, serializer, Statics.SerializeObstacleTile);
+    }
+  }
   public static unsafe partial class Constants {
   }
   public unsafe partial class Frame {
@@ -1089,6 +1182,10 @@ namespace Quantum {
       BuildSignalsArrayOnComponentRemoved<NavMeshPathfinder>();
       BuildSignalsArrayOnComponentAdded<NavMeshSteeringAgent>();
       BuildSignalsArrayOnComponentRemoved<NavMeshSteeringAgent>();
+      BuildSignalsArrayOnComponentAdded<Quantum.Obstacle>();
+      BuildSignalsArrayOnComponentRemoved<Quantum.Obstacle>();
+      BuildSignalsArrayOnComponentAdded<Quantum.ObstacleSingleton>();
+      BuildSignalsArrayOnComponentRemoved<Quantum.ObstacleSingleton>();
       BuildSignalsArrayOnComponentAdded<PhysicsBody2D>();
       BuildSignalsArrayOnComponentRemoved<PhysicsBody2D>();
       BuildSignalsArrayOnComponentAdded<PhysicsBody3D>();
@@ -1136,11 +1233,13 @@ namespace Quantum {
     public static FrameSerializer.Delegate SerializeStatus;
     public static FrameSerializer.Delegate SerializeFogTile;
     public static FrameSerializer.Delegate SerializeTile;
+    public static FrameSerializer.Delegate SerializeObstacleTile;
     public static FrameSerializer.Delegate SerializeInput;
     static partial void InitStaticDelegatesGen() {
       SerializeStatus = Quantum.Status.Serialize;
       SerializeFogTile = Quantum.FogTile.Serialize;
       SerializeTile = Quantum.Tile.Serialize;
+      SerializeObstacleTile = Quantum.ObstacleTile.Serialize;
       SerializeInput = Quantum.Input.Serialize;
     }
     static partial void RegisterSimulationTypesGen(TypeRegistry typeRegistry) {
@@ -1208,6 +1307,10 @@ namespace Quantum {
       typeRegistry.Register(typeof(NullableFPVector3), NullableFPVector3.SIZE);
       typeRegistry.Register(typeof(NullableNonNegativeFP), NullableNonNegativeFP.SIZE);
       typeRegistry.Register(typeof(Quantum.NymoraClass), 1);
+      typeRegistry.Register(typeof(Quantum.Obstacle), Quantum.Obstacle.SIZE);
+      typeRegistry.Register(typeof(Quantum.ObstacleKind), 1);
+      typeRegistry.Register(typeof(Quantum.ObstacleSingleton), Quantum.ObstacleSingleton.SIZE);
+      typeRegistry.Register(typeof(Quantum.ObstacleTile), Quantum.ObstacleTile.SIZE);
       typeRegistry.Register(typeof(PhysicsBody2D), PhysicsBody2D.SIZE);
       typeRegistry.Register(typeof(PhysicsBody3D), PhysicsBody3D.SIZE);
       typeRegistry.Register(typeof(PhysicsCallbacks2D), PhysicsCallbacks2D.SIZE);
@@ -1245,12 +1348,14 @@ namespace Quantum {
       typeRegistry.Register(typeof(Quantum._globals_), Quantum._globals_.SIZE);
     }
     static partial void InitComponentTypeIdGen() {
-      ComponentTypeId.Reset(ComponentTypeId.BuiltInComponentCount + 4)
+      ComponentTypeId.Reset(ComponentTypeId.BuiltInComponentCount + 6)
         .AddBuiltInComponents()
         .Add<Quantum.CombatState>(Quantum.CombatState.Serialize, null, null, ComponentFlags.Singleton)
         .Add<Quantum.Combatant>(Quantum.Combatant.Serialize, null, null, ComponentFlags.None)
         .Add<Quantum.FogSingleton>(Quantum.FogSingleton.Serialize, null, null, ComponentFlags.Singleton)
         .Add<Quantum.GridSingleton>(Quantum.GridSingleton.Serialize, null, null, ComponentFlags.Singleton)
+        .Add<Quantum.Obstacle>(Quantum.Obstacle.Serialize, null, null, ComponentFlags.None)
+        .Add<Quantum.ObstacleSingleton>(Quantum.ObstacleSingleton.Serialize, null, null, ComponentFlags.Singleton)
         .Finish();
     }
     [Preserve()]
@@ -1261,6 +1366,7 @@ namespace Quantum {
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.InputButtons>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.MarkKind>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.NymoraClass>();
+      FramePrinter.EnsurePrimitiveNotStripped<Quantum.ObstacleKind>();
       FramePrinter.EnsurePrimitiveNotStripped<QueryOptions>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.SpellEffectKind>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.SpellId>();
