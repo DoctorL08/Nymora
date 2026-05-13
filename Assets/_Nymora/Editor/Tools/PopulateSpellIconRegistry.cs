@@ -22,8 +22,12 @@ namespace Nymora.Editor.Tools
     public static class PopulateSpellIconRegistry
     {
         private const string IconsFolder = "Assets/_Nymora/Art/Sprites/Soulrender/soulrender_icons";
+        private const string AvatarsFolder = "Assets/_Nymora/Art/UI/Icons/Soulrender";
         private const string RegistryFolder = "Assets/_Nymora/ScriptableObjects/Spells";
         private const string RegistryAssetPath = RegistryFolder + "/SpellIconRegistry.asset";
+        // 2.13.e : convention filename portraits = <ClassPrefix>_avatar_<size>px.png.
+        // Soulrender -> SR_avatar_*. Phase 3 : NS_avatar_*, CL_avatar_*, NE_avatar_*, GH_avatar_*.
+        private const string AvatarSoulrenderPrefix = "SR_avatar";
 
         // Mapping fichier -> SpellId. Les noms de fichiers viennent du designer.
         private static readonly Dictionary<string, SpellId> FileToSpellId = new Dictionary<string, SpellId>
@@ -66,6 +70,7 @@ namespace Nymora.Editor.Tools
 
             var entries = new List<SpellIconRegistry.Entry>();
             Sprite passifSoulrender = null;
+            Sprite avatarSoulrender = null;
 
             // Scan les icones.
             string[] guids = AssetDatabase.FindAssets("t:Sprite", new[] { IconsFolder });
@@ -94,6 +99,23 @@ namespace Nymora.Editor.Tools
                 }
             }
 
+            // 2.13.e — Scan le dossier des avatars (portraits HUD).
+            if (AssetDatabase.IsValidFolder(AvatarsFolder))
+            {
+                string[] avatarGuids = AssetDatabase.FindAssets("t:Sprite", new[] { AvatarsFolder });
+                foreach (string guid in avatarGuids)
+                {
+                    string path = AssetDatabase.GUIDToAssetPath(guid);
+                    string fileName = Path.GetFileNameWithoutExtension(path);
+                    if (!fileName.StartsWith(AvatarSoulrenderPrefix)) continue;
+                    Sprite sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+                    if (sprite == null) continue;
+                    avatarSoulrender = sprite;
+                    Debug.Log($"[PopulateSpellIconRegistry] Avatar Soulrender -> {path}");
+                    break;
+                }
+            }
+
             // Verifie qu'on a bien 16 sorts mappes (15 + signature) + le passif.
             int expected = FileToSpellId.Count;
             if (entries.Count != expected)
@@ -104,14 +126,18 @@ namespace Nymora.Editor.Tools
             {
                 Debug.LogWarning($"[PopulateSpellIconRegistry] icon_passif_hemoglyphe.png introuvable.");
             }
+            if (avatarSoulrender == null)
+            {
+                Debug.LogWarning($"[PopulateSpellIconRegistry] {AvatarSoulrenderPrefix}*.png introuvable dans {AvatarsFolder}.");
+            }
 
             // Apply et save.
             Undo.RecordObject(registry, "Populate Spell Icon Registry");
-            registry.EditorSetEntries(entries.ToArray(), passifSoulrender);
+            registry.EditorSetEntries(entries.ToArray(), passifSoulrender, avatarSoulrender);
             EditorUtility.SetDirty(registry);
             AssetDatabase.SaveAssets();
 
-            Debug.Log($"[PopulateSpellIconRegistry] Done. {entries.Count} sorts + passif = {(passifSoulrender != null ? "OK" : "MISSING")} ecrit dans {RegistryAssetPath}");
+            Debug.Log($"[PopulateSpellIconRegistry] Done. {entries.Count} sorts + passif = {(passifSoulrender != null ? "OK" : "MISSING")} + avatar = {(avatarSoulrender != null ? "OK" : "MISSING")} ecrit dans {RegistryAssetPath}");
             EditorGUIUtility.PingObject(registry);
             Selection.activeObject = registry;
         }

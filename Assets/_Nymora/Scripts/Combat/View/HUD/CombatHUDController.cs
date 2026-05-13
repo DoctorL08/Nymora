@@ -64,6 +64,9 @@ namespace Nymora.Combat.View.HUD
             {
                 _passive.Init(_iconRegistry);
             }
+            // 2.13.e : portrait dans les ResourcePanels.
+            if (_p0Panel != null) _p0Panel.Init(_iconRegistry);
+            if (_p1Panel != null) _p1Panel.Init(_iconRegistry);
             QuantumCallback.Subscribe(this, (CallbackUpdateView c) => OnUpdateView(c.Game));
         }
 

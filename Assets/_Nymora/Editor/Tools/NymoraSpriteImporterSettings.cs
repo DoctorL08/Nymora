@@ -48,11 +48,23 @@ namespace Nymora.Editor.Tools
             "Assets/_Nymora/Art/UI/Icons/",
         };
 
+        // 2.13.e — Sprite sheets animes (marques, terrains, VFX). Pivot centre, meme
+        // traitement que les icones cote import. Le slicing multiple est applique par
+        // AutoSliceFrameSheetsTool (Editor > Nymora > Setup) — pas ici.
+        private static readonly string[] SheetRoots =
+        {
+            "Assets/_Nymora/Art/Sprites/Soulrender/Marks/",
+            "Assets/_Nymora/Art/Sprites/Soulrender/Terrains/",
+            "Assets/_Nymora/Art/VFX/Soulrender/",
+            // Phase 3 : ajouter Nightseer/Colossar/Necram/Ghostra Marks/Terrains/VFX ici.
+        };
+
         void OnPreprocessTexture()
         {
             bool isChar = StartsWithAny(assetPath, CharacterSpriteRoots);
             bool isIcon = StartsWithAny(assetPath, IconRoots);
-            if (!isChar && !isIcon) return;
+            bool isSheet = StartsWithAny(assetPath, SheetRoots);
+            if (!isChar && !isIcon && !isSheet) return;
 
             var tex = assetImporter as TextureImporter;
             if (tex == null) return;
@@ -73,18 +85,30 @@ namespace Nymora.Editor.Tools
 
             // Pivot.
             // Icones : Center (0.5, 0.5) standard.
-            // Character : pivot custom (0.5, 0.15) pour compenser l'espace transparent
-            //             au bas de l'image (sprite 128x128 mais perso au centre). Valeur
-            //             determinee empiriquement par test visuel.
+            // Character (2.13.e) : pivot custom (0.5, 0.30). Mesure : les sprites Soulrender
+            //   ont leurs pieds a pixel Y=6 (depuis le bas) dans un frame 128x128. Avec iso 2:1
+            //   et TileWorldHeight = 0.5, le bas du diamond est a tile_center - 0.25 unit.
+            //   Pivot Y = feet_y_normalized + 0.25 = 0.047 + 0.25 = 0.297 ~= 0.30 met les
+            //   pieds pile au bas du diamond du tile.
+            //   Si le designer change la convention (perso plus haut dans le frame), ajuster
+            //   ici et re-run "Nymora > Setup > Reimport Character Sprites".
             // SpriteAlignment enum int : Center=0, BottomCenter=7, Custom=9.
             if (isChar)
             {
                 settings.spriteAlignment = (int)SpriteAlignment.Custom;
-                settings.spritePivot = new Vector2(0.5f, 0.5f);
+                settings.spritePivot = new Vector2(0.5f, 0.30f);
             }
             else
             {
                 settings.spriteAlignment = (int)SpriteAlignment.Center;
+            }
+
+            // 2.13.e — pour les sprite sheets, on passe en mode Multiple ici pour que
+            // AutoSliceFrameSheetsTool puisse generer les rects via TextureImporter.spritesheet.
+            // Si on laisse Single, le tool doit reimporter, ce qui declenche un cycle.
+            if (isSheet)
+            {
+                settings.spriteMode = (int)SpriteImportMode.Multiple;
             }
 
             tex.SetTextureSettings(settings);

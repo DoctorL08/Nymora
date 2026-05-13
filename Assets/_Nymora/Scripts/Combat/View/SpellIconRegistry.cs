@@ -37,6 +37,11 @@ namespace Nymora.Combat.View
         [SerializeField] private Sprite _passifSoulrenderIcon;
         // Phase 3 : _passifNightseerIcon, _passifColossarIcon, _passifNecramIcon, _passifGhostraIcon
 
+        [Header("Avatars (portrait HUD, 1 par classe — 2.13.e)")]
+        [Tooltip("Portrait Soulrender (SR_avatar_128px.png).")]
+        [SerializeField] private Sprite _avatarSoulrenderIcon;
+        // Phase 3 : _avatarNightseerIcon, _avatarColossarIcon, _avatarNecramIcon, _avatarGhostraIcon
+
         private Dictionary<SpellId, Sprite> _cache;
 
         public Sprite GetIcon(SpellId id)
@@ -55,14 +60,30 @@ namespace Nymora.Combat.View
             }
         }
 
+        /// <summary>
+        /// Portrait du combattant (HUD ResourcePanel, 2.13.e). Retourne null si la classe
+        /// n'a pas encore d'avatar livre par le designer.
+        /// </summary>
+        public Sprite AvatarFor(NymoraClass nymoraClass)
+        {
+            switch (nymoraClass)
+            {
+                case NymoraClass.Soulrender: return _avatarSoulrenderIcon;
+                // Phase 3 : autres classes
+                default: return null;
+            }
+        }
+
 #if UNITY_EDITOR
         /// <summary>
         /// Setter Editor uniquement (utilise par l'auto-populate). NE PAS appeler en runtime.
+        /// avatarSoulrenderIcon peut etre null si non trouve — laissera le slot vide.
         /// </summary>
-        public void EditorSetEntries(Entry[] entries, Sprite passifSoulrenderIcon)
+        public void EditorSetEntries(Entry[] entries, Sprite passifSoulrenderIcon, Sprite avatarSoulrenderIcon = null)
         {
             _entries = entries ?? Array.Empty<Entry>();
             _passifSoulrenderIcon = passifSoulrenderIcon;
+            _avatarSoulrenderIcon = avatarSoulrenderIcon;
             _cache = null; // force rebuild au prochain GetIcon
         }
 #endif

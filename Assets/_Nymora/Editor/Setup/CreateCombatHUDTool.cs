@@ -247,19 +247,31 @@ namespace Nymora.Editor.Setup
             bg.color = new Color(0f, 0f, 0f, 0.55f);
             bg.raycastTarget = false;
 
-            // Label principal HP/PA/PM/ressource.
+            // 2.13.e — Avatar 72x72 a gauche du panel. Branche par ResourcePanelView.Refresh
+            // sur le SpellIconRegistry (AvatarFor classe). enabled = false par defaut, sera
+            // active automatiquement au 1er refresh si l'asset est present dans le registry.
+            var avatarGo = NewUIGameObject(name + "_Avatar", go.transform);
+            SetAnchors(avatarGo.GetComponent<RectTransform>(),
+                anchorMin: new Vector2(0f, 0.5f), anchorMax: new Vector2(0f, 0.5f),
+                pivot: new Vector2(0f, 0.5f), anchoredPos: new Vector2(10f, 0f), size: new Vector2(72f, 72f));
+            var avatar = avatarGo.AddComponent<Image>();
+            avatar.preserveAspect = true;
+            avatar.raycastTarget = false;
+            avatar.enabled = false;
+
+            // Label principal HP/PA/PM/ressource. Margin gauche elargie pour laisser de la place au portrait.
             var labelText = CreateText(go.transform, name + "_Label",
                 anchorMin: new Vector2(0f, 0f), anchorMax: new Vector2(1f, 1f),
                 pivot: new Vector2(0.5f, 0.5f), anchoredPos: Vector2.zero, size: Vector2.zero,
                 content: "", fontSize: 22f, align: TextAlignmentOptions.TopLeft, color: Color.white);
-            labelText.margin = new Vector4(10f, 8f, 10f, 8f);
+            labelText.margin = new Vector4(94f, 8f, 10f, 8f);
             labelText.enableWordWrapping = false;
 
             // Status line (en bas, plus petit). Pour 2.13.a c'est suffisant ; les bulles
             // d'icones de statuses arrivent en 2.13.c.
             var statusText = CreateText(go.transform, name + "_Statuses",
                 anchorMin: new Vector2(0f, 0f), anchorMax: new Vector2(1f, 0f),
-                pivot: new Vector2(0f, 0f), anchoredPos: new Vector2(10f, 6f), size: new Vector2(-20f, 32f),
+                pivot: new Vector2(0f, 0f), anchoredPos: new Vector2(94f, 6f), size: new Vector2(-104f, 32f),
                 content: "", fontSize: 14f, align: TextAlignmentOptions.BottomLeft,
                 color: new Color(0.78f, 0.78f, 0.78f, 1f));
             statusText.enableWordWrapping = true;
@@ -268,6 +280,7 @@ namespace Nymora.Editor.Setup
             var so = new SerializedObject(panel);
             SetObjectRef(so, "_label", labelText);
             SetObjectRef(so, "_statusLine", statusText);
+            SetObjectRef(so, "_avatar", avatar);
             so.ApplyModifiedPropertiesWithoutUndo();
             return panel;
         }
