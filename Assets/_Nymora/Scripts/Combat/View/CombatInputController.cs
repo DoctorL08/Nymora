@@ -151,12 +151,55 @@ namespace Nymora.Combat.View
             bool keyF3 = UnityEngine.Input.GetKeyDown(KeyCode.F3);
             bool keyF4 = UnityEngine.Input.GetKeyDown(KeyCode.F4);
             bool keyB  = UnityEngine.Input.GetKeyDown(KeyCode.B); // 2.11 signature Ame Laceree
+            // 2.14 — touche T : DEBUG, pose un Voile Nightseer 2 tours sur la case sous la souris.
+            // Sera retiree en 2.15 quand les sorts Nightseer (Pas Furtif, Voile d'Ombre, Champ
+            // de Mines) feront ca proprement via SpellSystem.
+            bool keyT  = UnityEngine.Input.GetKeyDown(KeyCode.T);
+            // BIND AZERTY FR (Lorenzo) : les Unity KeyCode reflètent la position physique
+            // (= scancode QWERTY US) ; on map ici à la LETTRE AFFICHEE sur clavier AZERTY.
+            //
+            // 2.15.a — NIGHTSEER OFFENSIFS (sorts 30-34) — rangee HAUT en AZERTY :
+            //   A = Tir Precis              (3 PA, range 6, 200 dgts +80 si Traque)
+            //   Z = Volee d'Epines          (4 PA, ligne 5, 130 dgts + Filet sur derniere case)
+            //   E = Detonation Onirique     (4 PA, range 5, 170 dgts +80 si Voile)
+            //   R = Frappe de l'Ombre       (4 PA, range 3, 200 dgts +100 si target deja deplacee)
+            //   V = Salve Mortelle          (5 PA, range 6, croix 5, 3 PR, 220/130 +60 Traque +50 Voile)
+            bool keyAzA = UnityEngine.Input.GetKeyDown(KeyCode.Q); // 'A' AZERTY = scancode Q
+            bool keyAzZ = UnityEngine.Input.GetKeyDown(KeyCode.W); // 'Z' AZERTY = scancode W
+            bool keyE   = UnityEngine.Input.GetKeyDown(KeyCode.E);
+            bool keyR   = UnityEngine.Input.GetKeyDown(KeyCode.R);
+            bool keyV   = UnityEngine.Input.GetKeyDown(KeyCode.V);
+            // 2.15.b — NIGHTSEER TACTIQUES (sorts 35-39) — rangee MILIEU en AZERTY :
+            //   Q = Marque du Chasseur      (1 PA, range 5, applique Traque 3 tours)
+            //   S = Filet de Ronces         (2 PA, range 4, pose Filet voile)
+            //   D = Champ de Mines          (4 PA, range 3, AoE 3x3, pose 3 mines)
+            //   F = Bourrasque              (3 PA, range 5, push 3 cases — Shift+F : 5 cases via 1 PR)
+            //   G = Souffle Glacial         (3 PA, AoE croix 3 autour caster, 70 dgts + push 1 + -1 PM)
+            bool keyAzQ = UnityEngine.Input.GetKeyDown(KeyCode.A); // 'Q' AZERTY = scancode A
+            bool keyS   = UnityEngine.Input.GetKeyDown(KeyCode.S);
+            bool keyD   = UnityEngine.Input.GetKeyDown(KeyCode.D);
+            bool keyF   = UnityEngine.Input.GetKeyDown(KeyCode.F);
+            bool keyG   = UnityEngine.Input.GetKeyDown(KeyCode.G);
+            // 2.15.c — NIGHTSEER SURVIE (sorts 40-44) — rangee BAS en AZERTY :
+            //   W = Voile d'Ombre           (3 PA, self, Untargetable 1 round)
+            //   X = Pas Furtif              (2 PA, teleport ≤4 cases — Shift+X = 1 PR Voile sur arrivee)
+            //   C = Camouflage Ronces       (3 PA, self, shield 130 + RoncesAura 70/round 2 rounds)
+            //   N = Seve Sauvage            (3 PA, self, heal 130 +60 trap +30 voile)
+            //   M = Evanescence             (4 PA, teleport ≤7 cases, HP<30%, heal 150 + Voile case quittee, 1/match)
+            bool keyAzW = UnityEngine.Input.GetKeyDown(KeyCode.Z);         // 'W' AZERTY = scancode Z
+            bool keyX   = UnityEngine.Input.GetKeyDown(KeyCode.X);
+            bool keyC   = UnityEngine.Input.GetKeyDown(KeyCode.C);
+            bool keyN   = UnityEngine.Input.GetKeyDown(KeyCode.N);
+            bool keyAzM = UnityEngine.Input.GetKeyDown(KeyCode.Semicolon); // 'M' AZERTY = scancode Semicolon
             bool shiftHeld = UnityEngine.Input.GetKey(KeyCode.LeftShift) || UnityEngine.Input.GetKey(KeyCode.RightShift);
 
             bool anySpellKey = key1 || key2 || key3 || key4 || key5
                             || key6 || key7 || key8 || key9 || key0
                             || keyF1 || keyF2 || keyF3 || keyF4
-                            || keyB;
+                            || keyB || keyT
+                            || keyAzA || keyAzZ || keyE || keyR || keyV
+                            || keyAzQ || keyS || keyD || keyF || keyG
+                            || keyAzW || keyX || keyC || keyN || keyAzM;
             if (!mouseDown && !spaceDown && !anySpellKey) return;
 
             // Calcule la case sous la souris (partagee entre mvt et cast).
@@ -283,10 +326,119 @@ namespace Nymora.Combat.View
                 return;
             }
 
-            // 2.11 — touche B : signature Ame Laceree (range 1, 5 HG obligatoire).
+            // 2.11 / 2.16 — touche B : SIGNATURE CONTEXTUELLE (depend de la classe du caster).
+            //   Soulrender → Ame Laceree (melee 1, 5 HG, 320 dgts + heal 50%, cooldown 4 tours)
+            //   Nightseer  → Traquenard  (range 5, 4 PR, teleport adjacent + 280 dgts + Paralysie, cooldown 4 tours)
+            //   Phase 3 ajoutera Colossar/Necram/Ghostra avec leurs propres signatures.
             if (keyB)
             {
-                SendSpellAt(game, senderPlayer, SpellId.SoulrenderAmeLaceree, gx, gy, 0);
+                SpellId sigSpell = SpellId.SoulrenderAmeLaceree;
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClass)
+                    && casterClass == Quantum.NymoraClass.Nightseer)
+                {
+                    sigSpell = SpellId.NightseerTraquenard;
+                }
+                SendSpellAt(game, senderPlayer, sigSpell, gx, gy, 0);
+                return;
+            }
+
+            // 2.14 — touche T : DEBUG pose Voile Nightseer 2 tours sur case sous souris.
+            // Le FogSystem cote sim accepte uniquement si senderPlayer == joueur actif.
+            if (keyT)
+            {
+                var veilCmd = new DebugApplyVeilCommand { TargetX = gx, TargetY = gy };
+                game.SendCommand(senderPlayer, veilCmd);
+                Debug.Log($"[Nymora.CombatInput] Sent DEBUG ApplyVeil player={senderPlayer} target=({gx},{gy})");
+                return;
+            }
+
+            // 2.15.a — sorts Nightseer offensifs (lettres AZERTY A/Z/E/R/V).
+            if (keyAzA)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.NightseerTirPrecis, gx, gy, 0);
+                return;
+            }
+            if (keyAzZ)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.NightseerVoleeDEpines, gx, gy, 0);
+                return;
+            }
+            if (keyE)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.NightseerDetonationOnirique, gx, gy, 0);
+                return;
+            }
+            if (keyR)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.NightseerFrappeDeLOmbre, gx, gy, 0);
+                return;
+            }
+            if (keyV)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.NightseerSalveMortelle, gx, gy, 0);
+                return;
+            }
+
+            // 2.15.b — sorts Nightseer tactiques (lettres AZERTY Q/S/D/F/G).
+            if (keyAzQ)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.NightseerMarqueDuChasseur, gx, gy, 0);
+                return;
+            }
+            if (keyS)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.NightseerFiletDeRonces, gx, gy, 0);
+                return;
+            }
+            if (keyD)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.NightseerChampDeMines, gx, gy, 0);
+                return;
+            }
+            if (keyF)
+            {
+                // Shift+F = 1 PR depense -> push 5 cases (au lieu de 3).
+                byte pr = (byte)(shiftHeld ? 1 : 0);
+                SendSpellAt(game, senderPlayer, SpellId.NightseerBourrasque, gx, gy, pr);
+                return;
+            }
+            if (keyG)
+            {
+                // Souffle Glacial = self target. On envoie la case du caster (TryGetCasterCell).
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.NightseerSouffleGlacial, cx, cy, 0);
+                return;
+            }
+
+            // 2.15.c — sorts Nightseer survie (lettres AZERTY W/X/C/N/M).
+            if (keyAzW)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.NightseerVoileDOmbre, cx, cy, 0);
+                return;
+            }
+            if (keyX)
+            {
+                // Shift+X = 1 PR -> case d'arrivee Voilee 2 tours.
+                byte pr = (byte)(shiftHeld ? 1 : 0);
+                SendSpellAt(game, senderPlayer, SpellId.NightseerPasFurtif, gx, gy, pr);
+                return;
+            }
+            if (keyC)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.NightseerCamouflageRonces, cx, cy, 0);
+                return;
+            }
+            if (keyN)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.NightseerSeveSauvage, cx, cy, 0);
+                return;
+            }
+            if (keyAzM)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.NightseerEvanescence, gx, gy, 0);
                 return;
             }
 
@@ -343,6 +495,25 @@ namespace Nymora.Combat.View
                 {
                     x = c.GridX;
                     y = c.GridY;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 2.16 — Lit la classe du caster pour dispatcher la touche B (signature contextuelle).
+        /// </summary>
+        private static bool TryGetCasterClass(QuantumGame game, int playerIndex, out Quantum.NymoraClass cls)
+        {
+            cls = Quantum.NymoraClass.None;
+            var frame = game.Frames.Verified;
+            var filter = frame.Filter<Quantum.Combatant>();
+            while (filter.Next(out Quantum.EntityRef _, out Quantum.Combatant c))
+            {
+                if (c.PlayerIndex == playerIndex)
+                {
+                    cls = c.Class;
                     return true;
                 }
             }

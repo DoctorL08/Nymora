@@ -36,6 +36,30 @@ enum SpellId : Byte
     SoulrenderSeveVive          = 23,  // 2.10.b — Survie  : 2 PA, self, heal 100 (+60 si 1 HG, +50 si DoT actif)
     SoulrenderDernierSouffle    = 24,  // 2.10.b — Survie  : 4 PA, self, HP<30% only, heal 200 + 3 HG, 1/match
     SoulrenderAmeLaceree        = 25,  // 2.11 — SIGNATURE : 2 PA, melee 1, 5 HG (consomme tout), 320 dgts + heal 50% dgts qui passent. Cooldown 4 tours. Kill -> Sang Coagule croix 5.
+
+    // NIGHTSEER (Bible V7.1 — 5 offensifs + 5 tactiques + 5 survie + signature)
+    NightseerTirPrecis            = 30,  // 2.15.a — Offensif : 3 PA, range 6, 200 dgts (+80 et +1 PR si target Traque)
+    NightseerVoleeDEpines         = 31,  // 2.15.a — Offensif : 4 PA, ligne range 5, 130 dgts toutes cibles + Filet de Ronces sur derniere case touchee
+    NightseerDetonationOnirique   = 32,  // 2.15.a — Offensif : 4 PA, range 5 (10 avec 2 PR), AoE 2x2 170 dgts (+80 et dechire si Voile dans zone)
+    NightseerFrappeDeLOmbre       = 33,  // 2.15.a — Offensif : 4 PA, range 3, 200 dgts (+100 si target PM < MaxPM/2 + Empreinte 2 tours)
+    NightseerSalveMortelle        = 34,  // 2.15.a — Offensif : 5 PA, range 6, AoE croix 5 (220 centre / 130 cotes), 3 PR (+60 Traque, dechire Voile +50)
+
+    // NIGHTSEER 2.15.b — TACTIQUES
+    NightseerMarqueDuChasseur     = 35,  // 1 PA, range 5, applique Traque 3 tours sur cible
+    NightseerFiletDeRonces        = 36,  // 2 PA, range 4, pose Filet (Voile + Trap). Entree : 100 dgts -2 PM + Empreinte 2 tours
+    NightseerChampDeMines         = 37,  // 4 PA, range 3, AoE 3x3, pose 3 Mines voilees. Chaque mine : 70 dgts + Empreinte
+    NightseerBourrasque           = 38,  // 3 PA, range 5, push cible 3 cases loin du caster (5 avec 1 PR)
+    NightseerSouffleGlacial       = 39,  // 3 PA, AoE croix 3 autour caster, 70 dgts + push 1 + MovementMalus -1
+
+    // NIGHTSEER 2.15.c — SURVIE
+    NightseerVoileDOmbre          = 40,  // 3 PA, self, applique Untargetable 1 round (sorts directs rejetes)
+    NightseerPasFurtif            = 41,  // 2 PA, range 4, teleport sur case vide (Shift = +1 PR -> Voile 2 tours sur arrivee)
+    NightseerCamouflageRonces     = 42,  // 3 PA, self, ShieldActive 130 HP / 2 tours + RoncesAura 70 dgts ennemis adjacents
+    NightseerSeveSauvage          = 43,  // 3 PA, self, heal 130 (+60 si trap declenche dans ces 2 rounds, +30 si voile actif)
+    NightseerEvanescence          = 44,  // 4 PA, range 7, HP<30%, teleport + heal 150 + Voile 2 tours sur case quittee, 1/match
+
+    // NIGHTSEER 2.16 — SIGNATURE
+    NightseerTraquenard           = 45,  // 2 PA, range 5, 4/4 PR, teleport adjacent + 280 dgts + Paralysie -3PM/-2PA. Bonus +80 dgts + 2 PR si target Traque/Voile/Empreinte (consume marque). Cooldown 4 tours.
 }
 
 enum SpellEffectKind : Byte

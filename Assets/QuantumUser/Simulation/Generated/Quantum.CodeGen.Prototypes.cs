@@ -56,6 +56,7 @@ namespace Quantum.Prototypes {
     public Int32 ActivePlayerIndex;
     public Int32 TurnNumber;
     public Int32 TurnTimerTicks;
+    public Int32 SubTurnInRound;
     partial void MaterializeUser(Frame frame, ref Quantum.CombatState result, in PrototypeMaterializationContext context);
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.CombatState component = default;
@@ -67,6 +68,7 @@ namespace Quantum.Prototypes {
         result.ActivePlayerIndex = this.ActivePlayerIndex;
         result.TurnNumber = this.TurnNumber;
         result.TurnTimerTicks = this.TurnTimerTicks;
+        result.SubTurnInRound = this.SubTurnInRound;
         MaterializeUser(frame, ref result, in context);
     }
   }
@@ -92,6 +94,16 @@ namespace Quantum.Prototypes {
     public Int32 LastAmeLaceeUsedOnTurn;
     public Int32 LastCastOnTurn;
     public Quantum.QEnum8<SpellId> LastCastSpellId;
+    public Int32 LastCastTargetX;
+    public Int32 LastCastTargetY;
+    public Int32 LastCastSequence;
+    public Quantum.QEnum8<MarkKind> CurrentMark;
+    public Int32 MarkTurnsLeft;
+    public Int32 MarkAppliedOnTurn;
+    public Int32 MarkOwnerPlayer;
+    public Int32 DamageTakenThisRound;
+    public Int32 LastTrapTriggeredOnTurn;
+    public Int32 LastTraquenardUsedOnTurn;
     partial void MaterializeUser(Frame frame, ref Quantum.Combatant result, in PrototypeMaterializationContext context);
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.Combatant component = default;
@@ -119,6 +131,54 @@ namespace Quantum.Prototypes {
         result.LastAmeLaceeUsedOnTurn = this.LastAmeLaceeUsedOnTurn;
         result.LastCastOnTurn = this.LastCastOnTurn;
         result.LastCastSpellId = this.LastCastSpellId;
+        result.LastCastTargetX = this.LastCastTargetX;
+        result.LastCastTargetY = this.LastCastTargetY;
+        result.LastCastSequence = this.LastCastSequence;
+        result.CurrentMark = this.CurrentMark;
+        result.MarkTurnsLeft = this.MarkTurnsLeft;
+        result.MarkAppliedOnTurn = this.MarkAppliedOnTurn;
+        result.MarkOwnerPlayer = this.MarkOwnerPlayer;
+        result.DamageTakenThisRound = this.DamageTakenThisRound;
+        result.LastTrapTriggeredOnTurn = this.LastTrapTriggeredOnTurn;
+        result.LastTraquenardUsedOnTurn = this.LastTraquenardUsedOnTurn;
+        MaterializeUser(frame, ref result, in context);
+    }
+  }
+  [System.SerializableAttribute()]
+  [Quantum.Prototypes.Prototype(typeof(Quantum.FogSingleton))]
+  public unsafe partial class FogSingletonPrototype : ComponentPrototype<Quantum.FogSingleton> {
+    [ArrayLengthAttribute(255)]
+    public Quantum.Prototypes.FogTilePrototype[] Tiles = new Quantum.Prototypes.FogTilePrototype[255];
+    partial void MaterializeUser(Frame frame, ref Quantum.FogSingleton result, in PrototypeMaterializationContext context);
+    public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
+        Quantum.FogSingleton component = default;
+        Materialize((Frame)f, ref component, in context);
+        return f.Set(entity, component) == SetResult.ComponentAdded;
+    }
+    public void Materialize(Frame frame, ref Quantum.FogSingleton result, in PrototypeMaterializationContext context = default) {
+        for (int i = 0, count = PrototypeValidator.CheckLength(Tiles, 255, in context); i < count; ++i) {
+          this.Tiles[i].Materialize(frame, ref *result.Tiles.GetPointer(i), in context);
+        }
+        MaterializeUser(frame, ref result, in context);
+    }
+  }
+  [System.SerializableAttribute()]
+  [Quantum.Prototypes.Prototype(typeof(Quantum.FogTile))]
+  public unsafe partial class FogTilePrototype : StructPrototype {
+    public Byte VeiledByPlayer;
+    public Int32 VeiledTurnsLeft;
+    public Int32 VeiledAppliedOnTurn;
+    public Quantum.QEnum8<TrapKind> Trap;
+    public Int32 TrapOwner;
+    public Int32 TrapAppliedOnTurn;
+    partial void MaterializeUser(Frame frame, ref Quantum.FogTile result, in PrototypeMaterializationContext context);
+    public void Materialize(Frame frame, ref Quantum.FogTile result, in PrototypeMaterializationContext context = default) {
+        result.VeiledByPlayer = this.VeiledByPlayer;
+        result.VeiledTurnsLeft = this.VeiledTurnsLeft;
+        result.VeiledAppliedOnTurn = this.VeiledAppliedOnTurn;
+        result.Trap = this.Trap;
+        result.TrapOwner = this.TrapOwner;
+        result.TrapAppliedOnTurn = this.TrapAppliedOnTurn;
         MaterializeUser(frame, ref result, in context);
     }
   }

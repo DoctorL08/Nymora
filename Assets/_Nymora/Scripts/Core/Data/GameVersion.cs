@@ -17,8 +17,10 @@ namespace Nymora.Core.Data
         /// - Stats de classe / sort
         /// - Logique de passif
         /// - Effets de marques (saignement, venin, leurres...)
+        /// - Modifications du schema Combatant DSL (impact compatibilite replay)
+        /// - Modifications du schema Tile DSL (idem)
         /// </summary>
-        public const int CombatRulesVersion = 1;
+        public const int CombatRulesVersion = 9;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

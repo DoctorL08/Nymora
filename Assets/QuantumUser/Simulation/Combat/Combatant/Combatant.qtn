@@ -22,6 +22,18 @@ enum NymoraClass : Byte
     Ghostra = 5,
 }
 
+// 2.14 — Marques Nightseer applicables a un combattant (Bible V7.1 — passif "L'Œil qui n'est pas").
+//   Une cible ne peut avoir qu'1 marque active a la fois (Bible : "AUCUNE marque ne s'empile").
+//   Voile (= MARQUE VOILÉ) n'est PAS dans cet enum : Voile s'applique sur une CASE, pas une unite
+//   (cf TileVeiledByPlayer dans Grid.qtn).
+//   Verrouille : ne PAS reorganiser (CombatRulesVersion).
+enum MarkKind : Byte
+{
+    None       = 0,
+    Traque     = 1,  // Marque du Chasseur : +30% pierce shields des sorts Nightseer sur cette cible
+    Empreinte  = 2,  // Empreinte : sillage visible 1 tour pour le Nightseer apres deplacement de la cible
+}
+
 component Combatant
 {
     Int32 PlayerIndex;
@@ -78,4 +90,44 @@ component Combatant
     // selon RangeMax (melee = Attack, range = Cast).
     Int32 LastCastOnTurn;
     SpellId LastCastSpellId;
+
+    // 2.13.e — Position cible du dernier cast (case visee). Utilisee par CombatVFXView pour
+    // afficher les VFX one-shot a la position du target (et non du caster). Pour les sorts
+    // self-target c'est = caster pos (cf CombatInputController qui redirige Filter=Self).
+    Int32 LastCastTargetX;
+    Int32 LastCastTargetY;
+
+    // 2.13.e — Compteur monotone incremente a chaque cast reussi. Permet a la View de
+    // detecter PLUSIEURS casts dans le meme tour (LastCastOnTurn ne suffit pas car il
+    // reste egal pour tous les casts du tour courant). Init 0, jamais reset.
+    Int32 LastCastSequence;
+
+    // 2.14 — Marque Nightseer active sur ce combattant (Bible V7.1 "L'Œil qui n'est pas").
+    //   CurrentMark == None : pas de marque (defaut).
+    //   1 seule marque active a la fois (pas de stack — Bible explicite).
+    //   MarkTurnsLeft : tours restants avant expiration (Marque du Chasseur = 3 tours typique).
+    //   MarkAppliedOnTurn : tour de pose (skip-decrement convention).
+    //   MarkOwnerPlayer : PlayerIndex du Nightseer qui a pose la marque (utile pour les
+    //     interactions futures — bonus appliques uniquement au caster proprietaire).
+    MarkKind CurrentMark;
+    Int32 MarkTurnsLeft;
+    Int32 MarkAppliedOnTurn;
+    Int32 MarkOwnerPlayer;
+
+    // 2.15.a — Compteur de degats directs subis pendant le round courant.
+    //   Bible Prescience : +1 PR si Nightseer N'A PAS pris de degats ce round, -1 PR sinon.
+    //   Reset a 0 au debut du 1er sous-tour de chaque round (cf TurnSystem.EnterTurnStart).
+    //   Increment dans le damage loop SpellSystem (a chaque hit qui passe sur HP).
+    //   Le check Prescience se fait en fin de round (TurnSystem.EnterTurnEnd dernier sous-tour).
+    Int32 DamageTakenThisRound;
+
+    // 2.15.c — Tour ou un piege POSE par ce combattant a ete declenche pour la derniere fois.
+    //   Set par FogHelpers.TryTriggerTrapOnEnter (le owner du trap, pas l'enterer).
+    //   Sert au bonus heal Seve Sauvage : +60 si declenchement >= currentTurn - 1 (ce round
+    //   ou round precedent). Init -1000 au spawn (= jamais).
+    Int32 LastTrapTriggeredOnTurn;
+
+    // 2.16 — Tour ou ce combattant (Nightseer) a utilise Traquenard la derniere fois.
+    //   Cooldown 4 tours apres usage (Bible V7.1). Initial : -1000 (pas de cooldown au spawn).
+    Int32 LastTraquenardUsedOnTurn;
 }

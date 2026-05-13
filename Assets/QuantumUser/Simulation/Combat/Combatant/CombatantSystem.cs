@@ -46,6 +46,8 @@ namespace Quantum
                 LastAmeLaceeUsedOnTurn = -1000, // pas de cooldown au spawn (Bible : signature jouable des HG=5)
                 LastCastOnTurn = -1,             // 2.12.bis : aucun cast au spawn (View detecte diff > 0)
                 LastCastSpellId = SpellId.None,  // 2.12.bis
+                LastTrapTriggeredOnTurn = -1000, // 2.15.c : aucun trap declenche au spawn (Seve Sauvage)
+                LastTraquenardUsedOnTurn = -1000, // 2.16 : aucun cooldown au spawn (Bible V7.1)
             };
 
             var entity = f.Create();

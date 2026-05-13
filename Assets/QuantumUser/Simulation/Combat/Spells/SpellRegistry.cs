@@ -49,6 +49,7 @@ namespace Quantum
 
         public const byte OncePerMatchBitPacteDeSang   = 0;
         public const byte OncePerMatchBitDernierSouffle = 1;
+        public const byte OncePerMatchBitNightseerEvanescence = 2;
 
         // Constantes Bible V7.1 partagees par plusieurs sorts / systemes.
         public const int PeauDeFerShieldHP            = 200;
@@ -85,6 +86,64 @@ namespace Quantum
         public const int AppelDuSangPalierRageOuverte = 40;   // cible <40% HP -> +1 PM Soulrender + 50% shield bypass melee
         public const int AppelDuSangPalierLeCri       = 20;   // cible <20% HP -> Sang Coagule croix 5 autour caster
         public const int AppelDuSangShieldBypassPct   = 50;   // 50% des dgts mêlée ignorent le shield si target <40%
+
+        // 2.15.a — Nightseer (constantes Bible V7.1).
+        public const int TirPrecisDmg                 = 200;  // dgts base
+        public const int TirPrecisDmgIfTraque         = 280;  // dgts si target porte MarkKind.Traque (Bible : 280)
+        public const int VoleeDEpinesDmg              = 130;  // dgts par cible touchee dans la ligne
+        public const int VoleeDEpinesFiletDmg         = 70;   // dgts pose par le Filet de Ronces sur derniere case (info pour 2.15.b)
+        public const int VoleeDEpinesFiletPMReduce    = 1;    // -1 PM apres declenchement Filet
+        public const int DetonationOniriqueDmg        = 170;  // dgts AoE 2x2 base
+        public const int DetonationOniriqueDmgVoile   = 80;   // +80 dgts dans cases voilees + dechire le voile
+        public const int FrappeDeLOmbreDmg            = 200;  // dgts base
+        public const int FrappeDeLOmbreDmgIfMoved     = 300;  // 200 + 100 si target.PM < target.MaxPM/2 (deja deplacee)
+        public const int FrappeDeLOmbreEmpreinteTurns = 2;    // duree Empreinte si bonus declenche
+        public const int SalveMortelleDmgCenter       = 220;  // centre de la croix
+        public const int SalveMortelleDmgSide         = 130;  // 4 cases cardinales
+        public const int SalveMortelleDmgIfTraque     = 60;   // +60 sur cibles Traque
+        public const int SalveMortelleDmgIfVoile      = 50;   // +50 dans cases Voilees + dechire
+        public const int SalveMortelleHGCost          = 3;    // 3 PR mandatory (ressource Nightseer)
+
+        // 2.15.b — Nightseer Tactiques + passif L'Œil qui n'est pas.
+        public const int MarqueDuChasseurTurns        = 3;    // duree Traque applique
+        public const int FiletDeRoncesDmg             = 100;  // dgts au declenchement (ennemi entre)
+        public const int FiletDeRoncesPMReduce        = 2;    // -2 PM apres declenchement
+        public const int FiletDeRoncesEmpreinteTurns  = 2;    // duree Empreinte apres declenchement
+        public const int ChampDeMinesDmg              = 70;   // dgts par mine declenchee
+        public const int ChampDeMinesEmpreinteTurns   = 2;
+        public const int BourrasquePushBase           = 3;    // push 3 cases loin du caster
+        public const int BourrasquePushBonus1PR       = 5;    // push 5 cases avec 1 PR depense
+        public const int SouffleGlacialDmg            = 70;   // dgts AoE croix 3 autour caster
+        public const int SouffleGlacialPushDistance   = 1;    // push 1 case loin du caster
+        public const int SouffleGlacialPMReduce       = 1;    // MovementMalus -1 (1 tour)
+        public const int OeilQuiNestPasShieldPiercePct = 30;  // sorts Nightseer sur Traque ignorent 30% boucliers
+
+        // 2.15.c — Nightseer Survie.
+        public const int VoileDOmbreTurns             = 1;    // Untargetable 1 round actif (skip-decrement convention)
+        public const int PasFurtifRangeMax            = 4;    // teleport jusqu'a 4 cases (Manhattan)
+        public const int PasFurtifVeilTurns           = 2;    // duree Voile bonus si 1 PR
+        public const int CamouflageRoncesShieldHP     = 130;  // shield 130 HP
+        public const int CamouflageRoncesShieldTurns  = 2;    // 2 rounds actifs
+        public const int CamouflageRoncesAuraDmg      = 70;   // dgts ennemis adjacents en fin de round
+        public const int CamouflageRoncesAuraTurns    = 2;    // 2 rounds actifs (sync avec shield)
+        public const int SeveSauvageHealBase          = 130;  // heal de base
+        public const int SeveSauvageHealBonusTrap     = 60;   // +60 si trap declenche dans les 2 derniers rounds
+        public const int SeveSauvageHealBonusVeil     = 30;   // +30 si au moins 1 voile actif sur la map (owner caster)
+        public const int EvanescenceHpThresholdPct    = 30;   // HP < 30% requis
+        public const int EvanescenceHeal              = 150;  // heal au cast
+        public const int EvanescenceRangeMax          = 7;    // teleport jusqu'a 7 cases
+        public const int EvanescenceVeilTurns         = 2;    // duree Voile sur case quittee
+
+        // 2.16 — Nightseer Signature TRAQUENARD (Bible V7.1).
+        public const int TraquenardDmgBase            = 280;  // dgts cible
+        public const int TraquenardDmgBonusIfMarked   = 80;   // +80 si target Traque/Voile/Empreinte (= 360 total)
+        public const int TraquenardParalysiePMMalus   = 3;    // -3 PM au prochain tour cible
+        public const int TraquenardParalysieAPMalus   = 2;    // -2 PA au prochain tour cible
+        public const int TraquenardParalysieTurns     = 1;    // 1 tour actif (skip-decrement convention)
+        public const int TraquenardCooldownTurns      = 4;    // 4 tours apres usage (re-castable si PR remonte a 4)
+        public const int TraquenardPRCost             = 4;    // 4/4 PR (consomme toute la jauge)
+        public const int TraquenardPRGainOnConsumeMark = 2;   // +2 PR au caster si bonus marque declenche
+        public const int TraquenardRangeMax           = 5;    // portee Manhattan caster -> cible
 
         public static bool TryGet(SpellId id, out SpellDef def)
         {
@@ -411,6 +470,315 @@ namespace Quantum
                         RangeMax = 1,
                         DamageAmount = AmeLaceeDamage,
                         HGCostMandatory = 5, // 5/5 HG obligatoire
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // -------------------------------------------------------------
+                // NIGHTSEER 2.15.a — OFFENSIFS
+                // -------------------------------------------------------------
+
+                // Tir Precis (2.15.a) : 3 PA, range 6, 200 dgts.
+                // Bonus Bible : si target Marque.Traque -> 280 dgts ET caster regen +1 PR.
+                case SpellId.NightseerTirPrecis:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 6,
+                        DamageAmount = TirPrecisDmg,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Volee d'Epines (2.15.a) : 4 PA, ligne range 5, 130 dgts par cible.
+                // Pose un Filet de Ronces (TrapKind) sur la DERNIERE case touchee.
+                case SpellId.NightseerVoleeDEpines:
+                    def = new SpellDef
+                    {
+                        PACost = 4,
+                        Shape = TargetingShape.Line,
+                        Filter = TargetingFilter.AnyTile,
+                        RangeMin = 1,
+                        RangeMax = 5,
+                        DamageAmount = VoleeDEpinesDmg,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Detonation Onirique (2.15.a) : 4 PA, range 5 (10 avec 2 PR — TODO 2.15.b),
+                // AoE 2x2, 170 dgts. Si case Voilee dans la zone : +80 dgts ET dechire le voile.
+                // 2.15.a : option PR pour x2 range non implementee, RangeMax = 5.
+                case SpellId.NightseerDetonationOnirique:
+                    def = new SpellDef
+                    {
+                        PACost = 4,
+                        Shape = TargetingShape.SingleTile, // AoE 2x2 hardcoded dans SpellSystem
+                        Filter = TargetingFilter.AnyTile,
+                        RangeMin = 1,
+                        RangeMax = 5,
+                        DamageAmount = DetonationOniriqueDmg,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Frappe de l'Ombre (2.15.a) : 4 PA, range 3, 200 dgts.
+                // Bonus Bible : si target.PM < (target.MaxPM/2) -> 300 dgts ET applique Empreinte 2 tours.
+                case SpellId.NightseerFrappeDeLOmbre:
+                    def = new SpellDef
+                    {
+                        PACost = 4,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 3,
+                        DamageAmount = FrappeDeLOmbreDmg,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Salve Mortelle (2.15.a) : 5 PA, range 6, AoE croix 5, 3 PR mandatory.
+                // 220 dgts au centre + 130 sur les 4 cardinales. +60 sur cibles Traque.
+                // Cases Voilees dans la zone : +50 dgts dans la case + dechirees.
+                case SpellId.NightseerSalveMortelle:
+                    def = new SpellDef
+                    {
+                        PACost = 5,
+                        Shape = TargetingShape.CrossSmall, // 5 cases (centre + 4 cardinales)
+                        Filter = TargetingFilter.AnyTile,
+                        RangeMin = 1,
+                        RangeMax = 6,
+                        DamageAmount = 0, // calcule per-cell dans damage loop (220 centre / 130 cotes)
+                        HGCostMandatory = (byte)SalveMortelleHGCost,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // -------------------------------------------------------------
+                // NIGHTSEER 2.15.b — TACTIQUES
+                // -------------------------------------------------------------
+
+                // Marque du Chasseur (2.15.b) : 1 PA, range 5, applique Traque 3 tours sur cible.
+                // Pas de damage. Sort de setup.
+                case SpellId.NightseerMarqueDuChasseur:
+                    def = new SpellDef
+                    {
+                        PACost = 1,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 5,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Filet de Ronces (2.15.b) : 2 PA, range 4, pose Filet (Trap + Voile).
+                // Quand un ennemi entre sur la case : 100 dgts + -2 PM + Empreinte 2 tours.
+                case SpellId.NightseerFiletDeRonces:
+                    def = new SpellDef
+                    {
+                        PACost = 2,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.AnyTile,
+                        RangeMin = 1,
+                        RangeMax = 4,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Champ de Mines (2.15.b) : 4 PA, range 3, AoE 3x3.
+                // Pose 3 Mines voilees dans la zone (les 3 1eres cases dispo de l'AoE pour 2.15.b).
+                // Chaque mine : 70 dgts + Empreinte 2 tours.
+                case SpellId.NightseerChampDeMines:
+                    def = new SpellDef
+                    {
+                        PACost = 4,
+                        Shape = TargetingShape.Square3x3,
+                        Filter = TargetingFilter.AnyTile,
+                        RangeMin = 1,
+                        RangeMax = 3,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Bourrasque (2.15.b) : 3 PA, range 5, push cible 3 cases loin du caster.
+                // Option : 1 PR depense -> push 5 cases au lieu de 3.
+                case SpellId.NightseerBourrasque:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 5,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 1,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Souffle Glacial (2.15.b) : 3 PA, AoE croix 3 autour caster, 70 dgts + push 1 + MovementMalus -1.
+                // Sort defensif anti-melee. Ciblage = case du caster (RangeMin/Max = 0, Filter = Self).
+                case SpellId.NightseerSouffleGlacial:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.CrossSmall, // 5 cases mais on filtrera le centre (caster) dans damage loop
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = SouffleGlacialDmg,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1, // damage > 0 -> entre dans damage loop
+                    };
+                    return true;
+
+                // -------------------------------------------------------------
+                // NIGHTSEER 2.15.c — SURVIE
+                // -------------------------------------------------------------
+
+                // Voile d'Ombre : 3 PA, self, applique Untargetable 1 round (skip-decrement convention).
+                case SpellId.NightseerVoileDOmbre:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Pas Furtif : 2 PA, range 0-4, teleport sur case vide (filter EmptyTile).
+                // Option : 1 PR -> case d'arrivee Voilee 2 tours (HGCostMaxOptional = 1).
+                case SpellId.NightseerPasFurtif:
+                    def = new SpellDef
+                    {
+                        PACost = 2,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.EmptyTile,
+                        RangeMin = 1,
+                        RangeMax = PasFurtifRangeMax,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 1,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Camouflage Ronces : 3 PA, self, ShieldActive 130 HP / 2 rounds + RoncesAura
+                // (70 dgts ennemis adjacents en fin de round, 2 rounds).
+                case SpellId.NightseerCamouflageRonces:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Seve Sauvage : 3 PA, self, heal 130 (+60 si trap declenche ces 2 rounds, +30 si voile actif).
+                case SpellId.NightseerSeveSauvage:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Evanescence : 4 PA, range 0-7, HP<30%, 1/match. Teleport sur case vide + heal 150
+                // + Voile 2 tours sur case quittee. Filter EmptyTile pour valider la destination.
+                case SpellId.NightseerEvanescence:
+                    def = new SpellDef
+                    {
+                        PACost = 4,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.EmptyTile,
+                        RangeMin = 1,
+                        RangeMax = EvanescenceRangeMax,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNightseerEvanescence,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // -------------------------------------------------------------
+                // NIGHTSEER 2.16 — SIGNATURE TRAQUENARD
+                // -------------------------------------------------------------
+
+                // Traquenard : signature Nightseer.
+                // 2 PA, range 5, 4/4 PR (consomme toute la jauge), 280 dgts (+80 si marque).
+                // Teleport caster a 1 case adjacente cible + Paralysie -3 PM/-2 PA prochain tour.
+                // Si target Traque/Empreinte OU Voile sur case originale (caster owner) :
+                //   +80 dgts, consume marque/voile, +2 PR caster apres coup.
+                // Cooldown 4 tours. Re-castable si PR remonte a 4.
+                case SpellId.NightseerTraquenard:
+                    def = new SpellDef
+                    {
+                        PACost = 2,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = TraquenardRangeMax,
+                        DamageAmount = TraquenardDmgBase,
+                        HGCostMandatory = (byte)TraquenardPRCost, // 4 PR mandatory
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
