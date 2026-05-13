@@ -30,8 +30,11 @@ namespace Nymora.Combat.View.HUD
         [Tooltip("Sous-titre : info contextuelle (round, difficulte, etc.).")]
         [SerializeField] private TMP_Text _subtitleText;
 
-        [Header("Bouton")]
-        [SerializeField] private Button _restartButton;
+        [Header("Boutons Rejouer (2.16.c.iv)")]
+        [Tooltip("Click = AIConstants.CurrentDifficulty=Easy + reload scene.")]
+        [SerializeField] private Button _restartEasyButton;
+        [Tooltip("Click = AIConstants.CurrentDifficulty=Medium + reload scene.")]
+        [SerializeField] private Button _restartMediumButton;
 
         [Header("Couleurs titre")]
         [SerializeField] private Color _victoryColor = new Color(1.00f, 0.83f, 0.30f, 1f); // or
@@ -42,10 +45,15 @@ namespace Nymora.Combat.View.HUD
 
         private void Awake()
         {
-            if (_restartButton != null)
+            if (_restartEasyButton != null)
             {
-                _restartButton.onClick.RemoveAllListeners();
-                _restartButton.onClick.AddListener(OnRestartClicked);
+                _restartEasyButton.onClick.RemoveAllListeners();
+                _restartEasyButton.onClick.AddListener(() => OnRestartClicked(AIDifficulty.Easy));
+            }
+            if (_restartMediumButton != null)
+            {
+                _restartMediumButton.onClick.RemoveAllListeners();
+                _restartMediumButton.onClick.AddListener(() => OnRestartClicked(AIDifficulty.Medium));
             }
             Hide();
         }
@@ -107,13 +115,18 @@ namespace Nymora.Combat.View.HUD
             _shown = false;
         }
 
-        private void OnRestartClicked()
+        private void OnRestartClicked(AIDifficulty difficulty)
         {
+            // 2.16.c.iv — set la difficulte avant le reload. Le static field
+            // AIConstants.CurrentDifficulty survit aux scene loads (meme domain Unity),
+            // donc la nouvelle sim sera init avec la bonne valeur.
+            AIConstants.CurrentDifficulty = difficulty;
+
             // Quantum installe DontDestroyOnLoad sur ses Singletons (QuantumMapLoader,
             // etc.) et garde le QuantumRunner actif a travers les scene loads. Sans
             // ShutdownAll() avant le reload, le nouveau scene ressort un runner mort
             // et la sim ne s'init pas. C'est le pattern officiel Photon (cf QuantumUnityEditor).
-            Debug.Log("[Nymora.HUD] MatchEnd Rejouer cliquee — ShutdownAll + reload scene");
+            Debug.Log($"[Nymora.HUD] MatchEnd Rejouer ({difficulty}) cliquee — ShutdownAll + reload scene");
             QuantumRunner.ShutdownAll();
             var scene = SceneManager.GetActiveScene();
             SceneManager.LoadScene(scene.name);

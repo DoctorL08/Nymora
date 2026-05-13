@@ -22,25 +22,42 @@ namespace Quantum
     /// </summary>
     public static class AIConstants
     {
-        // 2.16.b — Difficulte courante hardcodee. Flip Easy/Medium ici pour tester.
-        // En Phase 7 (matchmaking / scene 30_CombatIA polish) on connectera ca a un
-        // menu de selection avant le start du combat. Pour l'instant Lorenzo modifie
-        // cette constante a la main.
-        public const AIDifficulty CurrentDifficulty = AIDifficulty.Medium;
+        // 2.16.c.iv — Difficulte courante mutable runtime.
+        //
+        // Etait const en 2.16.b ; passe en static field pour que le View (boutons
+        // Easy/Medium de l'overlay MatchEnd) puisse switcher entre 2 matches sans
+        // recompile. La valeur survit aux reloads de scene (static dans le meme
+        // domain Unity) — Lorenzo peut donc Rejouer Easy -> Rejouer Medium et le
+        // matche se relance avec la bonne IA.
+        //
+        // Determinisme : offline IA = 1 client = 1 valeur partagee tout le match.
+        // OK. Phase 6 multiplayer devra pousser la difficulte via un Command
+        // initial ou via RuntimeConfig.AIDifficulty pour que tous les clients voient
+        // la meme valeur (sinon desync).
+        public static AIDifficulty CurrentDifficulty = AIDifficulty.Medium;
 
 
         // Phase 2 : P1 est le bot, Lorenzo joue P0. Hardcoded jusqu'a Phase 5/6 ou un
         // RuntimePlayer/RoomConfig permettra de configurer humain vs bot par slot.
         public const int BotPlayerIndex = 1;
 
-        // Delai en ticks Quantum (60Hz par defaut) avant que le bot termine son tour
-        // en l'absence d'action. Permet au joueur humain de voir que c'est le tour
-        // adverse. 30 ticks = 0.5s a 60Hz.
-        //
-        // 2.16.a.i : le bot ne fait QUE finir son tour (squelette).
-        // 2.16.a.ii+ : ce delai sera remplace par le temps d'execution reel des actions
-        //              (move + casts), avec une eventuelle pause finale courte.
+        // Delai final apres la derniere action avant de declencher EndTurn. 30 ticks
+        // = 0.5s a 60Hz. Permet au joueur de voir le dernier effet avant que le tour
+        // passe.
         public const int BotEndTurnDelayTicks = 30;
+
+        // 2.16.c.v — Intervalle entre actions du bot (move puis casts). 60 ticks = 1s
+        // a 60Hz. Espace les casts dans le temps pour que le joueur voie chaque effet
+        // (-dgts, push, tp...) sequentiellement, comme face a un vrai joueur.
+        //
+        // Calendrier d'un tour bot avec ce pacing :
+        //   tick 0    : move
+        //   tick 60   : cast 1
+        //   tick 120  : cast 2
+        //   ...
+        //   tick (1+N)*60 + BotEndTurnDelayTicks : EndTurn (N = nb casts effectues)
+        // Duree typique : Easy ~3s (move + 2 casts + delai), Medium ~5-9s.
+        public const int ActionIntervalTicks = 60;
 
         // 2.16.a.iii — cap dur des casts par tour pour l'IA Easy.
         // Constate empiriquement : meme avec random pick + skip signature, un bot

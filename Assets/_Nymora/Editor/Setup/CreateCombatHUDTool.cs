@@ -602,29 +602,14 @@ namespace Nymora.Editor.Setup
                 content: "Round 0", fontSize: 28f, align: TextAlignmentOptions.Center,
                 color: new Color(0.85f, 0.85f, 0.85f, 1f));
 
-            // Restart button.
-            var btnGo = NewUIGameObject("RestartButton", panelGo.transform);
-            SetAnchors(btnGo.GetComponent<RectTransform>(),
-                anchorMin: new Vector2(0.5f, 0.5f), anchorMax: new Vector2(0.5f, 0.5f),
-                pivot: new Vector2(0.5f, 0.5f), anchoredPos: new Vector2(0f, -120f), size: new Vector2(280f, 70f));
-
-            var btnBg = btnGo.AddComponent<Image>();
-            btnBg.color = new Color(0.65f, 0.15f, 0.10f, 0.95f);
-
-            var btn = btnGo.AddComponent<Button>();
-            btn.targetGraphic = btnBg;
-            var colors = btn.colors;
-            colors.normalColor      = new Color(1f, 1f, 1f, 1f);
-            colors.highlightedColor = new Color(1.0f, 0.85f, 0.85f, 1f);
-            colors.pressedColor     = new Color(0.85f, 0.65f, 0.65f, 1f);
-            colors.disabledColor    = new Color(0.40f, 0.40f, 0.40f, 0.8f);
-            btn.colors = colors;
-
-            CreateText(btnGo.transform, "Label",
-                anchorMin: Vector2.zero, anchorMax: Vector2.one,
-                pivot: new Vector2(0.5f, 0.5f), anchoredPos: Vector2.zero, size: Vector2.zero,
-                content: "Rejouer", fontSize: 32f, align: TextAlignmentOptions.Center, color: Color.white)
-                .fontStyle = FontStyles.Bold;
+            // 2.16.c.iv — 2 boutons cote a cote : "Rejouer Easy" (vert) et
+            // "Rejouer Medium" (orange). Espacement 20px entre les deux.
+            Button easyBtn = BuildDifficultyButton(panelGo.transform, "RestartEasyButton",
+                "Rejouer Easy", new Vector2(-130f, -120f),
+                new Color(0.20f, 0.55f, 0.25f, 0.95f));  // vert
+            Button mediumBtn = BuildDifficultyButton(panelGo.transform, "RestartMediumButton",
+                "Rejouer Medium", new Vector2(130f, -120f),
+                new Color(0.85f, 0.50f, 0.10f, 0.95f)); // orange
 
             // Composant + cablage.
             var overlay = rootGo.AddComponent<MatchEndOverlay>();
@@ -632,7 +617,8 @@ namespace Nymora.Editor.Setup
             SetObjectRef(so, "_panel", panelGo);
             SetObjectRef(so, "_titleText", title);
             SetObjectRef(so, "_subtitleText", subtitle);
-            SetObjectRef(so, "_restartButton", btn);
+            SetObjectRef(so, "_restartEasyButton", easyBtn);
+            SetObjectRef(so, "_restartMediumButton", mediumBtn);
             so.ApplyModifiedPropertiesWithoutUndo();
 
             // Panel hidden par defaut. MatchEndOverlay.Refresh() le toggle quand
@@ -640,6 +626,39 @@ namespace Nymora.Editor.Setup
             panelGo.SetActive(false);
 
             return overlay;
+        }
+
+        /// <summary>
+        /// 2.16.c.iv — helper pour bouton "Rejouer (difficulty)" colore. Utilise par
+        /// BuildMatchEndOverlay pour les 2 boutons Easy/Medium cote a cote.
+        /// </summary>
+        private static Button BuildDifficultyButton(Transform parent, string name, string label,
+            Vector2 anchoredPos, Color bgColor)
+        {
+            var btnGo = NewUIGameObject(name, parent);
+            SetAnchors(btnGo.GetComponent<RectTransform>(),
+                anchorMin: new Vector2(0.5f, 0.5f), anchorMax: new Vector2(0.5f, 0.5f),
+                pivot: new Vector2(0.5f, 0.5f), anchoredPos: anchoredPos, size: new Vector2(240f, 70f));
+
+            var btnBg = btnGo.AddComponent<Image>();
+            btnBg.color = bgColor;
+
+            var btn = btnGo.AddComponent<Button>();
+            btn.targetGraphic = btnBg;
+            var colors = btn.colors;
+            colors.normalColor      = new Color(1f, 1f, 1f, 1f);
+            colors.highlightedColor = new Color(1.1f, 1.1f, 1.1f, 1f);
+            colors.pressedColor     = new Color(0.75f, 0.75f, 0.75f, 1f);
+            colors.disabledColor    = new Color(0.40f, 0.40f, 0.40f, 0.8f);
+            btn.colors = colors;
+
+            CreateText(btnGo.transform, "Label",
+                anchorMin: Vector2.zero, anchorMax: Vector2.one,
+                pivot: new Vector2(0.5f, 0.5f), anchoredPos: Vector2.zero, size: Vector2.zero,
+                content: label, fontSize: 28f, align: TextAlignmentOptions.Center, color: Color.white)
+                .fontStyle = FontStyles.Bold;
+
+            return btn;
         }
 
         /// <summary>

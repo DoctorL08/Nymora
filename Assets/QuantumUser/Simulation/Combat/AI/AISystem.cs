@@ -51,23 +51,54 @@ namespace Quantum
             var bot = f.Unsafe.GetPointer<Combatant>(botEntity);
             if (bot->HP <= 0) return; // bot mort, TurnSystem gere MatchEnd
 
-            // Actions (move + casts) declenchees UNIQUEMENT au 1er tick de TurnActive
-            // (elapsed == 0). Sans ce gate, TryGreedyCast tournerait chaque tick et le
-            // bot pourrait spammer 5-10 casts par tour, one-turn le joueur. AIConstants.
-            // MaxCastsPerTurn capote en plus le nb de casts pour balance Easy.
+            // 2.16.c.v — Pacing des actions du bot pour visibilite "vrai joueur".
+            //   tick 0          : TryGreedyMove
+            //   tick N*interval : 1 cast par interval (interval = ActionIntervalTicks)
+            //   apres N casts   : delai puis EndTurn
+            // Si un cast renvoie "rien a caster", on saute directement au EndTurn delay.
             int totalDuration = TurnConstants.GetTurnDurationTicks(f);
             int elapsed = totalDuration - state->TurnTimerTicks;
+            int interval = AIConstants.ActionIntervalTicks;
+
+            bool isMedium = AIConstants.CurrentDifficulty == AIDifficulty.Medium;
+            int maxCasts = isMedium ? AIConstants.MaxCastsPerTurnMedium : AIConstants.MaxCastsPerTurnEasy;
+
+            // Phase MOVE : tick 0.
             if (elapsed == 0)
             {
                 TryGreedyMove(f, botEntity, bot);
-                TryGreedyCast(f, botEntity, bot, state);
+                return; // attend le prochain interval pour le 1er cast
             }
 
-            // Phase delay : end turn apres BotEndTurnDelayTicks ecoules. Laisse au
-            // joueur humain le temps de voir le move + l'etat avant de passer au sien.
-            if (elapsed < AIConstants.BotEndTurnDelayTicks) return;
+            // Phase CAST : 1 cast par intervalle, jusqu'a maxCasts. castSlot 1..maxCasts.
+            // Detection precise du tick d'intervalle (elapsed == 1*interval, 2*interval, ...).
+            if (elapsed % interval == 0)
+            {
+                int castSlot = elapsed / interval; // 1, 2, 3, ...
+                if (castSlot >= 1 && castSlot <= maxCasts)
+                {
+                    bool casted = TryGreedyCastSingle(f, botEntity, bot, state);
+                    if (!casted)
+                    {
+                        // Plus aucun sort affordable -> fin de tour anticipee apres delai.
+                        Log.Info($"[AI] Bot P{state->ActivePlayerIndex} pas de cast au slot {castSlot}, fin de tour");
+                        EndBotTurn(f, state, bot);
+                        return;
+                    }
+                }
+            }
 
-            Log.Info($"[AI] Bot P{state->ActivePlayerIndex} termine son tour (PM restant {bot->PM})");
+            // Phase END TURN : apres le dernier slot de cast + delai final.
+            int lastActionTick = (1 + maxCasts) * interval; // move + maxCasts casts
+            if (elapsed >= lastActionTick + AIConstants.BotEndTurnDelayTicks)
+            {
+                EndBotTurn(f, state, bot);
+            }
+        }
+
+        private static void EndBotTurn(Frame f, CombatState* state, Combatant* bot)
+        {
+            Log.Info($"[AI] Bot P{state->ActivePlayerIndex} termine son tour (PA restant {bot->PA}, PM restant {bot->PM})");
             state->TurnTimerTicks = 0;
         }
 
@@ -157,145 +188,110 @@ namespace Quantum
         }
 
         /// <summary>
-        /// Boucle de casts greedy : tant que le bot peut affordable un sort offensif
-        /// qui touche l'ennemi, cast le meilleur (= degats estimes les plus eleves)
-        /// et recommence. Stop quand plus aucun sort ne passe ou ennemi mort.
+        /// 2.16.c.v — Tente UN SEUL cast offensif. Retourne true si un sort a ete
+        /// lance, false sinon (pas de spell affordable / pas d'ennemi vivant).
         ///
-        /// Sorts ignores pour l'IA Easy :
-        ///   - Self filter (Pacte, Rugissement, Rage, Riposte, Cauter, Peau, Sève, Dernier)
-        ///   - IsOffensive == 0 (Marque de Carnage, Empoignade) — pas de degats directs
-        ///   - OncePerMatch (Pacte de Sang, Dernier Souffle) — preserve pour Phase 3
+        /// Appele par AISystem.Update a intervalles reguliers (ActionIntervalTicks)
+        /// pour espacer visuellement les casts du bot. La boucle multi-cast historique
+        /// (2.16.a.iii) est remontee dans AISystem.Update via la sequence elapsed-based.
         ///
-        /// Sorts utilises (Soulrender 2.16.a.iii) :
-        ///   - Tranche-Ame  (10, 220 dgts, range 1, 3 PA)
-        ///   - Ouvre-Plaie  (11, 110/230 dgts, range 1, 2 PA, +1 HG optional)
-        ///   - Charge Brutale (12, 180 dgts, range 5 ligne, 4 PA — AnyTile)
-        ///   - Detonation Sanglante (13, 60+40*HG, range 4 croix 3, 4 PA, 2 HG min — AnyTile)
-        ///   - Curee        (14, 150 dgts, range 2, 2 PA, 2 HG mandatory)
-        ///   - Ame Laceree  (25, 320 dgts, range 1, 2 PA, 5 HG mandatory, cooldown 4 tours)
+        /// Decks par difficulte :
+        ///   Easy   : SoulrenderEasyDeck (OuvrePlaie, Curee + utility non offensifs)
+        ///   Medium : SoulrenderMediumDeck (OuvrePlaie, ChargeBrutale, Curee + utility)
+        ///
+        /// Strategy :
+        ///   Easy   : random pick via f.RNG (erreurs credibles)
+        ///   Medium : greedy max-score via EstimateSpellDamage
+        /// HGSpend toujours 0 (HG optionnel exclu pour Easy + Medium, cf brique 2.16.b).
         /// </summary>
-        private static void TryGreedyCast(Frame f, EntityRef botEntity, Combatant* bot, CombatState* state)
+        private static bool TryGreedyCastSingle(Frame f, EntityRef botEntity, Combatant* bot, CombatState* state)
         {
-            // Find primary enemy (single in 1v1). Sera re-query apres chaque cast
-            // au cas ou l'enemy aurait bouge (Empoignade pull) ou serait mort.
+            if (bot->PA <= 0) return false;
+
+            // Find primary enemy (single in 1v1).
             int enemyX, enemyY;
-            if (!TryFindEnemyPosition(f, bot, out enemyX, out enemyY)) return;
+            if (!TryFindEnemyPosition(f, bot, out enemyX, out enemyY))
+            {
+                Log.Info($"[AI] Bot P{bot->PlayerIndex} : plus d'ennemi vivant, fin de cast");
+                return false;
+            }
 
             // Buffer stack pour les sorts affordables ce tick (max 16 = nb sorts Soulrender).
             SpellId* affordable = stackalloc SpellId[16];
-            byte* affordableHGSpend = stackalloc byte[16];
             int* affordableScore = stackalloc int[16];
 
             bool isMedium = AIConstants.CurrentDifficulty == AIDifficulty.Medium;
-            int maxCasts = isMedium ? AIConstants.MaxCastsPerTurnMedium : AIConstants.MaxCastsPerTurnEasy;
-
-            // 2.16.b — Deck fixe par difficulte (Lorenzo : "les IA vont devoiler les
-            // metas, donne-leur des decks vraiment nuls"). L'IA n'enumere QUE les sorts
-            // de son deck, pas la plage complete SpellId 10-25. Le vrai meta deck est
-            // reserve a IA Hard (futur) + au joueur en PvP.
             SpellId[] deck = isMedium ? AIConstants.SoulrenderMediumDeck : AIConstants.SoulrenderEasyDeck;
 
-            for (int iter = 0; iter < maxCasts; iter++)
+            int affordableCount = 0;
+            for (int di = 0; di < deck.Length; di++)
             {
-                if (bot->PA <= 0) break;
+                SpellId spellId = deck[di];
+                if (!SpellRegistry.TryGet(spellId, out var def)) continue;
+                if (def.IsOffensive == 0) continue;
+                if (def.Filter != TargetingFilter.Enemy && def.Filter != TargetingFilter.AnyTile) continue;
 
-                int affordableCount = 0;
+                // Budget PA + HG mandatory.
+                if (bot->PA < def.PACost) continue;
+                if (bot->Resource < def.HGCostMandatory) continue;
 
-                for (int di = 0; di < deck.Length; di++)
+                // Skip OncePerMatch.
+                if (def.OncePerMatchBit != SpellRegistry.OncePerMatchBitNone) continue;
+
+                // Cooldown Ame Laceree.
+                if (spellId == SpellId.SoulrenderAmeLaceree)
                 {
-                    SpellId spellId = deck[di];
-                    if (!SpellRegistry.TryGet(spellId, out var def)) continue;
-                    if (def.IsOffensive == 0) continue;
-                    if (def.Filter != TargetingFilter.Enemy && def.Filter != TargetingFilter.AnyTile) continue;
+                    int turnsSince = state->TurnNumber - bot->LastAmeLaceeUsedOnTurn;
+                    if (turnsSince < SpellRegistry.AmeLaceeCooldownTurns) continue;
+                }
 
-                    // Budget PA + HG mandatory.
-                    if (bot->PA < def.PACost) continue;
-                    if (bot->Resource < def.HGCostMandatory) continue;
+                // Range Manhattan caster -> enemy.
+                int dist = AIEvaluator.Manhattan(bot->GridX, bot->GridY, enemyX, enemyY);
+                if (dist < def.RangeMin || dist > def.RangeMax) continue;
 
-                    // Skip OncePerMatch (Pacte, Dernier Souffle) — reserves Hard ulterieur.
-                    if (def.OncePerMatchBit != SpellRegistry.OncePerMatchBitNone) continue;
+                affordable[affordableCount] = spellId;
+                affordableScore[affordableCount] = AIEvaluator.EstimateSpellDamage(spellId, hgSpend: 0, def.HGCostMandatory);
+                affordableCount++;
+            }
 
-                    // Cooldown check pour Ame Laceree (seul sort Soulrender a cooldown).
-                    // Easy n'utilise pas signature (maxSpellId=24), donc check uniquement Medium.
-                    if (spellId == SpellId.SoulrenderAmeLaceree)
+            if (affordableCount == 0) return false;
+
+            // Selection strategy.
+            int pickedIdx;
+            if (isMedium)
+            {
+                pickedIdx = 0;
+                int bestScore = affordableScore[0];
+                for (int i = 1; i < affordableCount; i++)
+                {
+                    if (affordableScore[i] > bestScore)
                     {
-                        int turnsSince = state->TurnNumber - bot->LastAmeLaceeUsedOnTurn;
-                        if (turnsSince < SpellRegistry.AmeLaceeCooldownTurns) continue;
+                        bestScore = affordableScore[i];
+                        pickedIdx = i;
                     }
-
-                    // Range Manhattan caster -> enemy cell. Pour AnyTile (Charge Brutale,
-                    // Detonation Sanglante) on cible toujours la case ennemie ce qui maximise
-                    // les degats (centre AoE / 1ere cible ligne).
-                    int dist = AIEvaluator.Manhattan(bot->GridX, bot->GridY, enemyX, enemyY);
-                    if (dist < def.RangeMin || dist > def.RangeMax) continue;
-
-                    // HG spend optionnel : DESACTIVE pour Easy ET Medium.
-                    //
-                    // Constate empiriquement : Ouvre-Plaie +1 HG = 230 dgts pour 2 PA est
-                    // auto-sustaining (le sort gain +1 HG par hit -> alimente la prochaine
-                    // cast). Avec discount Appel du Sang a <70% HP, ca devient 230 dgts pour
-                    // 1 PA -> 6-7 casts/tour -> ~1100+ dgts/tour. C'est une combo META que
-                    // Medium ne doit PAS exposer (cf decks IA cachant le meta).
-                    //
-                    // Reserve cette logique a IA Hard (futur) qui aura aussi le bon deck.
-                    byte hgSpend = 0;
-
-                    affordable[affordableCount] = spellId;
-                    affordableHGSpend[affordableCount] = hgSpend;
-                    affordableScore[affordableCount] = AIEvaluator.EstimateSpellDamage(spellId, hgSpend, def.HGCostMandatory);
-                    affordableCount++;
-                }
-
-                if (affordableCount == 0) break; // plus aucun cast viable
-
-                // Selection strategy :
-                //   Easy   : pick aleatoire via Frame.RNG (deterministe Quantum).
-                //   Medium : greedy max-score (degats estimes les plus eleves).
-                int pickedIdx;
-                if (isMedium)
-                {
-                    pickedIdx = 0;
-                    int bestScore = affordableScore[0];
-                    for (int i = 1; i < affordableCount; i++)
-                    {
-                        if (affordableScore[i] > bestScore)
-                        {
-                            bestScore = affordableScore[i];
-                            pickedIdx = i;
-                        }
-                    }
-                }
-                else
-                {
-                    pickedIdx = f.RNG->Next(0, affordableCount);
-                }
-
-                SpellId picked = affordable[pickedIdx];
-                byte pickedHGSpend = affordableHGSpend[pickedIdx];
-                int pickedScore = affordableScore[pickedIdx];
-
-                Log.Info($"[AI] Bot P{bot->PlayerIndex} ({AIConstants.CurrentDifficulty}) cast {picked} sur ({enemyX},{enemyY}) HGSpend={pickedHGSpend} estimDmg={pickedScore} (choisi {pickedIdx + 1}/{affordableCount})");
-
-                // Reuse meme pipeline que les commands clients : construit un
-                // CastSpellCommand a la volee. SpellSystem.TryCastSpell est public
-                // depuis 2.16.a.iii pour ce use case.
-                var cmd = new CastSpellCommand
-                {
-                    Spell = picked,
-                    TargetX = enemyX,
-                    TargetY = enemyY,
-                    HGSpend = pickedHGSpend,
-                };
-                SpellSystem.TryCastSpell(f, bot->PlayerIndex, cmd, state->ActivePlayerIndex);
-
-                // Re-query position ennemi : kill check (sort plus tot du loop) ou
-                // pull/push (Empoignade, Bourrasque) qui aurait deplace la cible.
-                if (!TryFindEnemyPosition(f, bot, out enemyX, out enemyY))
-                {
-                    Log.Info($"[AI] Bot P{bot->PlayerIndex} : plus d'ennemi vivant, fin de cast loop");
-                    return;
                 }
             }
+            else
+            {
+                pickedIdx = f.RNG->Next(0, affordableCount);
+            }
+
+            SpellId picked = affordable[pickedIdx];
+            int pickedScore = affordableScore[pickedIdx];
+
+            Log.Info($"[AI] Bot P{bot->PlayerIndex} ({AIConstants.CurrentDifficulty}) cast {picked} sur ({enemyX},{enemyY}) estimDmg={pickedScore} (choisi {pickedIdx + 1}/{affordableCount})");
+
+            // Reuse meme pipeline que les commands clients.
+            var cmd = new CastSpellCommand
+            {
+                Spell = picked,
+                TargetX = enemyX,
+                TargetY = enemyY,
+                HGSpend = 0,
+            };
+            SpellSystem.TryCastSpell(f, bot->PlayerIndex, cmd, state->ActivePlayerIndex);
+
+            return true;
         }
 
         /// <summary>
