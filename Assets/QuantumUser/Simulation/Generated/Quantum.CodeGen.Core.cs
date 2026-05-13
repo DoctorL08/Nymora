@@ -125,6 +125,9 @@ namespace Quantum {
     ColossarRepresailles = 54,
     ColossarPilier = 55,
     ColossarMurDePierre = 56,
+    ColossarAncrage = 57,
+    ColossarProvocation = 58,
+    ColossarBrisure = 59,
   }
   public enum StatusKind : byte {
     None = 0,
@@ -140,6 +143,8 @@ namespace Quantum {
     Untargetable = 10,
     RoncesAura = 11,
     ActionMalus = 12,
+    AnchorImmune = 13,
+    Provoked = 14,
   }
   public enum TargetingFilter : byte {
     None = 0,

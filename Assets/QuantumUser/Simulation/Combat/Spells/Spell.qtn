@@ -71,6 +71,9 @@ enum SpellId : Byte
     // COLOSSAR 3.3.b — TACTIQUES
     ColossarPilier                = 55,  // 3.3.b.i — Tactique : 3 PA, range 1 case vide, pose Pilier 200 HP / 3 tours. +1 FD (via SpawnObstacle hook). Bloque mouvement + LoS.
     ColossarMurDePierre           = 56,  // 3.3.b.i — Tactique : 5 PA, range 2, pose ligne 3 cases (perpendiculaire axe caster->cible) Mur 150 HP/case / 2 tours. +1 FD par case posee. Bloque mouvement + LoS.
+    ColossarAncrage               = 57,  // 3.3.b.ii — Tactique : 2 PA, self, AnchorImmune 2 tours (immune push/pull + -50% dgts subis).
+    ColossarProvocation           = 58,  // 3.3.b.ii — Tactique : 3 PA, range 4, ennemi -> Provoked 2 tours (stub MVP : effet IA en 3.8).
+    ColossarBrisure               = 59,  // 3.3.b.ii — Tactique anti-obstacle : 3 PA, range 5, cible obstacle adverse, le detruit + 60 dgts AoE rayon 1 si ennemi(s) adjacent(s).
 }
 
 enum SpellEffectKind : Byte

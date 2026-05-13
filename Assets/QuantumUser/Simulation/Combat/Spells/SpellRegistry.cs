@@ -190,6 +190,19 @@ namespace Quantum
         public const int MurDePierreTurns             = 2;    // duree avant expiration auto
         public const int MurDePierreSegments          = 3;    // nombre de cases en ligne perpendiculaire
 
+        // 3.3.b.ii — Ancrage (Colossar).
+        public const int AncrageDmgReductionPct       = 50;   // -50% dgts subis pendant la duree
+        public const int AncrageTurns                 = 2;    // duree AnchorImmune
+
+        // 3.3.b.ii — Provocation (Colossar).
+        public const int ProvocationTurns             = 2;    // duree Provoked sur la cible
+        public const int ProvocationRangeMax          = 4;    // portee Manhattan
+
+        // 3.3.b.ii — Brisure (Colossar) — anti-obstacle.
+        public const int BrisureRangeMax              = 5;    // portee Manhattan
+        public const int BrisureAoeDmg                = 60;   // dgts ennemis adjacents a l'obstacle detruit
+        public const int BrisureAoeRadius             = 1;    // rayon Manhattan autour de l'obstacle
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -973,6 +986,59 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                    };
+                    return true;
+
+                // Ancrage : 2 PA, self, applique AnchorImmune 2 tours (immune push/pull + -50% dgts subis).
+                case SpellId.ColossarAncrage:
+                    def = new SpellDef
+                    {
+                        PACost = 2,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Provocation : 3 PA, range 4, applique Provoked 2 tours sur ennemi.
+                // Stub MVP : status apply OK, effet IA en 3.8 (force l'attaque vers le caster).
+                case SpellId.ColossarProvocation:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = ProvocationRangeMax,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Brisure : 3 PA, range 5, cible obstacle adverse uniquement (validation custom dans handler).
+                // Detruit l'obstacle + 60 dgts AoE rayon 1 sur ennemis adjacents au moment du cast.
+                case SpellId.ColossarBrisure:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.AnyTile, // validation obstacle adverse dans handler
+                        RangeMin = 1,
+                        RangeMax = BrisureRangeMax,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1, // 1 pour pipeline (les dgts sortent dans le handler custom)
                     };
                     return true;
 

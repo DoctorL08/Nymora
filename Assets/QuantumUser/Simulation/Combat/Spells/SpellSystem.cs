@@ -441,6 +441,17 @@ namespace Quantum
                         }
                     }
 
+                    // 3.3.b.ii — Ancrage (Bible V7.1) : -50% dmg subis pendant la duree.
+                    // Applique APRES Densite Inerte (cumul multiplicatif Bible-cohérent), AVANT shield.
+                    // Magnitude = % de reduction (fixe 50 pour Ancrage actuel, mais extensible).
+                    int anchorMag = StatusHelper.GetMagnitude(targetC, StatusKind.AnchorImmune, 0);
+                    if (anchorMag > 0 && dmgThisTarget > 0)
+                    {
+                        int dmgBeforeAnchor = dmgThisTarget;
+                        dmgThisTarget = dmgThisTarget * (100 - anchorMag) / 100;
+                        Log.Info($"[Ancrage] -{anchorMag}% dmg sur P{targetC->PlayerIndex} : {dmgBeforeAnchor} -> {dmgThisTarget}");
+                    }
+
                     // Shield absorption (2.10.b) : ShieldActive absorbe avant HP.
                     // 2.11 Passif RAGE OUVERTE : si target <40% HP pre-damage ET caster Soulrender ET
                     // sort melee -> 50% des dgts bypass shield direct au HP. L'autre 50% va shield -> HP overflow.
@@ -802,6 +813,13 @@ namespace Quantum
                     if (target != EntityRef.None
                         && f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC))
                     {
+                        // 3.3.b.ii — Ancrage : cible AnchorImmune ne peut pas etre tiree.
+                        // AntiTeleport non plus applique (Bible : ancrage = "rien ne me deplace").
+                        if (StatusHelper.Has(targetC, StatusKind.AnchorImmune))
+                        {
+                            Log.Info($"[Ancrage] Empoignade annulee sur P{targetC->PlayerIndex} (AnchorImmune actif)");
+                            break;
+                        }
                         int beforeX = targetC->GridX;
                         int beforeY = targetC->GridY;
                         bool pulled = PullTargetAdjacent(f, caster, target, targetC);
@@ -984,6 +1002,14 @@ namespace Quantum
                                 int pct = ColossarPassif.GetDamageReductionPercent(f, hitC);
                                 Log.Info($"[Densite Inerte] -{pct}% dmg sur P{hitC->PlayerIndex} (Charge Brutale) : {dmgBeforeReduc} -> {dmgLeft}");
                             }
+                        }
+                        // 3.3.b.ii — Ancrage hook (Charge Brutale bypass pipeline standard).
+                        int anchorMagCB = StatusHelper.GetMagnitude(hitC, StatusKind.AnchorImmune, 0);
+                        if (anchorMagCB > 0 && dmgLeft > 0)
+                        {
+                            int dmgBeforeAnchorCB = dmgLeft;
+                            dmgLeft = dmgLeft * (100 - anchorMagCB) / 100;
+                            Log.Info($"[Ancrage] -{anchorMagCB}% dmg sur P{hitC->PlayerIndex} (Charge Brutale) : {dmgBeforeAnchorCB} -> {dmgLeft}");
                         }
                         int shieldBefore = StatusHelper.GetMagnitude(hitC, StatusKind.ShieldActive, 0);
                         if (shieldBefore > 0)
@@ -1584,6 +1610,14 @@ namespace Quantum
                                 Log.Info($"[Densite Inerte] -{pctCs}% dmg sur P{victimC->PlayerIndex} (Choc Sismique) : {dmgBeforeReducCs} -> {dmg}");
                             }
                         }
+                        // 3.3.b.ii — Ancrage hook (Choc Sismique bypass pipeline standard).
+                        int anchorMagCs = StatusHelper.GetMagnitude(victimC, StatusKind.AnchorImmune, 0);
+                        if (anchorMagCs > 0 && dmg > 0)
+                        {
+                            int dmgBeforeAnchorCs = dmg;
+                            dmg = dmg * (100 - anchorMagCs) / 100;
+                            Log.Info($"[Ancrage] -{anchorMagCs}% dmg sur P{victimC->PlayerIndex} (Choc Sismique) : {dmgBeforeAnchorCs} -> {dmg}");
+                        }
 
                         // Apply dmg direct (bypass shield - simplification 3.3.a.ii).
                         int hpBeforeCs = victimC->HP;
@@ -1670,6 +1704,115 @@ namespace Quantum
                         if (wallEntity != EntityRef.None) segmentsSpawned++;
                     }
                     Log.Info($"[Spell] Mur de Pierre : {segmentsSpawned}/{SpellRegistry.MurDePierreSegments} segments poses (centre {cmd.TargetX},{cmd.TargetY}, axe perp {wPerpStepX},{wPerpStepY})");
+                    break;
+                }
+
+                // -------------------------------------------------------------
+                // 3.3.b.ii — Colossar Tactiques : Ancrage + Provocation + Brisure
+                // -------------------------------------------------------------
+
+                case SpellId.ColossarAncrage:
+                {
+                    // Bible : self, AnchorImmune 2 tours. Magnitude = % reduction dgts (50).
+                    // Hooks ailleurs : PushAndTriggerEx (push annule), Empoignade case (pull annule),
+                    // damage compute (-Magnitude% dmg subis).
+                    StatusHelper.Apply(caster, StatusKind.AnchorImmune,
+                        magnitude: SpellRegistry.AncrageDmgReductionPct,
+                        turnsLeft: SpellRegistry.AncrageTurns, currentTurn);
+                    Log.Info($"[Spell] Ancrage : P{caster->PlayerIndex} immune push/pull + -{SpellRegistry.AncrageDmgReductionPct}% dgts subis pour {SpellRegistry.AncrageTurns} tours");
+                    break;
+                }
+
+                case SpellId.ColossarProvocation:
+                {
+                    // Bible : ennemi range 4 -> Provoked 2 tours (force l'attaque vers le caster).
+                    // Stub MVP : status apply + duree decrement OK. Effet IA en 3.8 IA Hard MCTS.
+                    // Magnitude = PlayerIndex du provocateur (caster) pour traceabilite.
+                    EntityRef provTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (provTarget == EntityRef.None
+                        || !f.Unsafe.TryGetPointer<Combatant>(provTarget, out Combatant* provC))
+                    {
+                        Log.Warn("[Spell] Provocation : pas de cible sur la case visee, no-op");
+                        break;
+                    }
+                    StatusHelper.Apply(provC, StatusKind.Provoked,
+                        magnitude: caster->PlayerIndex,
+                        turnsLeft: SpellRegistry.ProvocationTurns, currentTurn);
+                    Log.Info($"[Spell] Provocation : P{provC->PlayerIndex} provoque par P{caster->PlayerIndex} pour {SpellRegistry.ProvocationTurns} tours (stub IA, effet en 3.8)");
+                    break;
+                }
+
+                case SpellId.ColossarBrisure:
+                {
+                    // Bible : range 5, cible obstacle adverse uniquement. Le detruit + 60 dgts AoE rayon 1
+                    // sur ennemis adjacents au moment du cast.
+                    // Validation custom : la case ciblee doit avoir un obstacle non-OWN (l'obstacle OWN
+                    // serait du friendly fire — Bible silencieux mais on rejette).
+                    EntityRef obstacleE = ObstacleHelpers.GetObstacleAt(f, cmd.TargetX, cmd.TargetY);
+                    if (obstacleE == EntityRef.None
+                        || !f.Unsafe.TryGetPointer<Obstacle>(obstacleE, out Obstacle* obstacleP))
+                    {
+                        Log.Warn($"[Spell] Brisure : pas d'obstacle sur ({cmd.TargetX},{cmd.TargetY}), no-op");
+                        break;
+                    }
+                    if (obstacleP->OwnerPlayerIndex == caster->PlayerIndex)
+                    {
+                        Log.Warn($"[Spell] Brisure : obstacle OWN sur ({cmd.TargetX},{cmd.TargetY}), refus friendly fire");
+                        break;
+                    }
+
+                    // 1. Detruit l'obstacle (DestroyObstacle gere le hook +30 HP Pilier owner Colossar).
+                    int obstX = cmd.TargetX;
+                    int obstY = cmd.TargetY;
+                    ObstacleKind obstKind = obstacleP->Kind;
+                    ObstacleHelpers.DestroyObstacle(f, obstacleE);
+                    Log.Info($"[Spell] Brisure : {obstKind} adverse detruit en ({obstX},{obstY})");
+
+                    // 2. AoE 60 dgts rayon 1 Manhattan autour de la case obstacle, sur ennemis du caster.
+                    int* brisureAdj = stackalloc int[] { 0, 1, 0, -1, 1, 0, -1, 0 };
+                    int hitsBrisure = 0;
+                    for (int b = 0; b < 4; b++)
+                    {
+                        int adjX = obstX + brisureAdj[b * 2];
+                        int adjY = obstY + brisureAdj[b * 2 + 1];
+                        if (!GridHelpers.InBounds(adjX, adjY)) continue;
+                        EntityRef adjE = GridHelpers.GetOccupant(f, adjX, adjY);
+                        if (adjE == EntityRef.None) continue;
+                        if (!f.Unsafe.TryGetPointer<Combatant>(adjE, out Combatant* adjBrC)) continue;
+                        if (adjBrC->PlayerIndex == caster->PlayerIndex) continue; // skip allies + caster
+
+                        int dmgBr = SpellRegistry.BrisureAoeDmg;
+                        // Densite Inerte si target Colossar.
+                        if (adjBrC->Class == NymoraClass.Colossar)
+                        {
+                            int dmgBrBefore = dmgBr;
+                            dmgBr = ColossarPassif.ApplyDamageReduction(f, adjBrC, dmgBr);
+                            if (dmgBr != dmgBrBefore)
+                            {
+                                int pctBr = ColossarPassif.GetDamageReductionPercent(f, adjBrC);
+                                Log.Info($"[Densite Inerte] -{pctBr}% dmg sur P{adjBrC->PlayerIndex} (Brisure) : {dmgBrBefore} -> {dmgBr}");
+                            }
+                        }
+                        // Ancrage hook.
+                        int anchorMagBr = StatusHelper.GetMagnitude(adjBrC, StatusKind.AnchorImmune, 0);
+                        if (anchorMagBr > 0 && dmgBr > 0)
+                        {
+                            int dmgBrBA = dmgBr;
+                            dmgBr = dmgBr * (100 - anchorMagBr) / 100;
+                            Log.Info($"[Ancrage] -{anchorMagBr}% dmg sur P{adjBrC->PlayerIndex} (Brisure) : {dmgBrBA} -> {dmgBr}");
+                        }
+
+                        int hpBeforeBr = adjBrC->HP;
+                        adjBrC->HP -= dmgBr;
+                        if (adjBrC->HP < 0) adjBrC->HP = 0;
+                        adjBrC->DamageTakenThisRound += dmgBr;
+                        Log.Info($"[Spell] Brisure AoE : {dmgBr} dgts sur P{adjBrC->PlayerIndex} ({adjX},{adjY}) HP {hpBeforeBr} -> {adjBrC->HP}");
+                        hitsBrisure++;
+                    }
+                    if (hitsBrisure == 0)
+                    {
+                        Log.Info($"[Spell] Brisure : pas d'ennemi adjacent a l'obstacle, AoE no-op");
+                    }
                     break;
                 }
             }
@@ -1808,6 +1951,13 @@ namespace Quantum
             out bool stoppedAgainstObstacleOrBorder)
         {
             stoppedAgainstObstacleOrBorder = false; // assigned avant tout early return
+            // 3.3.b.ii — Ancrage : cible AnchorImmune ne peut pas etre poussee.
+            // Pas de FD gain pour le caster Colossar (pas de "push contre obstacle" survenu).
+            if (StatusHelper.Has(targetC, StatusKind.AnchorImmune))
+            {
+                Log.Info($"[Ancrage] Push annule sur P{targetC->PlayerIndex} (AnchorImmune actif)");
+                return;
+            }
             int dx = targetC->GridX - casterX;
             int dy = targetC->GridY - casterY;
             int absDx = dx < 0 ? -dx : dx;

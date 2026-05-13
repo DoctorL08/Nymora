@@ -44,6 +44,16 @@ enum StatusKind : Byte
     ActionMalus                  = 12, // Magnitude = -PA applique au reset PA prochain tour de la cible.
                                        //   Compose la PARALYSIE Traquenard avec MovementMalus -3 PM.
                                        //   Hook dans TurnSystem.EnterTurnStart apres le reset PA + bonus.
+
+    // Colossar (3.3.b.ii)
+    AnchorImmune                 = 13, // Ancrage : Magnitude = % de reduction dmg subis (Bible 50).
+                                       //   Hook 1 : PushAndTriggerEx -> push annule sur cible AnchorImmune.
+                                       //   Hook 2 : Empoignade -> pull annule sur cible AnchorImmune.
+                                       //   Hook 3 : damage compute -> dmg recus * (100 - Magnitude) / 100.
+                                       //   Self-teleport (Pas Furtif/Evanescence) reste possible (Bible : maitre de ses propres sorts).
+    Provoked                     = 14, // Provocation : Magnitude = PlayerIndex du provocateur (caster).
+                                       //   Stub MVP : status apply + duree decrement OK. Effet IA (force
+                                       //   l'attaque vers le provocateur) sera branche en 3.8 IA Hard.
 }
 
 struct Status

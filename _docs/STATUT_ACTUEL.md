@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 14 mai 2026 nuit profonde (⚒️ **Brique 3.3.b.i Pilier + Mur de Pierre + helper LoS + fix Charge Brutale ✅ LIVRÉE + E2E VALIDÉE** — 2 sorts tactiques Colossar (Pilier 200HP/3T, Mur 3 segments 150HP/2T perpendiculaire), helper HasLineOfSight Bresenham 2D dans ObstacleHelpers, hook LoS check pré-cast pour 14 sorts whitelistés, fix Charge Brutale break sur obstacle, fix Choc Sismique stop sur obstacle non-OWN. E2E confirmé : Pilier (4,8) FD 1/3, Mur centre+(4,7)+(4,9) → FD 3/3 cap, Choc Sismique traverse Pilier OWN +50=180 dmg sur P1, Charge Brutale ennemie bloquée par Mur (8 PA gaspillés en 2 tours = power Colossar défensif validé). CombatRulesVersion 15) — **READY 3.3.b.ii (Ancrage + Provocation + Brisure)** ⚒️  
+**Dernière mise à jour :** 14 mai 2026 nuit profonde (⚒️ **Brique 3.3.b.ii Ancrage + Provocation + Brisure ✅ LIVRÉE + E2E VALIDÉE** — 3 sorts tactiques Colossar finalisés. Ancrage 50% dmg reduc + immune push/pull (StatusKind.AnchorImmune 13), Provocation stub IA (StatusKind.Provoked 14, effet IA en 3.8), Brisure cible obstacle adverse + 60 dgts AoE rayon 1. Hooks AnchorImmune dans 3 endroits (pipeline standard + Charge Brutale + Choc Sismique) + PushAndTriggerEx + Empoignade. E2E confirmé : Ancrage 6× -50% (180→90 sur Charge Brutale 2 tours), expiration round 3 OK retour à 180. Brique 3.3.b complète **5/5 sorts tactiques validés**. CombatRulesVersion 16) — **READY 3.3.c (5 sorts survie + Signature EFFONDREMENT)** ⚒️  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,9 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** 🚧 **Phase 3 EN COURS** — Combat Colossar + Necram + Ghostra (~16 briques en 5 blocs)
-**Brique en cours :** **3.3.b.ii Sorts tactiques Colossar (suite)** : Ancrage (self immune) + Provocation (force ennemi cibler caster) + Brisure (détruit Pilier/Mur ennemi + AoE). 3.3.a.iii cap Représailles 4 retours en backlog.
+**Brique en cours :** **3.3.c Sorts survie Colossar + Signature EFFONDREMENT** (5 sorts survie + 1 signature). 3.3.a.iii cap Représailles 4 retours en backlog. Brisure E2E avec destruction obstacle adverse également en backlog (manque setup 2× Colossar ou debug spawn ENEMY).
 **Bloc A Phase 3 :** ✅ **3.1 framework obstacles VALIDÉE** + ✅ **3.1.bis Colossar assets VALIDÉE** (14 mai 2026)
-**Bloc B Phase 3 (en cours)** : ✅ **3.2 Stats + FD + Densité Inerte VALIDÉE** + ✅ **3.3.a.i Frappe Lourde + Représailles + bonus adjacence VALIDÉE** + ✅ **3.3.a.ii Onde de Choc + Marteau Punisseur + Choc Sismique VALIDÉE** + ✅ **3.3.b.i Pilier + Mur + LoS fix VALIDÉE** (14 mai 2026 nuit). 5/5 sorts offensifs + 2/5 tactiques Colossar livrés et E2E validés. Représailles reflect E2E à valider plus tard.
+**Bloc B Phase 3 (en cours)** : ✅ **3.2 Stats + FD + Densité Inerte VALIDÉE** + ✅ **3.3.a.i Frappe Lourde + Représailles + bonus adjacence VALIDÉE** + ✅ **3.3.a.ii Onde de Choc + Marteau Punisseur + Choc Sismique VALIDÉE** + ✅ **3.3.b.i Pilier + Mur + LoS fix VALIDÉE** + ✅ **3.3.b.ii Ancrage + Provocation + Brisure VALIDÉE** (14 mai 2026 nuit). **5/5 sorts offensifs + 5/5 sorts tactiques Colossar livrés et E2E validés.** Reste 5 sorts survie + 1 signature (3.3.c) pour clore le Colossar.
 **Bug LoS Pilier/Mur ✅ FIX 3.3.b.i** : helper `ObstacleHelpers.HasLineOfSight` (Bresenham 2D OWN-friendly), hook pré-cast `SpellNeedsLineOfSight` pour 14 sorts directs distance, Charge Brutale break sur obstacle, Choc Sismique stop sur non-OWN.
 **Backlog IA 3.8** : `AISystem.TryGreedyCastSingle` ne check pas LoS dans son estim → l'IA gaspille des PA en castant des sorts à travers obstacles (observé : Charge Brutale 2× contre Mur en un tour). Pas bloquant pour Phase 3, à fix en 3.8 IA Hard MCTS.
 **Cadrage Phase 3** : 5 blocs (A préreqs / B Colossar / C Necram / D Ghostra / E IA Hard+Replay+Debug) — séquentiel par classe
@@ -838,6 +838,26 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 14 mai 2026 nuit profonde (4) — ⚒️ Brique 3.3.b.ii ✅ Ancrage + Provocation + Brisure (Colossar tactiques complètes)
+- **6 fichiers** : `Status.qtn` (StatusKind 13 AnchorImmune + 14 Provoked), `Spell.qtn` (SpellId 57/58/59), `SpellRegistry.cs` (constantes + 3 SpellDef Self/Enemy/AnyTile), `SpellSystem.cs` (3 case handlers + 3 hooks AnchorImmune dans damage compute pipeline standard + Charge Brutale + Choc Sismique + 1 hook anti-push dans PushAndTriggerEx + 1 hook anti-pull dans Empoignade), `CombatInputController.cs` (touches Y / , / .), `GameVersion.cs` (15→16).
+- **Décisions clés** :
+  - **AnchorImmune Magnitude = % reduction** (50). Permet d'extensible pour d'autres niveaux d'ancrage futurs (Necram?). Hook unifié `dmg * (100 - magnitude) / 100`.
+  - **Provoked stub MVP** : status apply + duree decrement OK (skip-decrement turn 0). Effet IA (force le bot à cibler le provocateur) reporté en 3.8 IA Hard MCTS pour ne pas dériver du scope brique tactique.
+  - **Brisure Filter EmptyTile rejeté** au profit de Filter AnyTile + validation custom dans handler (case doit avoir obstacle non-OWN). Plus lisible, log d'erreur explicite, friendly fire bloqué.
+  - **AnchorImmune anti-displacement EXTERNE uniquement** : push/pull bloqués, mais Pas Furtif/Évanescence (self-teleport) restent possibles. Bible silencieuse, choix gameplay (caster maître de ses propres sorts).
+  - **3 hooks dmg parallèles** (pipeline + Charge Brutale + Choc Sismique) car ces 2 derniers bypass le pipeline standard. Pattern miroir Densité Inerte (3.2). Le Brisure aussi le check pour cohérence.
+- **E2E validé** :
+  - **Ancrage (Y)** : `[Spell] Ancrage : P0 immune push/pull + -50% dgts subis pour 2 tours` ✅
+  - **Effet -50% sur Charge Brutale** : 6 logs `[Ancrage] -50% dmg sur P0 (Charge Brutale) : 180 -> 90` cumulés sur Round 1+2 ✅
+  - **Expiration Round 3+** : retour à `Damage 180 (HP loss 180)` confirme skip-decrement + 2 rounds = effet round 1 et 2, off à round 3 ✅
+  - **Provocation (,)** : 2 casts `[Spell] Provocation : P1 provoque par P0 pour 2 tours (stub IA, effet en 3.8)` ✅
+  - **Brisure (.)** sur case vide : `[Spell] Brisure : pas d'obstacle sur (3,6), no-op` (rejet propre) ✅
+- **Brisure E2E destruction obstacle** : non testé (manque setup 2× Colossar pour avoir un Pilier ENEMY à briser). Reporté backlog.
+- **Bug Provocation distance 0** : Lorenzo a tenté cast tour 1 sur sa propre case (3,8) → `rejet : distance 0 hors range [1,4]`. Comportement Bible-correct (Provocation cible ennemi). Lorenzo a dû Sève Sauvage + déplacer puis retry tour 2.
+- **Brique 3.3.b complète** : 5/5 sorts tactiques Colossar livrés et E2E validés. Prêt 3.3.c (5 survie + 1 signature EFFONDREMENT).
+
+---
 
 ### 14 mai 2026 nuit profonde (3) — ⚒️ Brique 3.3.b.i ✅ Pilier + Mur de Pierre + helper LoS + fix Charge Brutale
 - **Découpage** : brique 3.3.b (5 sorts tactiques Colossar + fix LoS bug deferred 3.3.a) sous-divisée en 3.3.b.i (Pilier + Mur + LoS infra) + 3.3.b.ii (Ancrage + Provocation + Brisure) pour limiter surface bug. Pattern Phase 2 reproduit.

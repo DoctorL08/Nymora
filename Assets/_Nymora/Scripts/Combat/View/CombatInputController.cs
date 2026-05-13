@@ -159,9 +159,16 @@ namespace Nymora.Combat.View
             //   P = Pilier               (3 PA, range 1 case vide, 200 HP / 3 tours, +1 FD, bloque LoS+mvt)
             //   O = Mur de Pierre        (5 PA, range 2, ligne 3 cases perp, 150 HP/case / 2 tours, +1 FD/case)
             //   U = DEBUG damage 50 sur obstacle sous souris (gardee pour test destruction +30 HP Densite Inerte)
+            // 3.3.b.ii — Colossar TACTIQUES suite (touches Y / , / . identiques AZERTY/QWERTY) :
+            //   Y = Ancrage              (2 PA, self, AnchorImmune 2 tours : immune push/pull + -50% dgts subis)
+            //   , = Provocation          (3 PA, range 4, ennemi -> Provoked 2 tours, stub IA jusqu'a 3.8)
+            //   . = Brisure              (3 PA, range 5, cible obstacle adverse, detruit + 60 dgts AoE rayon 1)
             bool keyP  = UnityEngine.Input.GetKeyDown(KeyCode.P);
             bool keyO  = UnityEngine.Input.GetKeyDown(KeyCode.O);
             bool keyU  = UnityEngine.Input.GetKeyDown(KeyCode.U);
+            bool keyY      = UnityEngine.Input.GetKeyDown(KeyCode.Y);
+            bool keyComma  = UnityEngine.Input.GetKeyDown(KeyCode.Comma);
+            bool keyPeriod = UnityEngine.Input.GetKeyDown(KeyCode.Period);
             // 3.3.a.i — COLOSSAR OFFENSIFS (touches H/J identiques AZERTY/QWERTY) :
             //   H = Frappe Lourde       (3 PA, melee 1, 180 dgts +100 si epinglee)
             //   J = Represailles        (3 PA, melee 1, 100 dgts + reflect 80 dgts melee 2 tours)
@@ -220,6 +227,7 @@ namespace Nymora.Combat.View
                             || keyAzQ || keyS || keyD || keyF || keyG
                             || keyAzW || keyX || keyC || keyN || keyAzM
                             || keyP || keyO || keyU // 3.3.b.i Colossar tactiques (P=Pilier, O=Mur) + debug obstacle (U)
+                            || keyY || keyComma || keyPeriod // 3.3.b.ii Colossar tactiques (Y=Ancrage, ,=Provoc, .=Brisure)
                             || keyH || keyJ // 3.3.a.i Colossar offensifs
                             || keyI || keyK || keyL; // 3.3.a.ii Colossar offensifs AoE
             if (!mouseDown && !spaceDown && !anySpellKey) return;
@@ -392,6 +400,25 @@ namespace Nymora.Combat.View
                 var dmgCmd = new DebugDamageObstacleCommand { TargetX = gx, TargetY = gy };
                 game.SendCommand(senderPlayer, dmgCmd);
                 Debug.Log($"[Nymora.CombatInput] Sent DEBUG DamageObstacle player={senderPlayer} target=({gx},{gy})");
+                return;
+            }
+
+            // 3.3.b.ii — Colossar tactiques suite.
+            if (keyY)
+            {
+                // Ancrage = self.
+                if (TryGetCasterCell(game, senderPlayer, out int cxAn, out int cyAn))
+                    SendSpellAt(game, senderPlayer, SpellId.ColossarAncrage, cxAn, cyAn, 0);
+                return;
+            }
+            if (keyComma)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.ColossarProvocation, gx, gy, 0);
+                return;
+            }
+            if (keyPeriod)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.ColossarBrisure, gx, gy, 0);
                 return;
             }
 
