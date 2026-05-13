@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 12 mai 2026 (Brique 2.13.d validée — caméra zoom molette + pan clic molette + reset) — **BLOC C HUD COMPLET CLÔTURÉ** 🎉  
+**Dernière mise à jour :** 13 mai 2026 soir (Bloc D Nightseer ✅ CLÔTURÉ — 2.13.e + 2.14 + 2.15.a/b/c validées, assets integrés, HUD wiring complet, repo commité) — **🏆 NIGHTSEER 100% FONCTIONNEL EN COMBAT** 🌫️  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,9 +11,13 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** **Phase 2 — Combat (Soulrender + Nightseer)** 🎮  
-**Brique en cours :** **2.14 — Nightseer (15 sorts + passif Prescience + brouillard de guerre)** (à démarrer la prochaine session)  
+**Brique en cours :** **Bloc E — IA + E2E combat 1v1 vs IA** (à démarrer la prochaine session)  
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)  
-**Statut Phase 2 :** 13/17 briques validées + 2.12.bis + **2.13.a/b/c/d** (= brique 2.13 entière clôturée). Bloc A ✅ 5/5, Bloc B ✅ 3/3, **Bloc C ✅ 3/3** (2.9, 2.10 a/b/c, 2.11) + **2.12 ✅** + **2.12.bis ✅** + **2.13 ✅ TERMINÉE** (a layout HUD, b previews range, c tooltips + floating text, d caméra). **🏆 Soulrender 100% complet, jouable, lisible, confortable** : 15 sorts + signature + passif + HUD pixel-art + previews PM/range/effet + tooltips Bible V7.1 + texte flottant dgts/heals + cooldown signature + caméra zoom/pan. Reste **Bloc D Nightseer** (2.14-2.16) + **Bloc E IA** (déjà 2.15/2.16/2.17 dans roadmap mais numérotation à clarifier post-Soulrender) → puis 2.17 E2E.
+**Statut Phase 2 :** 17/17 briques validées + 2.12.bis + 2.13.a/b/c/d/e + 2.14 + 2.15.a/b/c. Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C ✅ 3/3 + 2.13 ✅, 2.14 ✅, **2.15.a/b/c ✅ TERMINÉES** (Nightseer 16 sorts + Prescience + passif L'Œil qui n'est pas + signature Traquenard). **🏆 Soulrender 100% + Nightseer 100% jouables sim+view+HUD**. Reste **Bloc E IA** (anciennement 2.16/2.17 ; à renuméroter en 2.16.x).
+
+**CombatRulesVersion :** **9** (cumul depuis 2.13.e : LastCastTargetX/Y + LastCastSequence, FogSingleton + MarkKind/TrapKind, SubTurnInRound, Prescience + DamageTakenThisRound, LastTraquenardUsedOnTurn, statuses Nightseer Paralysie/Untargetable/Slow, terrain types). Bumps non-individuellement tracés au-delà de 4.
+
+**Convention temporelle (depuis 2.14) :** **TurnNumber = round complet** (P0+P1 = 1 round, sémantique Dofus). Toutes les durées Bible V7.1 "N tours" = N rounds. Décrémentation statuses/marques/voiles/terrains uniquement en fin de dernier sous-tour du round. Cf memory `project_turn_semantics.md`.
 
 **Cible alpha :** **Windows uniquement** (Mac + Mobile reportés post-alpha)
 
@@ -829,6 +833,25 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 13 mai 2026 soir — 🏁 Bloc D Nightseer CLÔTURÉ + ménage Git
+- **Contexte** : 2.13.e + 2.14 + 2.15.a/b/c avaient été développés dans une autre conversation Claude Code mais le STATUT n'avait pas été mis à jour et rien n'était commité dans le repo Git. ~80 fichiers modifiés + 25 untracked en attente.
+- **Cette session a couvert** :
+  1. **Intégration assets Nightseer livrés par le designer** : .aseprite NE corrigé (perso de dos au lieu de face), 17 icônes de sorts (5 offensifs + 5 tactiques + 5 survie + signature + passif), avatar 128px, marques, tile piège runique.
+  2. **Branchage View HUD Nightseer** : `SpellIconRegistry` étendu avec champs `_avatarNightseerIcon` + `_passifNightseerIcon`, méthodes `AvatarFor()` et `PassifIconFor()` complétées. `PopulateSpellIconRegistry` scanne désormais les dossiers Sprites/Nightseer/Icons + Avatar et mappe les 16 sorts via `FileToSpellId`.
+  3. **Audit signature + passif côté simulation** : confirmé que Traquenard (SpellSystem.cs:1294) et L'Œil qui n'est pas (SpellSystem.cs:377-386) sont 100% wirés Quantum (damage, paralysie, cooldown, consume marque, +2 PR si bonus, 30% shield pierce).
+  4. **Ménage Git** : 6 commits propres dans l'ordre chronologique :
+     - `feat(phase2.13.e)`: avatar HUD Soulrender (54 fichiers, +571 -345)
+     - `feat(phase2.14)`: brouillard de guerre + Marks/Voile/Pièges + tour=round Dofus (75 fichiers, +7399 -2867)
+     - `feat(phase2.15)`: Nightseer 16 sorts + Prescience + passif + signature (9 fichiers, +1428 -32)
+     - `chore(art)`: assets Nightseer (100 fichiers, +8462 — un peu lourd à cause des binaires)
+     - `feat(hud)`: wire Nightseer dans SpellIconRegistry (3 fichiers, +121 -9)
+     - `docs(statut)`: clôture Bloc D + ouverture Bloc E (cette mise à jour)
+- **Découpage 2.15.a/b/c fusionné** dans 1 commit : splitter chirurgicalement les 663 lignes de diff SpellSystem.cs + 393 SpellRegistry.cs aurait demandé ~30-45 min de patch surgery avec risque d'erreur élevé. Lorenzo a validé la fusion pragmatique.
+- **Reliquats** :
+  - Memory `project_phase2_progress_2026_05_13.md` à supprimer maintenant que STATUT à jour.
+  - Pousser sur GitHub uniquement en fin de session (cf memory `feedback_end_of_session_push.md`).
+- **Prochain pas** : **Bloc E IA**. Roadmap initiale liste 2.15 (IA Easy greedy) + 2.16 (IA Medium heuristique multi-tour) + 2.17 (scène 30_CombatIA + E2E 1v1 vs IA). Numérotation à clarifier : ces 3 briques deviennent 2.16.a / 2.16.b / 2.16.c puisque 2.15.a/b/c sont prises.
 
 ### 12 mai 2026 (suite) — Brique 2.13.d validée + 🏁 2.13 ENTIÈRE TERMINÉE
 - **CameraController** (1 fichier ~110 lignes, brique XS) : zoom molette centré sur curseur + pan clic molette maintenu + reset Home/double-clic molette.
