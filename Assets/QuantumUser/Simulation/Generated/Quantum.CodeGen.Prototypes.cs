@@ -106,6 +106,7 @@ namespace Quantum.Prototypes {
     public Int32 DamageTakenThisRound;
     public Int32 LastTrapTriggeredOnTurn;
     public Int32 LastTraquenardUsedOnTurn;
+    public Int32 RepresaillesReflectsLeft;
     partial void MaterializeUser(Frame frame, ref Quantum.Combatant result, in PrototypeMaterializationContext context);
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.Combatant component = default;
@@ -143,6 +144,7 @@ namespace Quantum.Prototypes {
         result.DamageTakenThisRound = this.DamageTakenThisRound;
         result.LastTrapTriggeredOnTurn = this.LastTrapTriggeredOnTurn;
         result.LastTraquenardUsedOnTurn = this.LastTraquenardUsedOnTurn;
+        result.RepresaillesReflectsLeft = this.RepresaillesReflectsLeft;
         MaterializeUser(frame, ref result, in context);
     }
   }

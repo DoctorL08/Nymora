@@ -456,7 +456,7 @@ LENT, MÉTHODIQUE, EXPLOSIF. Tour 1-3 : pose de marques, jauge PR. Tour 4-6 : bu
 |---|---|---|
 | PA | 4 | PORTÉE  5 ligne |
 | TYPE | Frappe ligne / Setup | COÛT RESS.  — |
-| EFFET | Tir en ligne droite. Inflige 130 dégâts à toutes les cibles touchées. Pose un Filet de Ronces (50 dégâts, -1 PM) sur la dernière case touchée. | Tir en ligne droite. Inflige 130 dégâts à toutes les cibles touchées. Pose un Filet de Ronces (50 dégâts, -1 PM) sur la dernière case touchée. |
+| EFFET | Tir en ligne droite. Inflige 130 dégâts à toutes les cibles touchées. Pose un **Filet de Ronces** (identique au sort tactique : 100 dégâts, -2 PM, applique EMPREINTÉ 2 tours au déclenchement) sur la dernière case touchée. | Tir en ligne droite. Inflige 130 dégâts à toutes les cibles touchées. Pose un **Filet de Ronces** (identique au sort tactique : 100 dégâts, -2 PM, applique EMPREINTÉ 2 tours au déclenchement) sur la dernière case touchée. |
 | PRESSION | Le double effet. Volée d'Épines fait des dégâts ET pose un piège. L'adversaire qui survit doit décider : foncer dans le filet ou contourner et perdre du tempo. | Le double effet. Volée d'Épines fait des dégâts ET pose un piège. L'adversaire qui survit doit décider : foncer dans le filet ou contourner et perdre du tempo. |
 
 | DÉTONATION ONIRIQUE | DÉTONATION ONIRIQUE | DÉTONATION ONIRIQUE |

@@ -900,7 +900,7 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct Combatant : Quantum.IComponent {
-    public const Int32 SIZE = 228;
+    public const Int32 SIZE = 232;
     public const Int32 ALIGNMENT = 4;
     [FieldOffset(92)]
     public Int32 PlayerIndex;
@@ -922,11 +922,11 @@ namespace Quantum {
     public Int32 GridX;
     [FieldOffset(16)]
     public Int32 GridY;
-    [FieldOffset(96)]
+    [FieldOffset(100)]
     public Int32 Resource;
     [FieldOffset(44)]
     public Int32 LastResourceGainOnHitTurn;
-    [FieldOffset(100)]
+    [FieldOffset(104)]
     [FramePrinter.FixedArrayAttribute(typeof(Status), 8)]
     private fixed Byte _Statuses_[128];
     [FieldOffset(80)]
@@ -959,6 +959,8 @@ namespace Quantum {
     public Int32 LastTrapTriggeredOnTurn;
     [FieldOffset(52)]
     public Int32 LastTraquenardUsedOnTurn;
+    [FieldOffset(96)]
+    public Int32 RepresaillesReflectsLeft;
     public readonly FixedArray<Status> Statuses {
       get {
         fixed (byte* p = _Statuses_) { return new FixedArray<Status>(p, 16, 8); }
@@ -995,6 +997,7 @@ namespace Quantum {
         hash = hash * 31 + DamageTakenThisRound.GetHashCode();
         hash = hash * 31 + LastTrapTriggeredOnTurn.GetHashCode();
         hash = hash * 31 + LastTraquenardUsedOnTurn.GetHashCode();
+        hash = hash * 31 + RepresaillesReflectsLeft.GetHashCode();
         return hash;
       }
     }
@@ -1026,6 +1029,7 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->PA);
         serializer.Stream.Serialize(&p->PM);
         serializer.Stream.Serialize(&p->PlayerIndex);
+        serializer.Stream.Serialize(&p->RepresaillesReflectsLeft);
         serializer.Stream.Serialize(&p->Resource);
         FixedArray.Serialize(p->Statuses, serializer, Statics.SerializeStatus);
     }

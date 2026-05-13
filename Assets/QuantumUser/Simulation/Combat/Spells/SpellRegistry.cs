@@ -91,10 +91,13 @@ namespace Quantum
         public const int TirPrecisDmg                 = 200;  // dgts base
         public const int TirPrecisDmgIfTraque         = 280;  // dgts si target porte MarkKind.Traque (Bible : 280)
         public const int VoleeDEpinesDmg              = 130;  // dgts par cible touchee dans la ligne
-        public const int VoleeDEpinesFiletDmg         = 70;   // dgts pose par le Filet de Ronces sur derniere case (info pour 2.15.b)
-        public const int VoleeDEpinesFiletPMReduce    = 1;    // -1 PM apres declenchement Filet
+        // Bible V7.1 (amendee) : Volee d'Epines pose le MEME Filet que le sort Filet de Ronces
+        // (TrapKind.FiletRonces : 100 dgts / -2 PM / Empreinte 2 tours). Pas de constantes light dediees.
         public const int DetonationOniriqueDmg        = 170;  // dgts AoE 2x2 base
         public const int DetonationOniriqueDmgVoile   = 80;   // +80 dgts dans cases voilees + dechire le voile
+        public const int DetonationOniriqueRangeMaxBase    = 5;   // portee de base (Bible V7.1)
+        public const int DetonationOniriqueRangeMaxBoosted = 10;  // portee si option 2 PR (Bible : "x2 -> 10")
+        public const int DetonationOniriquePROptionCost    = 2;   // 2 PR (optionnel) pour bonus portee
         public const int FrappeDeLOmbreDmg            = 200;  // dgts base
         public const int FrappeDeLOmbreDmgIfMoved     = 300;  // 200 + 100 si target.PM < target.MaxPM/2 (deja deplacee)
         public const int FrappeDeLOmbreEmpreinteTurns = 2;    // duree Empreinte si bonus declenche
@@ -126,6 +129,7 @@ namespace Quantum
         public const int CamouflageRoncesShieldTurns  = 2;    // 2 rounds actifs
         public const int CamouflageRoncesAuraDmg      = 70;   // dgts ennemis adjacents en fin de round
         public const int CamouflageRoncesAuraTurns    = 2;    // 2 rounds actifs (sync avec shield)
+        public const int CamouflageRoncesAuraEmpreinteTurns = 2; // Bible V7.1 : "+ EMPREINTE" 2 tours sur ennemis adjacents fin de round
         public const int SeveSauvageHealBase          = 130;  // heal de base
         public const int SeveSauvageHealBonusTrap     = 60;   // +60 si trap declenche dans les 2 derniers rounds
         public const int SeveSauvageHealBonusVeil     = 30;   // +30 si au moins 1 voile actif sur la map (owner caster)
@@ -151,7 +155,7 @@ namespace Quantum
         public const int RepresaillesDmgImmediate     = 100;  // dgts directs au cast
         public const int RepresaillesReflectDmg       = 80;   // dgts reflectes sur attaque melee subie
         public const int RepresaillesReflectTurns     = 2;    // 2 tours de reflect actif
-        // public const int RepresaillesReflectMaxTriggers = 4; // TODO 3.3.a.iii cap Bible (edge case)
+        public const int RepresaillesReflectMaxTriggers = 4;  // Bible V7.1 : cap 4 retours (vs Riposte Carmin = no cap)
 
         // 3.3.a.i — Passif Densite Inerte bonus adjacence (Bible V7.1).
         // Branche dans le damage compute des sorts Colossar : si caster Colossar adjacent
@@ -182,8 +186,10 @@ namespace Quantum
         public const int ChocSismiqueRange            = 4;    // portee Manhattan
 
         // 3.3.b.i — Pilier (sort tactique Colossar) — RANGE 3 Bible V7.1.
+        // Bible : "Reste jusqu'a destruction" — pas de timer auto, l'expiration vient
+        // uniquement du HP qui tombe a 0 (DamageObstacle / Brisure / ChocSismique trajectoire).
+        // Le spawn passe expiresOnTurn=0 (convention persistent, cf Obstacle.qtn).
         public const int PilierHP                     = 200;  // HP du Pilier pose
-        public const int PilierTurns                  = 3;    // duree avant expiration auto (TurnEnd)
         public const int PilierRangeMax               = 3;    // portee Bible (case vide a moins de 3 cases)
 
         // 3.3.b.i — Mur de Pierre (sort tactique Colossar) — 4 PA / RANGE 4 / option 1 FD -> 5 segments.
@@ -592,9 +598,9 @@ namespace Quantum
                     };
                     return true;
 
-                // Detonation Onirique (2.15.a) : 4 PA, range 5 (10 avec 2 PR — TODO 2.15.b),
+                // Detonation Onirique (2.15.a + bonus 2 PR Bible V7.1) : 4 PA, range 5 (10 avec 2 PR),
                 // AoE 2x2, 170 dgts. Si case Voilee dans la zone : +80 dgts ET dechire le voile.
-                // 2.15.a : option PR pour x2 range non implementee, RangeMax = 5.
+                // Option 2 PR : portee passe de 5 a 10 (cf override dans SpellSystem range check).
                 case SpellId.NightseerDetonationOnirique:
                     def = new SpellDef
                     {
@@ -602,10 +608,10 @@ namespace Quantum
                         Shape = TargetingShape.SingleTile, // AoE 2x2 hardcoded dans SpellSystem
                         Filter = TargetingFilter.AnyTile,
                         RangeMin = 1,
-                        RangeMax = 5,
+                        RangeMax = DetonationOniriqueRangeMaxBase, // 5 ; override a 10 si hgSpend >= 2 (handler)
                         DamageAmount = DetonationOniriqueDmg,
                         HGCostMandatory = 0,
-                        HGCostMaxOptional = 0,
+                        HGCostMaxOptional = (byte)DetonationOniriquePROptionCost, // 2 PR optionnel = bonus portee
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
                     };

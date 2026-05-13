@@ -130,4 +130,14 @@ component Combatant
     // 2.16 — Tour ou ce combattant (Nightseer) a utilise Traquenard la derniere fois.
     //   Cooldown 4 tours apres usage (Bible V7.1). Initial : -1000 (pas de cooldown au spawn).
     Int32 LastTraquenardUsedOnTurn;
+
+    // 3.3.a.iii — Compteur de retours restants pour RipostMelee (Colossar Represailles).
+    //   Bible V7.1 : "cap a 4 retours" specifique a Represailles.
+    //   Convention de valeurs :
+    //     -1 : aucun cap (Soulrender Riposte Carmin = no cap Bible)
+    //      0 : status RipostMelee actif mais cap epuise (skip trigger)
+    //     >0 : nb de reflects encore possibles. Decremente a chaque trigger.
+    //   Set a 4 par ColossarRepresailles. Set a -1 par Soulrender RiposteCarmin.
+    //   Lu/decremente dans le hook reflect (SpellSystem damage loop).
+    Int32 RepresaillesReflectsLeft;
 }

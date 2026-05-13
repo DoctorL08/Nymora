@@ -168,9 +168,20 @@ namespace Quantum
             int absDx = dx < 0 ? -dx : dx;
             int absDy = dy < 0 ? -dy : dy;
             int dist = absDx + absDy;
-            if (dist < spellDef.RangeMin || dist > spellDef.RangeMax)
+
+            // 2.15.a Detonation Onirique : option 2 PR -> portee passe de 5 a 10 (Bible V7.1).
+            // L'override de RangeMax est dynamique car HGCostMaxOptional cree juste la possibilite ;
+            // c'est ici qu'on materialise le bonus quand le joueur choisit effectivement 2 PR.
+            int effectiveRangeMax = spellDef.RangeMax;
+            if (cmd.Spell == SpellId.NightseerDetonationOnirique
+                && hgSpend >= SpellRegistry.DetonationOniriquePROptionCost)
             {
-                Log.Warn($"[Spell] rejet : distance {dist} hors range [{spellDef.RangeMin},{spellDef.RangeMax}]");
+                effectiveRangeMax = SpellRegistry.DetonationOniriqueRangeMaxBoosted;
+            }
+
+            if (dist < spellDef.RangeMin || dist > effectiveRangeMax)
+            {
+                Log.Warn($"[Spell] rejet : distance {dist} hors range [{spellDef.RangeMin},{effectiveRangeMax}]");
                 return;
             }
 
@@ -567,17 +578,39 @@ namespace Quantum
                             castHitMarkedTarget = true;
                         }
 
-                        // Trigger Riposte Carmin si cible porte RipostMelee et sort = melee.
+                        // Trigger Riposte Carmin / Represailles si cible porte RipostMelee et sort = melee.
+                        // Bible V7.1 : Represailles (Colossar) cap a 4 retours ; Riposte Carmin (Soulrender)
+                        // pas de cap. Distinction via Combatant.RepresaillesReflectsLeft :
+                        //   -1 = no cap (Riposte Carmin) -> trigger sans decrement
+                        //    0 = cap epuise (Represailles a fait ses 4 retours) -> skip
+                        //   >0 = trigger + decrement
                         if (isMelee && StatusHelper.Has(targetC, StatusKind.RipostMelee))
                         {
-                            int reflectDmg = StatusHelper.GetMagnitude(targetC, StatusKind.RipostMelee, 100);
-                            int casterBefore = caster->HP;
-                            caster->HP -= reflectDmg;
-                            if (caster->HP < 0) caster->HP = 0;
-                            Log.Info($"[Spell] Riposte Carmin : P{caster->PlayerIndex} prend {reflectDmg} dgts (HP {casterBefore} -> {caster->HP})");
+                            int reflectsLeft = targetC->RepresaillesReflectsLeft;
+                            bool canReflect = (reflectsLeft != 0); // -1 ou >0 -> ok ; 0 -> skip
+                            if (canReflect)
+                            {
+                                int reflectDmg = StatusHelper.GetMagnitude(targetC, StatusKind.RipostMelee, 100);
+                                int casterBefore = caster->HP;
+                                caster->HP -= reflectDmg;
+                                if (caster->HP < 0) caster->HP = 0;
+                                if (reflectsLeft > 0)
+                                {
+                                    targetC->RepresaillesReflectsLeft = reflectsLeft - 1;
+                                    Log.Info($"[Spell] Represailles : P{caster->PlayerIndex} prend {reflectDmg} dgts (HP {casterBefore} -> {caster->HP}) — retours restants {targetC->RepresaillesReflectsLeft}/{SpellRegistry.RepresaillesReflectMaxTriggers}");
+                                }
+                                else
+                                {
+                                    Log.Info($"[Spell] Riposte Carmin : P{caster->PlayerIndex} prend {reflectDmg} dgts (HP {casterBefore} -> {caster->HP})");
+                                }
 
-                            // L'attaquant prend MovementMalus 1 (1 tour) sur son prochain mouvement.
-                            StatusHelper.Apply(caster, StatusKind.MovementMalus, magnitude: 1, turnsLeft: 1, currentTurn);
+                                // L'attaquant prend MovementMalus 1 (1 tour) sur son prochain mouvement.
+                                StatusHelper.Apply(caster, StatusKind.MovementMalus, magnitude: 1, turnsLeft: 1, currentTurn);
+                            }
+                            else
+                            {
+                                Log.Info($"[Spell] Represailles : cap 4 retours atteint sur P{targetC->PlayerIndex}, reflect skipped");
+                            }
                         }
 
                         // Gain HG cote CIBLE (Bible V7.1) : Soulrender qui subit, max 1 par tour adverse.
@@ -818,8 +851,10 @@ namespace Quantum
 
                 case SpellId.SoulrenderRiposteCarmin:
                     // RipostMelee 1 tour, magnitude = 100 dgts reflect.
+                    // Bible V7.1 Riposte Carmin : aucun cap de retours -> RepresaillesReflectsLeft = -1.
                     StatusHelper.Apply(caster, StatusKind.RipostMelee, magnitude: 100, turnsLeft: 1, currentTurn);
-                    Log.Info($"[Spell] Riposte Carmin : RipostMelee 100 dgts (1 tour) sur P{caster->PlayerIndex}");
+                    caster->RepresaillesReflectsLeft = -1;
+                    Log.Info($"[Spell] Riposte Carmin : RipostMelee 100 dgts (1 tour, no cap) sur P{caster->PlayerIndex}");
                     break;
 
                 // -------------------------------------------------------------
@@ -1513,12 +1548,13 @@ namespace Quantum
                     // 3.3.a.i — Bible : 100 dgts immediat (deja inflige par damage loop standard,
                     // + bonus adjacence Densite Inerte si applicable). Apres : applique RipostMelee
                     // 80 dgts pendant 2 tours sur le CASTER (reflect sur attaques melee subies).
-                    // Bible cap 4 retours non implemente (TODO 3.3.a.iii).
+                    // Bible V7.1 : CAP 4 RETOURS -> RepresaillesReflectsLeft = 4.
                     StatusHelper.Apply(caster, StatusKind.RipostMelee,
                         magnitude: SpellRegistry.RepresaillesReflectDmg,
                         turnsLeft: SpellRegistry.RepresaillesReflectTurns,
                         currentTurn);
-                    Log.Info($"[Spell] Represailles : RipostMelee {SpellRegistry.RepresaillesReflectDmg} dgts ({SpellRegistry.RepresaillesReflectTurns} tours) sur P{caster->PlayerIndex}");
+                    caster->RepresaillesReflectsLeft = SpellRegistry.RepresaillesReflectMaxTriggers;
+                    Log.Info($"[Spell] Represailles : RipostMelee {SpellRegistry.RepresaillesReflectDmg} dgts ({SpellRegistry.RepresaillesReflectTurns} tours, cap {SpellRegistry.RepresaillesReflectMaxTriggers} retours) sur P{caster->PlayerIndex}");
                     break;
 
                 // -------------------------------------------------------------
@@ -1674,7 +1710,9 @@ namespace Quantum
 
                 case SpellId.ColossarPilier:
                 {
-                    // Bible : pose 1 Pilier 200 HP / 3 tours sur la case adjacente ciblee.
+                    // Bible V7.1 : pose 1 Pilier 200 HP, reste jusqu'a destruction (HP <= 0).
+                    // Pas de timer d'expiration -> expiresOnTurn = 0 (convention persistent
+                    // du framework Obstacle.qtn).
                     // Le filter EmptyTile (SpellDef) garantit deja que la case n'a pas de combatant ;
                     // SpawnObstacle refuse en plus si obstacle deja present + log warn defensif.
                     // +1 FD est branche dans SpawnObstacle (cf 3.2 hook GainFondation).
@@ -1683,7 +1721,7 @@ namespace Quantum
                         ObstacleKind.Pillar, SpellRegistry.PilierHP,
                         cmd.TargetX, cmd.TargetY,
                         owner: casterEntity, ownerPlayerIndex: caster->PlayerIndex,
-                        expiresOnTurn: currentTurn + SpellRegistry.PilierTurns);
+                        expiresOnTurn: 0); // 0 = persistent (Bible : reste jusqu'a destruction)
                     if (pillarEntity == EntityRef.None)
                     {
                         Log.Warn($"[Spell] Pilier : SpawnObstacle a echoue sur ({cmd.TargetX},{cmd.TargetY})");

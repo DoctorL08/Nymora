@@ -467,7 +467,9 @@ namespace Nymora.Combat.View
             }
             if (keyE)
             {
-                SendSpellAt(game, senderPlayer, SpellId.NightseerDetonationOnirique, gx, gy, 0);
+                // Bible V7.1 : Shift+E = depense 2 PR (optionnel) -> portee passe de 5 a 10.
+                byte detoPr = (byte)(shiftHeld ? 2 : 0);
+                SendSpellAt(game, senderPlayer, SpellId.NightseerDetonationOnirique, gx, gy, detoPr);
                 return;
             }
             if (keyR)

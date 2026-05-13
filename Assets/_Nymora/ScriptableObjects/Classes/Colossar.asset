@@ -18,7 +18,7 @@ MonoBehaviour:
   Tagline: Tank punisseur. Pose des obstacles, encaisse, contre-attaque.
   BaseHP: 1500
   BaseActionPoints: 8
-  BaseMovementPoints: 3
+  BaseMovementPoints: 2
   ResourceKind: 3
   ResourceCap: 3
   ResourceDescription: "FONDATION \u2014 generee par la pose d'obstacles et l'absorption

@@ -69,11 +69,11 @@ enum SpellId : Byte
     ColossarRepresailles          = 54,  // 3.3.a.i — Offensif/Defensif : 3 PA, melee 1, 100 dgts. 2 tours : reflect 80 dgts melee (cap 4 TODO)
 
     // COLOSSAR 3.3.b — TACTIQUES
-    ColossarPilier                = 55,  // 3.3.b.i — Tactique : 3 PA, range 1 case vide, pose Pilier 200 HP / 3 tours. +1 FD (via SpawnObstacle hook). Bloque mouvement + LoS.
-    ColossarMurDePierre           = 56,  // 3.3.b.i — Tactique : 5 PA, range 2, pose ligne 3 cases (perpendiculaire axe caster->cible) Mur 150 HP/case / 2 tours. +1 FD par case posee. Bloque mouvement + LoS.
-    ColossarAncrage               = 57,  // 3.3.b.ii — Tactique : 2 PA, self, AnchorImmune 2 tours (immune push/pull + -50% dgts subis).
-    ColossarProvocation           = 58,  // 3.3.b.ii — Tactique : 3 PA, range 4, ennemi -> Provoked 2 tours (stub MVP : effet IA en 3.8).
-    ColossarBrisure               = 59,  // 3.3.b.ii — Tactique anti-obstacle : 3 PA, range 5, cible obstacle adverse, le detruit + 60 dgts AoE rayon 1 si ennemi(s) adjacent(s).
+    ColossarPilier                = 55,  // 3.3.b.i — Tactique : 3 PA, range 3 case vide, pose Pilier 200 HP. Reste jusqu'a destruction (pas de timer). +1 FD via SpawnObstacle hook. Bloque mouvement + LoS.
+    ColossarMurDePierre           = 56,  // 3.3.b.i — Tactique : 4 PA, range 4, pose ligne 3 cases (5 avec 1 FD) Mur 150 HP/case / 2 tours. +1 FD par segment pose. Bloque mouvement + LoS.
+    ColossarAncrage               = 57,  // 3.3.b.iii — Tactique anti-mobilite : 2 PA, range 4, ENEMY. -2 PM 2 tours + immune push/pull/teleport 1 tour. Pas de damage.
+    ColossarProvocation           = 58,  // 3.3.b.iii — Tactique : 2 PA, range 5, ENEMY, 1 tour. -1 PM + sorts non-cible-caster coutent +2 PA. 100 dgts auto si pas adjacent caster fin tour.
+    ColossarBrisure               = 59,  // 3.3.b.iii — Tactique anti-buff : 3 PA, range 2, ENEMY, 90 dgts + retire 1 buff/bouclier (priorite ShieldActive). Si pas de buff : TRAUMA -2 PA prochain tour.
 }
 
 enum SpellEffectKind : Byte

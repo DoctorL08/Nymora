@@ -55,6 +55,7 @@ namespace Quantum
                 LastCastSpellId = SpellId.None,  // 2.12.bis
                 LastTrapTriggeredOnTurn = -1000, // 2.15.c : aucun trap declenche au spawn (Seve Sauvage)
                 LastTraquenardUsedOnTurn = -1000, // 2.16 : aucun cooldown au spawn (Bible V7.1)
+                RepresaillesReflectsLeft = -1,   // 3.3.a.iii : -1 = pas de cap (defaut). Set explicitement par Represailles (4) / Riposte Carmin (-1).
             };
 
             var entity = f.Create();

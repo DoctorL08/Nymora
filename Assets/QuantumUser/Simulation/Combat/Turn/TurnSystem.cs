@@ -316,7 +316,8 @@ namespace Quantum
         /// <summary>
         /// 2.15.c — Camouflage Ronces : tick fin de round. Pour chaque Combatant avec status
         /// RoncesAura (Magnitude > 0), inflige Magnitude dgts a tous les Combatants ENNEMIS
-        /// adjacents (Manhattan 1). Aussi increment DamageTakenThisRound pour le check Prescience.
+        /// adjacents (Manhattan 1) ET applique Empreinte 2 tours (Bible V7.1 :
+        /// "70 degats + EMPREINTE"). Aussi increment DamageTakenThisRound pour le check Prescience.
         ///
         /// Note shield : le status ShieldActive (Camouflage Ronces ou Peau de Fer) du PORTEUR
         /// de l'aura n'absorbe PAS les dgts d'aura (l'aura est offensive emise par lui-meme).
@@ -326,6 +327,9 @@ namespace Quantum
         /// </summary>
         private static void TickRoncesAura(Frame f)
         {
+            if (!f.TryGetSingleton<CombatState>(out var stateLocal)) return;
+            int currentTurn = stateLocal.TurnNumber;
+
             var auraFilter = f.Filter<Combatant>();
             while (auraFilter.NextUnsafe(out EntityRef _, out Combatant* aura))
             {
@@ -348,7 +352,11 @@ namespace Quantum
                     enemy->HP -= auraMag;
                     if (enemy->HP < 0) enemy->HP = 0;
                     enemy->DamageTakenThisRound += auraMag;
-                    Log.Info($"[RoncesAura] -{auraMag} HP sur P{enemy->PlayerIndex} (aura P{aura->PlayerIndex}) : {hpBefore} -> {enemy->HP}");
+                    // Bible V7.1 : EMPREINTE 2 tours sur l'ennemi adjacent.
+                    MarkHelpers.ApplyMark(enemy, MarkKind.Empreinte,
+                        SpellRegistry.CamouflageRoncesAuraEmpreinteTurns,
+                        aura->PlayerIndex, currentTurn);
+                    Log.Info($"[RoncesAura] -{auraMag} HP + Empreinte sur P{enemy->PlayerIndex} (aura P{aura->PlayerIndex}) : {hpBefore} -> {enemy->HP}");
                 }
             }
         }
