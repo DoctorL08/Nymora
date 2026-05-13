@@ -159,6 +159,28 @@ namespace Quantum
         public const int DensiteInerteAdjacenceBonus  = 20;   // cf ColossarPassif.AdjacentObstacleBonusDamage
         public const int DensiteInerteAdjacenceMaxRange = 2;  // sorts portee 1-2 (melee + courte)
 
+        // 3.3.a.ii — Onde de Choc Colossar (AoE rayon 1 autour caster).
+        public const int OndeDeChocDmg                = 80;   // dgts AoE base
+        public const int OndeDeChocPushDistance       = 2;    // push 2 cases loin du caster
+        public const int OndeDeChocBonusVsWall        = 80;   // +80 dgts si push s'arrete contre obstacle/bord
+        public const int OndeDeChocTraumaPMMagnitude  = 1;    // MovementMalus 1 (1 tour)
+        public const int OndeDeChocTraumaPAMagnitude  = 1;    // ActionMalus 1 (1 tour)
+        public const int OndeDeChocTraumaTurns        = 1;
+
+        // 3.3.a.ii — Marteau Punisseur Colossar (anti-caster).
+        public const int MarteauPunisseurDmg          = 160;  // dgts base
+        public const int MarteauPunisseurDmgIfDepleted = 240; // dgts si target.PA < 4 (a deja cast ce tour)
+        public const int MarteauPunisseurDepletedPAThreshold = 4; // strict <
+        public const int MarteauPunisseurTraumaPAMagnitude = 2; // ActionMalus 2 prochain tour
+        public const int MarteauPunisseurTraumaTurns  = 1;
+
+        // 3.3.a.ii — Choc Sismique Colossar (ligne 4, traverse Pilier/Mur own).
+        public const int ChocSismiqueDmgBase          = 130;  // dgts toutes cibles dans ligne
+        public const int ChocSismiqueBonusThroughWall = 50;   // +50 dgts a la cible suivante apres traversee d'un obstacle Colossar
+        public const int ChocSismiquePMReduce         = 1;    // MovementMalus 1 sur cibles (1 tour)
+        public const int ChocSismiquePMTurns          = 1;
+        public const int ChocSismiqueRange            = 4;    // portee Manhattan
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -841,6 +863,66 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                    };
+                    return true;
+
+                // -------------------------------------------------------------
+                // COLOSSAR — Bible V7.1 (3.3.a.ii)
+                // -------------------------------------------------------------
+
+                // Onde de Choc : 3 PA, AoE rayon 1 autour caster, 80 dgts adj + push 2 cases.
+                // Resolution AoE manuelle dans SpellSystem (similaire Rugissement Soulrender).
+                // Si push s'arrete contre obstacle/bord : +80 dgts + TRAUMA (-1 PA -1 PM 1 tour).
+                case SpellId.ColossarOndeDeChoc:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.CircleSmall, // rayon 1 (intent declare, resolution custom AoE in handler)
+                        Filter = TargetingFilter.Self,      // target = case du caster
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = OndeDeChocDmg,       // 80 base ; +80 bonus + TRAUMA via handler
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Marteau Punisseur : 4 PA, range 1-2, 160 dgts. Si target.PA < 4 (a deja cast ce tour
+                // ou debuff PA actif) : 240 dgts + TRAUMA ActionMalus 2 PA prochain tour.
+                case SpellId.ColossarMarteauPunisseur:
+                    def = new SpellDef
+                    {
+                        PACost = 4,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 2,
+                        DamageAmount = MarteauPunisseurDmg, // 160 base ; modife a 240 en handler si depleted
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Choc Sismique : 4 PA, LIGNE range 4, 130 dgts a TOUTES les cibles touchees +
+                // MovementMalus -1 PM (1 tour). Si un obstacle Colossar (Pilier/Mur OWN) sur trajectoire :
+                // traverse + +50 dgts a la cible suivante. Custom handler complet (bypass pipeline standard).
+                case SpellId.ColossarChocSismique:
+                    def = new SpellDef
+                    {
+                        PACost = 4,
+                        Shape = TargetingShape.SingleTile, // cible une case finale ; handler custom resoud la ligne
+                        Filter = TargetingFilter.AnyTile,
+                        RangeMin = 1,
+                        RangeMax = ChocSismiqueRange,
+                        DamageAmount = 0,                  // handler custom applique le dmg per-target
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,                   // 0 pour bypass damage loop standard (handler custom)
                     };
                     return true;
 

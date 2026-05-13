@@ -164,9 +164,15 @@ namespace Nymora.Combat.View
             // 3.3.a.i — COLOSSAR OFFENSIFS (touches H/J identiques AZERTY/QWERTY) :
             //   H = Frappe Lourde       (3 PA, melee 1, 180 dgts +100 si epinglee)
             //   J = Represailles        (3 PA, melee 1, 100 dgts + reflect 80 dgts melee 2 tours)
-            // Les 3 sorts AoE/complexes Colossar viendront en 3.3.a.ii (touches K/L/I).
+            // 3.3.a.ii — COLOSSAR OFFENSIFS AoE (touches I/K/L identiques AZERTY/QWERTY) :
+            //   I = Onde de Choc        (3 PA, AoE rayon 1, 80 dgts + push 2 ; +80 + TRAUMA si push contre obstacle/bord)
+            //   K = Marteau Punisseur   (4 PA, range 1-2, 160 dgts ; 240 + TRAUMA -2 PA si target.PA < 4)
+            //   L = Choc Sismique       (4 PA, ligne 4, 130 dgts cibles + -1 PM ; traverse Pilier OWN +50 dgts next)
             bool keyH  = UnityEngine.Input.GetKeyDown(KeyCode.H);
             bool keyJ  = UnityEngine.Input.GetKeyDown(KeyCode.J);
+            bool keyI  = UnityEngine.Input.GetKeyDown(KeyCode.I);
+            bool keyK  = UnityEngine.Input.GetKeyDown(KeyCode.K);
+            bool keyL  = UnityEngine.Input.GetKeyDown(KeyCode.L);
             // BIND AZERTY FR (Lorenzo) : les Unity KeyCode reflètent la position physique
             // (= scancode QWERTY US) ; on map ici à la LETTRE AFFICHEE sur clavier AZERTY.
             //
@@ -213,7 +219,8 @@ namespace Nymora.Combat.View
                             || keyAzQ || keyS || keyD || keyF || keyG
                             || keyAzW || keyX || keyC || keyN || keyAzM
                             || keyP || keyU // 3.1 debug obstacles
-                            || keyH || keyJ; // 3.3.a.i Colossar offensifs
+                            || keyH || keyJ // 3.3.a.i Colossar offensifs
+                            || keyI || keyK || keyL; // 3.3.a.ii Colossar offensifs AoE
             if (!mouseDown && !spaceDown && !anySpellKey) return;
 
             // Calcule la case sous la souris (partagee entre mvt et cast).
@@ -393,6 +400,25 @@ namespace Nymora.Combat.View
             if (keyJ)
             {
                 SendSpellAt(game, senderPlayer, SpellId.ColossarRepresailles, gx, gy, 0);
+                return;
+            }
+
+            // 3.3.a.ii — Colossar offensifs AoE / longue portee.
+            if (keyI)
+            {
+                // Onde de Choc : target = case caster (self-target AoE rayon 1).
+                if (TryGetCasterCell(game, senderPlayer, out int cxOdC, out int cyOdC))
+                    SendSpellAt(game, senderPlayer, SpellId.ColossarOndeDeChoc, cxOdC, cyOdC, 0);
+                return;
+            }
+            if (keyK)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.ColossarMarteauPunisseur, gx, gy, 0);
+                return;
+            }
+            if (keyL)
+            {
+                SendSpellAt(game, senderPlayer, SpellId.ColossarChocSismique, gx, gy, 0);
                 return;
             }
 

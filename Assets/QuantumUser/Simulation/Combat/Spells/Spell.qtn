@@ -62,11 +62,11 @@ enum SpellId : Byte
     NightseerTraquenard           = 45,  // 2 PA, range 5, 4/4 PR, teleport adjacent + 280 dgts + Paralysie -3PM/-2PA. Bonus +80 dgts + 2 PR si target Traque/Voile/Empreinte (consume marque). Cooldown 4 tours.
 
     // COLOSSAR (Bible V7.1 — 5 offensifs + 5 tactiques + 5 survie + signature) — Phase 3.3.a/b/c
-    ColossarFrappeLourde          = 50,  // 3.3.a.i — Offensif : 3 PA, melee 1, 180 dgts (+100 = 280 si cible epinglee = obstacle/bord cote oppose au caster)
-    ColossarRepresailles          = 54,  // 3.3.a.i — Offensif/Defensif : 3 PA, melee 1, 100 dgts. 2 tours : reflect 80 dgts sur attaques melee subies (cap 4 retours TODO)
-    // ColossarOndeDeChoc          = 51,  // 3.3.a.ii — Offensif AoE
-    // ColossarMarteauPunisseur    = 52,  // 3.3.a.ii — Offensif anti-caster
-    // ColossarChocSismique        = 53,  // 3.3.a.ii — Offensif ligne 4
+    ColossarFrappeLourde          = 50,  // 3.3.a.i — Offensif : 3 PA, melee 1, 180 dgts (+100 = 280 si cible epinglee)
+    ColossarOndeDeChoc            = 51,  // 3.3.a.ii — Offensif AoE rayon 1 : 3 PA, 80 dgts adj + push 2 (+80 + TRAUMA si push contre obstacle/bord)
+    ColossarMarteauPunisseur      = 52,  // 3.3.a.ii — Offensif anti-caster : 4 PA, range 2, 160 dgts (240 + TRAUMA -2 PA si target PA<4)
+    ColossarChocSismique          = 53,  // 3.3.a.ii — Offensif ligne 4 : 4 PA, 130 dgts ligne + -1 PM cibles, traverse Pilier/Mur OWN +50 dgts next
+    ColossarRepresailles          = 54,  // 3.3.a.i — Offensif/Defensif : 3 PA, melee 1, 100 dgts. 2 tours : reflect 80 dgts melee (cap 4 TODO)
 }
 
 enum SpellEffectKind : Byte

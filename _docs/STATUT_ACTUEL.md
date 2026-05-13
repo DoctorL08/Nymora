@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 14 mai 2026 nuit profonde (⚒️ **Brique 3.3.a.i Frappe Lourde + Représailles + bonus adjacence ✅ LIVRÉE** — 2 sorts Colossar, helper IsTargetPinnedFromCaster, bonus +20 dmg adjacence générique pour tous sorts Colossar range≤2. E2E Frappe Lourde testé OK : 180 base, 280 épinglée, +20 adjacence. Représailles livré mais ciblage E2E à refaire. CombatRulesVersion 13) — **READY 3.3.a.ii (3 sorts AoE Colossar)** ⚒️  
+**Dernière mise à jour :** 14 mai 2026 nuit profonde (⚒️ **Brique 3.3.a.ii Onde de Choc + Marteau Punisseur + Choc Sismique ✅ LIVRÉE + E2E VALIDÉE** — 3 sorts AoE Colossar, refactor PushAndTriggerEx avec out stoppedAgainstObstacleOrBorder, match complet joué jusqu'à KILL. Onde de Choc 80 dmg + push 2 → bloqué Pilier = +80 bonus + TRAUMA confirmés ; Marteau Punisseur DEPLETED 240 + TRAUMA -2 PA confirmés ; Choc Sismique 130 + MovementMalus confirmés. CombatRulesVersion 14) — **READY 3.3.b (5 sorts tactiques Colossar + fix LoS Pilier/Mur)** ⚒️  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,15 +11,15 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** 🚧 **Phase 3 EN COURS** — Combat Colossar + Necram + Ghostra (~16 briques en 5 blocs)
-**Brique en cours :** **3.3.a.ii Sorts offensifs AoE Colossar** (Onde de Choc, Marteau Punisseur, Choc Sismique). 3.3.a.iii cap Représailles 4 retours en backlog.
+**Brique en cours :** **3.3.b Sorts tactiques Colossar** (5 sorts : Pilier, Mur de Pierre, Ancrage, Provocation, Brisure) + **fix LoS Pilier/Mur**. 3.3.a.iii cap Représailles 4 retours en backlog.
 **Bloc A Phase 3 :** ✅ **3.1 framework obstacles VALIDÉE** + ✅ **3.1.bis Colossar assets VALIDÉE** (14 mai 2026)
-**Bloc B Phase 3 (en cours)** : ✅ **3.2 Stats + FD + Densité Inerte VALIDÉE** + ✅ **3.3.a.i Frappe Lourde + Représailles + bonus adjacence VALIDÉE** (14 mai 2026 nuit). Frappe Lourde épinglée 280 dgts + bonus adjacence +20 dgts E2E OK. Représailles cast OK mais reflect à valider E2E plus tard.
-**Bug connu (à fix en 3.3.b)** : Pilier ne bloque pas les LoS des sorts à distance (Bible V7.1 dit "Pilier bloque lignes de vue/tir"), et Charge Brutale Soulrender traverse le Pilier. Sera intégré quand les sorts Pilier/Mur arrivent en 3.3.b
+**Bloc B Phase 3 (en cours)** : ✅ **3.2 Stats + FD + Densité Inerte VALIDÉE** + ✅ **3.3.a.i Frappe Lourde + Représailles + bonus adjacence VALIDÉE** + ✅ **3.3.a.ii Onde de Choc + Marteau Punisseur + Choc Sismique VALIDÉE** (14 mai 2026 nuit). 5/5 sorts offensifs Colossar livrés et testés E2E (match complet P0 mort). Représailles reflect E2E à valider plus tard.
+**Bug connu (à fix en 3.3.b)** : Pilier ne bloque pas les LoS des sorts à distance (Bible V7.1 dit "Pilier bloque lignes de vue/tir"), et Charge Brutale Soulrender traverse le Pilier. **Sera fixé en 3.3.b quand les sorts Pilier/Mur arrivent.**
 **Cadrage Phase 3** : 5 blocs (A préreqs / B Colossar / C Necram / D Ghostra / E IA Hard+Replay+Debug) — séquentiel par classe
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)
 **Statut Phase 2 :** ✅ **CLÔTURÉE le 13 mai 2026 soir**. 17/17 briques validées + 2.12.bis + 2.13.a/b/c/d/e + 2.14 + 2.15.a/b/c + **2.16.a/b/c complets** (Bloc E IA). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C ✅ 3/3, 2.13 ✅, 2.14 ✅, 2.15 ✅, **2.16 ✅ TERMINÉ** (IA Easy random + IA Medium greedy + scène 30_CombatIA + overlay Victory/Defeat + selecteur difficulté + AI pacing + mouvement cardinal cell-by-cell). **🏆 Soulrender + Nightseer 100% jouables, combat 1v1 vs IA E2E**.
 
-**CombatRulesVersion :** **13** (bump 3.3.a.i — ajout 2 sorts Colossar offensifs + bonus passif adjacence dans damage compute).
+**CombatRulesVersion :** **14** (bump 3.3.a.ii — ajout 3 sorts Colossar AoE : Onde de Choc + Marteau Punisseur + Choc Sismique, refactor PushAndTriggerEx avec out stoppedAgainstObstacleOrBorder pour détecter VERROU bonus wall).
 
 **Convention temporelle (depuis 2.14) :** **TurnNumber = round complet** (P0+P1 = 1 round, sémantique Dofus). Toutes les durées Bible V7.1 "N tours" = N rounds. Décrémentation statuses/marques/voiles/terrains uniquement en fin de dernier sous-tour du round. Cf memory `project_turn_semantics.md`.
 
@@ -837,6 +837,19 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 14 mai 2026 nuit profonde (suite) — ⚒️ Brique 3.3.a.ii ✅ Onde de Choc + Marteau Punisseur + Choc Sismique
+- **Livraison** : 5 fichiers MOD : `Spell.qtn` (SpellId 51/52/53), `SpellRegistry.cs` (constantes + 3 SpellDef), `SpellSystem.cs` (refactor PushAndTriggerEx avec `out bool stoppedAgainstObstacleOrBorder`, blocs damage compute Marteau Punisseur DEPLETED 240+TRAUMA-2PA, case Onde de Choc dans Resolve AoE rayon 1 like Rugissement, case Onde de Choc dans ApplySpellSpecificEffects qui itère 4 cases adjacentes + push 2 + bonus +80 + TRAUMA si stoppé, case Choc Sismique line iteration custom +50 si traverse Pilier OWN), `CombatInputController.cs` (touches I/K/L), `GameVersion.cs` (13→14).
+- **PushAndTriggerEx** : refactor pour exposer `stoppedAgainstObstacleOrBorder`. PushAndTrigger devient wrapper qui passe ce flag à null pour les call sites historiques (Bourrasque, Souffle Glacial). Permet Onde de Choc de savoir si VERROU bonus wall doit s'appliquer.
+- **Bug fix mid-livraison** : CS0136 `hpBefore` shadow conflict — Pacte de Sang case sans braces déclarait déjà `int hpBefore` dans le scope englobant de `ApplySpellSpecificEffects`. Renommé `hpBefore` → `hpBeforeOdC` dans le bloc Onde de Choc. C'est le 2e occurrence de ce pattern (déjà rencontré sur Représailles en 3.3.a.i). À surveiller pour les futures cases.
+- **E2E match complet validé** : Lorenzo a joué un match complet de 4 rounds qui a fini par sa propre mort (Curée KILL P1).
+  - Round 2 : Spawn Pillar (7,8) +1 FD ✅ ; Cast OdC vers (5,8) → P1 (6,8) push 2 bloqué par Pillar (7,8) → `Onde de Choc BONUS WALL +80` (HP 1420 → 1340) + `TRAUMA -1 PA / -1 PM` ✅ + `+1 FD sur P0 (Push contre obstacle) : 1 → 2/3` ✅
+  - Round 3 : `Marteau Punisseur DEPLETED : 240 dgts + TRAUMA -2 PA sur P1 (PA=1)` ✅ ; au tour suivant `[TurnSystem] ActionMalus -2 PA applique sur P1 (PA=6/8)` ✅
+  - Round 4 : `Choc Sismique : 130 dgts sur P1` ✅ ; au tour suivant `MovementMalus -1 PM applique sur P1` ✅
+- **Tout marche** : VERROU bonus wall passif Colossar + TRAUMA combo ActionMalus+MovementMalus + Marteau anti-caster + Choc Sismique line + Densité Inerte continue d'absorber les Charge Brutale (180→165) et Curée (150→138).
+- **Bug LoS connu non bloquant** : reporté en 3.3.b quand sorts Pilier/Mur arrivent (cohérent : on fixe LoS quand on a vraiment des sorts qui posent ces obstacles via gameplay normal).
+
+---
 
 ### 14 mai 2026 nuit profonde — ⚒️ Brique 3.3.a.i ✅ Frappe Lourde + Représailles + bonus adjacence
 - **Découpage** : la brique 3.3.a (5 sorts offensifs Colossar) sous-divisée en 3.3.a.i (2 sorts simples + infra) + 3.3.a.ii (3 sorts AoE) + 3.3.a.iii (cap Représailles backlog) pour limiter la surface de bug. Pattern Phase 2 (2.10.a/b/c) reproduit.

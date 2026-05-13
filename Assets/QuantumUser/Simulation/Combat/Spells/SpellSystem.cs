@@ -256,6 +256,11 @@ namespace Quantum
             {
                 ResolveCircleManhattan(caster->GridX, caster->GridY, radius: 3, effectBuffer, out effectCount);
             }
+            else if (cmd.Spell == SpellId.ColossarOndeDeChoc)
+            {
+                // 3.3.a.ii — Onde de Choc : AoE rayon 1 autour caster (4 cases adj).
+                ResolveCircleManhattan(caster->GridX, caster->GridY, radius: 1, effectBuffer, out effectCount);
+            }
             else
             {
                 TargetingResolver.ResolveEffectCells(
@@ -363,6 +368,19 @@ namespace Quantum
                         {
                             dmgThisTarget = SpellRegistry.FrappeLourdeDmgIfPinned;
                             Log.Info($"[Spell] Frappe Lourde EPINGLEE : {SpellRegistry.FrappeLourdeDmgIfPinned} dgts sur P{targetC->PlayerIndex} ({cx},{cy})");
+                        }
+                    }
+                    else if (cmd.Spell == SpellId.ColossarMarteauPunisseur)
+                    {
+                        // 3.3.a.ii — Bible Marteau Punisseur : 160 base, 240 si target.PA < 4
+                        // (a deja cast ce tour). Applique aussi TRAUMA ActionMalus 2 prochain tour.
+                        if (targetC->PA < SpellRegistry.MarteauPunisseurDepletedPAThreshold)
+                        {
+                            dmgThisTarget = SpellRegistry.MarteauPunisseurDmgIfDepleted;
+                            StatusHelper.Apply(targetC, StatusKind.ActionMalus,
+                                magnitude: SpellRegistry.MarteauPunisseurTraumaPAMagnitude,
+                                turnsLeft: SpellRegistry.MarteauPunisseurTraumaTurns, currentTurn);
+                            Log.Info($"[Spell] Marteau Punisseur DEPLETED : {dmgThisTarget} dgts + TRAUMA -{SpellRegistry.MarteauPunisseurTraumaPAMagnitude} PA sur P{targetC->PlayerIndex} (PA={targetC->PA})");
                         }
                     }
 
@@ -1419,6 +1437,139 @@ namespace Quantum
                         currentTurn);
                     Log.Info($"[Spell] Represailles : RipostMelee {SpellRegistry.RepresaillesReflectDmg} dgts ({SpellRegistry.RepresaillesReflectTurns} tours) sur P{caster->PlayerIndex}");
                     break;
+
+                // -------------------------------------------------------------
+                // COLOSSAR 3.3.a.ii — Onde de Choc + Choc Sismique
+                // -------------------------------------------------------------
+
+                case SpellId.ColossarOndeDeChoc:
+                {
+                    // Bible : 80 dgts AoE adj (deja appliques par damage loop avec AoE rayon 1).
+                    // Push chaque ennemi adj de 2 cases loin du caster. Si push s'arrete contre
+                    // obstacle/bord : +80 dgts + TRAUMA (-1 PA -1 PM, 1 tour).
+                    int casterXOdC = caster->GridX;
+                    int casterYOdC = caster->GridY;
+                    int[] dxArr = { 1, -1, 0, 0 };
+                    int[] dyArr = { 0, 0, 1, -1 };
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int nx = casterXOdC + dxArr[i];
+                        int ny = casterYOdC + dyArr[i];
+                        if (!GridHelpers.InBounds(nx, ny)) continue;
+                        EntityRef adjTarget = GridHelpers.GetOccupant(f, nx, ny);
+                        if (adjTarget == EntityRef.None) continue;
+                        if (adjTarget == casterEntity) continue;
+                        if (!f.Unsafe.TryGetPointer<Combatant>(adjTarget, out Combatant* adjC)) continue;
+
+                        // Push 2 cases loin du caster.
+                        PushAndTriggerEx(f, adjC, adjTarget, casterXOdC, casterYOdC,
+                            SpellRegistry.OndeDeChocPushDistance, currentTurn, caster,
+                            out bool stoppedAgainst);
+
+                        if (stoppedAgainst)
+                        {
+                            // Bonus +80 dgts direct au HP (Bible : "+ 80 degats supplementaires").
+                            // Bypass shield/Densite Inerte ? Bible silencieux, on traite comme dgts
+                            // simples direct au HP (pas via damage loop pipeline).
+                            int hpBeforeOdC = adjC->HP;
+                            adjC->HP -= SpellRegistry.OndeDeChocBonusVsWall;
+                            if (adjC->HP < 0) adjC->HP = 0;
+                            adjC->DamageTakenThisRound += SpellRegistry.OndeDeChocBonusVsWall;
+                            Log.Info($"[Spell] Onde de Choc BONUS WALL : +{SpellRegistry.OndeDeChocBonusVsWall} dgts sur P{adjC->PlayerIndex} (HP {hpBeforeOdC} -> {adjC->HP})");
+
+                            // TRAUMA Bible = ActionMalus -1 PA + MovementMalus -1 PM 1 tour.
+                            StatusHelper.Apply(adjC, StatusKind.ActionMalus,
+                                magnitude: SpellRegistry.OndeDeChocTraumaPAMagnitude,
+                                turnsLeft: SpellRegistry.OndeDeChocTraumaTurns, currentTurn);
+                            StatusHelper.Apply(adjC, StatusKind.MovementMalus,
+                                magnitude: SpellRegistry.OndeDeChocTraumaPMMagnitude,
+                                turnsLeft: SpellRegistry.OndeDeChocTraumaTurns, currentTurn);
+                            Log.Info($"[Spell] Onde de Choc TRAUMA : -{SpellRegistry.OndeDeChocTraumaPAMagnitude} PA / -{SpellRegistry.OndeDeChocTraumaPMMagnitude} PM (1 tour) sur P{adjC->PlayerIndex}");
+                        }
+                    }
+                    break;
+                }
+
+                case SpellId.ColossarChocSismique:
+                {
+                    // Bible : LIGNE depuis caster vers (cmd.TargetX, cmd.TargetY). Iter cases en
+                    // ligne droite (axe-dominant Manhattan), hit toutes les cibles : 130 dgts +
+                    // MovementMalus -1 PM (1 tour). Si case = obstacle OWNED par caster (Pilier
+                    // ou Mur) : traverse + +50 dgts a la CIBLE SUIVANTE dans la ligne.
+                    int sx = caster->GridX;
+                    int sy = caster->GridY;
+                    int tx = cmd.TargetX;
+                    int ty = cmd.TargetY;
+                    int dxCs = tx - sx;
+                    int dyCs = ty - sy;
+                    int absDxCs = dxCs < 0 ? -dxCs : dxCs;
+                    int absDyCs = dyCs < 0 ? -dyCs : dyCs;
+                    int stepXCs = 0, stepYCs = 0;
+                    if (absDxCs >= absDyCs) stepXCs = dxCs > 0 ? 1 : (dxCs < 0 ? -1 : 0);
+                    else stepYCs = dyCs > 0 ? 1 : (dyCs < 0 ? -1 : 0);
+                    if (stepXCs == 0 && stepYCs == 0) { Log.Warn("[Spell] Choc Sismique : direction nulle, no-op"); break; }
+
+                    bool pendingThroughWallBonus = false;
+                    int curXCs = sx;
+                    int curYCs = sy;
+                    for (int s = 0; s < SpellRegistry.ChocSismiqueRange; s++)
+                    {
+                        curXCs += stepXCs;
+                        curYCs += stepYCs;
+                        if (!GridHelpers.InBounds(curXCs, curYCs)) break;
+
+                        // Obstacle Colossar OWN sur la case ? Traverse + flag bonus a la cible suivante.
+                        EntityRef obsEntity = ObstacleHelpers.GetObstacleAt(f, curXCs, curYCs);
+                        if (obsEntity != EntityRef.None
+                            && f.Unsafe.TryGetPointer<Obstacle>(obsEntity, out Obstacle* obs)
+                            && obs->OwnerPlayerIndex == caster->PlayerIndex)
+                        {
+                            pendingThroughWallBonus = true;
+                            Log.Info($"[Spell] Choc Sismique traverse obstacle OWN ({curXCs},{curYCs}) -> +{SpellRegistry.ChocSismiqueBonusThroughWall} dgts a la cible suivante");
+                            continue; // traverse sans s'arreter
+                        }
+
+                        // Combatant sur la case ? Hit.
+                        EntityRef victim = GridHelpers.GetOccupant(f, curXCs, curYCs);
+                        if (victim == EntityRef.None) continue; // case vide, continue la ligne
+                        if (victim == casterEntity) continue;   // skip caster (cas degenere)
+                        if (!f.Unsafe.TryGetPointer<Combatant>(victim, out Combatant* victimC)) continue;
+
+                        int dmg = SpellRegistry.ChocSismiqueDmgBase;
+                        if (pendingThroughWallBonus)
+                        {
+                            dmg += SpellRegistry.ChocSismiqueBonusThroughWall;
+                            pendingThroughWallBonus = false;
+                        }
+
+                        // Densite Inerte si victim Colossar.
+                        if (victimC->Class == NymoraClass.Colossar)
+                        {
+                            int dmgBeforeReducCs = dmg;
+                            dmg = ColossarPassif.ApplyDamageReduction(f, victimC, dmg);
+                            if (dmg != dmgBeforeReducCs)
+                            {
+                                int pctCs = ColossarPassif.GetDamageReductionPercent(f, victimC);
+                                Log.Info($"[Densite Inerte] -{pctCs}% dmg sur P{victimC->PlayerIndex} (Choc Sismique) : {dmgBeforeReducCs} -> {dmg}");
+                            }
+                        }
+
+                        // Apply dmg direct (bypass shield - simplification 3.3.a.ii).
+                        int hpBeforeCs = victimC->HP;
+                        victimC->HP -= dmg;
+                        if (victimC->HP < 0) victimC->HP = 0;
+                        victimC->DamageTakenThisRound += dmg;
+                        Log.Info($"[Spell] Choc Sismique : {dmg} dgts sur P{victimC->PlayerIndex} ({curXCs},{curYCs}) HP {hpBeforeCs} -> {victimC->HP}");
+
+                        // MovementMalus -1 PM 1 tour.
+                        StatusHelper.Apply(victimC, StatusKind.MovementMalus,
+                            magnitude: SpellRegistry.ChocSismiquePMReduce,
+                            turnsLeft: SpellRegistry.ChocSismiquePMTurns, currentTurn);
+
+                        // Continue la ligne (Bible : toutes les cibles touchees).
+                    }
+                    break;
+                }
             }
         }
 
@@ -1500,6 +1651,19 @@ namespace Quantum
         private static void PushAndTrigger(Frame f, Combatant* targetC, EntityRef targetEntity,
             int casterX, int casterY, int distance, int currentTurn, Combatant* caster = null)
         {
+            PushAndTriggerEx(f, targetC, targetEntity, casterX, casterY, distance, currentTurn, caster, out _);
+        }
+
+        /// <summary>
+        /// 3.3.a.ii — Variante de PushAndTrigger qui expose le motif d'arret au caller.
+        /// Utilise par Onde de Choc Colossar (Bible : +80 dgts + TRAUMA si push s'arrete contre
+        /// mur/Pilier/bord). PushAndTrigger classique = wrapper appelant avec out _.
+        /// </summary>
+        private static void PushAndTriggerEx(Frame f, Combatant* targetC, EntityRef targetEntity,
+            int casterX, int casterY, int distance, int currentTurn, Combatant* caster,
+            out bool stoppedAgainstObstacleOrBorder)
+        {
+            stoppedAgainstObstacleOrBorder = false; // assigned avant tout early return
             int dx = targetC->GridX - casterX;
             int dy = targetC->GridY - casterY;
             int absDx = dx < 0 ? -dx : dx;
@@ -1540,7 +1704,8 @@ namespace Quantum
             // 3.2 — Bible Fondation : +1 FD au Colossar si push contre obstacle ou bord, MEME si
             // steps == 0 (la cible etait deja collee a un mur/Pilier). C'est un push qui "ecrase"
             // contre la barriere, c'est ce qui compte.
-            if (caster != null && (stoppedAgainstObstacle || stoppedAgainstBorder))
+            stoppedAgainstObstacleOrBorder = stoppedAgainstObstacle || stoppedAgainstBorder;
+            if (caster != null && stoppedAgainstObstacleOrBorder)
             {
                 string reason = stoppedAgainstObstacle ? "Push contre obstacle" : "Push contre bord";
                 ColossarPassif.GainFondation(caster, reason);

@@ -20,7 +20,7 @@ namespace Nymora.Core.Data
         /// - Modifications du schema Combatant DSL (impact compatibilite replay)
         /// - Modifications du schema Tile DSL (idem)
         /// </summary>
-        public const int CombatRulesVersion = 13;
+        public const int CombatRulesVersion = 14;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";
