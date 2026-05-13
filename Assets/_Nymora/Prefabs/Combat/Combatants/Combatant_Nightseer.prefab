@@ -107,11 +107,11 @@ MonoBehaviour:
   _stage1SpriteNE: {fileID: -8848003822099424667, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
   _stage2SpriteNE: {fileID: -8848003822099424667, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
   _stage0ControllerSE: {fileID: 9100000, guid: c2d62dc7c3e820a4ea3961a373c865f1, type: 2}
-  _stage1ControllerSE: {fileID: 9100000, guid: c2d62dc7c3e820a4ea3961a373c865f1, type: 2}
-  _stage2ControllerSE: {fileID: 9100000, guid: c2d62dc7c3e820a4ea3961a373c865f1, type: 2}
+  _stage1ControllerSE: {fileID: 9100000, guid: 0e2404628c1a26c4b920814357ed9c38, type: 2}
+  _stage2ControllerSE: {fileID: 9100000, guid: 71db5a4a22fcc504893429dbdcf01a3a, type: 2}
   _stage0ControllerNE: {fileID: 9100000, guid: 405010bb58d12274595173c63426b9fb, type: 2}
-  _stage1ControllerNE: {fileID: 9100000, guid: 405010bb58d12274595173c63426b9fb, type: 2}
-  _stage2ControllerNE: {fileID: 9100000, guid: 405010bb58d12274595173c63426b9fb, type: 2}
+  _stage1ControllerNE: {fileID: 9100000, guid: d8f974af46815f64491190b05a8dea18, type: 2}
+  _stage2ControllerNE: {fileID: 9100000, guid: b34387866766b6b46b11c6cdd0e8c6e3, type: 2}
 --- !u!95 &1173257814983947940
 Animator:
   serializedVersion: 5

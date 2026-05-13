@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 13 mai 2026 soir tardif (🏁 **PHASE 2 ENTIÈREMENT CLÔTURÉE** — Bloc E IA complet : 2.16.a Easy + 2.16.b Medium + 2.16.c.i→vi scène + UI + polish) — **🏆 PHASE 2 DONE, READY FOR PHASE 3** 🎮  
+**Dernière mise à jour :** 13 mai 2026 fin soirée (🎨 **Brique 2.12.bis Nightseer** — anims stages 1+2 livrées par le designer, intégration via `BuildNightseerAnimator` mirror du Soulrender, 6 controllers générés, prefab bind, Phase 2 reste clôturée) — **READY FOR PHASE 3** 🎮  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -833,6 +833,23 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 13 mai 2026 fin soirée — 🎨 Brique 2.12.bis Nightseer (anims stages 1+2 intégrées)
+- **Contexte** : Lorenzo (avec son designer) livre les anims évolutives Nightseer pour les stages 1 et 2. Le stage0 avait été setup en 2.12 (2 controllers manuels `NightseerStage0_{NE,SE}.controller`) mais pas via un Editor Tool dédié — contrairement au Soulrender qui a `BuildSoulrenderAnimator` depuis 2.12.bis.
+- **Inputs designer** :
+  - 4 sources `NS_animation_stage{1,2}_{NE,SE}.aseprite` → `Assets/_Nymora/Art/Sprites/Nightseer/Base/sources/`
+  - 24 GIFs preview `NS_{action}_stage{1,2}_{dir}_{N}frame.gif` → `stage1/` + `stage2/`
+  - Naming des nouveaux GIFs un peu inconsistant avec stage0 (`NS_attack_stage1_NE_6frame.gif` vs `NS_attack_NE_6frame.gif` pour stage0) — pas bloquant, le tool se base sur les .aseprite.
+- **Outputs** :
+  - Nouveau Editor Tool `Assets/_Nymora/Editor/Tools/BuildNightseerAnimator.cs` — clone exact de `BuildSoulrenderAnimator`, mirror structurel parfait. State machine identique (Idle 0.4 / Walk / Cast / Attack / Hurt / Death + params MoveSpeed/CastSpeed + 4 triggers).
+  - 6 controllers générés/écrasés : `Animations/Nightseer/NightseerStage{0,1,2}_{NE,SE}.controller` (stage0 existants overwrite — state machine identique, pas de régression).
+  - Prefab `Combatant_Nightseer.prefab` bind sur les 6 fields `_stage{0,1,2}Controller{NE,SE}` du `CombatantView` (déjà préparés depuis la refonte 2.12.bis Soulrender).
+- **Pas de refactor `CombatantView`** : les 6 fields stage controllers existent depuis 2.12.bis Soulrender, le code de pick controller (PickController + PickSprite) supporte déjà les 3 stages × 2 dirs. Aucun changement gameplay.
+- **Pas d'impact gameplay** : que de l'asset visuel + Editor Tool. Combat reste identique, `CombatRulesVersion` inchangée (toujours 10).
+- **Validation** : Lorenzo a lancé le tool (`Nymora > Setup > Build Nightseer Animator`), confiance accordée pour validation visuelle ultérieure (sera vérifié quand il rejouera 30_CombatIA — le Nightseer doit afficher ses stages 1 et 2 quand sa Prescience monte).
+- **Décision** : commit local seul (pas de push, session pas encore stoppée par Lorenzo, cf memory `feedback_end_of_session_push`). Phase 3 (Colossar) reste la prochaine étape majeure.
+
+---
 
 ### 13 mai 2026 soir tardif — 🏁 **PHASE 2 ENTIÈREMENT CLÔTURÉE** (Bloc E IA + polish E2E)
 - **Session marathon** : ouverture du Bloc D backlog (commits non-poussés du backlog 2.13.e→2.15.c) jusqu'à la clôture complète Phase 2 (Bloc E IA). Phase 2 = 8 mois selon la roadmap initiale, finie au bout de seulement ~5 jours intenses.
