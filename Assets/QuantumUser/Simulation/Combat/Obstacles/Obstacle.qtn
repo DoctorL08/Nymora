@@ -21,6 +21,11 @@ enum ObstacleKind : Byte
     None    = 0,
     Pillar  = 1,  // Colossar Pilier : 200 HP, 1 case, persistent (ExpiresOnTurn=0).
     Wall    = 2,  // Colossar Mur de Pierre : 1 case par segment, 2 rounds (ExpiresOnTurn>0).
+    Faille  = 3,  // Colossar Effondrement : case impraticable 2 rounds. 100 HP (Bible-balance Lorenzo 3.3.d).
+                  //   Destructible par AoE adverse (le damage des sorts AoE qui passent sur la case
+                  //   l'endommage). 100 HP = ~1 cast AoE moyen suffit pour creer un passage.
+                  //   Block mouvement uniquement (pas de damage a l'entree). MVP : ennemi pris pieced
+                  //   peut sortir en cassant 1-2 Failles avec ses sorts AoE.
 }
 
 // Slot par-case dans le singleton. 8 bytes (EntityRef) * 255 tiles = ~2 KB, OK.

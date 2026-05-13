@@ -40,13 +40,17 @@ namespace Nymora.Combat.View.Animation
         [Tooltip("SortingOrder des marques. 1500 = devant les combattants (~1000), derriere VFX one-shot (~2000).")]
         [SerializeField] private int _sortingOrder = 1500;
 
-        // Etat runtime.
+        // Etat runtime. Key encoding : pour eviter de melanger StatusKind et MarkKind dans le meme
+        // dict, on prefixe StatusKind avec 0x1000 (Status) et MarkKind avec 0x2000 (Mark). Resultat :
+        // un int unique par "type de marque visuelle" sans collisions entre enums.
+        private const int KeyStatus = 0x1000;
+        private const int KeyMark = 0x2000;
         private readonly Dictionary<EntityRef, CombatantView> _viewByEntity = new Dictionary<EntityRef, CombatantView>(4);
-        private readonly Dictionary<EntityRef, Dictionary<StatusKind, GameObject>> _overlays =
-            new Dictionary<EntityRef, Dictionary<StatusKind, GameObject>>(4);
+        private readonly Dictionary<EntityRef, Dictionary<int, GameObject>> _overlays =
+            new Dictionary<EntityRef, Dictionary<int, GameObject>>(4);
         // Reuse buffers pour eviter les allocations dans OnUpdateView.
-        private readonly List<StatusKind> _activeBuffer = new List<StatusKind>(4);
-        private readonly List<StatusKind> _toRemoveBuffer = new List<StatusKind>(4);
+        private readonly List<int> _activeBuffer = new List<int>(4);
+        private readonly List<int> _toRemoveBuffer = new List<int>(4);
 
         private void Awake()
         {
@@ -102,19 +106,28 @@ namespace Nymora.Combat.View.Animation
         private void UpdateMarksForCombatant(EntityRef entity, Combatant combatant, CombatantView view)
         {
             // 1) Liste les marques actives sur ce combattant.
+            //    a) StatusKind (Soulrender AntiHealShield, MarkedByCarnage, etc.) — 8 slots Statuses.
             _activeBuffer.Clear();
             for (int i = 0; i < 8; i++)
             {
                 var s = combatant.Statuses[i];
                 if (s.Kind == StatusKind.None || s.TurnsLeft <= 0) continue;
                 if (_library.GetFrames(s.Kind) == null) continue;
-                _activeBuffer.Add(s.Kind);
+                _activeBuffer.Add(KeyStatus | (int)s.Kind);
+            }
+            //    b) MarkKind (Nightseer Traque/Empreinte) — 1 marque max active a la fois (Bible).
+            if (combatant.CurrentMark != MarkKind.None && combatant.MarkTurnsLeft > 0)
+            {
+                if (_library.GetMarkFrames(combatant.CurrentMark) != null)
+                {
+                    _activeBuffer.Add(KeyMark | (int)combatant.CurrentMark);
+                }
             }
 
             // 2) Recupere ou cree le dictionnaire d'overlays pour ce combattant.
             if (!_overlays.TryGetValue(entity, out var perEntity))
             {
-                perEntity = new Dictionary<StatusKind, GameObject>(2);
+                perEntity = new Dictionary<int, GameObject>(2);
                 _overlays[entity] = perEntity;
             }
 
@@ -128,16 +141,16 @@ namespace Nymora.Combat.View.Animation
                     _toRemoveBuffer.Add(kvp.Key);
                 }
             }
-            foreach (var kind in _toRemoveBuffer) perEntity.Remove(kind);
+            foreach (var key in _toRemoveBuffer) perEntity.Remove(key);
 
             // 4) Cree les overlays manquants.
             for (int i = 0; i < _activeBuffer.Count; i++)
             {
-                var kind = _activeBuffer[i];
-                if (!perEntity.ContainsKey(kind))
+                int key = _activeBuffer[i];
+                if (!perEntity.ContainsKey(key))
                 {
-                    var go = SpawnOverlay(view, kind);
-                    if (go != null) perEntity[kind] = go;
+                    var go = SpawnOverlay(view, key);
+                    if (go != null) perEntity[key] = go;
                 }
             }
 
@@ -145,19 +158,33 @@ namespace Nymora.Combat.View.Animation
             int count = _activeBuffer.Count;
             for (int i = 0; i < count; i++)
             {
-                var kind = _activeBuffer[i];
-                if (!perEntity.TryGetValue(kind, out var go) || go == null) continue;
+                int key = _activeBuffer[i];
+                if (!perEntity.TryGetValue(key, out var go) || go == null) continue;
                 float xOffset = (i - (count - 1) * 0.5f) * _markSpacingX;
                 go.transform.localPosition = new Vector3(_baseOffset.x + xOffset, _baseOffset.y, 0f);
             }
         }
 
-        private GameObject SpawnOverlay(CombatantView view, StatusKind kind)
+        private GameObject SpawnOverlay(CombatantView view, int key)
         {
-            var frames = _library.GetFrames(kind);
+            // Decode (StatusKind ou MarkKind) selon le prefixe.
+            Sprite[] frames;
+            string nameSuffix;
+            if ((key & 0xF000) == KeyMark)
+            {
+                MarkKind mk = (MarkKind)(key & 0xFFF);
+                frames = _library.GetMarkFrames(mk);
+                nameSuffix = $"Mark_{mk}";
+            }
+            else
+            {
+                StatusKind sk = (StatusKind)(key & 0xFFF);
+                frames = _library.GetFrames(sk);
+                nameSuffix = $"Status_{sk}";
+            }
             if (frames == null || frames.Length == 0) return null;
 
-            var go = new GameObject($"Mark_{kind}");
+            var go = new GameObject(nameSuffix);
             go.transform.SetParent(view.transform, false);
             go.transform.localPosition = new Vector3(_baseOffset.x, _baseOffset.y, 0f);
             go.transform.localScale = new Vector3(_markScale, _markScale, 1f);

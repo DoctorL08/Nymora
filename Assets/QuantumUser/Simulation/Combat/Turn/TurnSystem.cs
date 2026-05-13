@@ -100,6 +100,13 @@ namespace Quantum
                     }
                     combatant->PM = combatant->MaxPM;
 
+                    // 3.3.c : Snapshot Ressac Vital. Au debut du sub-turn du combattant actif,
+                    // on copie les hits subis au sub-turn adverse precedent dans LastRound
+                    // (consultes par Ressac Vital), puis on reset le compteur courant.
+                    // "Tour precedent" Bible = dernier sub-turn ou ce combatant n'etait pas actif.
+                    combatant->HitsTakenLastRound = combatant->HitsTakenThisRound;
+                    combatant->HitsTakenThisRound = 0;
+
                     // 2.10.a : MovementMalus (Rugissement -1/-2, Riposte Carmin -1)
                     // reduit le PM disponible pour CE tour. Le status reste actif jusqu'a
                     // son TurnEnd ; il sera decrement la et expire normalement.
@@ -156,6 +163,27 @@ namespace Quantum
                             combatant->PM += 1;
                             Log.Info($"[TurnSystem] Rage Ouverte : +1 PM sur P{combatant->PlayerIndex} (ennemi <40% HP) -> PM={combatant->PM}");
                         }
+                    }
+
+                    // 3.3.d — Effondrement : trigger differe. Si le Colossar a annonce au tour
+                    // precedent, on declenche maintenant : 200 dgts AoE rayon 2 + ejection
+                    // ennemis + Failles 2 tours + apply EffondrementActive 2T + DamageReductionPercent 30/2T.
+                    // Doit s'executer AVANT le buff +1 PM (qui depend de EffondrementActive).
+                    if (combatant->Class == NymoraClass.Colossar
+                        && combatant->EffondrementAnnouncedOnTurn >= 0
+                        && state->TurnNumber == combatant->EffondrementAnnouncedOnTurn + 1)
+                    {
+                        TriggerEffondrement(f, combatant, state->TurnNumber);
+                        combatant->EffondrementAnnouncedOnTurn = -1; // consume tracker
+                    }
+
+                    // 3.3.d — Buff Effondrement : +1 PM si actif. Hook similaire a Rage Ouverte.
+                    // Le -1 PA cost se gere dans EffectiveStats.GetPACost. Le -30% dgts subis via
+                    // DamageReductionPercent (cap combine 50% avec Densite Inerte/Garde Prot).
+                    if (StatusHelper.Has(combatant, StatusKind.EffondrementActive))
+                    {
+                        combatant->PM += 1;
+                        Log.Info($"[TurnSystem] Effondrement actif : +1 PM sur P{combatant->PlayerIndex} -> PM={combatant->PM}");
                     }
                 }
             }
@@ -239,6 +267,12 @@ namespace Quantum
                 // 2.15.c — RoncesAura tick : AVANT decrementation pour que le status soit encore
                 // actif, et AVANT Prescience pour que les dgts d'aura comptent dans DamageTakenThisRound.
                 TickRoncesAura(f);
+
+                // 3.3.c — Stoicisme tick fin de round. Si StoicismeExpiresOnTurn == currentTurn ET
+                // ShieldActive.Magnitude > 0 (= shield a survecu 2 tours sans etre brise) -> heal 80.
+                // Reset StoicismeExpiresOnTurn a -1 dans tous les cas (consume tracker).
+                // Appel AVANT DecrementAllOnTurnEnd pour que le ShieldActive soit encore lisible.
+                TickStoicismeHeal(f, state->TurnNumber);
 
                 StatusHelper.DecrementAllOnTurnEnd(f, state->TurnNumber);
                 GridHelpers.DecrementAllTerrainsOnTurnEnd(f, state->TurnNumber);
@@ -352,6 +386,7 @@ namespace Quantum
                     enemy->HP -= auraMag;
                     if (enemy->HP < 0) enemy->HP = 0;
                     enemy->DamageTakenThisRound += auraMag;
+                    enemy->HitsTakenThisRound += 1; // 3.3.c : compte aussi pour Ressac Vital
                     // Bible V7.1 : EMPREINTE 2 tours sur l'ennemi adjacent.
                     MarkHelpers.ApplyMark(enemy, MarkKind.Empreinte,
                         SpellRegistry.CamouflageRoncesAuraEmpreinteTurns,
@@ -359,6 +394,217 @@ namespace Quantum
                     Log.Info($"[RoncesAura] -{auraMag} HP + Empreinte sur P{enemy->PlayerIndex} (aura P{aura->PlayerIndex}) : {hpBefore} -> {enemy->HP}");
                 }
             }
+        }
+
+        /// <summary>
+        /// 3.3.c — Stoicisme : tick fin de round. Si StoicismeExpiresOnTurn == currentTurn ET
+        /// le ShieldActive porte encore une magnitude > 0 (= shield n'a pas ete brise pendant
+        /// les 2 tours), heal +80 HP (Bible V7.1). Reset StoicismeExpiresOnTurn a -1 dans tous
+        /// les cas (consume tracker, evite double-heal si plusieurs casts qui se chevauchent).
+        ///
+        /// Appel AVANT DecrementAllOnTurnEnd pour que le ShieldActive soit encore lisible
+        /// (sinon il aurait expire ce tour-ci et Magnitude serait nettoyee).
+        /// </summary>
+        private static void TickStoicismeHeal(Frame f, int currentTurn)
+        {
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->HP <= 0) continue;
+                if (c->StoicismeExpiresOnTurn != currentTurn) continue;
+                // Tour d'expiration atteint : check si shield encore vivant.
+                int shieldMag = StatusHelper.GetMagnitude(c, StatusKind.ShieldActive, 0);
+                if (shieldMag > 0)
+                {
+                    int hpBefore = c->HP;
+                    c->HP += SpellRegistry.StoicismeHealIfSurvived;
+                    if (c->HP > c->MaxHP) c->HP = c->MaxHP;
+                    Log.Info($"[Stoicisme] Shield survecu ({shieldMag} HP residuel) : +{SpellRegistry.StoicismeHealIfSurvived} HP sur P{c->PlayerIndex} ({hpBefore} -> {c->HP})");
+                }
+                else
+                {
+                    Log.Info($"[Stoicisme] Shield brise avant expiration sur P{c->PlayerIndex}, pas de heal bonus");
+                }
+                c->StoicismeExpiresOnTurn = -1; // consume tracker
+            }
+        }
+
+        /// <summary>
+        /// 3.3.d — Effondrement : trigger differe. Design Lorenzo (Bible "ejection" + swap) :
+        ///   Sequence en 2 phases pour le SWAP de la cible snapshot :
+        ///   1. EJECTION : on calcule la case d'ejection de la cible (Bible "case libre la plus
+        ///      proche", direction axe-dominant caster->target, push jusqu'a sortir du rayon).
+        ///      Cette case est GARANTIE hors zone (sauf grid edge ou blocking).
+        ///   2. SWAP : ennemi -> case ex-caster (centre Failles), caster -> case d'ejection.
+        ///      Resultat : ennemi pige au centre, Colossar dehors avec +1 PM utile.
+        ///
+        ///   - 200 dgts sur la cible swap (damage compute avec shield/reductions).
+        ///   - Pose Failles dans le rayon 2 autour de l'ANCIEN centre (= case ex-caster). Skip
+        ///     la case caster post-swap pour ne pas l'enfermer.
+        ///   - Apply EffondrementActive (buff 2T : +1 PM / -1 PA cost / -30% dgts subis).
+        ///   - Cas degenere : pas de cible snapshot ou cible morte -> pas de swap, juste Failles
+        ///     autour de la case caster + buff.
+        /// </summary>
+        private static void TriggerEffondrement(Frame f, Combatant* caster, int currentTurn)
+        {
+            int casterStartX = caster->GridX;
+            int casterStartY = caster->GridY;
+            int radius = SpellRegistry.EffondrementAoeRadius;
+            int dmg = SpellRegistry.EffondrementDamage;
+            int expireAtTurn = currentTurn + SpellRegistry.EffondrementFailleTurns;
+
+            Log.Info($"[Effondrement] TRIGGER par P{caster->PlayerIndex} en ({casterStartX},{casterStartY}) rayon {radius}, dmg {dmg}");
+
+            EntityRef targetEntity = caster->EffondrementTargetEntity;
+            caster->EffondrementTargetEntity = EntityRef.None; // consume tracker
+
+            int failleCenterX = casterStartX;
+            int failleCenterY = casterStartY;
+            int casterEndX = casterStartX;
+            int casterEndY = casterStartY;
+            bool swapDone = false;
+
+            if (targetEntity != EntityRef.None
+                && f.Unsafe.TryGetPointer<Combatant>(targetEntity, out Combatant* target)
+                && target->HP > 0)
+            {
+                int targetStartX = target->GridX;
+                int targetStartY = target->GridY;
+
+                // -- Phase 1 : EJECTION --
+                // Calcule la "case libre la plus proche hors zone" pour la target, en partant
+                // de sa position COURANTE (qu'elle ait fui ou non depuis le cast).
+                // Direction = axe-dominant caster->target (cohérent avec PushAndTrigger / Onde de Choc).
+                int dx = targetStartX - casterStartX;
+                int dy = targetStartY - casterStartY;
+                int absDx = dx < 0 ? -dx : dx;
+                int absDy = dy < 0 ? -dy : dy;
+                int distCurrent = absDx + absDy;
+                int stepX = 0, stepY = 0;
+                if (absDx >= absDy) stepX = dx > 0 ? 1 : (dx < 0 ? -1 : 0);
+                else                stepY = dy > 0 ? 1 : (dy < 0 ? -1 : 0);
+                if (stepX == 0 && stepY == 0) stepX = 1; // fallback si target == caster (impossible normal)
+
+                int ejectX = targetStartX;
+                int ejectY = targetStartY;
+                if (distCurrent <= radius)
+                {
+                    // Target en zone : push jusqu'a sortir du rayon, stop a la 1ere case bloquante.
+                    int probeX = targetStartX;
+                    int probeY = targetStartY;
+                    int probeDist = distCurrent;
+                    while (probeDist <= radius)
+                    {
+                        int nextX = probeX + stepX;
+                        int nextY = probeY + stepY;
+                        if (!GridHelpers.InBounds(nextX, nextY)) break;
+                        if (ObstacleHelpers.HasObstacleAt(f, nextX, nextY)) break;
+                        EntityRef occ = GridHelpers.GetOccupant(f, nextX, nextY);
+                        if (occ != EntityRef.None && occ != targetEntity) break;
+                        probeX = nextX;
+                        probeY = nextY;
+                        // Recalc dist depuis casterStart
+                        int adx2 = probeX - casterStartX; if (adx2 < 0) adx2 = -adx2;
+                        int ady2 = probeY - casterStartY; if (ady2 < 0) ady2 = -ady2;
+                        probeDist = adx2 + ady2;
+                    }
+                    ejectX = probeX;
+                    ejectY = probeY;
+                }
+                // else : target deja hors zone (a fui apres l'annonce) -> ejection = pos actuelle.
+
+                // -- Phase 2 : SWAP target<->caster en utilisant ejectXY pour le caster --
+                // Clear les cases initiales avant move (eviter double-occupant temporaire).
+                GridHelpers.SetOccupant(f, casterStartX, casterStartY, EntityRef.None);
+                GridHelpers.SetOccupant(f, targetStartX, targetStartY, EntityRef.None);
+
+                target->GridX = casterStartX;
+                target->GridY = casterStartY;
+                caster->GridX = ejectX;
+                caster->GridY = ejectY;
+
+                EntityRef casterEntityRef = ResolveEntityFromPlayerIndex(f, caster->PlayerIndex);
+                GridHelpers.SetOccupant(f, casterStartX, casterStartY, targetEntity);
+                GridHelpers.SetOccupant(f, ejectX, ejectY, casterEntityRef);
+
+                casterEndX = ejectX;
+                casterEndY = ejectY;
+                swapDone = true;
+                Log.Info($"[Effondrement] EJECTION+SWAP : P{target->PlayerIndex} ({targetStartX},{targetStartY}) ejecte vers ({ejectX},{ejectY}), puis swap -> centre ({casterStartX},{casterStartY}). Caster -> ({ejectX},{ejectY}).");
+
+                // Damage 200 sur la target (au centre Failles).
+                int finalDmg = ColossarPassif.ApplyDamageReduction(f, target, dmg);
+                int shieldMag = StatusHelper.GetMagnitude(target, StatusKind.ShieldActive, 0);
+                int hpLoss = finalDmg;
+                if (shieldMag > 0 && finalDmg > 0)
+                {
+                    int absorbed = finalDmg > shieldMag ? shieldMag : finalDmg;
+                    int newShield = shieldMag - absorbed;
+                    if (newShield == 0) StatusHelper.Consume(target, StatusKind.ShieldActive);
+                    else StatusHelper.SetMagnitude(target, StatusKind.ShieldActive, newShield);
+                    hpLoss = finalDmg - absorbed;
+                }
+                int hpBefore = target->HP;
+                target->HP -= hpLoss;
+                if (target->HP < 0) target->HP = 0;
+                target->DamageTakenThisRound += hpLoss;
+                target->HitsTakenThisRound += 1; // 3.3.c Ressac Vital tracker
+                Log.Info($"[Effondrement] {finalDmg} dmg (HP loss {hpLoss}) sur P{target->PlayerIndex} (centre Failles {casterStartX},{casterStartY}) HP {hpBefore} -> {target->HP}");
+            }
+            else
+            {
+                Log.Info($"[Effondrement] Pas de swap (cible snapshot morte/absente). Failles autour case caster + buff uniquement.");
+            }
+
+            // Pose Failles dans le rayon 2 autour du centre (= ancienne case caster, qui est
+            // maintenant celle de l'ennemi swap ou simplement la case caster sans swap).
+            // SKIP la case caster post-swap pour qu'il puisse y rester (Bible +1 PM utile).
+            for (int dyF = -radius; dyF <= radius; dyF++)
+            {
+                for (int dxF = -radius; dxF <= radius; dxF++)
+                {
+                    int absDxF = dxF < 0 ? -dxF : dxF;
+                    int absDyF = dyF < 0 ? -dyF : dyF;
+                    if (absDxF + absDyF > radius) continue;
+                    if (dxF == 0 && dyF == 0) continue; // skip centre (= position cible swap ou caster sans swap)
+                    int fx = failleCenterX + dxF;
+                    int fy = failleCenterY + dyF;
+                    if (!GridHelpers.InBounds(fx, fy)) continue;
+                    if (fx == casterEndX && fy == casterEndY) continue; // skip case caster post-swap
+                    if (GridHelpers.GetOccupant(f, fx, fy) != EntityRef.None) continue;
+                    if (ObstacleHelpers.HasObstacleAt(f, fx, fy)) continue;
+                    ObstacleHelpers.SpawnObstacle(f,
+                        ObstacleKind.Faille, SpellRegistry.EffondrementFailleHP,
+                        fx, fy,
+                        owner: EntityRef.None, ownerPlayerIndex: caster->PlayerIndex,
+                        expiresOnTurn: expireAtTurn);
+                }
+            }
+
+            // Buff caster (EffondrementActive + DamageReductionPercent 30%).
+            StatusHelper.Apply(caster, StatusKind.EffondrementActive,
+                magnitude: 0,
+                turnsLeft: SpellRegistry.EffondrementBuffTurns,
+                currentTurn);
+            StatusHelper.Apply(caster, StatusKind.DamageReductionPercent,
+                magnitude: SpellRegistry.EffondrementDmgReductionPct,
+                turnsLeft: SpellRegistry.EffondrementBuffTurns,
+                currentTurn);
+            Log.Info($"[Effondrement] Buff applique sur P{caster->PlayerIndex} : EffondrementActive + DamageReductionPercent {SpellRegistry.EffondrementDmgReductionPct}% / {SpellRegistry.EffondrementBuffTurns} tours. Caster final pos ({casterEndX},{casterEndY}), swap={swapDone}");
+        }
+
+        /// <summary>
+        /// Helper utilitaire pour retrouver l'EntityRef d'un combatant par PlayerIndex (nécessaire
+        /// pour le swap d'Effondrement : on n'a que le pointer Combatant* du caster, pas son EntityRef).
+        /// </summary>
+        private static EntityRef ResolveEntityFromPlayerIndex(Frame f, int playerIndex)
+        {
+            var filter = f.Filter<Combatant>();
+            while (filter.Next(out EntityRef entity, out Combatant c))
+            {
+                if (c.PlayerIndex == playerIndex) return entity;
+            }
+            return EntityRef.None;
         }
     }
 }

@@ -81,10 +81,36 @@ namespace Quantum
         public static int ApplyDamageReduction(Frame f, Combatant* target, int incomingDamage)
         {
             if (incomingDamage <= 0) return 0;
-            int pct = GetDamageReductionPercent(f, target);
+            int pct = GetCombinedDamageReductionPercent(f, target);
             if (pct == 0) return incomingDamage;
             int reduced = incomingDamage * (100 - pct) / 100;
             return reduced;
+        }
+
+        /// <summary>
+        /// 3.3.c — Reduction de degats totale = Densite Inerte (passif Colossar) + Garde Protectrice
+        /// (status DamageReductionPercent) en mode ADDITIF, clampe au cap Bible V7.1 -50%.
+        ///
+        /// Bible : "Ne se cumule pas avec le passif Densite Inerte au-dela du cap -50% total."
+        /// Lecture additive choisie (vs multiplicative) : Densite Inerte 24% + Garde Prot 30% = 54%
+        /// -> clamp 50%. Sans Garde Prot, Densite Inerte reste a 24% (pas affecte).
+        ///
+        /// Toute cible Colossar voit DensiteInerte. Toute cible (toute classe) qui porte
+        /// DamageReductionPercent voit son magnitude ajoute.
+        ///
+        /// TODO Phase 3.4 : Bible "(sauf DoT venin Necram qui ignore les reductions)" -> bypass
+        /// a brancher quand les marques venin arrivent.
+        /// </summary>
+        public static int GetCombinedDamageReductionPercent(Frame f, Combatant* target)
+        {
+            int densiteInerte = GetDamageReductionPercent(f, target);
+            int gardeProtectrice = StatusHelper.GetMagnitude(target, StatusKind.DamageReductionPercent, 0);
+            int total = densiteInerte + gardeProtectrice;
+            if (total > SpellRegistry.MaxCombinedDamageReductionPct)
+            {
+                total = SpellRegistry.MaxCombinedDamageReductionPct;
+            }
+            return total;
         }
 
         /// <summary>

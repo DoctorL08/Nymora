@@ -6276,7 +6276,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _gridRenderer: {fileID: 932372492}
   _hudController: {fileID: 326232873}
+  _camera: {fileID: 1662786571}
+  _gridSettings: {fileID: 11400000, guid: e28dde8a0c27b744889dfe45f498a670, type: 2}
   _reachableColor: {r: 0.65, g: 0.92, b: 0.65, a: 1}
+  _pathColor: {r: 0.17101282, g: 0.5754717, b: 0.30938858, a: 1}
 --- !u!1 &1504057521
 GameObject:
   m_ObjectHideFlags: 0
@@ -7019,6 +7022,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1761138240}
   - component: {fileID: 1761138239}
+  - component: {fileID: 1761138241}
   m_Layer: 0
   m_Name: CombatInput
   m_TagString: Untagged
@@ -7065,6 +7069,25 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1761138241
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1761138238}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5698df182eddf2c44a9b5eabe545ef2b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _camera: {fileID: 1662786571}
+  _gridSettings: {fileID: 11400000, guid: e28dde8a0c27b744889dfe45f498a670, type: 2}
+  _gridRenderer: {fileID: 932372492}
+  _obstacleRenderer: {fileID: 1445919800}
+  _hoverColor: {r: 1, g: 0.95, b: 0.5, a: 1}
+  _enableTileGlow: 1
+  _enableObstacleHpReveal: 1
 --- !u!1 &1770972880
 GameObject:
   m_ObjectHideFlags: 0

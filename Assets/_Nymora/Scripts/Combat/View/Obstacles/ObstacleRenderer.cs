@@ -108,6 +108,21 @@ namespace Nymora.Combat.View.Obstacles
             }
         }
 
+        /// <summary>
+        /// Polish 3.3.d : retourne l'ObstacleView a la case (gx,gy), ou null si aucun.
+        /// Utilise par TileHoverView pour afficher/cacher le HP au survol souris.
+        /// O(N) sur le nb d'obstacles concurrents (max ~10), negligeable.
+        /// </summary>
+        public ObstacleView GetObstacleViewAt(int gx, int gy)
+        {
+            foreach (var kv in _views)
+            {
+                if (kv.Value == null) continue;
+                if (kv.Value.GridX == gx && kv.Value.GridY == gy) return kv.Value;
+            }
+            return null;
+        }
+
         private ObstacleView SpawnView(EntityRef entity, ObstacleKind kind)
         {
             GameObject prefab = kind switch

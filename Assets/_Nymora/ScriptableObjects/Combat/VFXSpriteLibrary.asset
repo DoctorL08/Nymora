@@ -23,3 +23,5 @@ MonoBehaviour:
   - {fileID: 681591465, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
   - {fileID: -2033514283, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
   - {fileID: 476417908, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
+  _effondrementFrames:
+  - {fileID: 21300000, guid: 5581a9c79613cf243ba66aa5f0456e4c, type: 3}

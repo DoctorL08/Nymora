@@ -132,11 +132,12 @@ namespace Nymora.Combat.View
                     combatant.GridX, combatant.GridY,
                     _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight) + _centerOffset + transform.position;
 
-                // 2.16.c.vi — Path cardinal cell-by-cell (style Dofus). Si le combatant
-                // a teleporte sur une case non-adjacente (sim instantane), on construit
-                // la liste des cases intermediaires en X puis Y et on les pousse comme
-                // waypoints. Resultat : le visuel anime chaque case meme si la sim
-                // teleporte. Pour les moves d'1 case (mvt PM normal), pas d'intermediaires.
+                // 3.3.d polish — Path cardinal cell-by-cell qui CONTOURNE les obstacles.
+                // Avant : approximation X-puis-Y qui traversait les obstacles (bug visuel).
+                // Maintenant : BFS 4-connexite cote View pour reconstruire le path le plus court
+                // en respectant obstacles (Pilier/Mur/Faille) et autres combatants. Si le BFS
+                // echoue (pas de chemin valide ou path trop long), on fallback sur l'approximation
+                // X-puis-Y historique pour ne jamais bloquer l'animation.
                 Vector3[] intermediates = null;
                 int intermediatesCount = 0;
                 int prevGx = view.GridX;
@@ -147,41 +148,69 @@ namespace Nymora.Combat.View
                 int absDy = dy < 0 ? -dy : dy;
                 int totalSteps = absDx + absDy;
                 // Skip si pas encore de position posee (cas spawn 1er frame, prevGx/Gy = 0).
-                // CombatantView.UpdateGridPosition snap au final dans ce cas (!_hasTarget),
-                // donc les waypoints seraient ignores. Pas un bug mais on s'epargne le compute.
                 if (totalSteps > 1 && (prevGx != 0 || prevGy != 0))
                 {
-                    // Approximation visuelle Manhattan X-puis-Y. Ne reproduit pas le path A*
-                    // exact en cas d'obstacle, mais convient pour Phase 2 (open grid). Cas
-                    // edge (Sang Coagule traversee) : visual passera "through walls" sans
-                    // consequence gameplay puisque la sim a deja calcule le vrai cost.
-                    int intermediatesCapacity = totalSteps - 1; // dernier point = final, pas un intermediaire
-                    intermediates = _waypointScratch;
-                    if (intermediates.Length < intermediatesCapacity)
+                    // Tentative 1 : BFS qui contourne. Path max = ~10 cases (3 PM Soulrender +
+                    // marge contournement). On donne 16 = MaxWaypoints de CombatantView.
+                    System.Span<(int x, int y)> pathBuf = stackalloc (int, int)[16];
+                    int pathLen;
+                    bool found = TryFindViewPath(frame, prevGx, prevGy,
+                        combatant.GridX, combatant.GridY, entity, pathBuf, out pathLen);
+
+                    if (found && pathLen > 1)
                     {
-                        intermediates = new Vector3[intermediatesCapacity];
-                        _waypointScratch = intermediates;
+                        // pathLen inclut la case finale (index pathLen-1). On push les
+                        // intermediaires (pathBuf[1..pathLen-2]) — la 1ere case (pathBuf[0])
+                        // est la position de depart, qu'on skippe.
+                        int intermediatesCapacity = pathLen - 2;
+                        if (intermediatesCapacity > 0)
+                        {
+                            intermediates = _waypointScratch;
+                            if (intermediates.Length < intermediatesCapacity)
+                            {
+                                intermediates = new Vector3[intermediatesCapacity];
+                                _waypointScratch = intermediates;
+                            }
+                            for (int p = 1; p < pathLen - 1; p++)
+                            {
+                                var (px, py) = pathBuf[p];
+                                intermediates[intermediatesCount++] = IsoProjection.GridToWorld(
+                                    px, py, _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight)
+                                    + _centerOffset + transform.position;
+                            }
+                        }
                     }
-                    int stepX = dx > 0 ? 1 : -1;
-                    int stepY = dy > 0 ? 1 : -1;
-                    int cx = prevGx;
-                    int cy = prevGy;
-                    // Phase 1 : delta X puis delta Y (style Dofus : direction droite puis haut).
-                    while (cx != combatant.GridX)
+                    else
                     {
-                        cx += stepX;
-                        if (cx == combatant.GridX && cy == combatant.GridY) break; // final, ne pas push en intermediaire
-                        intermediates[intermediatesCount++] = IsoProjection.GridToWorld(
-                            cx, cy, _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight)
-                            + _centerOffset + transform.position;
-                    }
-                    while (cy != combatant.GridY)
-                    {
-                        cy += stepY;
-                        if (cx == combatant.GridX && cy == combatant.GridY) break;
-                        intermediates[intermediatesCount++] = IsoProjection.GridToWorld(
-                            cx, cy, _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight)
-                            + _centerOffset + transform.position;
+                        // Fallback historique : Manhattan X-puis-Y (traverse obstacles mais
+                        // sert si BFS depasse 16 cases / pas de path / target inaccessible).
+                        int intermediatesCapacity = totalSteps - 1;
+                        intermediates = _waypointScratch;
+                        if (intermediates.Length < intermediatesCapacity)
+                        {
+                            intermediates = new Vector3[intermediatesCapacity];
+                            _waypointScratch = intermediates;
+                        }
+                        int stepX = dx > 0 ? 1 : -1;
+                        int stepY = dy > 0 ? 1 : -1;
+                        int cx = prevGx;
+                        int cy = prevGy;
+                        while (cx != combatant.GridX)
+                        {
+                            cx += stepX;
+                            if (cx == combatant.GridX && cy == combatant.GridY) break;
+                            intermediates[intermediatesCount++] = IsoProjection.GridToWorld(
+                                cx, cy, _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight)
+                                + _centerOffset + transform.position;
+                        }
+                        while (cy != combatant.GridY)
+                        {
+                            cy += stepY;
+                            if (cx == combatant.GridX && cy == combatant.GridY) break;
+                            intermediates[intermediatesCount++] = IsoProjection.GridToWorld(
+                                cx, cy, _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight)
+                                + _centerOffset + transform.position;
+                        }
                     }
                 }
 
@@ -487,6 +516,125 @@ namespace Nymora.Combat.View
             _lastHP.Clear();
             _lastCastSeq.Clear();
             _gridReady = false;
+        }
+
+        // ====================================================================
+        // 3.3.d polish — BFS path cote View pour contourner les obstacles.
+        // ====================================================================
+
+        private const int GridWidth = 15;
+        private const int GridHeight = 17;
+        private const int GridCount = GridWidth * GridHeight;
+        // Buffers reutilises pour eviter alloc heap par appel (BFS).
+        private readonly int[] _bfsPrev = new int[GridCount];
+        private readonly bool[] _bfsVisited = new bool[GridCount];
+        private readonly int[] _bfsQueue = new int[GridCount];
+
+        /// <summary>
+        /// BFS 4-connexite cote View qui contourne les obstacles (Pilier/Mur/Faille) et autres
+        /// combatants (sauf `self` qui est le combatant qu'on deplace). Reconstruit le path le
+        /// plus court de (sx,sy) inclus a (tx,ty) inclus dans `outPath`. Retourne false si pas
+        /// de path ou si depasse `outPath.Length`.
+        ///
+        /// Safe API Quantum (Filter.Next par valeur). O(N*M) ou N=cases visitees, M=obstacles
+        /// + combatants. Pour 1v1 typique : ~20 cases visitees x ~5 entites = 100 ops, ~0.01ms.
+        /// </summary>
+        private bool TryFindViewPath(
+            Quantum.Frame frame,
+            int sx, int sy, int tx, int ty,
+            Quantum.EntityRef self,
+            System.Span<(int x, int y)> outPath,
+            out int outLen)
+        {
+            outLen = 0;
+            if (sx < 0 || sx >= GridWidth || sy < 0 || sy >= GridHeight) return false;
+            if (tx < 0 || tx >= GridWidth || ty < 0 || ty >= GridHeight) return false;
+            if (sx == tx && sy == ty) return false;
+
+            // Reset buffers.
+            for (int i = 0; i < GridCount; i++) { _bfsPrev[i] = -1; _bfsVisited[i] = false; }
+
+            int startIdx = sy * GridWidth + sx;
+            int targetIdx = ty * GridWidth + tx;
+            _bfsVisited[startIdx] = true;
+            int head = 0, tail = 0;
+            _bfsQueue[tail++] = startIdx;
+
+            int[] dxArr = { 1, -1, 0, 0 };
+            int[] dyArr = { 0, 0, 1, -1 };
+
+            bool found = false;
+            while (head < tail)
+            {
+                int idx = _bfsQueue[head++];
+                if (idx == targetIdx) { found = true; break; }
+                int cx = idx % GridWidth;
+                int cy = idx / GridWidth;
+                for (int d = 0; d < 4; d++)
+                {
+                    int nx = cx + dxArr[d];
+                    int ny = cy + dyArr[d];
+                    if (nx < 0 || nx >= GridWidth || ny < 0 || ny >= GridHeight) continue;
+                    int nidx = ny * GridWidth + nx;
+                    if (_bfsVisited[nidx]) continue;
+                    // La case cible est traversable meme si on detecte un blocking (la sim
+                    // a deja valide qu'elle est libre, sinon le combatant ne s'y serait pas
+                    // teleporte). Pour les cases intermediaires, on check obstacle/combatant.
+                    if (nidx != targetIdx && IsBlockedForView(frame, nx, ny, self)) continue;
+                    _bfsVisited[nidx] = true;
+                    _bfsPrev[nidx] = idx;
+                    _bfsQueue[tail++] = nidx;
+                }
+            }
+
+            if (!found) return false;
+
+            // Reconstruct path : remonter prev de targetIdx a startIdx, puis inverser.
+            // Compte d'abord la longueur pour valider la capacite du buffer.
+            int len = 1; // target lui-meme
+            int cur = targetIdx;
+            while (cur != startIdx)
+            {
+                cur = _bfsPrev[cur];
+                if (cur < 0) return false;
+                len++;
+            }
+            if (len > outPath.Length) return false;
+
+            // Re-remonte et fill outPath (du start au target).
+            cur = targetIdx;
+            for (int i = len - 1; i >= 0; i--)
+            {
+                outPath[i] = (cur % GridWidth, cur / GridWidth);
+                if (i > 0) cur = _bfsPrev[cur];
+            }
+            outLen = len;
+            return true;
+        }
+
+        /// <summary>
+        /// Une case est bloquante pour le pathfinding View si elle contient :
+        ///   - Un Obstacle (Pilier/Mur/Faille) actif (HP > 0)
+        ///   - Un Combatant vivant autre que `self` (le combatant qu'on anime)
+        /// </summary>
+        private static bool IsBlockedForView(Quantum.Frame frame, int x, int y, Quantum.EntityRef self)
+        {
+            // Obstacles : O(N) sur le nb d'obstacles dans la frame (max ~6 typiques).
+            var obsFilter = frame.Filter<Quantum.Obstacle>();
+            while (obsFilter.Next(out _, out Quantum.Obstacle obs))
+            {
+                if (obs.HP <= 0) continue;
+                if (obs.GridX == x && obs.GridY == y) return true;
+            }
+            // Combatants : O(N) sur le nb de combatants (max 2 en 1v1, 6 en 3v3).
+            var combFilter = frame.Filter<Quantum.Combatant>();
+            while (combFilter.Next(out Quantum.EntityRef ent, out Quantum.Combatant c))
+            {
+                if (ent == self) continue;
+                if (c.HP <= 0) continue;
+                if (c.GridX == x && c.GridY == y) return true;
+            }
+            return false;
         }
     }
 }

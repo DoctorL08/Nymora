@@ -32,6 +32,8 @@ namespace Nymora.Combat.View.Obstacles
             Entity = entity;
             if (_sprite == null) _sprite = GetComponentInChildren<SpriteRenderer>();
             if (_hpLabel == null) _hpLabel = GetComponentInChildren<TextMeshPro>();
+            // Polish 3.3.d : HP cache par defaut, affiche uniquement au survol souris (TileHoverView).
+            if (_hpLabel != null) _hpLabel.gameObject.SetActive(false);
         }
 
         /// <summary>
@@ -45,6 +47,7 @@ namespace Nymora.Combat.View.Obstacles
             transform.position = worldPos;
             if (_hpLabel != null)
             {
+                // Update le text meme si cache : TileHoverView peut l'activer instantanement.
                 _hpLabel.text = $"{data.HP}/{data.MaxHP}";
             }
             if (_sprite != null)
@@ -53,6 +56,14 @@ namespace Nymora.Combat.View.Obstacles
                 // Les obstacles partagent la meme couche que les combattants.
                 _sprite.sortingOrder = 1000 - (data.GridX + data.GridY) * 10;
             }
+        }
+
+        /// <summary>
+        /// Polish 3.3.d : affiche ou cache le HP label. Pilote par TileHoverView au survol souris.
+        /// </summary>
+        public void SetHpVisible(bool visible)
+        {
+            if (_hpLabel != null) _hpLabel.gameObject.SetActive(visible);
         }
     }
 }

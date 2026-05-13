@@ -131,13 +131,49 @@ component Combatant
     //   Cooldown 4 tours apres usage (Bible V7.1). Initial : -1000 (pas de cooldown au spawn).
     Int32 LastTraquenardUsedOnTurn;
 
-    // 3.3.a.iii — Compteur de retours restants pour RipostMelee (Colossar Represailles).
-    //   Bible V7.1 : "cap a 4 retours" specifique a Represailles.
+    // 3.3.a.iii — Compteur de retours restants pour RipostMelee/RipostAll.
+    //   Bible V7.1 :
+    //     - Represailles (Colossar) : cap 4 retours.
+    //     - Renvoi du Bouclier (Colossar 3.3.c) : cap 4 retours (reuse ce champ).
+    //     - Riposte Carmin (Soulrender) : no cap.
     //   Convention de valeurs :
     //     -1 : aucun cap (Soulrender Riposte Carmin = no cap Bible)
-    //      0 : status RipostMelee actif mais cap epuise (skip trigger)
+    //      0 : status reflect actif mais cap epuise (skip trigger)
     //     >0 : nb de reflects encore possibles. Decremente a chaque trigger.
-    //   Set a 4 par ColossarRepresailles. Set a -1 par Soulrender RiposteCarmin.
-    //   Lu/decremente dans le hook reflect (SpellSystem damage loop).
+    //   Lu/decremente dans le hook reflect (SpellSystem damage loop), partage entre
+    //   RipostMelee et RipostAll (1 caster ne peut pas avoir les 2 actifs en pratique).
     Int32 RepresaillesReflectsLeft;
+
+    // 3.3.c — Stoicisme : tour d'expiration du shield (Bible : si shield survit 2 tours -> +80 HP heal).
+    //   Set par ColossarStoicisme a currentTurn + 2. TurnSystem fin de round detecte
+    //   currentTurn == StoicismeExpiresOnTurn et heal 80 si ShieldActive.Magnitude > 0,
+    //   puis reset a -1.
+    //   Default : -1 (inactif).
+    Int32 StoicismeExpiresOnTurn;
+
+    // 3.3.c — Compteur d'attaques subies ce round (incrementen damage loop a chaque hit qui passe).
+    //   Reset a 0 au debut de chaque round de ce combattant (TurnSystem.EnterTurnStart).
+    //   Snapshot pour Ressac Vital : avant reset, on copie dans HitsTakenLastRound.
+    Int32 HitsTakenThisRound;
+
+    // 3.3.c — Snapshot du round precedent. Lu par Ressac Vital pour heal +30/hit (max +120).
+    //   Bible : "heal 80 + 30 HP par attaque subie au tour precedent (max +120 HP)".
+    Int32 HitsTakenLastRound;
+
+    // 3.3.d — Effondrement : tour ou le Colossar a annonce le sort. Default -1 (pas d'annonce).
+    //   Set par cast a currentTurn. TurnSystem.EnterTurnStart trigger les effets si
+    //   currentTurn == EffondrementAnnouncedOnTurn + 1 ET activePlayer == ownerCaster.
+    //   Reset a -1 apres trigger.
+    Int32 EffondrementAnnouncedOnTurn;
+
+    // 3.3.d — Effondrement : tour de dernier usage. Default -1000 (pas de cooldown au spawn).
+    //   Cooldown 4 tours Bible : currentTurn - LastEffondrementUsedOnTurn < 4 -> reject.
+    Int32 LastEffondrementUsedOnTurn;
+
+    // 3.3.d — Effondrement : entity de l'ennemi qui etait dans le rayon AU MOMENT DU CAST.
+    //   Snapshot pris au cast pour le mecanisme de swap "anti-fuite" : au trigger N+1,
+    //   meme si l'ennemi a quitte la zone, il est teleporte AU CENTRE des Failles (= case
+    //   ex-caster) et le caster prend la position fuite de l'ennemi (hors zone). Mindgame
+    //   Bible "le Colossar dicte". EntityRef.None = aucun ennemi en zone au cast (pas de swap).
+    EntityRef EffondrementTargetEntity;
 }

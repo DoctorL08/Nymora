@@ -150,6 +150,17 @@ namespace Nymora.Combat.View
             bool keyF2 = UnityEngine.Input.GetKeyDown(KeyCode.F2);
             bool keyF3 = UnityEngine.Input.GetKeyDown(KeyCode.F3);
             bool keyF4 = UnityEngine.Input.GetKeyDown(KeyCode.F4);
+            // 3.3.c — COLOSSAR SURVIE (touches F5-F9, self-target) :
+            //   F5 = Stoicisme            (3 PA, shield 200 / 2T + immune push/pull/tp 2T ; +80 HP si shield survit)
+            //   F6 = Garde Protectrice    (2 PA, -30% dmg subis 2T ; cap combine 50% avec Densite Inerte)
+            //   F7 = Ressac Vital         (2 PA, heal 80 + 30/hit subi tour precedent, max +120)
+            //   F8 = Renvoi du Bouclier   (3 PA, reflect 60 dgts melee+distance 1T, cap 4 retours)
+            //   F9 = Soin Lourd           (3 PA, heal 150 HP ; MVP 1v1 self-only, range 3 en 2v2/3v3)
+            bool keyF5 = UnityEngine.Input.GetKeyDown(KeyCode.F5);
+            bool keyF6 = UnityEngine.Input.GetKeyDown(KeyCode.F6);
+            bool keyF7 = UnityEngine.Input.GetKeyDown(KeyCode.F7);
+            bool keyF8 = UnityEngine.Input.GetKeyDown(KeyCode.F8);
+            bool keyF9 = UnityEngine.Input.GetKeyDown(KeyCode.F9);
             bool keyB  = UnityEngine.Input.GetKeyDown(KeyCode.B); // 2.11 signature Ame Laceree
             // 2.14 — touche T : DEBUG, pose un Voile Nightseer 2 tours sur la case sous la souris.
             // Sera retiree en 2.15 quand les sorts Nightseer (Pas Furtif, Voile d'Ombre, Champ
@@ -221,6 +232,7 @@ namespace Nymora.Combat.View
             bool anySpellKey = key1 || key2 || key3 || key4 || key5
                             || key6 || key7 || key8 || key9 || key0
                             || keyF1 || keyF2 || keyF3 || keyF4
+                            || keyF5 || keyF6 || keyF7 || keyF8 || keyF9 // 3.3.c Colossar Survie
                             || keyB || keyT
                             || keyAzA || keyAzZ || keyE || keyR || keyV
                             || keyAzQ || keyS || keyD || keyF || keyG
@@ -355,19 +367,61 @@ namespace Nymora.Combat.View
                 return;
             }
 
-            // 2.11 / 2.16 — touche B : SIGNATURE CONTEXTUELLE (depend de la classe du caster).
-            //   Soulrender → Ame Laceree (melee 1, 5 HG, 320 dgts + heal 50%, cooldown 4 tours)
-            //   Nightseer  → Traquenard  (range 5, 4 PR, teleport adjacent + 280 dgts + Paralysie, cooldown 4 tours)
-            //   Phase 3 ajoutera Colossar/Necram/Ghostra avec leurs propres signatures.
+            // 3.3.c — Colossar SURVIE (F5-F9, tous self-target).
+            if (keyF5)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.ColossarStoicisme, cx, cy, 0);
+                return;
+            }
+            if (keyF6)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.ColossarGardeProtectrice, cx, cy, 0);
+                return;
+            }
+            if (keyF7)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.ColossarRessacVital, cx, cy, 0);
+                return;
+            }
+            if (keyF8)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.ColossarRenvoiDuBouclier, cx, cy, 0);
+                return;
+            }
+            if (keyF9)
+            {
+                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    SendSpellAt(game, senderPlayer, SpellId.ColossarSoinLourd, cx, cy, 0);
+                return;
+            }
+
+            // 2.11 / 2.16 / 3.3.d — touche B : SIGNATURE CONTEXTUELLE (depend de la classe du caster).
+            //   Soulrender → Ame Laceree    (melee 1, 5 HG, 320 dgts + heal 50%, cooldown 4 tours)
+            //   Nightseer  → Traquenard     (range 5, 4 PR, teleport adjacent + 280 dgts + Paralysie, cooldown 4 tours)
+            //   Colossar   → Effondrement   (self, 3 FD, annonce 1 tour, AoE rayon 2 + Failles + buff 2T)
+            //   Phase 3 ajoutera Necram/Ghostra avec leurs propres signatures.
             if (keyB)
             {
                 SpellId sigSpell = SpellId.SoulrenderAmeLaceree;
-                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClass)
-                    && casterClass == Quantum.NymoraClass.Nightseer)
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClass))
                 {
-                    sigSpell = SpellId.NightseerTraquenard;
+                    if (casterClass == Quantum.NymoraClass.Nightseer) sigSpell = SpellId.NightseerTraquenard;
+                    else if (casterClass == Quantum.NymoraClass.Colossar) sigSpell = SpellId.ColossarEffondrement;
                 }
-                SendSpellAt(game, senderPlayer, sigSpell, gx, gy, 0);
+                // Effondrement est self-target : on redirige la case ciblee vers la case caster.
+                if (sigSpell == SpellId.ColossarEffondrement
+                    && TryGetCasterCell(game, senderPlayer, out int cxSig, out int cySig))
+                {
+                    SendSpellAt(game, senderPlayer, sigSpell, cxSig, cySig, 0);
+                }
+                else
+                {
+                    SendSpellAt(game, senderPlayer, sigSpell, gx, gy, 0);
+                }
                 return;
             }
 

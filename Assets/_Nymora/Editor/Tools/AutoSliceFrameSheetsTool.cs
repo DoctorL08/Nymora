@@ -35,9 +35,14 @@ namespace Nymora.Editor.Tools
             "Assets/_Nymora/Art/Sprites/Soulrender/Terrains",
             "Assets/_Nymora/Art/VFX/Soulrender",
             "Assets/_Nymora/Art/Sprites/Nightseer/Tiles",
+            // 3.3.d polish : ajout des dossiers Nightseer Marks + Colossar VFX/Marques (assets .gif).
+            "Assets/_Nymora/Art/Sprites/Nightseer/Marks",
+            "Assets/_Nymora/Art/Sprites/Colossar/VFX",
+            "Assets/_Nymora/Art/Sprites/Colossar/Marques",
         };
 
-        private static readonly Regex FramePattern = new Regex(@"_(\d+)frame\.png$", RegexOptions.IgnoreCase);
+        // Match .png ET .gif (designer Nightseer/Colossar livre des GIFs aplats horizontaux).
+        private static readonly Regex FramePattern = new Regex(@"_(\d+)frame\.(png|gif)$", RegexOptions.IgnoreCase);
 
         [MenuItem("Nymora/Setup/Auto-slice Frame Sheets")]
         public static void Run()

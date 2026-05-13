@@ -74,6 +74,16 @@ enum SpellId : Byte
     ColossarAncrage               = 57,  // 3.3.b.iii — Tactique anti-mobilite : 2 PA, range 4, ENEMY. -2 PM 2 tours + immune push/pull/teleport 1 tour. Pas de damage.
     ColossarProvocation           = 58,  // 3.3.b.iii — Tactique : 2 PA, range 5, ENEMY, 1 tour. -1 PM + sorts non-cible-caster coutent +2 PA. 100 dgts auto si pas adjacent caster fin tour.
     ColossarBrisure               = 59,  // 3.3.b.iii — Tactique anti-buff : 3 PA, range 2, ENEMY, 90 dgts + retire 1 buff/bouclier (priorite ShieldActive). Si pas de buff : TRAUMA -2 PA prochain tour.
+
+    // COLOSSAR 3.3.c — SURVIE (Bible V7.1)
+    ColossarStoicisme             = 60,  // 3.3.c — Survie : 3 PA, self, ShieldActive 200 HP / 2 tours + immune push/pull/tp 2 tours. Si shield Magnitude>0 a expiration : +80 HP heal.
+    ColossarGardeProtectrice      = 61,  // 3.3.c — Survie : 2 PA, self, DamageReductionPercent 30% / 2 tours. Cap combine avec Densite Inerte a 50% total (additif clamp).
+    ColossarRessacVital           = 62,  // 3.3.c — Survie : 2 PA, self, heal 80 + 30 par attaque subie tour precedent (max +120, cap total 200 HP).
+    ColossarRenvoiDuBouclier      = 63,  // 3.3.c — Survie : 3 PA, self, RipostAll 60 dgts (melee OU distance) 1 tour. Cap 4 retours (reuse RepresaillesReflectsLeft).
+    ColossarSoinLourd             = 64,  // 3.3.c — Survie : 3 PA, self (1v1 MVP, Bible : range 3 self/allie en 2v2/3v3), heal 150 HP. Unique heal cross-classe (TODO 2v2).
+
+    // COLOSSAR 3.3.d — SIGNATURE
+    ColossarEffondrement          = 65,  // 3.3.d — Signature : 4 PA, AoE rayon 2 autour caster. Coute 3/3 FD (consomme tout, reset 0). Annonce 1 tour a l'avance. Trigger au prochain sub-turn caster : 200 dgts ennemis dans rayon + ejection vers case libre + Failles 2 tours (impraticables). Buff 2 tours : +1 PM, -1 PA cost, -30% dgts subis. Cooldown 4 tours.
 }
 
 enum SpellEffectKind : Byte

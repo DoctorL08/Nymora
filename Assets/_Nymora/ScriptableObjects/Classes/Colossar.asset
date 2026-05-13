@@ -30,5 +30,5 @@ MonoBehaviour:
   SignatureName: Effondrement
   SignatureCooldownTurns: 4
   SignatureDescription: Sort signature debloque a 3 FD. Cooldown 4 tours apres usage.
-  IconSprite: {fileID: 0}
-  PortraitSprite: {fileID: 0}
+  IconSprite: {fileID: 21300000, guid: 9c27e5e111293fe4d9874f2b0d9958b0, type: 3}
+  PortraitSprite: {fileID: 21300000, guid: 9c27e5e111293fe4d9874f2b0d9958b0, type: 3}

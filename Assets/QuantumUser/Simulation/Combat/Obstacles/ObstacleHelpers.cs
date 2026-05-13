@@ -223,6 +223,8 @@ namespace Quantum
             if (obsEntity == EntityRef.None) return false;
             if (!f.Unsafe.TryGetPointer<Obstacle>(obsEntity, out var obs)) return false;
 
+            // 3.3.d : Faille (Effondrement) est destructible par AoE adverse (Bible-balance 3.3.d).
+            // 100 HP = ~1 cast AoE moyen suffit pour casser une Faille et creer un passage.
             int hpBefore = obs->HP;
             obs->HP -= dmg;
             if (obs->HP < 0) obs->HP = 0;

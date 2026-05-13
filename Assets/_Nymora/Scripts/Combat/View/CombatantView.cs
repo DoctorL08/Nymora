@@ -231,36 +231,53 @@ namespace Nymora.Combat.View
                 return;
             }
 
-            // Fallback : Sprite statique.
-            if (_animator != null) _animator.enabled = false;
-            if (_sprite == null) return;
-            if (fallbackSprite != null) _sprite.sprite = fallbackSprite;
+            // Fallback : Sprite statique (uniquement si on a un sprite assigne).
+            if (fallbackSprite != null)
+            {
+                if (_animator != null) _animator.enabled = false;
+                if (_sprite != null) _sprite.sprite = fallbackSprite;
+                return;
+            }
+
+            // Ni controller ni sprite assigne pour ce (stage, facing) — assets designer manquants.
+            // Plutot que de DESACTIVER l'Animator (= perte totale d'anim, bug Lorenzo 3.3.d),
+            // on garde le dernier controller actif. Le sprite restera celui du stage precedent,
+            // ce qui est moins joli mais coherent visuellement.
+            Debug.LogWarning($"[Nymora.CombatantView] {Class} stage {stage} facing {facing} : aucun controller ni sprite assigne dans le prefab. Garde le dernier controller actif (fallback).", this);
         }
 
+        /// <summary>
+        /// Pick le controller pour (stage, direction). Fallback DIRECTIONNEL : si le stage demande
+        /// n'a pas de controller dans la direction voulue, on descend vers stage-1, stage-2, ...
+        /// dans la MEME direction. Preserve la direction visuelle quand le designer n'a livre
+        /// que Stage 0 (bug 3.3.d : Colossar passe stage 1 a FD=2 sans assets stage 1 livres,
+        /// gardait le dernier controller NE -> SE/SW restaient orientees NE).
+        /// </summary>
         private RuntimeAnimatorController PickController(int stage, bool useNE)
         {
-            if (useNE)
+            for (int s = stage; s >= 0; s--)
             {
-                return stage == 0 ? _stage0ControllerNE
-                     : stage == 1 ? _stage1ControllerNE
-                     : _stage2ControllerNE;
+                RuntimeAnimatorController c = useNE
+                    ? (s == 0 ? _stage0ControllerNE : s == 1 ? _stage1ControllerNE : _stage2ControllerNE)
+                    : (s == 0 ? _stage0ControllerSE : s == 1 ? _stage1ControllerSE : _stage2ControllerSE);
+                if (c != null) return c;
             }
-            return stage == 0 ? _stage0ControllerSE
-                 : stage == 1 ? _stage1ControllerSE
-                 : _stage2ControllerSE;
+            return null;
         }
 
+        /// <summary>
+        /// Pick le sprite pour (stage, direction). Meme fallback directionnel que PickController.
+        /// </summary>
         private Sprite PickSprite(int stage, bool useNE)
         {
-            if (useNE)
+            for (int s = stage; s >= 0; s--)
             {
-                return stage == 0 ? _stage0SpriteNE
-                     : stage == 1 ? _stage1SpriteNE
-                     : _stage2SpriteNE;
+                Sprite sp = useNE
+                    ? (s == 0 ? _stage0SpriteNE : s == 1 ? _stage1SpriteNE : _stage2SpriteNE)
+                    : (s == 0 ? _stage0SpriteSE : s == 1 ? _stage1SpriteSE : _stage2SpriteSE);
+                if (sp != null) return sp;
             }
-            return stage == 0 ? _stage0SpriteSE
-                 : stage == 1 ? _stage1SpriteSE
-                 : _stage2SpriteSE;
+            return null;
         }
 
         private void Update()

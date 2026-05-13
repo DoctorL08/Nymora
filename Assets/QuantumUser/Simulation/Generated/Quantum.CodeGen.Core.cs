@@ -73,6 +73,7 @@ namespace Quantum {
     None = 0,
     Pillar = 1,
     Wall = 2,
+    Faille = 3,
   }
   public enum SpellEffectKind : byte {
     None = 0,
@@ -128,6 +129,12 @@ namespace Quantum {
     ColossarAncrage = 57,
     ColossarProvocation = 58,
     ColossarBrisure = 59,
+    ColossarStoicisme = 60,
+    ColossarGardeProtectrice = 61,
+    ColossarRessacVital = 62,
+    ColossarRenvoiDuBouclier = 63,
+    ColossarSoinLourd = 64,
+    ColossarEffondrement = 65,
   }
   public enum StatusKind : byte {
     None = 0,
@@ -145,6 +152,9 @@ namespace Quantum {
     ActionMalus = 12,
     AnchorImmune = 13,
     Provoked = 14,
+    DamageReductionPercent = 15,
+    RipostAll = 16,
+    EffondrementActive = 17,
   }
   public enum TargetingFilter : byte {
     None = 0,
@@ -900,67 +910,79 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct Combatant : Quantum.IComponent {
-    public const Int32 SIZE = 232;
-    public const Int32 ALIGNMENT = 4;
-    [FieldOffset(92)]
+    public const Int32 SIZE = 264;
+    public const Int32 ALIGNMENT = 8;
+    [FieldOffset(108)]
     public Int32 PlayerIndex;
     [FieldOffset(1)]
     public NymoraClass Class;
-    [FieldOffset(20)]
+    [FieldOffset(24)]
     public Int32 HP;
-    [FieldOffset(68)]
-    public Int32 MaxHP;
     [FieldOffset(84)]
-    public Int32 PA;
-    [FieldOffset(72)]
-    public Int32 MaxPA;
-    [FieldOffset(88)]
-    public Int32 PM;
-    [FieldOffset(76)]
-    public Int32 MaxPM;
-    [FieldOffset(12)]
-    public Int32 GridX;
-    [FieldOffset(16)]
-    public Int32 GridY;
+    public Int32 MaxHP;
     [FieldOffset(100)]
-    public Int32 Resource;
-    [FieldOffset(44)]
-    public Int32 LastResourceGainOnHitTurn;
+    public Int32 PA;
+    [FieldOffset(88)]
+    public Int32 MaxPA;
     [FieldOffset(104)]
+    public Int32 PM;
+    [FieldOffset(92)]
+    public Int32 MaxPM;
+    [FieldOffset(16)]
+    public Int32 GridX;
+    [FieldOffset(20)]
+    public Int32 GridY;
+    [FieldOffset(116)]
+    public Int32 Resource;
+    [FieldOffset(60)]
+    public Int32 LastResourceGainOnHitTurn;
+    [FieldOffset(136)]
     [FramePrinter.FixedArrayAttribute(typeof(Status), 8)]
     private fixed Byte _Statuses_[128];
-    [FieldOffset(80)]
+    [FieldOffset(96)]
     public Int32 OncePerMatchUsedFlags;
     [FieldOffset(4)]
     public Int32 BonusPANextTurn;
-    [FieldOffset(24)]
+    [FieldOffset(36)]
     public Int32 LastAmeLaceeUsedOnTurn;
-    [FieldOffset(28)]
+    [FieldOffset(40)]
     public Int32 LastCastOnTurn;
     [FieldOffset(2)]
     public SpellId LastCastSpellId;
-    [FieldOffset(36)]
+    [FieldOffset(48)]
     public Int32 LastCastTargetX;
-    [FieldOffset(40)]
+    [FieldOffset(52)]
     public Int32 LastCastTargetY;
-    [FieldOffset(32)]
+    [FieldOffset(44)]
     public Int32 LastCastSequence;
     [FieldOffset(0)]
     public MarkKind CurrentMark;
-    [FieldOffset(64)]
+    [FieldOffset(80)]
     public Int32 MarkTurnsLeft;
-    [FieldOffset(56)]
+    [FieldOffset(72)]
     public Int32 MarkAppliedOnTurn;
-    [FieldOffset(60)]
+    [FieldOffset(76)]
     public Int32 MarkOwnerPlayer;
     [FieldOffset(8)]
     public Int32 DamageTakenThisRound;
-    [FieldOffset(48)]
+    [FieldOffset(64)]
     public Int32 LastTrapTriggeredOnTurn;
-    [FieldOffset(52)]
+    [FieldOffset(68)]
     public Int32 LastTraquenardUsedOnTurn;
-    [FieldOffset(96)]
+    [FieldOffset(112)]
     public Int32 RepresaillesReflectsLeft;
+    [FieldOffset(120)]
+    public Int32 StoicismeExpiresOnTurn;
+    [FieldOffset(32)]
+    public Int32 HitsTakenThisRound;
+    [FieldOffset(28)]
+    public Int32 HitsTakenLastRound;
+    [FieldOffset(12)]
+    public Int32 EffondrementAnnouncedOnTurn;
+    [FieldOffset(56)]
+    public Int32 LastEffondrementUsedOnTurn;
+    [FieldOffset(128)]
+    public EntityRef EffondrementTargetEntity;
     public readonly FixedArray<Status> Statuses {
       get {
         fixed (byte* p = _Statuses_) { return new FixedArray<Status>(p, 16, 8); }
@@ -998,6 +1020,12 @@ namespace Quantum {
         hash = hash * 31 + LastTrapTriggeredOnTurn.GetHashCode();
         hash = hash * 31 + LastTraquenardUsedOnTurn.GetHashCode();
         hash = hash * 31 + RepresaillesReflectsLeft.GetHashCode();
+        hash = hash * 31 + StoicismeExpiresOnTurn.GetHashCode();
+        hash = hash * 31 + HitsTakenThisRound.GetHashCode();
+        hash = hash * 31 + HitsTakenLastRound.GetHashCode();
+        hash = hash * 31 + EffondrementAnnouncedOnTurn.GetHashCode();
+        hash = hash * 31 + LastEffondrementUsedOnTurn.GetHashCode();
+        hash = hash * 31 + EffondrementTargetEntity.GetHashCode();
         return hash;
       }
     }
@@ -1008,14 +1036,18 @@ namespace Quantum {
         serializer.Stream.Serialize((Byte*)&p->LastCastSpellId);
         serializer.Stream.Serialize(&p->BonusPANextTurn);
         serializer.Stream.Serialize(&p->DamageTakenThisRound);
+        serializer.Stream.Serialize(&p->EffondrementAnnouncedOnTurn);
         serializer.Stream.Serialize(&p->GridX);
         serializer.Stream.Serialize(&p->GridY);
         serializer.Stream.Serialize(&p->HP);
+        serializer.Stream.Serialize(&p->HitsTakenLastRound);
+        serializer.Stream.Serialize(&p->HitsTakenThisRound);
         serializer.Stream.Serialize(&p->LastAmeLaceeUsedOnTurn);
         serializer.Stream.Serialize(&p->LastCastOnTurn);
         serializer.Stream.Serialize(&p->LastCastSequence);
         serializer.Stream.Serialize(&p->LastCastTargetX);
         serializer.Stream.Serialize(&p->LastCastTargetY);
+        serializer.Stream.Serialize(&p->LastEffondrementUsedOnTurn);
         serializer.Stream.Serialize(&p->LastResourceGainOnHitTurn);
         serializer.Stream.Serialize(&p->LastTrapTriggeredOnTurn);
         serializer.Stream.Serialize(&p->LastTraquenardUsedOnTurn);
@@ -1031,6 +1063,8 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->PlayerIndex);
         serializer.Stream.Serialize(&p->RepresaillesReflectsLeft);
         serializer.Stream.Serialize(&p->Resource);
+        serializer.Stream.Serialize(&p->StoicismeExpiresOnTurn);
+        EntityRef.Serialize(&p->EffondrementTargetEntity, serializer);
         FixedArray.Serialize(p->Statuses, serializer, Statics.SerializeStatus);
     }
   }

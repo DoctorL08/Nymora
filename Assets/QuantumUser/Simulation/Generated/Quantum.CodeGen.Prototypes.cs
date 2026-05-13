@@ -76,7 +76,7 @@ namespace Quantum.Prototypes {
   }
   [System.SerializableAttribute()]
   [Quantum.Prototypes.Prototype(typeof(Quantum.Combatant))]
-  public unsafe partial class CombatantPrototype : ComponentPrototype<Quantum.Combatant> {
+  public unsafe class CombatantPrototype : ComponentPrototype<Quantum.Combatant> {
     public Int32 PlayerIndex;
     public Quantum.QEnum8<NymoraClass> Class;
     public Int32 HP;
@@ -107,7 +107,12 @@ namespace Quantum.Prototypes {
     public Int32 LastTrapTriggeredOnTurn;
     public Int32 LastTraquenardUsedOnTurn;
     public Int32 RepresaillesReflectsLeft;
-    partial void MaterializeUser(Frame frame, ref Quantum.Combatant result, in PrototypeMaterializationContext context);
+    public Int32 StoicismeExpiresOnTurn;
+    public Int32 HitsTakenThisRound;
+    public Int32 HitsTakenLastRound;
+    public Int32 EffondrementAnnouncedOnTurn;
+    public Int32 LastEffondrementUsedOnTurn;
+    public MapEntityId EffondrementTargetEntity;
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.Combatant component = default;
         Materialize((Frame)f, ref component, in context);
@@ -145,7 +150,12 @@ namespace Quantum.Prototypes {
         result.LastTrapTriggeredOnTurn = this.LastTrapTriggeredOnTurn;
         result.LastTraquenardUsedOnTurn = this.LastTraquenardUsedOnTurn;
         result.RepresaillesReflectsLeft = this.RepresaillesReflectsLeft;
-        MaterializeUser(frame, ref result, in context);
+        result.StoicismeExpiresOnTurn = this.StoicismeExpiresOnTurn;
+        result.HitsTakenThisRound = this.HitsTakenThisRound;
+        result.HitsTakenLastRound = this.HitsTakenLastRound;
+        result.EffondrementAnnouncedOnTurn = this.EffondrementAnnouncedOnTurn;
+        result.LastEffondrementUsedOnTurn = this.LastEffondrementUsedOnTurn;
+        PrototypeValidator.FindMapEntity(this.EffondrementTargetEntity, in context, out result.EffondrementTargetEntity);
     }
   }
   [System.SerializableAttribute()]

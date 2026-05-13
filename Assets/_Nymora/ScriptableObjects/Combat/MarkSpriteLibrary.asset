@@ -22,3 +22,13 @@ MonoBehaviour:
   - {fileID: -268237682, guid: 668840576ddb0fc4a8ac0e6c4df79e56, type: 3}
   - {fileID: -948145449, guid: 668840576ddb0fc4a8ac0e6c4df79e56, type: 3}
   - {fileID: -230167674, guid: 668840576ddb0fc4a8ac0e6c4df79e56, type: 3}
+  _traqueFrames:
+  - {fileID: -1342913078, guid: 85c4f5a446bbfc94cb45ecd80c05fae7, type: 3}
+  - {fileID: 706327670, guid: 85c4f5a446bbfc94cb45ecd80c05fae7, type: 3}
+  - {fileID: 1990949946, guid: 85c4f5a446bbfc94cb45ecd80c05fae7, type: 3}
+  - {fileID: -27697245, guid: 85c4f5a446bbfc94cb45ecd80c05fae7, type: 3}
+  _empreinteFrames:
+  - {fileID: -130535193, guid: b60db7e17de3e5146a0dc7d5e99614e1, type: 3}
+  - {fileID: 1133298963, guid: b60db7e17de3e5146a0dc7d5e99614e1, type: 3}
+  - {fileID: -1541285395, guid: b60db7e17de3e5146a0dc7d5e99614e1, type: 3}
+  - {fileID: -1685350867, guid: b60db7e17de3e5146a0dc7d5e99614e1, type: 3}

@@ -28,15 +28,20 @@ namespace Nymora.Combat.View.Animation
         [Tooltip("Ame Laceree — signature 5 HG, 320 dgts + heal 50%, cooldown 4 tours.")]
         [SerializeField] private Sprite[] _ameLaceeFrames;
 
+        [Header("Colossar (3.3.d)")]
+        [Tooltip("Effondrement — signature 3 FD, AoE rayon 2 + swap + Failles 2T + buff 2T.")]
+        [SerializeField] private Sprite[] _effondrementFrames;
+
         // Phase ulterieure : autres sorts Soulrender (Charge Brutale, Detonation Sanglante, ...)
-        // puis classes Phase 3+. On peut soit etendre avec des champs nommes (comme ici),
+        // puis Nightseer/Necram/Ghostra. On peut soit etendre avec des champs nommes (comme ici),
         // soit basculer sur un Entry[] generique si le nombre devient trop grand.
 
         public Sprite[] GetFrames(SpellId spell)
         {
             switch (spell)
             {
-                case SpellId.SoulrenderAmeLaceree: return _ameLaceeFrames;
+                case SpellId.SoulrenderAmeLaceree:    return _ameLaceeFrames;
+                case SpellId.ColossarEffondrement:    return _effondrementFrames;
                 default: return null;
             }
         }

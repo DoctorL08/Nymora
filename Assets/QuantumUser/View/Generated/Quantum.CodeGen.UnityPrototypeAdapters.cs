@@ -50,6 +50,86 @@ namespace Quantum.Prototypes.Unity {
   #endif //;
   
   [System.SerializableAttribute()]
+  public unsafe partial class CombatantPrototype : Quantum.QuantumUnityPrototypeAdapter<Quantum.Prototypes.CombatantPrototype> {
+    public Int32 PlayerIndex;
+    public Quantum.QEnum8<NymoraClass> Class;
+    public Int32 HP;
+    public Int32 MaxHP;
+    public Int32 PA;
+    public Int32 MaxPA;
+    public Int32 PM;
+    public Int32 MaxPM;
+    public Int32 GridX;
+    public Int32 GridY;
+    public Int32 Resource;
+    public Int32 LastResourceGainOnHitTurn;
+    [ArrayLengthAttribute(8)]
+    public Quantum.Prototypes.StatusPrototype[] Statuses = new Quantum.Prototypes.StatusPrototype[8];
+    public Int32 OncePerMatchUsedFlags;
+    public Int32 BonusPANextTurn;
+    public Int32 LastAmeLaceeUsedOnTurn;
+    public Int32 LastCastOnTurn;
+    public Quantum.QEnum8<SpellId> LastCastSpellId;
+    public Int32 LastCastTargetX;
+    public Int32 LastCastTargetY;
+    public Int32 LastCastSequence;
+    public Quantum.QEnum8<MarkKind> CurrentMark;
+    public Int32 MarkTurnsLeft;
+    public Int32 MarkAppliedOnTurn;
+    public Int32 MarkOwnerPlayer;
+    public Int32 DamageTakenThisRound;
+    public Int32 LastTrapTriggeredOnTurn;
+    public Int32 LastTraquenardUsedOnTurn;
+    public Int32 RepresaillesReflectsLeft;
+    public Int32 StoicismeExpiresOnTurn;
+    public Int32 HitsTakenThisRound;
+    public Int32 HitsTakenLastRound;
+    public Int32 EffondrementAnnouncedOnTurn;
+    public Int32 LastEffondrementUsedOnTurn;
+    public Quantum.QuantumEntityPrototype EffondrementTargetEntity;
+    partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.CombatantPrototype prototype);
+    public override Quantum.Prototypes.CombatantPrototype Convert(Quantum.QuantumEntityPrototypeConverter converter) {
+      var result = new Quantum.Prototypes.CombatantPrototype();
+      converter.Convert(this.PlayerIndex, out result.PlayerIndex);
+      converter.Convert(this.Class, out result.Class);
+      converter.Convert(this.HP, out result.HP);
+      converter.Convert(this.MaxHP, out result.MaxHP);
+      converter.Convert(this.PA, out result.PA);
+      converter.Convert(this.MaxPA, out result.MaxPA);
+      converter.Convert(this.PM, out result.PM);
+      converter.Convert(this.MaxPM, out result.MaxPM);
+      converter.Convert(this.GridX, out result.GridX);
+      converter.Convert(this.GridY, out result.GridY);
+      converter.Convert(this.Resource, out result.Resource);
+      converter.Convert(this.LastResourceGainOnHitTurn, out result.LastResourceGainOnHitTurn);
+      converter.Convert(this.Statuses, out result.Statuses);
+      converter.Convert(this.OncePerMatchUsedFlags, out result.OncePerMatchUsedFlags);
+      converter.Convert(this.BonusPANextTurn, out result.BonusPANextTurn);
+      converter.Convert(this.LastAmeLaceeUsedOnTurn, out result.LastAmeLaceeUsedOnTurn);
+      converter.Convert(this.LastCastOnTurn, out result.LastCastOnTurn);
+      converter.Convert(this.LastCastSpellId, out result.LastCastSpellId);
+      converter.Convert(this.LastCastTargetX, out result.LastCastTargetX);
+      converter.Convert(this.LastCastTargetY, out result.LastCastTargetY);
+      converter.Convert(this.LastCastSequence, out result.LastCastSequence);
+      converter.Convert(this.CurrentMark, out result.CurrentMark);
+      converter.Convert(this.MarkTurnsLeft, out result.MarkTurnsLeft);
+      converter.Convert(this.MarkAppliedOnTurn, out result.MarkAppliedOnTurn);
+      converter.Convert(this.MarkOwnerPlayer, out result.MarkOwnerPlayer);
+      converter.Convert(this.DamageTakenThisRound, out result.DamageTakenThisRound);
+      converter.Convert(this.LastTrapTriggeredOnTurn, out result.LastTrapTriggeredOnTurn);
+      converter.Convert(this.LastTraquenardUsedOnTurn, out result.LastTraquenardUsedOnTurn);
+      converter.Convert(this.RepresaillesReflectsLeft, out result.RepresaillesReflectsLeft);
+      converter.Convert(this.StoicismeExpiresOnTurn, out result.StoicismeExpiresOnTurn);
+      converter.Convert(this.HitsTakenThisRound, out result.HitsTakenThisRound);
+      converter.Convert(this.HitsTakenLastRound, out result.HitsTakenLastRound);
+      converter.Convert(this.EffondrementAnnouncedOnTurn, out result.EffondrementAnnouncedOnTurn);
+      converter.Convert(this.LastEffondrementUsedOnTurn, out result.LastEffondrementUsedOnTurn);
+      converter.Convert(this.EffondrementTargetEntity, out result.EffondrementTargetEntity);
+      ConvertUser(converter, ref result);
+      return result;
+    }
+  }
+  [System.SerializableAttribute()]
   public unsafe partial class GridSingletonPrototype : Quantum.QuantumUnityPrototypeAdapter<Quantum.Prototypes.GridSingletonPrototype> {
     public Int32 Width;
     public Int32 Height;

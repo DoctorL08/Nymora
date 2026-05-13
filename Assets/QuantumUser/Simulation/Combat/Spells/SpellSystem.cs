@@ -150,6 +150,48 @@ namespace Quantum
                     return;
                 }
             }
+            // 3.3.d : Effondrement cooldown 4 tours apres usage. Re-castable si FD remonte a 3 ET cooldown expire.
+            if (cmd.Spell == SpellId.ColossarEffondrement)
+            {
+                int turnsSinceUse = currentTurnForCooldown - caster->LastEffondrementUsedOnTurn;
+                if (turnsSinceUse < SpellRegistry.EffondrementCooldownTurns)
+                {
+                    Log.Warn($"[Spell] rejet : Effondrement en cooldown ({turnsSinceUse}/{SpellRegistry.EffondrementCooldownTurns} tours depuis dernier usage tour {caster->LastEffondrementUsedOnTurn})");
+                    return;
+                }
+                // Garde-fou : refuse re-annonce tant qu'une annonce precedente n'a pas trigger.
+                if (caster->EffondrementAnnouncedOnTurn >= 0)
+                {
+                    Log.Warn($"[Spell] rejet : Effondrement deja annonce au tour {caster->EffondrementAnnouncedOnTurn} (en attente de trigger)");
+                    return;
+                }
+                // 3.3.d design Lorenzo : refuse le cast si aucun ennemi vivant dans le rayon 2.
+                // Le sort coute 4 PA + 3 FD = pas gachis sur cast a vide. Force un setup melee
+                // (Empoignade pull, ou ennemi proche naturellement).
+                {
+                    int cxCk = caster->GridX;
+                    int cyCk = caster->GridY;
+                    int rCk = SpellRegistry.EffondrementAoeRadius;
+                    bool hasEnemyInZone = false;
+                    var ckFilter = f.Filter<Combatant>();
+                    while (ckFilter.NextUnsafe(out EntityRef _, out Combatant* eC))
+                    {
+                        if (eC->PlayerIndex == caster->PlayerIndex) continue;
+                        if (eC->HP <= 0) continue;
+                        int dxCk = eC->GridX - cxCk;
+                        int dyCk = eC->GridY - cyCk;
+                        int adxCk = dxCk < 0 ? -dxCk : dxCk;
+                        int adyCk = dyCk < 0 ? -dyCk : dyCk;
+                        int distCk = adxCk + adyCk;
+                        if (distCk > 0 && distCk <= rCk) { hasEnemyInZone = true; break; }
+                    }
+                    if (!hasEnemyInZone)
+                    {
+                        Log.Warn($"[Spell] rejet : Effondrement requiert un ennemi vivant dans le rayon {rCk} (Manhattan). Approche l'adversaire (Empoignade ?).");
+                        return;
+                    }
+                }
+            }
 
             // HG validation (mandatory + optional clamped).
             int hgSpend = cmd.HGSpend;
@@ -357,7 +399,24 @@ namespace Quantum
                     int cx = idx % GridConstants.Width;
                     int cy = idx / GridConstants.Width;
                     EntityRef target = GridHelpers.GetOccupant(f, cx, cy);
-                    if (target == EntityRef.None) continue;
+                    if (target == EntityRef.None)
+                    {
+                        // 3.3.d — Sort AoE damage : si la case a un obstacle ADVERSE (Faille, Pilier
+                        // ennemi, Mur ennemi), on lui inflige aussi le damage de base (effectiveDmg).
+                        // Bible-balance : permet a l'ennemi piégé par Effondrement de casser des
+                        // Failles avec ses sorts AoE pour se créer un passage.
+                        if (effectiveDmg > 0)
+                        {
+                            EntityRef obsHere = ObstacleHelpers.GetObstacleAt(f, cx, cy);
+                            if (obsHere != EntityRef.None
+                                && f.Unsafe.TryGetPointer<Obstacle>(obsHere, out Obstacle* obsData)
+                                && obsData->OwnerPlayerIndex != caster->PlayerIndex)
+                            {
+                                ObstacleHelpers.DamageAt(f, cx, cy, effectiveDmg);
+                            }
+                        }
+                        continue;
+                    }
                     if (!f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC)) continue;
                     if (target == casterEntity) continue; // pas d'auto-damage offensif
 
@@ -479,8 +538,8 @@ namespace Quantum
                         dmgThisTarget = ColossarPassif.ApplyDamageReduction(f, targetC, dmgThisTarget);
                         if (dmgThisTarget != dmgBefore)
                         {
-                            int pct = ColossarPassif.GetDamageReductionPercent(f, targetC);
-                            Log.Info($"[Densite Inerte] -{pct}% dmg sur P{targetC->PlayerIndex} : {dmgBefore} -> {dmgThisTarget}");
+                            int pct = ColossarPassif.GetCombinedDamageReductionPercent(f, targetC);
+                            Log.Info($"[Reduction] -{pct}% dmg sur P{targetC->PlayerIndex} : {dmgBefore} -> {dmgThisTarget}");
                         }
                     }
 
@@ -552,6 +611,8 @@ namespace Quantum
 
                         // 2.15.a — tracker dgts subis par target ce round (Bible Prescience).
                         targetC->DamageTakenThisRound += totalHPLoss;
+                        // 3.3.c — tracker nb d'attaques subies ce round (Ressac Vital Bible : +30/hit).
+                        targetC->HitsTakenThisRound += 1;
 
                         // 2.10.c : Kill detection. Tracker si au moins 1 cible est tombee a HP=0.
                         // killedTargetX/Y sert au recul Tranche-Ame (direction opposee a la cible tuee).
@@ -578,38 +639,48 @@ namespace Quantum
                             castHitMarkedTarget = true;
                         }
 
-                        // Trigger Riposte Carmin / Represailles si cible porte RipostMelee et sort = melee.
-                        // Bible V7.1 : Represailles (Colossar) cap a 4 retours ; Riposte Carmin (Soulrender)
-                        // pas de cap. Distinction via Combatant.RepresaillesReflectsLeft :
-                        //   -1 = no cap (Riposte Carmin) -> trigger sans decrement
-                        //    0 = cap epuise (Represailles a fait ses 4 retours) -> skip
-                        //   >0 = trigger + decrement
-                        if (isMelee && StatusHelper.Has(targetC, StatusKind.RipostMelee))
+                        // Trigger reflect (Riposte Carmin / Represailles / Renvoi du Bouclier).
+                        // Bible V7.1 :
+                        //   - RipostMelee : trigger uniquement si sort melee (Riposte Carmin Soulrender = no cap ;
+                        //     Represailles Colossar = cap 4)
+                        //   - RipostAll   : trigger sur TOUTE attaque (melee + distance) (Renvoi du Bouclier
+                        //     Colossar = cap 4). Pas de MovementMalus attaquant (Bible : juste reflect).
+                        //   Cap stocke dans Combatant.RepresaillesReflectsLeft :
+                        //     -1 = no cap, 0 = cap epuise (skip), >0 = trigger + decrement.
+                        bool hasRipostMelee = StatusHelper.Has(targetC, StatusKind.RipostMelee);
+                        bool hasRipostAll   = StatusHelper.Has(targetC, StatusKind.RipostAll);
+                        if ((isMelee && hasRipostMelee) || hasRipostAll)
                         {
                             int reflectsLeft = targetC->RepresaillesReflectsLeft;
                             bool canReflect = (reflectsLeft != 0); // -1 ou >0 -> ok ; 0 -> skip
                             if (canReflect)
                             {
-                                int reflectDmg = StatusHelper.GetMagnitude(targetC, StatusKind.RipostMelee, 100);
+                                // Si RipostAll actif on prend sa magnitude (60 Bible) ; sinon RipostMelee (80/100).
+                                StatusKind reflectKind = hasRipostAll ? StatusKind.RipostAll : StatusKind.RipostMelee;
+                                int reflectDmg = StatusHelper.GetMagnitude(targetC, reflectKind, 100);
                                 int casterBefore = caster->HP;
                                 caster->HP -= reflectDmg;
                                 if (caster->HP < 0) caster->HP = 0;
                                 if (reflectsLeft > 0)
                                 {
                                     targetC->RepresaillesReflectsLeft = reflectsLeft - 1;
-                                    Log.Info($"[Spell] Represailles : P{caster->PlayerIndex} prend {reflectDmg} dgts (HP {casterBefore} -> {caster->HP}) — retours restants {targetC->RepresaillesReflectsLeft}/{SpellRegistry.RepresaillesReflectMaxTriggers}");
+                                    Log.Info($"[Spell] Reflect ({reflectKind}) : P{caster->PlayerIndex} prend {reflectDmg} dgts (HP {casterBefore} -> {caster->HP}) — retours restants {targetC->RepresaillesReflectsLeft}");
                                 }
                                 else
                                 {
-                                    Log.Info($"[Spell] Riposte Carmin : P{caster->PlayerIndex} prend {reflectDmg} dgts (HP {casterBefore} -> {caster->HP})");
+                                    Log.Info($"[Spell] Reflect ({reflectKind}, no cap) : P{caster->PlayerIndex} prend {reflectDmg} dgts (HP {casterBefore} -> {caster->HP})");
                                 }
 
-                                // L'attaquant prend MovementMalus 1 (1 tour) sur son prochain mouvement.
-                                StatusHelper.Apply(caster, StatusKind.MovementMalus, magnitude: 1, turnsLeft: 1, currentTurn);
+                                // L'attaquant prend MovementMalus 1 (1 tour) UNIQUEMENT pour RipostMelee
+                                // (Riposte Carmin Bible : "-1 PM additionnel"). RipostAll Bible : juste reflect.
+                                if (hasRipostMelee && isMelee)
+                                {
+                                    StatusHelper.Apply(caster, StatusKind.MovementMalus, magnitude: 1, turnsLeft: 1, currentTurn);
+                                }
                             }
                             else
                             {
-                                Log.Info($"[Spell] Represailles : cap 4 retours atteint sur P{targetC->PlayerIndex}, reflect skipped");
+                                Log.Info($"[Spell] Reflect : cap 4 retours atteint sur P{targetC->PlayerIndex}, skip");
                             }
                         }
 
@@ -1066,8 +1137,8 @@ namespace Quantum
                             dmgLeft = ColossarPassif.ApplyDamageReduction(f, hitC, dmgLeft);
                             if (dmgLeft != dmgBeforeReduc)
                             {
-                                int pct = ColossarPassif.GetDamageReductionPercent(f, hitC);
-                                Log.Info($"[Densite Inerte] -{pct}% dmg sur P{hitC->PlayerIndex} (Charge Brutale) : {dmgBeforeReduc} -> {dmgLeft}");
+                                int pct = ColossarPassif.GetCombinedDamageReductionPercent(f, hitC);
+                                Log.Info($"[Reduction] -{pct}% dmg sur P{hitC->PlayerIndex} (Charge Brutale) : {dmgBeforeReduc} -> {dmgLeft}");
                             }
                         }
                         // 3.3.b.ii — Ancrage hook (Charge Brutale bypass pipeline standard).
@@ -1092,6 +1163,8 @@ namespace Quantum
                         {
                             hitC->HP -= dmgLeft;
                             if (hitC->HP < 0) hitC->HP = 0;
+                            hitC->DamageTakenThisRound += dmgLeft;
+                            hitC->HitsTakenThisRound += 1; // 3.3.c Ressac Vital tracker
                             Log.Info($"[Spell] Charge Brutale : Damage {SpellRegistry.ChargeBrutaleDamage} (HP loss {dmgLeft}) sur P{hitC->PlayerIndex} ({hitX},{hitY}) HP {hpBeforeHit} -> {hitC->HP}");
 
                             // Gain HG cote caster (Soulrender qui inflige, max 1 par sort).
@@ -1594,6 +1667,7 @@ namespace Quantum
                             adjC->HP -= SpellRegistry.OndeDeChocBonusVsWall;
                             if (adjC->HP < 0) adjC->HP = 0;
                             adjC->DamageTakenThisRound += SpellRegistry.OndeDeChocBonusVsWall;
+                            adjC->HitsTakenThisRound += 1; // 3.3.c Ressac Vital tracker
                             Log.Info($"[Spell] Onde de Choc BONUS WALL : +{SpellRegistry.OndeDeChocBonusVsWall} dgts sur P{adjC->PlayerIndex} (HP {hpBeforeOdC} -> {adjC->HP})");
 
                             // TRAUMA Bible = ActionMalus -1 PA + MovementMalus -1 PM 1 tour.
@@ -1674,8 +1748,8 @@ namespace Quantum
                             dmg = ColossarPassif.ApplyDamageReduction(f, victimC, dmg);
                             if (dmg != dmgBeforeReducCs)
                             {
-                                int pctCs = ColossarPassif.GetDamageReductionPercent(f, victimC);
-                                Log.Info($"[Densite Inerte] -{pctCs}% dmg sur P{victimC->PlayerIndex} (Choc Sismique) : {dmgBeforeReducCs} -> {dmg}");
+                                int pctCs = ColossarPassif.GetCombinedDamageReductionPercent(f, victimC);
+                                Log.Info($"[Reduction] -{pctCs}% dmg sur P{victimC->PlayerIndex} (Choc Sismique) : {dmgBeforeReducCs} -> {dmg}");
                             }
                         }
                         // 3.3.b.ii — Ancrage hook (Choc Sismique bypass pipeline standard).
@@ -1692,6 +1766,7 @@ namespace Quantum
                         victimC->HP -= dmg;
                         if (victimC->HP < 0) victimC->HP = 0;
                         victimC->DamageTakenThisRound += dmg;
+                        victimC->HitsTakenThisRound += 1; // 3.3.c Ressac Vital tracker
                         Log.Info($"[Spell] Choc Sismique : {dmg} dgts sur P{victimC->PlayerIndex} ({curXCs},{curYCs}) HP {hpBeforeCs} -> {victimC->HP}");
 
                         // MovementMalus -1 PM 1 tour.
@@ -1873,6 +1948,20 @@ namespace Quantum
                         Log.Info($"[Spell] Brisure : retire RipostMelee sur P{brisureC->PlayerIndex}");
                         buffRemoved = true;
                     }
+                    else if (StatusHelper.Has(brisureC, StatusKind.RipostAll))
+                    {
+                        // 3.3.c — Renvoi du Bouclier
+                        StatusHelper.Consume(brisureC, StatusKind.RipostAll);
+                        Log.Info($"[Spell] Brisure : retire RipostAll (Renvoi du Bouclier) sur P{brisureC->PlayerIndex}");
+                        buffRemoved = true;
+                    }
+                    else if (StatusHelper.Has(brisureC, StatusKind.DamageReductionPercent))
+                    {
+                        // 3.3.c — Garde Protectrice
+                        StatusHelper.Consume(brisureC, StatusKind.DamageReductionPercent);
+                        Log.Info($"[Spell] Brisure : retire DamageReductionPercent (Garde Protectrice) sur P{brisureC->PlayerIndex}");
+                        buffRemoved = true;
+                    }
                     else if (StatusHelper.Has(brisureC, StatusKind.RageInsatiableActive))
                     {
                         StatusHelper.Consume(brisureC, StatusKind.RageInsatiableActive);
@@ -1887,6 +1976,132 @@ namespace Quantum
                             magnitude: SpellRegistry.BrisureTraumaPAMag,
                             turnsLeft: SpellRegistry.BrisureTraumaTurns, currentTurn);
                         Log.Info($"[Spell] Brisure : pas de buff sur P{brisureC->PlayerIndex} -> TRAUMA -{SpellRegistry.BrisureTraumaPAMag} PA prochain tour");
+                    }
+                    break;
+                }
+
+                // -------------------------------------------------------------
+                // COLOSSAR 3.3.c — SURVIE (handlers)
+                // -------------------------------------------------------------
+
+                case SpellId.ColossarStoicisme:
+                {
+                    // Bible V7.1 : Shield 200 HP / 2 tours + immune push/pull/tp 2 tours.
+                    // Tracker StoicismeExpiresOnTurn set a currentTurn + 2 ; TurnSystem fin de round
+                    // verifie a expiration si shield.Magnitude > 0 -> heal 80.
+                    StatusHelper.Apply(caster, StatusKind.ShieldActive,
+                        magnitude: SpellRegistry.StoicismeShieldHP,
+                        turnsLeft: SpellRegistry.StoicismeShieldTurns,
+                        currentTurn);
+                    // AnchorImmune Magnitude=0 (pas de reduction dmg ici, juste immune push/pull/tp).
+                    // Bible Ancrage utilise AnchorImmune avec Magnitude=0 aussi (reduction = 0 dans hook damage).
+                    StatusHelper.Apply(caster, StatusKind.AnchorImmune,
+                        magnitude: 0,
+                        turnsLeft: SpellRegistry.StoicismeImmuneTurns,
+                        currentTurn);
+                    caster->StoicismeExpiresOnTurn = currentTurn + SpellRegistry.StoicismeShieldTurns;
+                    Log.Info($"[Spell] Stoicisme : Shield {SpellRegistry.StoicismeShieldHP} + immune push/pull/tp {SpellRegistry.StoicismeImmuneTurns} tours sur P{caster->PlayerIndex} (expiry tour {caster->StoicismeExpiresOnTurn})");
+                    break;
+                }
+
+                case SpellId.ColossarGardeProtectrice:
+                {
+                    // Bible V7.1 : -30% dmg subis / 2 tours. Cap combine 50% avec Densite Inerte
+                    // (additif clamp via ColossarPassif.GetCombinedDamageReductionPercent).
+                    StatusHelper.Apply(caster, StatusKind.DamageReductionPercent,
+                        magnitude: SpellRegistry.GardeProtectricePercent,
+                        turnsLeft: SpellRegistry.GardeProtectriceTurns,
+                        currentTurn);
+                    Log.Info($"[Spell] Garde Protectrice : -{SpellRegistry.GardeProtectricePercent}% dmg subis / {SpellRegistry.GardeProtectriceTurns} tours sur P{caster->PlayerIndex} (cap combine {SpellRegistry.MaxCombinedDamageReductionPct}%)");
+                    break;
+                }
+
+                case SpellId.ColossarRessacVital:
+                {
+                    // Bible V7.1 : heal 80 + 30/hit subi tour precedent (max +120 = 4 hits cap).
+                    int hitsCounted = caster->HitsTakenLastRound;
+                    if (hitsCounted > SpellRegistry.RessacVitalHitsCap) hitsCounted = SpellRegistry.RessacVitalHitsCap;
+                    int bonusHeal = hitsCounted * SpellRegistry.RessacVitalHealPerHit;
+                    int totalHeal = SpellRegistry.RessacVitalHealBase + bonusHeal;
+                    int hpBeforeRessac = caster->HP;
+                    caster->HP += totalHeal;
+                    if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
+                    Log.Info($"[Spell] Ressac Vital : +{totalHeal} HP sur P{caster->PlayerIndex} ({hpBeforeRessac} -> {caster->HP}) [base {SpellRegistry.RessacVitalHealBase} + {hitsCounted}/{SpellRegistry.RessacVitalHitsCap} hits last round x{SpellRegistry.RessacVitalHealPerHit}]");
+                    break;
+                }
+
+                case SpellId.ColossarRenvoiDuBouclier:
+                {
+                    // Bible V7.1 : RipostAll 60 dgts (melee + distance) / 1 tour / cap 4 retours.
+                    // Cap reuse Combatant.RepresaillesReflectsLeft (set a 4).
+                    StatusHelper.Apply(caster, StatusKind.RipostAll,
+                        magnitude: SpellRegistry.RenvoiBouclierReflectDmg,
+                        turnsLeft: SpellRegistry.RenvoiBouclierTurns,
+                        currentTurn);
+                    caster->RepresaillesReflectsLeft = SpellRegistry.RenvoiBouclierMaxTriggers;
+                    Log.Info($"[Spell] Renvoi du Bouclier : RipostAll {SpellRegistry.RenvoiBouclierReflectDmg} dgts ({SpellRegistry.RenvoiBouclierTurns} tour, cap {SpellRegistry.RenvoiBouclierMaxTriggers} retours) sur P{caster->PlayerIndex}");
+                    break;
+                }
+
+                case SpellId.ColossarSoinLourd:
+                {
+                    // Bible V7.1 : 3 PA range 3, heal 150 HP self/allie. MVP 1v1 : self-only
+                    // (SpellDef Filter=Self range 0). Le case en 2v2/3v3 sera ajoute en Phase 6.
+                    int hpBeforeSoin = caster->HP;
+                    caster->HP += SpellRegistry.SoinLourdHeal;
+                    if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
+                    Log.Info($"[Spell] Soin Lourd : +{SpellRegistry.SoinLourdHeal} HP sur P{caster->PlayerIndex} ({hpBeforeSoin} -> {caster->HP})");
+                    break;
+                }
+
+                // -------------------------------------------------------------
+                // COLOSSAR 3.3.d — SIGNATURE EFFONDREMENT (handler cast)
+                // -------------------------------------------------------------
+
+                case SpellId.ColossarEffondrement:
+                {
+                    // Bible V7.1 + design Lorenzo (swap anti-fuite) : ANNONCE 1 tour a l'avance.
+                    // Snapshot au cast : ennemi LE PLUS PROCHE actuellement dans le rayon 2.
+                    // Au trigger N+1, meme si cet ennemi a quitte la zone, il sera teleporte
+                    // AU CENTRE des Failles (= case ex-caster), et le caster ira sur la case
+                    // actuelle de l'ennemi (= position fuite). Mindgame "le Colossar dicte".
+                    //
+                    // FD : les 3 HG mandatory (= 3 FD) ont deja ete consommes par le pipeline standard
+                    // de cost. FD revient automatiquement a 0 vu qu'il etait au cap 3.
+                    caster->EffondrementAnnouncedOnTurn = currentTurn;
+                    caster->LastEffondrementUsedOnTurn = currentTurn;
+
+                    // Snapshot ennemi le plus proche dans rayon 2 (Manhattan).
+                    EntityRef targetSnapshot = EntityRef.None;
+                    int bestDist = int.MaxValue;
+                    int cxCast = caster->GridX;
+                    int cyCast = caster->GridY;
+                    int eRadius = SpellRegistry.EffondrementAoeRadius;
+                    var enemyScanFilter = f.Filter<Combatant>();
+                    while (enemyScanFilter.NextUnsafe(out EntityRef eEntity, out Combatant* eC))
+                    {
+                        if (eC->PlayerIndex == caster->PlayerIndex) continue;
+                        if (eC->HP <= 0) continue;
+                        int dxE = eC->GridX - cxCast;
+                        int dyE = eC->GridY - cyCast;
+                        int adX = dxE < 0 ? -dxE : dxE;
+                        int adY = dyE < 0 ? -dyE : dyE;
+                        int distE = adX + adY;
+                        if (distE == 0 || distE > eRadius) continue;
+                        if (distE < bestDist)
+                        {
+                            bestDist = distE;
+                            targetSnapshot = eEntity;
+                        }
+                    }
+                    caster->EffondrementTargetEntity = targetSnapshot;
+                    if (targetSnapshot != EntityRef.None)
+                    {
+                        Log.Info($"[Spell] Effondrement ANNONCE par P{caster->PlayerIndex} (tour {currentTurn}). Cible snapshot dist {bestDist}. Trigger au prochain sub-turn (swap au trigger).");
+                    }
+                    else
+                    {
+                        Log.Info($"[Spell] Effondrement ANNONCE par P{caster->PlayerIndex} (tour {currentTurn}). Aucun ennemi en zone au cast -> pas de swap, juste Failles + buff au trigger.");
                     }
                     break;
                 }

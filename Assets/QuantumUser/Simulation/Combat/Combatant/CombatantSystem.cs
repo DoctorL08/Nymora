@@ -56,6 +56,12 @@ namespace Quantum
                 LastTrapTriggeredOnTurn = -1000, // 2.15.c : aucun trap declenche au spawn (Seve Sauvage)
                 LastTraquenardUsedOnTurn = -1000, // 2.16 : aucun cooldown au spawn (Bible V7.1)
                 RepresaillesReflectsLeft = -1,   // 3.3.a.iii : -1 = pas de cap (defaut). Set explicitement par Represailles (4) / Riposte Carmin (-1).
+                StoicismeExpiresOnTurn = -1,     // 3.3.c : inactif au spawn (Stoicisme set a currentTurn+2 au cast).
+                HitsTakenThisRound = 0,          // 3.3.c : aucun hit au spawn.
+                HitsTakenLastRound = 0,          // 3.3.c : aucun hit precedent au spawn.
+                EffondrementAnnouncedOnTurn = -1, // 3.3.d : pas d'annonce active au spawn.
+                LastEffondrementUsedOnTurn = -1000, // 3.3.d : signature jouable des FD=3 au spawn.
+                EffondrementTargetEntity = EntityRef.None, // 3.3.d : pas de cible snapshot au spawn.
             };
 
             var entity = f.Create();

@@ -227,6 +227,46 @@ namespace Quantum
         public const int BrisureTraumaPAMag           = 2;    // ActionMalus -2 PA si pas de buff
         public const int BrisureTraumaTurns           = 1;
 
+        // 3.3.c — Colossar SURVIE (Bible V7.1).
+
+        // Stoicisme : 3 PA self, shield 200 HP / 2 tours + immune push/pull/tp 2 tours.
+        // Si shield Magnitude > 0 a expiration : +80 HP heal (hook TurnSystem fin de round).
+        public const int StoicismeShieldHP            = 200;
+        public const int StoicismeShieldTurns         = 2;
+        public const int StoicismeImmuneTurns         = 2;    // immune push/pull/tp pendant toute la duree
+        public const int StoicismeHealIfSurvived      = 80;   // heal si shield Magnitude > 0 a expiration
+
+        // Garde Protectrice : 2 PA self, -30% dmg subis / 2 tours. Cap combine Densite Inerte 50%.
+        public const int GardeProtectricePercent      = 30;   // % reduction
+        public const int GardeProtectriceTurns        = 2;
+        public const int MaxCombinedDamageReductionPct = 50;  // Bible : "cap -50% total" combine Densite Inerte + Garde Prot
+
+        // Ressac Vital : 2 PA self, heal 80 + 30/hit subi tour precedent (max +120 HP = 4 hits).
+        public const int RessacVitalHealBase          = 80;
+        public const int RessacVitalHealPerHit        = 30;
+        public const int RessacVitalHealMaxBonus      = 120;  // cap = 4 hits * 30
+        public const int RessacVitalHitsCap           = 4;    // max hits comptes (cap +120)
+
+        // Renvoi du Bouclier : 3 PA self, RipostAll 60 dgts (melee + distance) / 1 tour / cap 4 retours.
+        public const int RenvoiBouclierReflectDmg     = 60;
+        public const int RenvoiBouclierTurns          = 1;
+        public const int RenvoiBouclierMaxTriggers    = 4;    // cap reflects (reuse RepresaillesReflectsLeft)
+
+        // Soin Lourd : 3 PA range 3 (self/allie). MVP 1v1 : Filter=Self range 0, heal 150 HP.
+        public const int SoinLourdHeal                = 150;
+        public const int SoinLourdRangeMax            = 3;    // Bible (gardee pour la transition 2v2/3v3)
+
+        // 3.3.d — Effondrement (signature Colossar, Bible V7.1).
+        public const int EffondrementPACost           = 4;
+        public const int EffondrementFDCost           = 3;    // consomme TOUTE la jauge FD (cap 3)
+        public const int EffondrementAoeRadius        = 2;    // rayon 2 autour caster (Chebyshev/Manhattan ?)
+        public const int EffondrementDamage           = 200;  // dgts ennemis dans la zone au trigger
+        public const int EffondrementFailleTurns      = 2;    // duree des failles (cases impraticables)
+        public const int EffondrementBuffTurns        = 2;    // duree du buff +1PM / -1PA / -30% dgts
+        public const int EffondrementDmgReductionPct  = 30;   // % reduction (combine avec Densite Inerte/Garde Prot, cap 50%)
+        public const int EffondrementCooldownTurns    = 4;    // 4 tours apres usage (re-castable si FD remonte a 3)
+        public const int EffondrementFailleHP         = 100;   // Bible-balance : Faille destructible par AoE adverse (Lorenzo design 3.3.d)
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -1069,6 +1109,123 @@ namespace Quantum
                     };
                     return true;
 
+                // -------------------------------------------------------------
+                // COLOSSAR — Bible V7.1 (3.3.c) — SURVIE
+                // -------------------------------------------------------------
+
+                // Stoicisme : 3 PA self, ShieldActive 200/2T + AnchorImmune Magnitude=0 (immune push/pull/tp)
+                // 2T. Tracker StoicismeExpiresOnTurn pose pour heal 80 si shield survit. Handler dans SpellSystem.
+                case SpellId.ColossarStoicisme:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Garde Protectrice : 2 PA self, DamageReductionPercent 30 / 2T. Cap combine 50% avec
+                // Densite Inerte (additif clamp via ColossarPassif.GetCombinedDamageReductionPercent).
+                case SpellId.ColossarGardeProtectrice:
+                    def = new SpellDef
+                    {
+                        PACost = 2,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Ressac Vital : 2 PA self, heal 80 + 30/hit subi tour precedent (max +120 = 4 hits).
+                // Lit Combatant.HitsTakenLastRound (snapshot fait par TurnSystem.EnterTurnStart).
+                case SpellId.ColossarRessacVital:
+                    def = new SpellDef
+                    {
+                        PACost = 2,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Renvoi du Bouclier : 3 PA self, RipostAll 60 dgts (melee+distance) 1T, cap 4 retours
+                // (reuse Combatant.RepresaillesReflectsLeft).
+                case SpellId.ColossarRenvoiDuBouclier:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Soin Lourd : 3 PA self (MVP 1v1), heal 150 HP. Bible : range 3 self/allie en 2v2/3v3.
+                // Pour MVP, Filter=Self range 0 (Bible "en 1v1 : self-only"). TODO Phase 6 : Filter=Ally.
+                case SpellId.ColossarSoinLourd:
+                    def = new SpellDef
+                    {
+                        PACost = 3,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // -------------------------------------------------------------
+                // COLOSSAR — Bible V7.1 (3.3.d) — SIGNATURE
+                // -------------------------------------------------------------
+
+                // Effondrement : 4 PA, self, 3 FD mandatory (consomme tout). Cast pose juste l'annonce.
+                // Le trigger (damage AoE rayon 2 + Failles + buff) se fait au prochain sub-turn du caster
+                // via TurnSystem.EnterTurnStart en lisant EffondrementAnnouncedOnTurn.
+                case SpellId.ColossarEffondrement:
+                    def = new SpellDef
+                    {
+                        PACost = EffondrementPACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,            // applique par TurnSystem au trigger (pas au cast)
+                        HGCostMandatory = (byte)EffondrementFDCost, // 3 FD obligatoire
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,             // pas d'effet damage au cast
+                    };
+                    return true;
+
                 default:
                     def = default;
                     return false;
@@ -1102,6 +1259,12 @@ namespace Quantum
             // Passif Appel du Sang : caster Soulrender + cible <70% HP -> -1 PA (min 1).
             if (caster->Class == NymoraClass.Soulrender
                 && targetHPRatio < SpellRegistry.AppelDuSangPalierMarquage)
+            {
+                cost -= 1;
+                if (cost < 1) cost = 1;
+            }
+            // 3.3.d Effondrement : buff actif -> sorts coutent -1 PA (Bible V7.1).
+            if (StatusHelper.Has(caster, StatusKind.EffondrementActive))
             {
                 cost -= 1;
                 if (cost < 1) cost = 1;

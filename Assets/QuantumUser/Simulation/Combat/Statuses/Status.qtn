@@ -54,6 +54,22 @@ enum StatusKind : Byte
     Provoked                     = 14, // Provocation : Magnitude = PlayerIndex du provocateur (caster).
                                        //   Stub MVP : status apply + duree decrement OK. Effet IA (force
                                        //   l'attaque vers le provocateur) sera branche en 3.8 IA Hard.
+
+    // Colossar (3.3.c — Survie)
+    DamageReductionPercent       = 15, // Garde Protectrice : Magnitude = % reduction dgts subis (Bible 30).
+                                       //   S'additionne avec Densite Inerte mais clampe a 50% total (Bible
+                                       //   "Ne se cumule pas au-dela du cap -50%"). Bypass DoT venin Necram
+                                       //   (TODO Phase 3.4). Cf ColossarPassif.GetCombinedDamageReductionPercent.
+    RipostAll                    = 16, // Renvoi du Bouclier : Magnitude = dgts reflect TOUTE attaque
+                                       //   (melee + distance), pas que melee comme RipostMelee. Cap 4 retours
+                                       //   stocke dans Combatant.RepresaillesReflectsLeft (reuse). Bible 60 dgts.
+
+    // Colossar (3.3.d — Signature Effondrement)
+    EffondrementActive           = 17, // Effondrement (Bible V7.1) : buff 2 tours pendant lequel le Colossar
+                                       //   gagne +1 PM (TurnSystem.EnterTurnStart), ses sorts coutent -1 PA
+                                       //   (EffectiveStats.GetPACost), et -30% dgts subis (via Status
+                                       //   DamageReductionPercent applique en parallele avec cap combine 50%).
+                                       //   Magnitude unused (0). Pose au TRIGGER (pas au cast), apres l'annonce.
 }
 
 struct Status
