@@ -100,6 +100,16 @@ namespace Quantum
             sing->Tiles[GridHelpers.Index(x, y)].Obstacle = entity;
 
             Log.Info($"[Obstacle] Spawn {kind} entity={entity} pos=({x},{y}) HP={hp} owner=P{ownerPlayerIndex} expires={expiresOnTurn}");
+
+            // 3.2 — Bible V7.1 Fondation : "+1 FD chaque fois que le Colossar pose un Pilier
+            // ou un Mur". Branche ici (au lieu de dans chaque sort 3.3.b) pour DRY. Le helper
+            // est no-op si owner != Colossar (defensif), donc safe a appeler aussi pour les
+            // obstacles debug spawne par P0 si P0=Colossar (3.1.bis switch).
+            if (owner != EntityRef.None && f.Unsafe.TryGetPointer<Combatant>(owner, out var ownerC))
+            {
+                ColossarPassif.GainFondation(ownerC, $"Spawn {kind}");
+            }
+
             return entity;
         }
 
@@ -125,6 +135,7 @@ namespace Quantum
             int y = obs->GridY;
             ObstacleKind kind = obs->Kind;
             int ownerPlayerIndex = obs->OwnerPlayerIndex;
+            EntityRef ownerEntity = obs->Owner;
 
             // 1. Clear slot.
             if (GridHelpers.InBounds(x, y))
@@ -138,8 +149,20 @@ namespace Quantum
 
             Log.Info($"[Obstacle] Destroy {kind} pos=({x},{y}) ownerP{ownerPlayerIndex}");
 
-            // 3. TODO (3.2) : signal OnObstacleDestroyed pour passif Colossar Densite Inerte
-            // (+30 HP au owner si Pilier detruit). Pour 3.1 framework only, on log juste.
+            // 3. 3.2 Bible V7.1 Densite Inerte : "+30 HP au Colossar quand un de ses Piliers
+            // est detruit". Bible specifique "Pilier" (pas Mur). Le owner peut etre detruit
+            // entre temps (kill match Soulrender), defensif TryGetPointer.
+            if (kind == ObstacleKind.Pillar
+                && ownerEntity != EntityRef.None
+                && f.Unsafe.TryGetPointer<Combatant>(ownerEntity, out var ownerC)
+                && ownerC->Class == NymoraClass.Colossar
+                && ownerC->HP > 0)
+            {
+                int before = ownerC->HP;
+                ownerC->HP = before + ColossarPassif.HpRestoredOnPillarDestroyed;
+                if (ownerC->HP > ownerC->MaxHP) ownerC->HP = ownerC->MaxHP;
+                Log.Info($"[Densite Inerte] Colossar P{ownerPlayerIndex} +{ownerC->HP - before} HP (Pilier detruit) : {before} -> {ownerC->HP}");
+            }
         }
 
         // ====================================================================

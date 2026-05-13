@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 14 mai 2026 (🎨 **Brique 3.1.bis Colossar assets ✅ VALIDÉE** — anims stage0 NE/SE intégrées via BuildColossarAnimator, sprites/avatar/marques/tiles/VFX/icons copiés, switch P0 Colossar pour test, sprite tiles_fondation utilisé pour le prefab Pilier via CreateObstaclePrefabTool. Bug connu repoussé à 3.3.b : Pilier ne bloque pas LoS sorts ni Charge Brutale Soulrender) — **READY 3.2 STATS COLOSSAR** 🪨  
+**Dernière mise à jour :** 14 mai 2026 (🪨 **Brique 3.2 Colossar Stats + Ressource FD + Passif Densité Inerte ✅ VALIDÉE** — Tous les effets passifs testés E2E : +1 FD spawn Pilier, -8%/16% damage reduction (sorts standards + Charge Brutale après fix bypass-pipeline), +30 HP au destroy Pilier, +1 FD push contre obstacle (VERROU Bible). CombatRulesVersion 12) — **READY 3.3.a SORTS OFFENSIFS COLOSSAR** ⚒️  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -11,14 +11,15 @@
 ## 🎯 OÙ ON EN EST
 
 **Phase actuelle :** 🚧 **Phase 3 EN COURS** — Combat Colossar + Necram + Ghostra (~16 briques en 5 blocs)
-**Brique en cours :** **3.2 Stats Colossar** (2 PM + ressource Fondation FD cap 3 + passif Densité Inerte -8% dmg/obstacle cap -24%, +30 HP/Pilier détruit, +20 dmg melee si adjacent obstacle)
+**Brique en cours :** **3.3.a Sorts offensifs Colossar** (Frappe Lourde, Onde de Choc, Marteau Punisseur, Choc Sismique, Représailles)
 **Bloc A Phase 3 :** ✅ **3.1 framework obstacles VALIDÉE** + ✅ **3.1.bis Colossar assets VALIDÉE** (14 mai 2026)
-**Bug connu (à fix en 3.3.b)** : Pilier ne bloque pas les LoS des sorts à distance (Bible V7.1 dit "Pilier bloque lignes de vue/tir"), et Charge Brutale Soulrender traverse le Pilier (Bible : devrait être bloquée par obstacle sur trajectoire). Sera intégré quand les sorts Pilier/Mur arrivent en 3.3.b
+**Bloc B Phase 3 (en cours)** : ✅ **3.2 Stats + FD + Densité Inerte VALIDÉE** (14 mai 2026 — passif complet branché : +1 FD spawn obstacle, -8%/obstacle dmg reduction (cap -24%), +30 HP Pilier détruit, +1 FD push contre obstacle/bord). Bonus +20 dmg adjacence obstacle préparé (helper) mais branché plus tard quand sorts Colossar adjacence-aware arrivent
+**Bug connu (à fix en 3.3.b)** : Pilier ne bloque pas les LoS des sorts à distance (Bible V7.1 dit "Pilier bloque lignes de vue/tir"), et Charge Brutale Soulrender traverse le Pilier. Sera intégré quand les sorts Pilier/Mur arrivent en 3.3.b
 **Cadrage Phase 3** : 5 blocs (A préreqs / B Colossar / C Necram / D Ghostra / E IA Hard+Replay+Debug) — séquentiel par classe
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)
 **Statut Phase 2 :** ✅ **CLÔTURÉE le 13 mai 2026 soir**. 17/17 briques validées + 2.12.bis + 2.13.a/b/c/d/e + 2.14 + 2.15.a/b/c + **2.16.a/b/c complets** (Bloc E IA). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C ✅ 3/3, 2.13 ✅, 2.14 ✅, 2.15 ✅, **2.16 ✅ TERMINÉ** (IA Easy random + IA Medium greedy + scène 30_CombatIA + overlay Victory/Defeat + selecteur difficulté + AI pacing + mouvement cardinal cell-by-cell). **🏆 Soulrender + Nightseer 100% jouables, combat 1v1 vs IA E2E**.
 
-**CombatRulesVersion :** **11** (bump 3.1 — ajout DSL Obstacle + ObstacleSingleton, schema combat impacte la compat replay).
+**CombatRulesVersion :** **12** (bump 3.2 — ajout passif Densité Inerte, modifie damage equation, schema gameplay change).
 
 **Convention temporelle (depuis 2.14) :** **TurnNumber = round complet** (P0+P1 = 1 round, sémantique Dofus). Toutes les durées Bible V7.1 "N tours" = N rounds. Décrémentation statuses/marques/voiles/terrains uniquement en fin de dernier sous-tour du round. Cf memory `project_turn_semantics.md`.
 
@@ -836,6 +837,24 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 14 mai 2026 — 🪨 Brique 3.2 ✅ Stats Colossar + Ressource FD + Passif Densité Inerte
+- **Livraison** : 1 NEW (`ColossarPassif.cs` helpers) + 3 MOD (`ObstacleHelpers.cs`, `SpellSystem.cs`, `GameVersion.cs`).
+- **`ColossarPassif.cs`** : helpers `CountObstaclesOwnedByPlayer`, `GetDamageReductionPercent` (8%/obstacle cap 24%), `ApplyDamageReduction`, `IsAdjacentToOwnObstacle` (préparé pour 3.3.a +20 dmg adjacence), `GainFondation` (no-op si pas Colossar — defensif).
+- **Hooks branchés** :
+  - `ObstacleHelpers.SpawnObstacle` → +1 FD au owner si Class=Colossar (Bible "+1 FD chaque fois que pose Pilier/Mur"). Pour 3.2 déclenché par DebugSpawnObstacleCommand, sera repris naturellement par les sorts Pilier/Mur 3.3.b.
+  - `ObstacleHelpers.DestroyObstacle` → +30 HP au owner si Class=Colossar ET Kind=Pillar (Bible Densité Inerte "Pilier détruit").
+  - `SpellSystem.cs` damage loop standard ligne ~395 → applique `ColossarPassif.ApplyDamageReduction` sur `dmgThisTarget` AVANT shield/HP calc, si target=Colossar.
+  - `SpellSystem.cs` `PushAndTrigger` → ajout arg optionnel `Combatant* caster`, ajout check `HasObstacleAt` (cohérence avec MovementSystem 3.1), ajout +1 FD si caster=Colossar et push s'arrête contre obstacle OU bord de map. 2 call sites updated (Bourrasque + Souffle Glacial).
+- **Bug détecté pendant test E2E + fix** : Charge Brutale (Soulrender) bypass le damage loop standard et fait son damage manuel ligne ~919. Mon hook initial ne couvrait QUE le pipeline standard donc la Charge Brutale ignorait Densité Inerte (Lorenzo a vu `Damage 180 (HP loss 180)` au lieu de 165 attendu). Fix : ajout du même bloc réduction dans le handler Charge Brutale juste avant le shield calc. Validé après fix : `[Densite Inerte] -8% dmg sur P0 (Charge Brutale) : 180 -> 165`.
+- **Décisions architecturales** :
+  - Passif sans état persistent : recalcule à la volée depuis `Filter<Obstacle>` à chaque damage. Cheap (max ~6 obstacles concurrents). Pas de cache prématuré.
+  - `OwnerPlayerIndex` (redondant vs `Owner` EntityRef) utilisé pour le count car résilient si l'entity caster est détruit entre temps (edge case mais propre).
+  - Pacte de Sang / Curee MISS / Riposte Carmin = self-damage, donc Bible Densité Inerte ne s'applique pas (la Bible parle de "subir" des dégâts d'un attaquant). Skipped intentionnellement.
+- **Validation E2E Lorenzo (2 sessions de test)** : Spawn Pilier x3 → FD 1/3 → 2/3 → 3/3 ✓. Damage Pilier U×4 → destroy + Colossar +30 HP (`780 → 810`) ✓. Curée 150 → 126 (-16% avec 2 Piliers) ✓. Charge Brutale 180 → 165 (-8% avec 1 Pilier) ✓. Bourrasque P0 push P1 contre Pilier → `+1 FD sur P0 (Push contre obstacle) : 1 -> 2/3` ✓. **VERROU Bible fonctionnel**.
+- **Pour 3.3.a** : les sorts offensifs Colossar (Frappe Lourde, Onde de Choc, etc.) bénéficieront naturellement de Densité Inerte sur damage reçu. Le bonus +20 dmg adjacence obstacle (Bible) sera branché dans le damage compute des sorts Colossar (helper `IsAdjacentToOwnObstacle` déjà prêt).
+
+---
 
 ### 14 mai 2026 — 🎨 Brique 3.1.bis ✅ Assets Colossar intégrés + switch P0 Colossar
 - **Livraison designer** : 35 fichiers (2 .aseprite stage0 NE/SE + 12 GIFs preview + 1 avatar + 1 marque FD + 1 tile fondation + 1 VFX strates + 17 icons sorts/passif/signature). Stages 1+2 viendront plus tard comme pour le Nightseer.

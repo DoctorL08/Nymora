@@ -365,6 +365,22 @@ namespace Quantum
                         volEpinesLastHitY = cy;
                     }
 
+                    // 3.2 — Densite Inerte (Bible V7.1 Colossar passif) : -8% dmg subis par
+                    // obstacle owner=cible actif, cap -24% (3 obstacles). Applique sur dmgThisTarget
+                    // BEFORE shield/HP calc, donc le shield absorbe le montant deja reduit (Bible :
+                    // "subit -X% degats" = c'est l'incoming qui est reduit). Helper no-op si target
+                    // != Colossar, donc safe pour tous les casters/cibles.
+                    if (targetC->Class == NymoraClass.Colossar)
+                    {
+                        int dmgBefore = dmgThisTarget;
+                        dmgThisTarget = ColossarPassif.ApplyDamageReduction(f, targetC, dmgThisTarget);
+                        if (dmgThisTarget != dmgBefore)
+                        {
+                            int pct = ColossarPassif.GetDamageReductionPercent(f, targetC);
+                            Log.Info($"[Densite Inerte] -{pct}% dmg sur P{targetC->PlayerIndex} : {dmgBefore} -> {dmgThisTarget}");
+                        }
+                    }
+
                     // Shield absorption (2.10.b) : ShieldActive absorbe avant HP.
                     // 2.11 Passif RAGE OUVERTE : si target <40% HP pre-damage ET caster Soulrender ET
                     // sort melee -> 50% des dgts bypass shield direct au HP. L'autre 50% va shield -> HP overflow.
@@ -888,6 +904,19 @@ namespace Quantum
                         int hpBeforeHit = hitC->HP;
                         // Shield absorption manuel (Charge Brutale non-pipeline).
                         int dmgLeft = SpellRegistry.ChargeBrutaleDamage;
+                        // 3.2 — Densite Inerte (Bible Colossar) appliquee AVANT shield, comme le
+                        // damage loop standard. Charge Brutale bypass le pipeline donc on rebranche
+                        // le hook ici manuellement (3.2 fix retour Lorenzo).
+                        if (hitC->Class == NymoraClass.Colossar)
+                        {
+                            int dmgBeforeReduc = dmgLeft;
+                            dmgLeft = ColossarPassif.ApplyDamageReduction(f, hitC, dmgLeft);
+                            if (dmgLeft != dmgBeforeReduc)
+                            {
+                                int pct = ColossarPassif.GetDamageReductionPercent(f, hitC);
+                                Log.Info($"[Densite Inerte] -{pct}% dmg sur P{hitC->PlayerIndex} (Charge Brutale) : {dmgBeforeReduc} -> {dmgLeft}");
+                            }
+                        }
                         int shieldBefore = StatusHelper.GetMagnitude(hitC, StatusKind.ShieldActive, 0);
                         if (shieldBefore > 0)
                         {
@@ -1148,7 +1177,7 @@ namespace Quantum
                     if (target != EntityRef.None
                         && f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC))
                     {
-                        PushAndTrigger(f, targetC, target, caster->GridX, caster->GridY, pushDist, currentTurn);
+                        PushAndTrigger(f, targetC, target, caster->GridX, caster->GridY, pushDist, currentTurn, caster);
                     }
                     break;
                 }
@@ -1172,7 +1201,7 @@ namespace Quantum
 
                         // Push 1 case loin du caster (depuis position courante).
                         PushAndTrigger(f, targetC, target, casterX, casterY,
-                            SpellRegistry.SouffleGlacialPushDistance, currentTurn);
+                            SpellRegistry.SouffleGlacialPushDistance, currentTurn, caster);
                         // -1 PM (1 tour).
                         StatusHelper.Apply(targetC, StatusKind.MovementMalus,
                             magnitude: SpellRegistry.SouffleGlacialPMReduce, turnsLeft: 1, currentTurn);
@@ -1417,14 +1446,18 @@ namespace Quantum
 
         /// <summary>
         /// 2.15.b — Push un combattant N cases loin du caster (axe principal). Stoppe a la
-        /// 1ere case bloquante (mur, occupant). Si la case finale a un Trap : declenchement
-        /// via FogHelpers.TryTriggerTrapOnEnter.
+        /// 1ere case bloquante (mur, occupant, OBSTACLE depuis 3.2). Si la case finale a un Trap :
+        /// declenchement via FogHelpers.TryTriggerTrapOnEnter.
+        ///
+        /// 3.2 — Si caster est Colossar ET le push s'arrete contre un obstacle ou bord de map :
+        /// +1 FD au caster (Bible V7.1 Fondation : "+1 FD chaque fois qu'un ennemi est PUSH/PULL
+        /// contre un mur, un pilier, ou un bord de map").
         ///
         /// Direction calculee depuis (casterX, casterY) -> (target.GridX, target.GridY) :
         /// signe sur l'axe dominant (Manhattan). Si delta == (0,0) : no-op.
         /// </summary>
         private static void PushAndTrigger(Frame f, Combatant* targetC, EntityRef targetEntity,
-            int casterX, int casterY, int distance, int currentTurn)
+            int casterX, int casterY, int distance, int currentTurn, Combatant* caster = null)
         {
             int dx = targetC->GridX - casterX;
             int dy = targetC->GridY - casterY;
@@ -1444,17 +1477,34 @@ namespace Quantum
             int curX = targetC->GridX;
             int curY = targetC->GridY;
             int steps = 0;
+            // 3.2 — track le motif d'arret pour la regle Fondation Colossar.
+            //   stoppedAgainstBorder : push s'arrete car case suivante hors grille.
+            //   stoppedAgainstObstacle : push s'arrete car case suivante a un obstacle (Pilier/Mur).
+            //   stoppedAgainstOccupant : push s'arrete contre un autre combatant (pas Bible Colossar gain).
+            bool stoppedAgainstBorder = false;
+            bool stoppedAgainstObstacle = false;
             for (int s = 0; s < distance; s++)
             {
                 int nx = curX + stepX;
                 int ny = curY + stepY;
-                if (!GridHelpers.InBounds(nx, ny)) break;
+                if (!GridHelpers.InBounds(nx, ny)) { stoppedAgainstBorder = true; break; }
                 if (!GridHelpers.IsWalkable(f, nx, ny)) break;
                 if (GridHelpers.GetOccupant(f, nx, ny) != EntityRef.None) break;
+                if (ObstacleHelpers.HasObstacleAt(f, nx, ny)) { stoppedAgainstObstacle = true; break; }
                 curX = nx;
                 curY = ny;
                 steps++;
             }
+
+            // 3.2 — Bible Fondation : +1 FD au Colossar si push contre obstacle ou bord, MEME si
+            // steps == 0 (la cible etait deja collee a un mur/Pilier). C'est un push qui "ecrase"
+            // contre la barriere, c'est ce qui compte.
+            if (caster != null && (stoppedAgainstObstacle || stoppedAgainstBorder))
+            {
+                string reason = stoppedAgainstObstacle ? "Push contre obstacle" : "Push contre bord";
+                ColossarPassif.GainFondation(caster, reason);
+            }
+
             if (steps == 0) return;
 
             // Update grid + combatant pos.
