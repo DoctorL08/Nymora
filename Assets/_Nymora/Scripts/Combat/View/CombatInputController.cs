@@ -155,14 +155,13 @@ namespace Nymora.Combat.View
             // Sera retiree en 2.15 quand les sorts Nightseer (Pas Furtif, Voile d'Ombre, Champ
             // de Mines) feront ca proprement via SpellSystem.
             bool keyT  = UnityEngine.Input.GetKeyDown(KeyCode.T);
-            // 3.3.b.i — Colossar TACTIQUES (touches P/O identiques AZERTY/QWERTY) :
-            //   P = Pilier               (3 PA, range 1 case vide, 200 HP / 3 tours, +1 FD, bloque LoS+mvt)
-            //   O = Mur de Pierre        (5 PA, range 2, ligne 3 cases perp, 150 HP/case / 2 tours, +1 FD/case)
+            // 3.3.b.iii — Colossar TACTIQUES Bible-correct (touches P/O/Y/,/. identiques AZERTY/QWERTY) :
+            //   P = Pilier               (3 PA, range 3 case vide, 200 HP / 3T, +1 FD, bloque LoS+mvt)
+            //   O = Mur de Pierre        (4 PA, range 4, 3 segments perp 150 HP / 2T ; Shift+O = 1 FD -> 5 segments)
+            //   Y = Ancrage              (2 PA, range 4 ENEMY, -2 PM 2T + immune push/pull/tp 1T)
+            //   , = Provocation          (2 PA, range 5 ENEMY, 1T : -1 PM + sorts non-cibling +2 PA + 100 dmg auto si pas adjacent fin tour)
+            //   . = Brisure              (3 PA, range 2 ENEMY, 90 dgts + retire 1 buff/bouclier (sinon TRAUMA -2 PA))
             //   U = DEBUG damage 50 sur obstacle sous souris (gardee pour test destruction +30 HP Densite Inerte)
-            // 3.3.b.ii — Colossar TACTIQUES suite (touches Y / , / . identiques AZERTY/QWERTY) :
-            //   Y = Ancrage              (2 PA, self, AnchorImmune 2 tours : immune push/pull + -50% dgts subis)
-            //   , = Provocation          (3 PA, range 4, ennemi -> Provoked 2 tours, stub IA jusqu'a 3.8)
-            //   . = Brisure              (3 PA, range 5, cible obstacle adverse, detruit + 60 dgts AoE rayon 1)
             bool keyP  = UnityEngine.Input.GetKeyDown(KeyCode.P);
             bool keyO  = UnityEngine.Input.GetKeyDown(KeyCode.O);
             bool keyU  = UnityEngine.Input.GetKeyDown(KeyCode.U);
@@ -392,7 +391,9 @@ namespace Nymora.Combat.View
             }
             if (keyO)
             {
-                SendSpellAt(game, senderPlayer, SpellId.ColossarMurDePierre, gx, gy, 0);
+                // Shift+O : 1 FD optionnel -> 5 segments au lieu de 3 (Bible).
+                byte murHg = (byte)(shiftHeld ? 1 : 0);
+                SendSpellAt(game, senderPlayer, SpellId.ColossarMurDePierre, gx, gy, murHg);
                 return;
             }
             if (keyU)
@@ -403,12 +404,11 @@ namespace Nymora.Combat.View
                 return;
             }
 
-            // 3.3.b.ii — Colossar tactiques suite.
+            // 3.3.b.iii — Colossar tactiques Bible-correct (target = case souris pour tous).
             if (keyY)
             {
-                // Ancrage = self.
-                if (TryGetCasterCell(game, senderPlayer, out int cxAn, out int cyAn))
-                    SendSpellAt(game, senderPlayer, SpellId.ColossarAncrage, cxAn, cyAn, 0);
+                // Ancrage Bible : ENEMY range 4 (vs Self anciennement). Target = case souris.
+                SendSpellAt(game, senderPlayer, SpellId.ColossarAncrage, gx, gy, 0);
                 return;
             }
             if (keyComma)
@@ -418,6 +418,7 @@ namespace Nymora.Combat.View
             }
             if (keyPeriod)
             {
+                // Brisure Bible : ENEMY range 2 (vs Obstacle range 5 anciennement). Target = case souris.
                 SendSpellAt(game, senderPlayer, SpellId.ColossarBrisure, gx, gy, 0);
                 return;
             }

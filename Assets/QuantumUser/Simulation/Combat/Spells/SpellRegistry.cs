@@ -181,27 +181,45 @@ namespace Quantum
         public const int ChocSismiquePMTurns          = 1;
         public const int ChocSismiqueRange            = 4;    // portee Manhattan
 
-        // 3.3.b.i — Pilier (sort tactique Colossar).
+        // 3.3.b.i — Pilier (sort tactique Colossar) — RANGE 3 Bible V7.1.
         public const int PilierHP                     = 200;  // HP du Pilier pose
         public const int PilierTurns                  = 3;    // duree avant expiration auto (TurnEnd)
+        public const int PilierRangeMax               = 3;    // portee Bible (case vide a moins de 3 cases)
 
-        // 3.3.b.i — Mur de Pierre (sort tactique Colossar).
+        // 3.3.b.i — Mur de Pierre (sort tactique Colossar) — 4 PA / RANGE 4 / option 1 FD -> 5 segments.
         public const int MurDePierreSegmentHP         = 150;  // HP par segment de mur
         public const int MurDePierreTurns             = 2;    // duree avant expiration auto
-        public const int MurDePierreSegments          = 3;    // nombre de cases en ligne perpendiculaire
+        public const int MurDePierreSegmentsBase      = 3;    // segments de base (sans option ressource)
+        public const int MurDePierreSegmentsBoosted   = 5;    // segments si option 1 FD depense
+        public const int MurDePierreRangeMax          = 4;    // portee Bible
 
-        // 3.3.b.ii — Ancrage (Colossar).
-        public const int AncrageDmgReductionPct       = 50;   // -50% dgts subis pendant la duree
-        public const int AncrageTurns                 = 2;    // duree AnchorImmune
+        // 3.3.b.iii — Ancrage Bible-correct (Colossar TACTIQUE anti-mobilite) — refacto rétroactif.
+        // Bible : 2 PA, range 4, ENEMY. Cible perd 2 PM pendant 2 tours ET ne peut pas etre deplacee
+        // (push/pull/teleport) pendant 1 tour. Pas de damage. NE PAS confondre avec self-buff initial.
+        public const int AncrageRangeMax              = 4;
+        public const int AncrageMovementMalusMag      = 2;    // -2 PM
+        public const int AncrageMovementMalusTurns    = 2;
+        public const int AncrageImmuneTurns           = 1;    // immune push/pull/teleport 1 tour
 
-        // 3.3.b.ii — Provocation (Colossar).
-        public const int ProvocationTurns             = 2;    // duree Provoked sur la cible
-        public const int ProvocationRangeMax          = 4;    // portee Manhattan
+        // 3.3.b.iii — Provocation Bible-correct (Colossar) — refacto rétroactif.
+        // Bible : 2 PA, range 5, 1 tour. Sorts non-ciblant le caster coutent +2 PA pour la cible.
+        // -1 PM. Si la cible n'est pas adjacente au caster en fin de SON tour : 100 dgts auto.
+        public const int ProvocationRangeMax          = 5;
+        public const int ProvocationTurns             = 1;    // 1 tour Bible (skip-decrement convention 1 round actif)
+        public const int ProvocationMovementMalusMag  = 1;    // -1 PM
+        public const int ProvocationMovementMalusTurns = 1;
+        public const int ProvocationCostBumpNonCible  = 2;    // +2 PA pour les sorts non-ciblant le provocateur
+        public const int ProvocationAutoDamageNotAdj  = 100;  // 100 dgts auto si pas adjacent fin tour
 
-        // 3.3.b.ii — Brisure (Colossar) — anti-obstacle.
-        public const int BrisureRangeMax              = 5;    // portee Manhattan
-        public const int BrisureAoeDmg                = 60;   // dgts ennemis adjacents a l'obstacle detruit
-        public const int BrisureAoeRadius             = 1;    // rayon Manhattan autour de l'obstacle
+        // 3.3.b.iii — Brisure Bible-correct (Colossar) — anti-buff/bouclier — refacto rétroactif.
+        // Bible : 3 PA range 2, ENEMY. 90 dgts. Retire 1 buff/bouclier de la cible. Si pas de buff :
+        // applique TRAUMA (-2 PA prochain tour). MVP : retire en priorite ShieldActive (Peau de Fer,
+        // Stoicisme), sinon RoncesAura (Camouflage Ronces), sinon BuffNextOffensiveDmgPercent (Pacte de
+        // Sang), sinon RipostMelee (Riposte Carmin / Représailles), sinon RageInsatiableActive.
+        public const int BrisureRangeMax              = 2;
+        public const int BrisureDamage                = 90;
+        public const int BrisureTraumaPAMag           = 2;    // ActionMalus -2 PA si pas de buff
+        public const int BrisureTraumaTurns           = 1;
 
         public static bool TryGet(SpellId id, out SpellDef def)
         {
@@ -952,16 +970,16 @@ namespace Quantum
                 // COLOSSAR — Bible V7.1 (3.3.b.i) — TACTIQUES
                 // -------------------------------------------------------------
 
-                // Pilier : 3 PA, range 1 (case adjacente vide), pose 1 obstacle Pilier 200 HP / 3 tours.
-                // +1 FD via SpawnObstacle hook (3.2). Bloque mouvement + LoS (helper LoS hook).
+                // Pilier (3.3.b.iii Bible-correct) : 3 PA, range 3, case vide. Pose 1 Pilier 200 HP / 3 tours.
+                // +1 FD via SpawnObstacle hook (3.2). Bloque mouvement + LoS.
                 case SpellId.ColossarPilier:
                     def = new SpellDef
                     {
                         PACost = 3,
                         Shape = TargetingShape.SingleTile,
-                        Filter = TargetingFilter.EmptyTile, // case vide obligatoire
+                        Filter = TargetingFilter.EmptyTile,
                         RangeMin = 1,
-                        RangeMax = 1,
+                        RangeMax = PilierRangeMax,           // 3 (Bible)
                         DamageAmount = 0,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
@@ -970,34 +988,35 @@ namespace Quantum
                     };
                     return true;
 
-                // Mur de Pierre : 5 PA, range 2, pose ligne 3 cases (perpendiculaire axe caster->cible)
-                // chaque case = 150 HP / 2 tours. +1 FD par case posee (jusqu'a 3 FD via SpawnObstacle hook).
-                // Cases occupees ou deja obstacle = skipped (no spawn, pas de FD).
+                // Mur de Pierre (3.3.b.iii Bible-correct) : 4 PA, range 4, ligne 3 cases (perpendiculaire
+                // axe caster->cible) 150 HP / 2 tours. Optionnel : 1 FD -> 5 segments au lieu de 3.
+                // +1 FD par segment pose via SpawnObstacle hook.
                 case SpellId.ColossarMurDePierre:
                     def = new SpellDef
                     {
-                        PACost = 5,
-                        Shape = TargetingShape.SingleTile, // handler custom pose 3 segments
-                        Filter = TargetingFilter.EmptyTile, // case centre du mur doit etre vide
+                        PACost = 4,                          // Bible 4 (vs 5 prev)
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.EmptyTile,
                         RangeMin = 1,
-                        RangeMax = 2,
+                        RangeMax = MurDePierreRangeMax,      // 4 (Bible)
                         DamageAmount = 0,
                         HGCostMandatory = 0,
-                        HGCostMaxOptional = 0,
+                        HGCostMaxOptional = 1,               // option 1 FD -> 5 segments (Bible)
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
                     };
                     return true;
 
-                // Ancrage : 2 PA, self, applique AnchorImmune 2 tours (immune push/pull + -50% dgts subis).
+                // Ancrage (3.3.b.iii Bible-correct) : 2 PA, range 4, ENEMY. Anti-mobilite ultime.
+                // Cible : -2 PM 2 tours + immune push/pull/teleport 1 tour. Pas de damage.
                 case SpellId.ColossarAncrage:
                     def = new SpellDef
                     {
                         PACost = 2,
                         Shape = TargetingShape.SingleTile,
-                        Filter = TargetingFilter.Self,
-                        RangeMin = 0,
-                        RangeMax = 0,
+                        Filter = TargetingFilter.Enemy,      // Bible : ENEMY (pas Self !)
+                        RangeMin = 1,
+                        RangeMax = AncrageRangeMax,          // 4 (Bible)
                         DamageAmount = 0,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
@@ -1006,16 +1025,17 @@ namespace Quantum
                     };
                     return true;
 
-                // Provocation : 3 PA, range 4, applique Provoked 2 tours sur ennemi.
-                // Stub MVP : status apply OK, effet IA en 3.8 (force l'attaque vers le caster).
+                // Provocation (3.3.b.iii Bible-correct) : 2 PA, range 5, 1 tour. Apply Provoked + -1 PM.
+                // Hooks : sorts non-ciblant le caster coutent +2 PA pour la cible (EffectiveStats),
+                // 100 dmg auto si pas adjacent au caster en fin de SON tour (TurnSystem.EnterTurnEnd).
                 case SpellId.ColossarProvocation:
                     def = new SpellDef
                     {
-                        PACost = 3,
+                        PACost = 2,                          // Bible 2 (vs 3 prev)
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.Enemy,
                         RangeMin = 1,
-                        RangeMax = ProvocationRangeMax,
+                        RangeMax = ProvocationRangeMax,      // 5 (Bible vs 4 prev)
                         DamageAmount = 0,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
@@ -1024,21 +1044,22 @@ namespace Quantum
                     };
                     return true;
 
-                // Brisure : 3 PA, range 5, cible obstacle adverse uniquement (validation custom dans handler).
-                // Detruit l'obstacle + 60 dgts AoE rayon 1 sur ennemis adjacents au moment du cast.
+                // Brisure (3.3.b.iii Bible-correct) : 3 PA range 2, ENEMY. 90 dgts + retire 1 buff/bouclier.
+                // Si pas de buff : applique TRAUMA (-2 PA prochain tour). Anti-tank/anti-tortue Bible.
+                // Custom handler car logique de retrait de buff (priorite ShieldActive d'abord).
                 case SpellId.ColossarBrisure:
                     def = new SpellDef
                     {
                         PACost = 3,
                         Shape = TargetingShape.SingleTile,
-                        Filter = TargetingFilter.AnyTile, // validation obstacle adverse dans handler
+                        Filter = TargetingFilter.Enemy,      // Bible : ENEMY (pas obstacle !)
                         RangeMin = 1,
-                        RangeMax = BrisureRangeMax,
-                        DamageAmount = 0,
+                        RangeMax = BrisureRangeMax,          // 2 (Bible vs 5 prev)
+                        DamageAmount = BrisureDamage,        // 90 (Bible)
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
-                        IsOffensive = 1, // 1 pour pipeline (les dgts sortent dans le handler custom)
+                        IsOffensive = 1,                     // pipeline standard (90 dmg -> Densite Inerte etc.)
                     };
                     return true;
 

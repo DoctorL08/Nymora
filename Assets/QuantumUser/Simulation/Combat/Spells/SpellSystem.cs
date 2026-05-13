@@ -77,6 +77,38 @@ namespace Quantum
             int targetHPRatio = EffectiveStats.ResolveTargetHPRatio(f, cmd.TargetX, cmd.TargetY, playerIndex);
 
             int effectivePACost = EffectiveStats.GetPACost(spellDef, caster, targetHPRatio);
+
+            // 3.3.b.iii — Provocation Bible : sorts non-ciblant le provocateur coutent +2 PA.
+            // Magnitude Provoked = PlayerIndex du provocateur. Lookup combatant correspondant, si la
+            // case ciblee != case du provocateur -> bump cost. Note : un sort Self du provoque (Pacte,
+            // Peau de Fer, etc.) compte aussi comme "non-ciblant" donc bump.
+            if (StatusHelper.Has(caster, StatusKind.Provoked))
+            {
+                int provocateurPi = StatusHelper.GetMagnitude(caster, StatusKind.Provoked, -1);
+                if (provocateurPi >= 0)
+                {
+                    bool targetIsProvocateur = false;
+                    var provLookup = f.Filter<Combatant>();
+                    while (provLookup.NextUnsafe(out EntityRef _, out Combatant* provLookupC))
+                    {
+                        if (provLookupC->PlayerIndex == provocateurPi)
+                        {
+                            if (provLookupC->GridX == cmd.TargetX && provLookupC->GridY == cmd.TargetY)
+                            {
+                                targetIsProvocateur = true;
+                            }
+                            break;
+                        }
+                    }
+                    if (!targetIsProvocateur)
+                    {
+                        int costBefore = effectivePACost;
+                        effectivePACost += SpellRegistry.ProvocationCostBumpNonCible;
+                        Log.Info($"[Provocation] +{SpellRegistry.ProvocationCostBumpNonCible} PA cost (target ({cmd.TargetX},{cmd.TargetY}) != provocateur P{provocateurPi}) : {costBefore} -> {effectivePACost}");
+                    }
+                }
+            }
+
             if (caster->PA < effectivePACost)
             {
                 Log.Warn($"[Spell] rejet : PA {caster->PA} < cost {effectivePACost} (base {spellDef.PACost})");
@@ -1687,10 +1719,13 @@ namespace Quantum
                         wPerpStepY = 0;
                     }
 
-                    // Pose 3 segments : centre (offset 0), -1, +1 sur axe perpendiculaire.
+                    // 3.3.b.iii — option Bible : 1 FD depense (hgSpend >= 1) -> 5 segments au lieu de 3.
+                    int murSegments = (hgSpend >= 1)
+                        ? SpellRegistry.MurDePierreSegmentsBoosted    // 5
+                        : SpellRegistry.MurDePierreSegmentsBase;      // 3
                     int segmentsSpawned = 0;
-                    for (int offset = -(SpellRegistry.MurDePierreSegments / 2);
-                             offset <= SpellRegistry.MurDePierreSegments / 2;
+                    for (int offset = -(murSegments / 2);
+                             offset <= murSegments / 2;
                              offset++)
                     {
                         int wx = cmd.TargetX + wPerpStepX * offset;
@@ -1703,31 +1738,40 @@ namespace Quantum
                             expiresOnTurn: currentTurn + SpellRegistry.MurDePierreTurns);
                         if (wallEntity != EntityRef.None) segmentsSpawned++;
                     }
-                    Log.Info($"[Spell] Mur de Pierre : {segmentsSpawned}/{SpellRegistry.MurDePierreSegments} segments poses (centre {cmd.TargetX},{cmd.TargetY}, axe perp {wPerpStepX},{wPerpStepY})");
+                    Log.Info($"[Spell] Mur de Pierre : {segmentsSpawned}/{murSegments} segments poses (centre {cmd.TargetX},{cmd.TargetY}, axe perp {wPerpStepX},{wPerpStepY}, option boost FD={hgSpend})");
                     break;
                 }
 
                 // -------------------------------------------------------------
-                // 3.3.b.ii — Colossar Tactiques : Ancrage + Provocation + Brisure
+                // 3.3.b.iii — Colossar Tactiques Bible-correct (refacto rétroactif)
                 // -------------------------------------------------------------
 
+                // Ancrage Bible : 2 PA, range 4, ENEMY. Cible : -2 PM 2 tours + immune push/pull/teleport
+                // 1 tour. Pas de damage. Anti-mobilite ultime (anti-teleport Ghostra notamment).
                 case SpellId.ColossarAncrage:
                 {
-                    // Bible : self, AnchorImmune 2 tours. Magnitude = % reduction dgts (50).
-                    // Hooks ailleurs : PushAndTriggerEx (push annule), Empoignade case (pull annule),
-                    // damage compute (-Magnitude% dmg subis).
-                    StatusHelper.Apply(caster, StatusKind.AnchorImmune,
-                        magnitude: SpellRegistry.AncrageDmgReductionPct,
-                        turnsLeft: SpellRegistry.AncrageTurns, currentTurn);
-                    Log.Info($"[Spell] Ancrage : P{caster->PlayerIndex} immune push/pull + -{SpellRegistry.AncrageDmgReductionPct}% dgts subis pour {SpellRegistry.AncrageTurns} tours");
+                    EntityRef ancrageTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (ancrageTarget == EntityRef.None
+                        || !f.Unsafe.TryGetPointer<Combatant>(ancrageTarget, out Combatant* ancrageC))
+                    {
+                        Log.Warn($"[Spell] Ancrage : pas de cible sur ({cmd.TargetX},{cmd.TargetY}), no-op");
+                        break;
+                    }
+                    StatusHelper.Apply(ancrageC, StatusKind.MovementMalus,
+                        magnitude: SpellRegistry.AncrageMovementMalusMag,
+                        turnsLeft: SpellRegistry.AncrageMovementMalusTurns, currentTurn);
+                    StatusHelper.Apply(ancrageC, StatusKind.AnchorImmune,
+                        magnitude: 0,                       // pas de dmg reduc, juste immune deplacement
+                        turnsLeft: SpellRegistry.AncrageImmuneTurns, currentTurn);
+                    Log.Info($"[Spell] Ancrage : P{ancrageC->PlayerIndex} -{SpellRegistry.AncrageMovementMalusMag} PM ({SpellRegistry.AncrageMovementMalusTurns}T) + immune push/pull/tp ({SpellRegistry.AncrageImmuneTurns}T)");
                     break;
                 }
 
+                // Provocation Bible : 2 PA, range 5, 1 tour. Apply Provoked + -1 PM. Effets passifs :
+                // sorts non-ciblant le caster coutent +2 PA pour la cible (hook EffectiveStats), et
+                // 100 dmg auto si pas adjacent au caster en fin de SON tour (hook TurnSystem.EnterTurnEnd).
                 case SpellId.ColossarProvocation:
                 {
-                    // Bible : ennemi range 4 -> Provoked 2 tours (force l'attaque vers le caster).
-                    // Stub MVP : status apply + duree decrement OK. Effet IA en 3.8 IA Hard MCTS.
-                    // Magnitude = PlayerIndex du provocateur (caster) pour traceabilite.
                     EntityRef provTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
                     if (provTarget == EntityRef.None
                         || !f.Unsafe.TryGetPointer<Combatant>(provTarget, out Combatant* provC))
@@ -1736,82 +1780,75 @@ namespace Quantum
                         break;
                     }
                     StatusHelper.Apply(provC, StatusKind.Provoked,
-                        magnitude: caster->PlayerIndex,
+                        magnitude: caster->PlayerIndex,     // PlayerIndex provocateur (lookup dans hooks)
                         turnsLeft: SpellRegistry.ProvocationTurns, currentTurn);
-                    Log.Info($"[Spell] Provocation : P{provC->PlayerIndex} provoque par P{caster->PlayerIndex} pour {SpellRegistry.ProvocationTurns} tours (stub IA, effet en 3.8)");
+                    StatusHelper.Apply(provC, StatusKind.MovementMalus,
+                        magnitude: SpellRegistry.ProvocationMovementMalusMag,
+                        turnsLeft: SpellRegistry.ProvocationMovementMalusTurns, currentTurn);
+                    Log.Info($"[Spell] Provocation : P{provC->PlayerIndex} provoque par P{caster->PlayerIndex} pour {SpellRegistry.ProvocationTurns}T (-{SpellRegistry.ProvocationMovementMalusMag} PM, +{SpellRegistry.ProvocationCostBumpNonCible} PA cost sorts non-ciblant, {SpellRegistry.ProvocationAutoDamageNotAdj} dmg auto si pas adjacent fin tour)");
                     break;
                 }
 
+                // Brisure Bible : 3 PA range 2, ENEMY. 90 dgts (pipeline standard avec Densite Inerte/
+                // Ancrage applies en amont). En PLUS : retire 1 buff/bouclier de la cible. Si pas de
+                // buff trouve : applique TRAUMA -2 PA. Priorite Bible : ShieldActive (Peau de Fer/
+                // Stoicisme) > RoncesAura (Camouflage Ronces) > AnchorImmune (Stoicisme immune part) >
+                // BuffNextOffensiveDmgPercent (Pacte) > RipostMelee (Riposte/Représailles) >
+                // RageInsatiableActive. Le 90 dmg est applique par le pipeline (IsOffensive=1).
                 case SpellId.ColossarBrisure:
                 {
-                    // Bible : range 5, cible obstacle adverse uniquement. Le detruit + 60 dgts AoE rayon 1
-                    // sur ennemis adjacents au moment du cast.
-                    // Validation custom : la case ciblee doit avoir un obstacle non-OWN (l'obstacle OWN
-                    // serait du friendly fire — Bible silencieux mais on rejette).
-                    EntityRef obstacleE = ObstacleHelpers.GetObstacleAt(f, cmd.TargetX, cmd.TargetY);
-                    if (obstacleE == EntityRef.None
-                        || !f.Unsafe.TryGetPointer<Obstacle>(obstacleE, out Obstacle* obstacleP))
+                    EntityRef brisureTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (brisureTarget == EntityRef.None
+                        || !f.Unsafe.TryGetPointer<Combatant>(brisureTarget, out Combatant* brisureC))
                     {
-                        Log.Warn($"[Spell] Brisure : pas d'obstacle sur ({cmd.TargetX},{cmd.TargetY}), no-op");
+                        Log.Warn($"[Spell] Brisure : pas de cible sur ({cmd.TargetX},{cmd.TargetY}), no-op effet buff");
                         break;
                     }
-                    if (obstacleP->OwnerPlayerIndex == caster->PlayerIndex)
+                    bool buffRemoved = false;
+                    if (StatusHelper.Has(brisureC, StatusKind.ShieldActive))
                     {
-                        Log.Warn($"[Spell] Brisure : obstacle OWN sur ({cmd.TargetX},{cmd.TargetY}), refus friendly fire");
-                        break;
+                        StatusHelper.Consume(brisureC, StatusKind.ShieldActive);
+                        Log.Info($"[Spell] Brisure : retire ShieldActive sur P{brisureC->PlayerIndex}");
+                        buffRemoved = true;
+                    }
+                    else if (StatusHelper.Has(brisureC, StatusKind.RoncesAura))
+                    {
+                        StatusHelper.Consume(brisureC, StatusKind.RoncesAura);
+                        Log.Info($"[Spell] Brisure : retire RoncesAura sur P{brisureC->PlayerIndex}");
+                        buffRemoved = true;
+                    }
+                    else if (StatusHelper.Has(brisureC, StatusKind.AnchorImmune))
+                    {
+                        StatusHelper.Consume(brisureC, StatusKind.AnchorImmune);
+                        Log.Info($"[Spell] Brisure : retire AnchorImmune sur P{brisureC->PlayerIndex}");
+                        buffRemoved = true;
+                    }
+                    else if (StatusHelper.Has(brisureC, StatusKind.BuffNextOffensiveDmgPercent))
+                    {
+                        StatusHelper.Consume(brisureC, StatusKind.BuffNextOffensiveDmgPercent);
+                        Log.Info($"[Spell] Brisure : retire BuffNextOffensiveDmgPercent (Pacte de Sang) sur P{brisureC->PlayerIndex}");
+                        buffRemoved = true;
+                    }
+                    else if (StatusHelper.Has(brisureC, StatusKind.RipostMelee))
+                    {
+                        StatusHelper.Consume(brisureC, StatusKind.RipostMelee);
+                        Log.Info($"[Spell] Brisure : retire RipostMelee sur P{brisureC->PlayerIndex}");
+                        buffRemoved = true;
+                    }
+                    else if (StatusHelper.Has(brisureC, StatusKind.RageInsatiableActive))
+                    {
+                        StatusHelper.Consume(brisureC, StatusKind.RageInsatiableActive);
+                        Log.Info($"[Spell] Brisure : retire RageInsatiableActive sur P{brisureC->PlayerIndex}");
+                        buffRemoved = true;
                     }
 
-                    // 1. Detruit l'obstacle (DestroyObstacle gere le hook +30 HP Pilier owner Colossar).
-                    int obstX = cmd.TargetX;
-                    int obstY = cmd.TargetY;
-                    ObstacleKind obstKind = obstacleP->Kind;
-                    ObstacleHelpers.DestroyObstacle(f, obstacleE);
-                    Log.Info($"[Spell] Brisure : {obstKind} adverse detruit en ({obstX},{obstY})");
-
-                    // 2. AoE 60 dgts rayon 1 Manhattan autour de la case obstacle, sur ennemis du caster.
-                    int* brisureAdj = stackalloc int[] { 0, 1, 0, -1, 1, 0, -1, 0 };
-                    int hitsBrisure = 0;
-                    for (int b = 0; b < 4; b++)
+                    if (!buffRemoved)
                     {
-                        int adjX = obstX + brisureAdj[b * 2];
-                        int adjY = obstY + brisureAdj[b * 2 + 1];
-                        if (!GridHelpers.InBounds(adjX, adjY)) continue;
-                        EntityRef adjE = GridHelpers.GetOccupant(f, adjX, adjY);
-                        if (adjE == EntityRef.None) continue;
-                        if (!f.Unsafe.TryGetPointer<Combatant>(adjE, out Combatant* adjBrC)) continue;
-                        if (adjBrC->PlayerIndex == caster->PlayerIndex) continue; // skip allies + caster
-
-                        int dmgBr = SpellRegistry.BrisureAoeDmg;
-                        // Densite Inerte si target Colossar.
-                        if (adjBrC->Class == NymoraClass.Colossar)
-                        {
-                            int dmgBrBefore = dmgBr;
-                            dmgBr = ColossarPassif.ApplyDamageReduction(f, adjBrC, dmgBr);
-                            if (dmgBr != dmgBrBefore)
-                            {
-                                int pctBr = ColossarPassif.GetDamageReductionPercent(f, adjBrC);
-                                Log.Info($"[Densite Inerte] -{pctBr}% dmg sur P{adjBrC->PlayerIndex} (Brisure) : {dmgBrBefore} -> {dmgBr}");
-                            }
-                        }
-                        // Ancrage hook.
-                        int anchorMagBr = StatusHelper.GetMagnitude(adjBrC, StatusKind.AnchorImmune, 0);
-                        if (anchorMagBr > 0 && dmgBr > 0)
-                        {
-                            int dmgBrBA = dmgBr;
-                            dmgBr = dmgBr * (100 - anchorMagBr) / 100;
-                            Log.Info($"[Ancrage] -{anchorMagBr}% dmg sur P{adjBrC->PlayerIndex} (Brisure) : {dmgBrBA} -> {dmgBr}");
-                        }
-
-                        int hpBeforeBr = adjBrC->HP;
-                        adjBrC->HP -= dmgBr;
-                        if (adjBrC->HP < 0) adjBrC->HP = 0;
-                        adjBrC->DamageTakenThisRound += dmgBr;
-                        Log.Info($"[Spell] Brisure AoE : {dmgBr} dgts sur P{adjBrC->PlayerIndex} ({adjX},{adjY}) HP {hpBeforeBr} -> {adjBrC->HP}");
-                        hitsBrisure++;
-                    }
-                    if (hitsBrisure == 0)
-                    {
-                        Log.Info($"[Spell] Brisure : pas d'ennemi adjacent a l'obstacle, AoE no-op");
+                        // Pas de buff -> TRAUMA -2 PA prochain tour
+                        StatusHelper.Apply(brisureC, StatusKind.ActionMalus,
+                            magnitude: SpellRegistry.BrisureTraumaPAMag,
+                            turnsLeft: SpellRegistry.BrisureTraumaTurns, currentTurn);
+                        Log.Info($"[Spell] Brisure : pas de buff sur P{brisureC->PlayerIndex} -> TRAUMA -{SpellRegistry.BrisureTraumaPAMag} PA prochain tour");
                     }
                     break;
                 }

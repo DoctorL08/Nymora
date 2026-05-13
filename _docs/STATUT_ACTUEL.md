@@ -3,7 +3,7 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 14 mai 2026 nuit profonde (⚒️ **Brique 3.3.b.ii Ancrage + Provocation + Brisure ✅ LIVRÉE + E2E VALIDÉE** — 3 sorts tactiques Colossar finalisés. Ancrage 50% dmg reduc + immune push/pull (StatusKind.AnchorImmune 13), Provocation stub IA (StatusKind.Provoked 14, effet IA en 3.8), Brisure cible obstacle adverse + 60 dgts AoE rayon 1. Hooks AnchorImmune dans 3 endroits (pipeline standard + Charge Brutale + Choc Sismique) + PushAndTriggerEx + Empoignade. E2E confirmé : Ancrage 6× -50% (180→90 sur Charge Brutale 2 tours), expiration round 3 OK retour à 180. Brique 3.3.b complète **5/5 sorts tactiques validés**. CombatRulesVersion 16) — **READY 3.3.c (5 sorts survie + Signature EFFONDREMENT)** ⚒️  
+**Dernière mise à jour :** 14 mai 2026 nuit profonde (⚒️ **Brique 3.3.b.iii Refacto Bible-correct ✅ LIVRÉE + E2E VALIDÉE** — 5 sorts tactiques Colossar refactorés Bible V7.1 exact suite découverte non-conformité. Pilier range 1→3, Mur 5 PA range 2→4 PA range 4 + option 1 FD = 5 segments boostés, Ancrage SELF -50% dmg → ENEMY range 4 -2 PM 2T + immune push 1T, Provocation 3 PA range 4 → 2 PA range 5 1T + 3 effets (-1 PM + +2 PA cost sorts non-ciblants + 100 dmg auto si pas adjacent fin tour), Brisure anti-obstacle inventé → cible ennemi 90 dmg pipeline + retire 1 buff prioritaire OU TRAUMA -2 PA. Memory rule créée : Bible-check obligatoire avant chaque livraison sort. E2E Provocation : -1 PM appliqué tour P1 confirmé. E2E Brisure : 90 dmg P1 1500→1410 + TRAUMA -2 PA appliqué P1 round suivant confirmé. CombatRulesVersion 17) — **READY 3.3.c (5 sorts survie + Signature EFFONDREMENT)** ⚒️  
 **Mis à jour par :** Claude (session courante)
 
 ---
@@ -13,14 +13,14 @@
 **Phase actuelle :** 🚧 **Phase 3 EN COURS** — Combat Colossar + Necram + Ghostra (~16 briques en 5 blocs)
 **Brique en cours :** **3.3.c Sorts survie Colossar + Signature EFFONDREMENT** (5 sorts survie + 1 signature). 3.3.a.iii cap Représailles 4 retours en backlog. Brisure E2E avec destruction obstacle adverse également en backlog (manque setup 2× Colossar ou debug spawn ENEMY).
 **Bloc A Phase 3 :** ✅ **3.1 framework obstacles VALIDÉE** + ✅ **3.1.bis Colossar assets VALIDÉE** (14 mai 2026)
-**Bloc B Phase 3 (en cours)** : ✅ **3.2 Stats + FD + Densité Inerte VALIDÉE** + ✅ **3.3.a.i Frappe Lourde + Représailles + bonus adjacence VALIDÉE** + ✅ **3.3.a.ii Onde de Choc + Marteau Punisseur + Choc Sismique VALIDÉE** + ✅ **3.3.b.i Pilier + Mur + LoS fix VALIDÉE** + ✅ **3.3.b.ii Ancrage + Provocation + Brisure VALIDÉE** (14 mai 2026 nuit). **5/5 sorts offensifs + 5/5 sorts tactiques Colossar livrés et E2E validés.** Reste 5 sorts survie + 1 signature (3.3.c) pour clore le Colossar.
+**Bloc B Phase 3 (en cours)** : ✅ **3.2 Stats + FD + Densité Inerte VALIDÉE** + ✅ **3.3.a.i Frappe Lourde + Représailles + bonus adjacence VALIDÉE** + ✅ **3.3.a.ii Onde de Choc + Marteau Punisseur + Choc Sismique VALIDÉE** + ✅ **3.3.b.i Pilier + Mur + LoS fix VALIDÉE** + ✅ **3.3.b.ii Ancrage + Provocation + Brisure VALIDÉE** + ✅ **3.3.b.iii Refacto Bible-correct VALIDÉE** (14 mai 2026 nuit). **5/5 sorts offensifs + 5/5 sorts tactiques Colossar Bible V7.1 conformes E2E validés.** Reste 5 sorts survie + 1 signature (3.3.c) pour clore le Colossar.
 **Bug LoS Pilier/Mur ✅ FIX 3.3.b.i** : helper `ObstacleHelpers.HasLineOfSight` (Bresenham 2D OWN-friendly), hook pré-cast `SpellNeedsLineOfSight` pour 14 sorts directs distance, Charge Brutale break sur obstacle, Choc Sismique stop sur non-OWN.
 **Backlog IA 3.8** : `AISystem.TryGreedyCastSingle` ne check pas LoS dans son estim → l'IA gaspille des PA en castant des sorts à travers obstacles (observé : Charge Brutale 2× contre Mur en un tour). Pas bloquant pour Phase 3, à fix en 3.8 IA Hard MCTS.
 **Cadrage Phase 3** : 5 blocs (A préreqs / B Colossar / C Necram / D Ghostra / E IA Hard+Replay+Debug) — séquentiel par classe
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)
 **Statut Phase 2 :** ✅ **CLÔTURÉE le 13 mai 2026 soir**. 17/17 briques validées + 2.12.bis + 2.13.a/b/c/d/e + 2.14 + 2.15.a/b/c + **2.16.a/b/c complets** (Bloc E IA). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C ✅ 3/3, 2.13 ✅, 2.14 ✅, 2.15 ✅, **2.16 ✅ TERMINÉ** (IA Easy random + IA Medium greedy + scène 30_CombatIA + overlay Victory/Defeat + selecteur difficulté + AI pacing + mouvement cardinal cell-by-cell). **🏆 Soulrender + Nightseer 100% jouables, combat 1v1 vs IA E2E**.
 
-**CombatRulesVersion :** **15** (bump 3.3.b.i — ajout 2 sorts tactiques Colossar Pilier+Mur, helper LoS Bresenham 2D, hook LoS pré-cast 14 sorts whitelistés, fix Charge Brutale break sur obstacle, fix Choc Sismique stop sur non-OWN).
+**CombatRulesVersion :** **17** (bump 3.3.b.iii — refacto Bible-correct 5 sorts tactiques Colossar : Pilier range 3, Mur 4 PA range 4 + option 1 FD = 5 segments, Ancrage ENEMY -2 PM 2T + immune push 1T, Provocation 2 PA range 5 1T avec -1 PM + bump cost +2 PA si target non-provocateur + 100 dmg auto fin tour si pas adjacent, Brisure 3 PA range 2 = 90 dmg + retire 1 buff prio sinon TRAUMA -2 PA).
 
 **Convention temporelle (depuis 2.14) :** **TurnNumber = round complet** (P0+P1 = 1 round, sémantique Dofus). Toutes les durées Bible V7.1 "N tours" = N rounds. Décrémentation statuses/marques/voiles/terrains uniquement en fin de dernier sous-tour du round. Cf memory `project_turn_semantics.md`.
 
@@ -838,6 +838,27 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 14 mai 2026 nuit profonde (5) — ⚒️ Brique 3.3.b.iii ✅ Refacto Bible-correct 5 sorts tactiques Colossar
+- **Contexte** : avant d'attaquer 3.3.c, Lorenzo a demandé `"Donne-moi la Bible exacte d'abord"`. Lecture Bible V7.1 a révélé que **les 5 sorts tactiques livrés en 3.3.b.i + 3.3.b.ii étaient NON-CONFORMES** (constantes inventées, effets manquants, mauvaise cible). Refacto rétroactif immédiat avant de continuer.
+- **5 fichiers** : `SpellRegistry.cs` (constantes Bible-exact : PilierRangeMax 1→3, MurRangeMax 2→4, MurSegmentsBoosted 5, AncrageRangeMax → 4 + 2 PM + 2T + 1T immune, ProvocationRangeMax 4→5 + Turns 2→1 + 3 effets, BrisureRangeMax 0→2 + 90 dmg + TraumaPAMag 2), `SpellSystem.cs` (5 cases refactorés + hook +2 PA cost via EffectiveStats.GetPACost si Provoked et target ≠ provocateur + Mur boost option `hgSpend >= 1 ? 5 : 3` segments + Brisure refacto 90 dmg pipeline + retire 1 buff prio (Shield > Ronces > AnchorImmune > BuffNextOffensive > RipostMelee > RageInsatiable) sinon TRAUMA ActionMalus -2 PA), `TurnSystem.cs` (hook Provocation auto-dmg 100 fin tour P1 si distance Manhattan(P0, P1) > 1 + lookup provocateur via Magnitude=PlayerIndex), `CombatInputController.cs` (commentaires Bible-correct + Shift+O = Mur boost FD), `GameVersion.cs` (16→17).
+- **Décisions clés** :
+  - **Magnitude semantics flexible** : AnchorImmune Magnitude = % réduction (50), Provoked Magnitude = PlayerIndex provocateur. Permet lookup runtime du provocateur sans champ dédié dans Status.qtn. Resource field gardé générique (HG/PR/FD/PT/RM).
+  - **Brisure priorité de buff** : ordre explicite (ShieldActive > RoncesAura > AnchorImmune > BuffNextOffensiveDmgPercent > RipostMelee > RageInsatiableActive) — interprétation Bible "retire 1 buff actif au choix" en pratique = 1 buff prioritaire défensif. Si aucun buff = TRAUMA fallback (-2 PA prochain tour).
+  - **Mur option FD** : `hgSpend >= 1` (option Bible "1 FD supplémentaire" → 5 segments boostés au lieu de 3 base). Recyclage du champ `hgSpend` (qui signifie "ressource optionnelle générique" dans le pipeline cast) pour FD ici. Shift+O dans input mappe 1 FD.
+  - **Memory rule créée** : `feedback_bible_check_before_spell_delivery.md`. Toute livraison de sort/passif/signature désormais précédée d'une lecture Bible V7.1 exacte. Plus jamais d'invention/approximation.
+- **E2E validé** :
+  - ✅ Pilier touche P range 3 cast OK
+  - ✅ Mur touche O range 4, Shift+O = 5/5 segments posés à 7,8→7,10
+  - ✅ Combo Mur + Pilier bloque IA 20 PA Charge Brutale sur 3 rounds (gameplay émergent)
+  - ✅ Ancrage touche Y range 4 cible Enemy : rejection sur Mur (case obstacle) + distance 5 (hors range) + success distance 4 + -2 PM appliqué P1 sur 2 rounds
+  - ✅ Provocation touche `,` range 5 cible Enemy : `[Spell] Provocation : P1 provoque par P0 pour 1T` + MovementMalus -1 PM appliqué P1 start sub-turn confirmé
+  - ✅ Provocation pas de 100 dmg auto fin tour P1 = cohérent (Charge Brutale a posé P1 en (6,8) adjacent à P0 (5,8), Manhattan dist=1, règle Bible respectée)
+  - ✅ Brisure touche `.` range 2 cible Enemy : `Damage 90 sur P1 1500→1410` pipeline standard + `Brisure : pas de buff sur P1 -> TRAUMA -2 PA prochain tour` + `ActionMalus -2 PA applique sur P1 (PA=6/8)` round suivant confirmé
+- **Backlog Brisure E2E retire-buff** : non testé (besoin scenario avec buff actif sur cible, ex Shield Soulrender → tester en 3.3.c quand on aura plus de Soulrender survie). Pas bloquant.
+- **Backlog IA Hard MCTS 3.8** : confirme bug `AISystem.TryGreedyCastSingle` ne check pas LoS dans son estim → l'IA continue à gaspiller PA en Charge Brutale vers cible derrière Mur. Pas bloquant pour Phase 3 Colossar.
+
+---
 
 ### 14 mai 2026 nuit profonde (4) — ⚒️ Brique 3.3.b.ii ✅ Ancrage + Provocation + Brisure (Colossar tactiques complètes)
 - **6 fichiers** : `Status.qtn` (StatusKind 13 AnchorImmune + 14 Provoked), `Spell.qtn` (SpellId 57/58/59), `SpellRegistry.cs` (constantes + 3 SpellDef Self/Enemy/AnyTile), `SpellSystem.cs` (3 case handlers + 3 hooks AnchorImmune dans damage compute pipeline standard + Charge Brutale + Choc Sismique + 1 hook anti-push dans PushAndTriggerEx + 1 hook anti-pull dans Empoignade), `CombatInputController.cs` (touches Y / , / .), `GameVersion.cs` (15→16).

@@ -186,6 +186,45 @@ namespace Quantum
 
         private static void EnterTurnEnd(Frame f, CombatState* state)
         {
+            // 3.3.b.iii — Provocation Bible hook : si le combattant actif (qui vient de finir SON
+            // sub-turn) porte Provoked ET n'est pas adjacent (Manhattan 1) au provocateur stocke
+            // dans Magnitude (= PlayerIndex), il prend 100 dgts auto. Appel AVANT decrementation
+            // statuses (sinon Provoked aurait deja decremente).
+            {
+                var activeFilter = f.Filter<Combatant>();
+                while (activeFilter.NextUnsafe(out EntityRef _, out Combatant* actC))
+                {
+                    if (actC->PlayerIndex != state->ActivePlayerIndex) continue;
+                    if (actC->HP <= 0) break; // mort, skip
+                    if (!StatusHelper.Has(actC, StatusKind.Provoked)) break;
+                    int provocPi = StatusHelper.GetMagnitude(actC, StatusKind.Provoked, -1);
+                    if (provocPi < 0) break;
+                    // Lookup position provocateur (combatant avec ce PlayerIndex).
+                    var provocFilter = f.Filter<Combatant>();
+                    while (provocFilter.NextUnsafe(out EntityRef _, out Combatant* provocC))
+                    {
+                        if (provocC->PlayerIndex != provocPi) continue;
+                        if (provocC->HP <= 0) break;
+                        int dxProv = provocC->GridX - actC->GridX;
+                        int dyProv = provocC->GridY - actC->GridY;
+                        int absDxP = dxProv < 0 ? -dxProv : dxProv;
+                        int absDyP = dyProv < 0 ? -dyProv : dyProv;
+                        int distProv = absDxP + absDyP;
+                        if (distProv > 1)
+                        {
+                            int dmgProv = SpellRegistry.ProvocationAutoDamageNotAdj;
+                            int hpBeforeProv = actC->HP;
+                            actC->HP -= dmgProv;
+                            if (actC->HP < 0) actC->HP = 0;
+                            actC->DamageTakenThisRound += dmgProv;
+                            Log.Info($"[Provocation] P{actC->PlayerIndex} pas adjacent au provocateur P{provocPi} (dist {distProv}), -{dmgProv} HP auto fin tour : {hpBeforeProv} -> {actC->HP}");
+                        }
+                        break;
+                    }
+                    break;
+                }
+            }
+
             // 2.14 — Decrementation UNIQUEMENT a la fin du dernier sous-tour du round
             // (semantique Dofus : "Bible 2 tours" = "2 rounds complets actifs"). Si on
             // decremente a chaque sous-tour, un status "1 tour" expire apres 1 swap de
