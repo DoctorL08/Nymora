@@ -1,6 +1,19 @@
 namespace Quantum
 {
     /// <summary>
+    /// Niveaux de difficulte IA (Bloc E Phase 2).
+    /// 2.16.a — Easy : random pick + skip signature + cap 2 casts + HGSpend=0.
+    /// 2.16.b — Medium : greedy max-score + signature autorisee + HG optionnel + cap 8.
+    /// Hard (futur) : planification multi-tour + utilisation Pacte de Sang/Rugissement
+    ///                + kite si HP critique + ciblage adaptatif par classe.
+    /// </summary>
+    public enum AIDifficulty
+    {
+        Easy = 0,
+        Medium = 1,
+    }
+
+    /// <summary>
     /// Constantes deterministes pour l'IA Nymora (Bloc E Phase 2).
     ///
     /// Toutes les valeurs ici sont entieres (int) et compilent en dur dans la sim. Si
@@ -9,6 +22,13 @@ namespace Quantum
     /// </summary>
     public static class AIConstants
     {
+        // 2.16.b — Difficulte courante hardcodee. Flip Easy/Medium ici pour tester.
+        // En Phase 7 (matchmaking / scene 30_CombatIA polish) on connectera ca a un
+        // menu de selection avant le start du combat. Pour l'instant Lorenzo modifie
+        // cette constante a la main.
+        public const AIDifficulty CurrentDifficulty = AIDifficulty.Medium;
+
+
         // Phase 2 : P1 est le bot, Lorenzo joue P0. Hardcoded jusqu'a Phase 5/6 ou un
         // RuntimePlayer/RoomConfig permettra de configurer humain vs bot par slot.
         public const int BotPlayerIndex = 1;
@@ -23,18 +43,63 @@ namespace Quantum
         public const int BotEndTurnDelayTicks = 30;
 
         // 2.16.a.iii — cap dur des casts par tour pour l'IA Easy.
-        //
         // Constate empiriquement : meme avec random pick + skip signature, un bot
         // Soulrender qui exploite le passif Appel du Sang (-1 PA cost <70% HP)
-        // peut chainer 3-4 Tranche-Ame = 660-880 dgts/tour et tuer le joueur en
-        // 2-3 tours. Pour une vraie "Easy" on cap a 2 casts/tour max -> ~440 dgts
+        // peut chainer 3-4 Tranche-Ame = 660-880 dgts/tour. Cap a 2 -> ~440 dgts
         // top, le joueur a 4-5 tours pour reagir.
+        public const int MaxCastsPerTurnEasy = 2;
+
+        // 2.16.b — pas de cap effectif pour Medium : le PA limite naturellement
+        // (~3-5 casts/tour selon discount Appel du Sang). 8 = filet de securite
+        // anti-infini si bug de cost 0.
+        public const int MaxCastsPerTurnMedium = 8;
+
+        // 2.16.b — DECKS PAR DIFFICULTE.
         //
-        // HG optionnel desactive en 2.16.a.iii (cf TryGreedyCast HGSpend = 0).
+        // Lorenzo : "les IA Easy/Medium vont devoiler les metas — il faut leur
+        // donner des decks vraiment nuls". Donc chaque difficulte a un sous-ensemble
+        // FIXE des 16 sorts de la classe. L'IA n'enumere que les sorts de son deck
+        // (pas la plage complete SpellId 10-25). Effet :
+        //   - Joueur regarde un combat Easy -> voit "OuvrePlaie + Curee + 4 utility",
+        //     pas de TrancheAme ni signature. Aucune indication que TrancheAme est OP.
+        //   - Joueur regarde un combat Medium -> voit "OuvrePlaie + ChargeBrutale +
+        //     Curee + utility". Toujours pas de TrancheAme ni Pacte de Sang ni
+        //     signature. Le vrai meta deck reste cache pour Hard / PvP.
         //
-        // IA Medium en 2.16.b reviendra a 8 (PA-limited natural) + greedy max-score
-        // + signature autorisee + HG optionnel. IA Hard ulterieurement aura planif
-        // multi-tour.
-        public const int MaxCastsPerTurn = 2;
+        // Decks Soulrender (Bible V7.1) — 6 sorts par deck (signature compte a part) :
+
+        // EASY DECK : faible. 2 offensifs (les moins puissants) + 4 utility/self.
+        // L'IA ne peut PAS one-shot puisqu'aucun sort >150 dgts base. Random pick
+        // pioche souvent dans les 4 utility -> beaucoup de tours "loose" niveau dmg
+        // (mais ces sorts sont filtres par IsOffensive donc cast=0 sur eux ; le bot
+        // skip silencieusement et utilise OuvrePlaie/Curee). Visuellement le deck
+        // affiche est un "deck de PvE / debutant" peu copiable.
+        public static readonly SpellId[] SoulrenderEasyDeck =
+        {
+            SpellId.SoulrenderOuvrePlaie,        // 110 dgts base (230 avec 1 HG, mais Easy HGSpend=0)
+            SpellId.SoulrenderCuree,             // 150 dgts, 2 HG mand
+            SpellId.SoulrenderCauterisation,     // utility self (retire DoT, no-op tant qu'on en a pas)
+            SpellId.SoulrenderSeveVive,          // heal 100 self
+            SpellId.SoulrenderRiposteCarmin,     // niche reflect melee 100
+            SpellId.SoulrenderMarqueDeCarnage,   // utility, marque +1 HG sur Soulrender (synergie faible solo)
+        };
+
+        // MEDIUM DECK : modere. 3 offensifs (sans le top-tier TrancheAme) + 3 utility.
+        // Le bot greedy max-score pickera ChargeBrutale ou OuvrePlaie+HG, deal du dgts
+        // mais moins violent qu'avec TrancheAme (220) ou signature (320). Sufficient
+        // pour challenger le joueur sans reveler la combo meta.
+        public static readonly SpellId[] SoulrenderMediumDeck =
+        {
+            SpellId.SoulrenderOuvrePlaie,        // 110-230 dgts (HG optionnel autorise en Medium)
+            SpellId.SoulrenderChargeBrutale,     // 180 dgts + dash + Vapeur Carmin
+            SpellId.SoulrenderCuree,             // 150 dgts + kill chain
+            SpellId.SoulrenderEmpoignade,        // pull gap-close (utility, IsOffensive=0 -> bot le skip)
+            SpellId.SoulrenderRugissement,       // AoE -1 PM (utility)
+            SpellId.SoulrenderPeauDeFer,         // shield 200/2t (defensive)
+        };
+
+        // HARD DECK (futur) : META. Sera utilise quand IA Hard arrive.
+        //   { TrancheAme, OuvrePlaie, ChargeBrutale, DetonationSanglante,
+        //     PacteDeSang, PeauDeFer } + signature AmeLaceree.
     }
 }

@@ -8,13 +8,11 @@ namespace Quantum
     /// 2.16.a.i — squelette : EndTurn auto si bot actif (delai 30 ticks).
     /// 2.16.a.ii — ajoute TryGreedyMove : bot s'approche de l'ennemi (PM all-in).
     /// 2.16.a.iii — ajoute TryGreedyCast : boucle de casts offensifs. Le bot enumere
-    ///              les sorts Soulrender (IsOffensive + Filter Enemy/AnyTile), filtre
-    ///              PA/HG/range, et **pick au hasard via f.RNG** parmi les affordables
-    ///              (vraie IA Easy : pas de strategie max-dmg). Skip signature Ame
-    ///              Laceree pour eviter le burst 320 dgts qui one-turn le joueur en
-    ///              fin de match. Recommence tant que PA permet. Pacte/Self/heals
-    ///              ignores. AIEvaluator.EstimateSpellDamage reste dispo pour la
-    ///              future IA Medium (2.16.b) qui repassera en greedy max-score.
+    ///              les sorts Soulrender, filtre PA/HG/range. **Easy** : pick aleatoire
+    ///              via f.RNG, skip signature, HGSpend=0, cap 2 casts. **Medium** :
+    ///              greedy max-score via AIEvaluator.EstimateSpellDamage, signature
+    ///              autorisee (cooldown 4t), HG optionnel maximise, cap PA naturel.
+    /// 2.16.b — IA Medium activable via AIConstants.CurrentDifficulty.
     ///
     /// Pourquoi pas un MoveCommand simule ? Les DeterministicCommand viennent de
     /// l'input client. Une IA simu-side mute directement la primitive d'etat
@@ -185,18 +183,27 @@ namespace Quantum
 
             // Buffer stack pour les sorts affordables ce tick (max 16 = nb sorts Soulrender).
             SpellId* affordable = stackalloc SpellId[16];
+            byte* affordableHGSpend = stackalloc byte[16];
+            int* affordableScore = stackalloc int[16];
 
-            for (int iter = 0; iter < AIConstants.MaxCastsPerTurn; iter++)
+            bool isMedium = AIConstants.CurrentDifficulty == AIDifficulty.Medium;
+            int maxCasts = isMedium ? AIConstants.MaxCastsPerTurnMedium : AIConstants.MaxCastsPerTurnEasy;
+
+            // 2.16.b — Deck fixe par difficulte (Lorenzo : "les IA vont devoiler les
+            // metas, donne-leur des decks vraiment nuls"). L'IA n'enumere QUE les sorts
+            // de son deck, pas la plage complete SpellId 10-25. Le vrai meta deck est
+            // reserve a IA Hard (futur) + au joueur en PvP.
+            SpellId[] deck = isMedium ? AIConstants.SoulrenderMediumDeck : AIConstants.SoulrenderEasyDeck;
+
+            for (int iter = 0; iter < maxCasts; iter++)
             {
                 if (bot->PA <= 0) break;
 
                 int affordableCount = 0;
 
-                // Plage Soulrender = SpellId 10-25 (cf Spell.qtn).
-                // SKIP signature Ame Laceree (25) — IA Easy : pas de burst 320 dgts.
-                for (byte sb = 10; sb < 25; sb++)
+                for (int di = 0; di < deck.Length; di++)
                 {
-                    SpellId spellId = (SpellId)sb;
+                    SpellId spellId = deck[di];
                     if (!SpellRegistry.TryGet(spellId, out var def)) continue;
                     if (def.IsOffensive == 0) continue;
                     if (def.Filter != TargetingFilter.Enemy && def.Filter != TargetingFilter.AnyTile) continue;
@@ -205,8 +212,16 @@ namespace Quantum
                     if (bot->PA < def.PACost) continue;
                     if (bot->Resource < def.HGCostMandatory) continue;
 
-                    // Skip OncePerMatch (Pacte, Dernier Souffle) — reserves IA Phase 3.
+                    // Skip OncePerMatch (Pacte, Dernier Souffle) — reserves Hard ulterieur.
                     if (def.OncePerMatchBit != SpellRegistry.OncePerMatchBitNone) continue;
+
+                    // Cooldown check pour Ame Laceree (seul sort Soulrender a cooldown).
+                    // Easy n'utilise pas signature (maxSpellId=24), donc check uniquement Medium.
+                    if (spellId == SpellId.SoulrenderAmeLaceree)
+                    {
+                        int turnsSince = state->TurnNumber - bot->LastAmeLaceeUsedOnTurn;
+                        if (turnsSince < SpellRegistry.AmeLaceeCooldownTurns) continue;
+                    }
 
                     // Range Manhattan caster -> enemy cell. Pour AnyTile (Charge Brutale,
                     // Detonation Sanglante) on cible toujours la case ennemie ce qui maximise
@@ -214,21 +229,52 @@ namespace Quantum
                     int dist = AIEvaluator.Manhattan(bot->GridX, bot->GridY, enemyX, enemyY);
                     if (dist < def.RangeMin || dist > def.RangeMax) continue;
 
-                    affordable[affordableCount++] = spellId;
+                    // HG spend optionnel : DESACTIVE pour Easy ET Medium.
+                    //
+                    // Constate empiriquement : Ouvre-Plaie +1 HG = 230 dgts pour 2 PA est
+                    // auto-sustaining (le sort gain +1 HG par hit -> alimente la prochaine
+                    // cast). Avec discount Appel du Sang a <70% HP, ca devient 230 dgts pour
+                    // 1 PA -> 6-7 casts/tour -> ~1100+ dgts/tour. C'est une combo META que
+                    // Medium ne doit PAS exposer (cf decks IA cachant le meta).
+                    //
+                    // Reserve cette logique a IA Hard (futur) qui aura aussi le bon deck.
+                    byte hgSpend = 0;
+
+                    affordable[affordableCount] = spellId;
+                    affordableHGSpend[affordableCount] = hgSpend;
+                    affordableScore[affordableCount] = AIEvaluator.EstimateSpellDamage(spellId, hgSpend, def.HGCostMandatory);
+                    affordableCount++;
                 }
 
                 if (affordableCount == 0) break; // plus aucun cast viable
 
-                // 2.16.a.iii — Pick aleatoire via Frame.RNG (le seul RNG autorise dans
-                // la simulation Quantum, deterministe par design). C'est ce qui rend l'IA
-                // "Easy" : pas de strategie max-dmg, juste un sort au hasard parmi les
-                // dispos. Effet attendu : parfois Curée a 2 HG quand pas la peine, parfois
-                // Ouvre-Plaie au lieu de Tranche-Âme. Erreurs crédibles.
-                int pickedIdx = f.RNG->Next(0, affordableCount);
-                SpellId picked = affordable[pickedIdx];
-                byte hgSpend = 0; // IA Easy ne depense JAMAIS HG optionnel (cf 2.16.a.iii).
+                // Selection strategy :
+                //   Easy   : pick aleatoire via Frame.RNG (deterministe Quantum).
+                //   Medium : greedy max-score (degats estimes les plus eleves).
+                int pickedIdx;
+                if (isMedium)
+                {
+                    pickedIdx = 0;
+                    int bestScore = affordableScore[0];
+                    for (int i = 1; i < affordableCount; i++)
+                    {
+                        if (affordableScore[i] > bestScore)
+                        {
+                            bestScore = affordableScore[i];
+                            pickedIdx = i;
+                        }
+                    }
+                }
+                else
+                {
+                    pickedIdx = f.RNG->Next(0, affordableCount);
+                }
 
-                Log.Info($"[AI] Bot P{bot->PlayerIndex} cast {picked} sur ({enemyX},{enemyY}) (random {pickedIdx + 1}/{affordableCount} affordables)");
+                SpellId picked = affordable[pickedIdx];
+                byte pickedHGSpend = affordableHGSpend[pickedIdx];
+                int pickedScore = affordableScore[pickedIdx];
+
+                Log.Info($"[AI] Bot P{bot->PlayerIndex} ({AIConstants.CurrentDifficulty}) cast {picked} sur ({enemyX},{enemyY}) HGSpend={pickedHGSpend} estimDmg={pickedScore} (choisi {pickedIdx + 1}/{affordableCount})");
 
                 // Reuse meme pipeline que les commands clients : construit un
                 // CastSpellCommand a la volee. SpellSystem.TryCastSpell est public
@@ -238,7 +284,7 @@ namespace Quantum
                     Spell = picked,
                     TargetX = enemyX,
                     TargetY = enemyY,
-                    HGSpend = hgSpend,
+                    HGSpend = pickedHGSpend,
                 };
                 SpellSystem.TryCastSpell(f, bot->PlayerIndex, cmd, state->ActivePlayerIndex);
 
