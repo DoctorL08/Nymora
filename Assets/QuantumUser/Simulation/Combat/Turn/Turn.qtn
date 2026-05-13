@@ -19,6 +19,17 @@ singleton component CombatState
 {
     CombatPhase CurrentPhase;
     Int32 ActivePlayerIndex;
+
+    // 2.14 — TurnNumber = numero de ROUND COMPLET (semantique Dofus). Un round =
+    // tous les joueurs jouent une fois (en 1v1 : P0 puis P1 = 1 round).
+    // Incremente UNIQUEMENT au debut du 1er sous-tour d'un round (cf TurnSystem.EnterTurnStart).
     Int32 TurnNumber;
     Int32 TurnTimerTicks;
+
+    // 2.14 — Index du sous-tour DANS le round courant (0..PlayerCount-1).
+    //   En 1v1 : 0 = 1er joueur du round joue, 1 = 2e joueur joue, puis retour a 0 pour le
+    //   round suivant.
+    //   Sert a determiner quand declencher la decrementation des statuses/marques/voiles/terrains
+    //   (= UNIQUEMENT a la fin du dernier sous-tour du round, pas a chaque swap de joueur).
+    Int32 SubTurnInRound;
 }

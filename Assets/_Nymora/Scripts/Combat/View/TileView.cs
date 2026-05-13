@@ -14,6 +14,13 @@ namespace Nymora.Combat.View
         public int GridX { get; private set; }
         public int GridY { get; private set; }
 
+        public string SortingLayerName => _sprite != null ? _sprite.sortingLayerName : "Default";
+        public int SortingOrder => _sprite != null ? _sprite.sortingOrder : 0;
+
+        /// <summary>2.14 — Sprite du sol (utilise par FogOfWarView pour creer un overlay
+        /// de la meme forme/taille que la tile).</summary>
+        public Sprite FloorSprite => _sprite != null ? _sprite.sprite : null;
+
         private Color _baseColor;
 
         public void Setup(int gx, int gy, Color baseColor)
@@ -54,6 +61,16 @@ namespace Nymora.Combat.View
         public void ClearHighlight()
         {
             if (_sprite != null) _sprite.color = _baseColor;
+        }
+
+        /// <summary>
+        /// 2.13.e : cache/affiche le sprite du sol echiquier. Utilise par TerrainView pour
+        /// remplacer visuellement la case quand un terrain est pose (la case ne doit pas
+        /// transparaitre sous le terrain — comportement Bible V7.1 attendu).
+        /// </summary>
+        public void SetFloorVisible(bool visible)
+        {
+            if (_sprite != null) _sprite.enabled = visible;
         }
     }
 }

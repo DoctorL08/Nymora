@@ -31,6 +31,19 @@ enum StatusKind : Byte
     BleedDoT                     = 9,  // stub 2.10.b : DoT generique sur soi (Necram poison Phase 3, etc).
                                        //   Sert au bonus Seve Vive "saigne actuellement" (+50 HP).
                                        //   Aucun sort ne l'applique en 2.10.b (reserve pour Phase 3 Necram).
+
+    // Nightseer (2.15.c)
+    Untargetable                 = 10, // Voile d'Ombre : sorts directs (filter Enemy/AnyUnit) rejetes
+                                       //   sur le porteur. AoE qui passent par la case continuent
+                                       //   de toucher (Bible : invisibilite directe, pas immortalite).
+    RoncesAura                   = 11, // Camouflage Ronces : Magnitude = dgts inflige aux ennemis
+                                       //   adjacents (Manhattan 1) en fin de chaque round actif.
+                                       //   Tick dans TurnSystem.EnterTurnEnd avant le check Prescience.
+
+    // Nightseer (2.16) — Signature Traquenard
+    ActionMalus                  = 12, // Magnitude = -PA applique au reset PA prochain tour de la cible.
+                                       //   Compose la PARALYSIE Traquenard avec MovementMalus -3 PM.
+                                       //   Hook dans TurnSystem.EnterTurnStart apres le reset PA + bonus.
 }
 
 struct Status

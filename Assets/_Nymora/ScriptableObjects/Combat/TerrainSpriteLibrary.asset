@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 79424209c4de87c47851ccdb622b66e7, type: 3}
+  m_Name: TerrainSpriteLibrary
+  m_EditorClassIdentifier: 
+  _vapeurCarminFrames:
+  - {fileID: -1532633938, guid: 0da3c780d348f844aa94437887d14afe, type: 3}
+  - {fileID: -1780564914, guid: 0da3c780d348f844aa94437887d14afe, type: 3}
+  - {fileID: 2125555968, guid: 0da3c780d348f844aa94437887d14afe, type: 3}
+  - {fileID: -355583835, guid: 0da3c780d348f844aa94437887d14afe, type: 3}
+  _sangCoaguleFrames:
+  - {fileID: -1349203221, guid: d16fc1cc650c14448bd3a78382ebb7a3, type: 3}
+  - {fileID: -1138651674, guid: d16fc1cc650c14448bd3a78382ebb7a3, type: 3}
+  - {fileID: 805259442, guid: d16fc1cc650c14448bd3a78382ebb7a3, type: 3}
+  - {fileID: -1879211569, guid: d16fc1cc650c14448bd3a78382ebb7a3, type: 3}

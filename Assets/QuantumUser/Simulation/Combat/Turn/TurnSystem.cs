@@ -25,6 +25,7 @@ namespace Quantum
             state->CurrentPhase = CombatPhase.PreMatch;
             state->TurnNumber = 0;
             state->TurnTimerTicks = 0;
+            state->SubTurnInRound = 0; // 2.14 : 1er sous-tour du round 1
 
             // Tirage d'initiative deterministe (Bible V7.1 : random tour 1, alternance ensuite).
             // f.RNG->Next(0, max) retourne un int dans [0, max) - donc [0, 2) = 0 ou 1.
@@ -33,7 +34,7 @@ namespace Quantum
             // Transition immediate vers le 1er TurnStart. La FSM termine son init au prochain Update.
             state->CurrentPhase = CombatPhase.TurnStart;
 
-            Log.Info($"[TurnSystem] Initiative: Joueur P{state->ActivePlayerIndex} commence");
+            Log.Info($"[TurnSystem] Initiative: Joueur P{state->ActivePlayerIndex} commence le round 1");
         }
 
         public override void Update(Frame f)
@@ -65,7 +66,20 @@ namespace Quantum
 
         private static void EnterTurnStart(Frame f, CombatState* state)
         {
-            state->TurnNumber += 1;
+            // 2.14 — TurnNumber incremente UNIQUEMENT au 1er sous-tour du round (semantique Dofus).
+            // SubTurnInRound vaut 0 au debut de chaque round (set par EnterTurnEnd ou OnInit).
+            if (state->SubTurnInRound == 0)
+            {
+                state->TurnNumber += 1;
+                // 2.15.a — Reset DamageTakenThisRound pour tous les combattants (Bible Prescience).
+                // Doit etre fait au debut du round, pas en fin (sinon le check de fin de round
+                // est fait sur des donnees deja remises a zero).
+                var resetFilter = f.Filter<Combatant>();
+                while (resetFilter.NextUnsafe(out EntityRef _, out Combatant* c))
+                {
+                    c->DamageTakenThisRound = 0;
+                }
+            }
             state->TurnTimerTicks = TurnConstants.GetTurnDurationTicks(f);
 
             // Reset PA/PM du joueur actif (Bible V7.1 : debut de tour = ressources fraiches).
@@ -94,6 +108,16 @@ namespace Quantum
                         combatant->PM -= pmMalus;
                         if (combatant->PM < 0) combatant->PM = 0;
                         Log.Info($"[TurnSystem] MovementMalus -{pmMalus} PM applique sur P{combatant->PlayerIndex} (PM={combatant->PM}/{combatant->MaxPM})");
+                    }
+
+                    // 2.16 : ActionMalus (Traquenard Paralysie -2 PA) reduit les PA pour CE tour.
+                    // Pattern miroir de MovementMalus.
+                    int paMalus = StatusHelper.GetMagnitude(combatant, StatusKind.ActionMalus, 0);
+                    if (paMalus > 0)
+                    {
+                        combatant->PA -= paMalus;
+                        if (combatant->PA < 0) combatant->PA = 0;
+                        Log.Info($"[TurnSystem] ActionMalus -{paMalus} PA applique sur P{combatant->PlayerIndex} (PA={combatant->PA}/{combatant->MaxPA})");
                     }
 
                     // 2.10.c : Sang Coagule tick. Si le combatant actif est sur une case
@@ -135,7 +159,7 @@ namespace Quantum
                 }
             }
 
-            Log.Info($"[TurnSystem] Tour {state->TurnNumber} - Joueur P{activePlayer} (timer {state->TurnTimerTicks} ticks)");
+            Log.Info($"[TurnSystem] Round {state->TurnNumber} (sub {state->SubTurnInRound + 1}/{TurnConstants.PlayerCount}) - Joueur P{activePlayer} (timer {state->TurnTimerTicks} ticks)");
             state->CurrentPhase = CombatPhase.TurnActive;
         }
 
@@ -161,18 +185,106 @@ namespace Quantum
 
         private static void EnterTurnEnd(Frame f, CombatState* state)
         {
-            // 2.10.a : decremente les statuses de tous les combattants. La regle
-            // "skip si AppliedOnTurn == currentTurn" assure une semantic intuitive
-            // pour les durees Bible V7.1 (cf StatusHelper.DecrementAllOnTurnEnd).
-            StatusHelper.DecrementAllOnTurnEnd(f, state->TurnNumber);
+            // 2.14 — Decrementation UNIQUEMENT a la fin du dernier sous-tour du round
+            // (semantique Dofus : "Bible 2 tours" = "2 rounds complets actifs"). Si on
+            // decremente a chaque sous-tour, un status "1 tour" expire apres 1 swap de
+            // joueur — ce qui n'est PAS l'intention design Bible V7.1.
+            bool isLastSubTurnOfRound = state->SubTurnInRound == TurnConstants.PlayerCount - 1;
+            if (isLastSubTurnOfRound)
+            {
+                // 2.10.a : statuses (Pacte +50%, Riposte Carmin, Peau de Fer, etc.).
+                // 2.10.c : terrains (Vapeur Carmin, Sang Coagule).
+                // 2.14   : voiles + marques Nightseer.
+                // Tous skippent leur 1ere decrementation grace a "AppliedOnTurn == currentTurn".
+                // 2.15.c — RoncesAura tick : AVANT decrementation pour que le status soit encore
+                // actif, et AVANT Prescience pour que les dgts d'aura comptent dans DamageTakenThisRound.
+                TickRoncesAura(f);
 
-            // 2.10.c : meme regle pour les terrains (Vapeur Carmin 1 tour, Sang Coagule 2 tours).
-            GridHelpers.DecrementAllTerrainsOnTurnEnd(f, state->TurnNumber);
+                StatusHelper.DecrementAllOnTurnEnd(f, state->TurnNumber);
+                GridHelpers.DecrementAllTerrainsOnTurnEnd(f, state->TurnNumber);
+                FogHelpers.DecrementAllVeilsOnTurnEnd(f, state->TurnNumber);
+                MarkHelpers.DecrementAllMarksOnTurnEnd(f, state->TurnNumber);
+
+                // 2.15.a — Passif Prescience Nightseer (Bible "L'Œil qui n'est pas") :
+                //   +1 PR par round ou le Nightseer N'A PAS pris de degats directs.
+                //   -1 PR si degats directs subis ce round.
+                //   Cap a CombatantStats.GetMaxResource(Nightseer) = 4.
+                //   Plancher : 0 PR.
+                var prescienceFilter = f.Filter<Combatant>();
+                while (prescienceFilter.NextUnsafe(out EntityRef _, out Combatant* ns))
+                {
+                    if (ns->Class != NymoraClass.Nightseer) continue;
+                    if (ns->HP <= 0) continue; // mort, on ne touche pas
+                    int maxResource = CombatantStats.GetMaxResource(ns->Class);
+                    int beforeRes = ns->Resource;
+                    if (ns->DamageTakenThisRound == 0)
+                    {
+                        // Pas de degats ce round -> +1 PR
+                        ns->Resource = beforeRes + 1 > maxResource ? maxResource : beforeRes + 1;
+                        if (ns->Resource != beforeRes)
+                        {
+                            Log.Info($"[Prescience] +1 PR sur P{ns->PlayerIndex} (no damage round {state->TurnNumber}) : {beforeRes} -> {ns->Resource}");
+                        }
+                    }
+                    else
+                    {
+                        // A pris des degats -> -1 PR
+                        ns->Resource = beforeRes - 1 < 0 ? 0 : beforeRes - 1;
+                        if (ns->Resource != beforeRes)
+                        {
+                            Log.Info($"[Prescience] -1 PR sur P{ns->PlayerIndex} (dgts subis {ns->DamageTakenThisRound} round {state->TurnNumber}) : {beforeRes} -> {ns->Resource}");
+                        }
+                    }
+                }
+            }
+
+            // Avance le compteur de sous-tour (wrap a 0 au debut du round suivant).
+            state->SubTurnInRound = (state->SubTurnInRound + 1) % TurnConstants.PlayerCount;
 
             // Alternance stricte des 2 joueurs (1v1 en Phase 2). Pour 2v2/3v3 (Phase 6),
             // la rotation devra suivre l'ordre d'initiative et non un simple modulo.
             state->ActivePlayerIndex = (state->ActivePlayerIndex + 1) % TurnConstants.PlayerCount;
             state->CurrentPhase = CombatPhase.TurnStart;
+        }
+
+        /// <summary>
+        /// 2.15.c — Camouflage Ronces : tick fin de round. Pour chaque Combatant avec status
+        /// RoncesAura (Magnitude > 0), inflige Magnitude dgts a tous les Combatants ENNEMIS
+        /// adjacents (Manhattan 1). Aussi increment DamageTakenThisRound pour le check Prescience.
+        ///
+        /// Note shield : le status ShieldActive (Camouflage Ronces ou Peau de Fer) du PORTEUR
+        /// de l'aura n'absorbe PAS les dgts d'aura (l'aura est offensive emise par lui-meme).
+        /// Le shield des CIBLES ennemies absorbe normalement (cf damage loop SpellSystem). Pour
+        /// 2.15.c on garde simple : aura ignore les shields ennemis (pas un sort, ne traverse
+        /// pas le pipeline). A revoir si Bible specifie autrement en playtest.
+        /// </summary>
+        private static void TickRoncesAura(Frame f)
+        {
+            var auraFilter = f.Filter<Combatant>();
+            while (auraFilter.NextUnsafe(out EntityRef _, out Combatant* aura))
+            {
+                if (aura->HP <= 0) continue;
+                int auraMag = StatusHelper.GetMagnitude(aura, StatusKind.RoncesAura, 0);
+                if (auraMag <= 0) continue;
+
+                var enemyFilter = f.Filter<Combatant>();
+                while (enemyFilter.NextUnsafe(out EntityRef _, out Combatant* enemy))
+                {
+                    if (enemy->PlayerIndex == aura->PlayerIndex) continue;
+                    if (enemy->HP <= 0) continue;
+                    int adx = enemy->GridX - aura->GridX;
+                    int ady = enemy->GridY - aura->GridY;
+                    if (adx < 0) adx = -adx;
+                    if (ady < 0) ady = -ady;
+                    if (adx + ady != 1) continue;
+
+                    int hpBefore = enemy->HP;
+                    enemy->HP -= auraMag;
+                    if (enemy->HP < 0) enemy->HP = 0;
+                    enemy->DamageTakenThisRound += auraMag;
+                    Log.Info($"[RoncesAura] -{auraMag} HP sur P{enemy->PlayerIndex} (aura P{aura->PlayerIndex}) : {hpBefore} -> {enemy->HP}");
+                }
+            }
         }
     }
 }

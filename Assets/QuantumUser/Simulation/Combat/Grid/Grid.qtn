@@ -15,6 +15,17 @@ enum TerrainKind : Byte
     SangCoagule  = 2,  // Soulrender (Detonation Sanglante, signature Ame Laceree, passif <20% HP) : 30 dgts debut de tour, 2 tours
 }
 
+// 2.14 — Pieges deposes sur cases par le Nightseer (Bible V7.1).
+//   FiletRonces : pose par Filet de Ronces ou Volee d'Epines : 100 dgts -2 PM + EMPREINTE 2 tours.
+//   Mine        : pose par Champ de Mines (3 mines 3x3) : 70 dgts + EMPREINTE.
+// Verrouille : ne PAS reorganiser (CombatRulesVersion).
+enum TrapKind : Byte
+{
+    None        = 0,
+    FiletRonces = 1,
+    Mine        = 2,
+}
+
 struct Tile {
     Byte Walkable;
     EntityRef Occupant;
@@ -27,6 +38,11 @@ struct Tile {
     Int32 TerrainTurnsLeft;
     Int32 TerrainAppliedOnTurn;
 }
+
+// IMPORTANT — NE PAS ajouter de nouveaux fields sur Tile : la struct est deja proche de
+// la limite Quantum (~10k bytes pour la GridSingleton avec 255 tiles fixed array).
+// 2.14 : le brouillard de guerre Nightseer (Voile + Pieges) vit dans un singleton SEPARE
+// (FogSingleton, cf Combat/Fog/Fog.qtn) pour eviter de gonfler GridSingleton.
 
 singleton component GridSingleton {
     Int32 Width;

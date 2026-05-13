@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 2805073702657354344}
   - component: {fileID: 6930554408035679015}
   - component: {fileID: 8728321479734784578}
+  - component: {fileID: 1173257814983947940}
   m_Layer: 0
   m_Name: Combatant_Nightseer
   m_TagString: Untagged
@@ -74,7 +75,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 100
-  m_Sprite: {fileID: 21300000, guid: 3ad236d6c43ce5141b791433fb64f7db, type: 3}
+  m_Sprite: {fileID: -270124879904399860, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -98,3 +99,37 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _sprite: {fileID: 6930554408035679015}
+  _animator: {fileID: 1173257814983947940}
+  _stage0SpriteSE: {fileID: -270124879904399860, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
+  _stage1SpriteSE: {fileID: -270124879904399860, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
+  _stage2SpriteSE: {fileID: -270124879904399860, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
+  _stage0SpriteNE: {fileID: -8848003822099424667, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
+  _stage1SpriteNE: {fileID: -8848003822099424667, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
+  _stage2SpriteNE: {fileID: -8848003822099424667, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
+  _stage0ControllerSE: {fileID: 9100000, guid: c2d62dc7c3e820a4ea3961a373c865f1, type: 2}
+  _stage1ControllerSE: {fileID: 9100000, guid: c2d62dc7c3e820a4ea3961a373c865f1, type: 2}
+  _stage2ControllerSE: {fileID: 9100000, guid: c2d62dc7c3e820a4ea3961a373c865f1, type: 2}
+  _stage0ControllerNE: {fileID: 9100000, guid: 405010bb58d12274595173c63426b9fb, type: 2}
+  _stage1ControllerNE: {fileID: 9100000, guid: 405010bb58d12274595173c63426b9fb, type: 2}
+  _stage2ControllerNE: {fileID: 9100000, guid: 405010bb58d12274595173c63426b9fb, type: 2}
+--- !u!95 &1173257814983947940
+Animator:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 754554047947511558}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: c2d62dc7c3e820a4ea3961a373c865f1, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0

@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 68d3235f4e9de144dacfb629435a3ee7, type: 3}
+  m_Name: VFXSpriteLibrary
+  m_EditorClassIdentifier: 
+  _ameLaceeFrames:
+  - {fileID: -1159460837, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
+  - {fileID: 200470168, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
+  - {fileID: -1960051454, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
+  - {fileID: -846303026, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
+  - {fileID: -907199884, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
+  - {fileID: 142528021, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
+  - {fileID: -554777204, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
+  - {fileID: 681591465, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
+  - {fileID: -2033514283, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
+  - {fileID: 476417908, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}

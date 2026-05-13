@@ -1,0 +1,34 @@
+// 2.14 — Brouillard de guerre Nightseer (state per-tile separe de GridSingleton).
+//
+// Raison du singleton separe : ajouter les fields Voile + Trap directement dans Tile
+// faisait exploser la GridSingleton au-dela de la limite Quantum (~10kB) pour les
+// structs passees par valeur (cf InvalidProgramException "Passing an argument of size 10208").
+//
+// FogSingleton mirror la grille (array<FogTile>[255] indexes par y*Width+x, meme convention
+// que GridHelpers.Index). Lookups via FogHelpers.
+//
+// Les enums TrapKind / MarkKind sont definis dans Grid.qtn / Combatant.qtn respectivement
+// (proches de leurs structs cibles).
+
+struct FogTile {
+    // Voile (MARQUE VOILÉ Bible V7.1 — case invisible pour l'adversaire).
+    //   VeiledByPlayer : 0 = aucun voile, sinon (PlayerIndex + 1). Le +1 pour distinguer 0=none.
+    //   VeiledTurnsLeft : tours restants avant expiration.
+    //   VeiledAppliedOnTurn : tour de pose (skip-decrement convention).
+    Byte VeiledByPlayer;
+    Int32 VeiledTurnsLeft;
+    Int32 VeiledAppliedOnTurn;
+
+    // Piege (Filet de Ronces, Mine — Bible V7.1 Nightseer).
+    //   Trap == None : pas de piege.
+    //   TrapOwner : PlayerIndex du poseur (declenche uniquement quand un adversaire entre).
+    //   TrapAppliedOnTurn : info de pose ; pas de timer d'expiration (Bible : reste jusqu'au
+    //     declenchement ou retire par Cauterisation 2.15+).
+    TrapKind Trap;
+    Int32 TrapOwner;
+    Int32 TrapAppliedOnTurn;
+}
+
+singleton component FogSingleton {
+    array<FogTile>[255] Tiles;
+}

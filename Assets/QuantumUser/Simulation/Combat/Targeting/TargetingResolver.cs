@@ -116,13 +116,19 @@ namespace Quantum
                     AddCircleManhattan(targetX, targetY, radius: 1, outBuffer, ref count);
                     break;
 
+                // 2.15.b — Square3x3 (= 9 cases : centre + 8 voisins). Utilise par Champ de Mines.
+                case TargetingShape.Square3x3:
+                    for (int dy = -1; dy <= 1; dy++)
+                        for (int dx = -1; dx <= 1; dx++)
+                            AddIfInBounds(targetX + dx, targetY + dy, outBuffer, ref count);
+                    break;
+
                 // Shapes pas encore implementees — a faire quand un sort en aura besoin.
                 case TargetingShape.None:
                     break;
 
                 case TargetingShape.CrossMedium:
                 case TargetingShape.CrossLarge:
-                case TargetingShape.Square3x3:
                 case TargetingShape.Square5x5:
                 case TargetingShape.LineThrough:
                 case TargetingShape.Cone:

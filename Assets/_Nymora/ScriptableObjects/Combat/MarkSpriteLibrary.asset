@@ -1,0 +1,24 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c179f1dae12a9de44bcaf39245b3b84d, type: 3}
+  m_Name: MarkSpriteLibrary
+  m_EditorClassIdentifier: 
+  _antiHealShieldFrames:
+  - {fileID: 1932484924, guid: 25d27e270bdea3a4ab56c3925fcf7155, type: 3}
+  - {fileID: -1763661133, guid: 25d27e270bdea3a4ab56c3925fcf7155, type: 3}
+  - {fileID: 614763276, guid: 25d27e270bdea3a4ab56c3925fcf7155, type: 3}
+  - {fileID: 496166701, guid: 25d27e270bdea3a4ab56c3925fcf7155, type: 3}
+  _markedByCarnageFrames:
+  - {fileID: -989601583, guid: 668840576ddb0fc4a8ac0e6c4df79e56, type: 3}
+  - {fileID: -268237682, guid: 668840576ddb0fc4a8ac0e6c4df79e56, type: 3}
+  - {fileID: -948145449, guid: 668840576ddb0fc4a8ac0e6c4df79e56, type: 3}
+  - {fileID: -230167674, guid: 668840576ddb0fc4a8ac0e6c4df79e56, type: 3}

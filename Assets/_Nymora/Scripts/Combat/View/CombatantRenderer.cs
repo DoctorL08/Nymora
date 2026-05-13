@@ -34,9 +34,11 @@ namespace Nymora.Combat.View
         // mouvement, et le dernier facing pour conserver l'orientation a l'arret.
         private readonly Dictionary<EntityRef, GridPos> _lastGridPos = new Dictionary<EntityRef, GridPos>(2);
         private readonly Dictionary<EntityRef, IsoFacing> _lastFacings = new Dictionary<EntityRef, IsoFacing>(2);
-        // 2.12.bis : tracking HP et LastCastOnTurn pour declencher les anims Hurt/Death/Cast/Attack.
+        // 2.12.bis : tracking HP et LastCastSequence pour declencher les anims Hurt/Death/Cast/Attack.
+        // 2.13.e : LastCastOnTurn ne suffit pas (plusieurs casts dans le meme tour =
+        // 1 seule anim). Switch sur LastCastSequence (compteur monotone du DSL).
         private readonly Dictionary<EntityRef, int> _lastHP = new Dictionary<EntityRef, int>(2);
-        private readonly Dictionary<EntityRef, int> _lastCastTurn = new Dictionary<EntityRef, int>(2);
+        private readonly Dictionary<EntityRef, int> _lastCastSeq = new Dictionary<EntityRef, int>(2);
         private Vector3 _centerOffset;
         private bool _gridReady;
 
@@ -161,9 +163,11 @@ namespace Nymora.Combat.View
             _lastHP[entity] = currHP;
 
             // --- Cast delta : Attack (range 1) / Cast (range >1) ---
-            int prevCastTurn = _lastCastTurn.TryGetValue(entity, out var ct) ? ct : -1;
-            int currCastTurn = combatant.LastCastOnTurn;
-            if (currCastTurn != prevCastTurn && currCastTurn >= 0)
+            // 2.13.e : switch a LastCastSequence (compteur monotone) pour declencher l'anim
+            // a CHAQUE cast, meme plusieurs dans le meme tour.
+            int prevCastSeq = _lastCastSeq.TryGetValue(entity, out var cs) ? cs : 0;
+            int currCastSeq = combatant.LastCastSequence;
+            if (currCastSeq != prevCastSeq)
             {
                 var spellId = combatant.LastCastSpellId;
                 if (SpellRegistry.TryGet(spellId, out var def))
@@ -176,9 +180,20 @@ namespace Nymora.Combat.View
                     {
                         view.TriggerCast(CategoryForSpell(spellId));
                     }
+
+                    // 2.13.e bugfix : reoriente le combatant vers l'ennemi au moment du cast
+                    // (sauf sorts self-target Bible V7.1 : Pacte de Sang, Peau de Fer, etc.).
+                    // ResolveFacing ne se declenche que sur deplacement grille — sans ca, un
+                    // perso qui cast sans bouger reste oriente dans sa derniere direction.
+                    if (def.Filter != TargetingFilter.Self)
+                    {
+                        IsoFacing castFacing = FacingTowardEnemy(entity, combatant);
+                        _lastFacings[entity] = castFacing;
+                        view.SetStageAndFacing(ComputeStage(combatant), castFacing);
+                    }
                 }
             }
-            _lastCastTurn[entity] = currCastTurn;
+            _lastCastSeq[entity] = currCastSeq;
 
             // --- Walk speed pendant le lerp ---
             // TODO 2.12.ter : differentier 1-2 PM (lent 0.8) vs 3+ PM (rapide 1.5) en regardant
@@ -190,7 +205,7 @@ namespace Nymora.Combat.View
 
         /// <summary>
         /// Mappe SpellId -> SpellCategory pour driver la vitesse de l'anim Cast.
-        /// Hardcode Soulrender (Bible V7.1). A etendre quand les autres classes arrivent.
+        /// Hardcode Soulrender + Nightseer (Bible V7.1). A etendre quand Phase 3 arrive.
         /// </summary>
         private static SpellCategory CategoryForSpell(SpellId id)
         {
@@ -222,6 +237,34 @@ namespace Nymora.Combat.View
 
                 // SOULRENDER — Signature
                 case SpellId.SoulrenderAmeLaceree:
+                    return SpellCategory.Signature;
+
+                // NIGHTSEER — Offensifs (5)
+                case SpellId.NightseerTirPrecis:
+                case SpellId.NightseerVoleeDEpines:
+                case SpellId.NightseerDetonationOnirique:
+                case SpellId.NightseerFrappeDeLOmbre:
+                case SpellId.NightseerSalveMortelle:
+                    return SpellCategory.Offensive;
+
+                // NIGHTSEER — Tactiques (5)
+                case SpellId.NightseerMarqueDuChasseur:
+                case SpellId.NightseerFiletDeRonces:
+                case SpellId.NightseerChampDeMines:
+                case SpellId.NightseerBourrasque:
+                case SpellId.NightseerSouffleGlacial:
+                    return SpellCategory.Tactical;
+
+                // NIGHTSEER — Survie (5)
+                case SpellId.NightseerVoileDOmbre:
+                case SpellId.NightseerPasFurtif:
+                case SpellId.NightseerCamouflageRonces:
+                case SpellId.NightseerSeveSauvage:
+                case SpellId.NightseerEvanescence:
+                    return SpellCategory.Survival;
+
+                // NIGHTSEER — Signature
+                case SpellId.NightseerTraquenard:
                     return SpellCategory.Signature;
 
                 default:
@@ -370,7 +413,7 @@ namespace Nymora.Combat.View
             _lastGridPos.Clear();
             _lastFacings.Clear();
             _lastHP.Clear();
-            _lastCastTurn.Clear();
+            _lastCastSeq.Clear();
             _gridReady = false;
         }
     }

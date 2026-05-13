@@ -142,6 +142,11 @@ namespace Quantum
             GridHelpers.SetOccupant(f, targetX, targetY, entity);
 
             Log.Info($"[Movement] P{combatant->PlayerIndex} -> ({targetX},{targetY}) cost={cost} PM restant={combatant->PM}");
+
+            // 2.15.b — Trigger trap eventuel sur la case d'arrivee (Filet de Ronces, Mine).
+            // L'helper gere damage + Empreinte + MovementMalus + Clear trap + +1 PR au owner.
+            int currentTurn = f.TryGetSingleton<CombatState>(out var st) ? st.TurnNumber : 0;
+            FogHelpers.TryTriggerTrapOnEnter(f, entity, combatant, targetX, targetY, currentTurn);
         }
     }
 }
