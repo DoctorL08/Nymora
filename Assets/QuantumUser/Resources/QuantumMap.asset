@@ -19,8 +19,8 @@ MonoBehaviour:
   UserAsset:
     Id:
       Value: 0
-  Scene: QuantumGameScene
-  ScenePath: Assets/QuantumUser/Scenes/QuantumGameScene.unity
+  Scene: 30_CombatIA
+  ScenePath: Assets/_Nymora/Scenes/30_CombatIA.unity
   SceneGuid: bfe3a7e252b32c4409043711ff6e0e60
   WorldSize: 256
   BucketsCount: 16

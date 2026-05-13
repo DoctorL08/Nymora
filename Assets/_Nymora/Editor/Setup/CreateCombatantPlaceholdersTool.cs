@@ -61,7 +61,7 @@ namespace Nymora.Editor.Setup
             EditorUtility.DisplayDialog(
                 "Create Combatant Placeholders",
                 $"5 sprites + 5 prefabs generes :\n\n{ArtFolder}/<Class>_Placeholder.png\n{PrefabFolder}/Combatant_<Class>.prefab\n\n" +
-                "Ouvre QuantumGameScene, ajoute un GameObject avec CombatantRenderer et drag les 5 prefabs dans les slots.",
+                "Ouvre 30_CombatIA, ajoute un GameObject avec CombatantRenderer et drag les 5 prefabs dans les slots.",
                 "OK");
         }
 

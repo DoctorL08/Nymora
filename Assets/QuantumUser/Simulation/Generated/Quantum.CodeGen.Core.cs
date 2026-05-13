@@ -827,7 +827,7 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct CombatState : Quantum.IComponentSingleton {
-    public const Int32 SIZE = 20;
+    public const Int32 SIZE = 24;
     public const Int32 ALIGNMENT = 4;
     [FieldOffset(0)]
     public CombatPhase CurrentPhase;
@@ -839,6 +839,8 @@ namespace Quantum {
     public Int32 TurnTimerTicks;
     [FieldOffset(8)]
     public Int32 SubTurnInRound;
+    [FieldOffset(20)]
+    public Int32 WinnerPlayerIndex;
     public override readonly Int32 GetHashCode() {
       unchecked { 
         var hash = 6577;
@@ -847,6 +849,7 @@ namespace Quantum {
         hash = hash * 31 + TurnNumber.GetHashCode();
         hash = hash * 31 + TurnTimerTicks.GetHashCode();
         hash = hash * 31 + SubTurnInRound.GetHashCode();
+        hash = hash * 31 + WinnerPlayerIndex.GetHashCode();
         return hash;
       }
     }
@@ -857,6 +860,7 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->SubTurnInRound);
         serializer.Stream.Serialize(&p->TurnNumber);
         serializer.Stream.Serialize(&p->TurnTimerTicks);
+        serializer.Stream.Serialize(&p->WinnerPlayerIndex);
     }
   }
   [StructLayout(LayoutKind.Explicit)]

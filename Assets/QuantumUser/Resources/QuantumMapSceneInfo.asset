@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5ef11b24dd8b636479cc530200469ee2, type: 3}
   m_Name: QuantumMapSceneInfo
   m_EditorClassIdentifier: 
-  Name: QuantumGameScene
-  ScenePath: Assets/QuantumUser/Scenes/QuantumGameScene.unity
+  Name: 30_CombatIA
+  ScenePath: Assets/_Nymora/Scenes/30_CombatIA.unity
   Preview: {fileID: 0}
   IsHidden: 0
   RuntimeConfig:

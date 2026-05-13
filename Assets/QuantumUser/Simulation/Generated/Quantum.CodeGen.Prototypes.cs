@@ -57,6 +57,7 @@ namespace Quantum.Prototypes {
     public Int32 TurnNumber;
     public Int32 TurnTimerTicks;
     public Int32 SubTurnInRound;
+    public Int32 WinnerPlayerIndex;
     partial void MaterializeUser(Frame frame, ref Quantum.CombatState result, in PrototypeMaterializationContext context);
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.CombatState component = default;
@@ -69,6 +70,7 @@ namespace Quantum.Prototypes {
         result.TurnNumber = this.TurnNumber;
         result.TurnTimerTicks = this.TurnTimerTicks;
         result.SubTurnInRound = this.SubTurnInRound;
+        result.WinnerPlayerIndex = this.WinnerPlayerIndex;
         MaterializeUser(frame, ref result, in context);
     }
   }

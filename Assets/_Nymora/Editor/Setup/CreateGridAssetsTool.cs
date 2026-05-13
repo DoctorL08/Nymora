@@ -50,7 +50,7 @@ namespace Nymora.Editor.Setup
                 $"- {SpritePath}\n" +
                 $"- {PrefabPath}\n" +
                 $"- {SettingsPath}\n\n" +
-                "Tu peux maintenant ouvrir QuantumGameScene et ajouter un GameObject avec GridRenderer.",
+                "Tu peux maintenant ouvrir 30_CombatIA et ajouter un GameObject avec GridRenderer.",
                 "OK");
         }
 
