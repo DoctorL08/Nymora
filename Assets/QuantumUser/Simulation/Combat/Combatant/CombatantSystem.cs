@@ -17,8 +17,11 @@ namespace Quantum
 
         public override void OnInit(Frame f)
         {
+            // 2.16.a.iii : P1 passe Nightseer -> Soulrender le temps de tester l'IA Easy
+            // qui est Soulrender-only. Reviens a Nightseer (ou tout autre choix) en
+            // 2.17 polyvalence + Phase 3, ou modifie ici pour tes propres tests.
             SpawnCombatant(f, playerIndex: 0, nymoraClass: NymoraClass.Soulrender, x: P1SpawnX, y: P1SpawnY);
-            SpawnCombatant(f, playerIndex: 1, nymoraClass: NymoraClass.Nightseer, x: P2SpawnX, y: P2SpawnY);
+            SpawnCombatant(f, playerIndex: 1, nymoraClass: NymoraClass.Soulrender, x: P2SpawnX, y: P2SpawnY);
         }
 
         private static EntityRef SpawnCombatant(Frame f, int playerIndex, NymoraClass nymoraClass, int x, int y)

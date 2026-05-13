@@ -21,5 +21,20 @@ namespace Quantum
         // 2.16.a.ii+ : ce delai sera remplace par le temps d'execution reel des actions
         //              (move + casts), avec une eventuelle pause finale courte.
         public const int BotEndTurnDelayTicks = 30;
+
+        // 2.16.a.iii — cap dur des casts par tour pour l'IA Easy.
+        //
+        // Constate empiriquement : meme avec random pick + skip signature, un bot
+        // Soulrender qui exploite le passif Appel du Sang (-1 PA cost <70% HP)
+        // peut chainer 3-4 Tranche-Ame = 660-880 dgts/tour et tuer le joueur en
+        // 2-3 tours. Pour une vraie "Easy" on cap a 2 casts/tour max -> ~440 dgts
+        // top, le joueur a 4-5 tours pour reagir.
+        //
+        // HG optionnel desactive en 2.16.a.iii (cf TryGreedyCast HGSpend = 0).
+        //
+        // IA Medium en 2.16.b reviendra a 8 (PA-limited natural) + greedy max-score
+        // + signature autorisee + HG optionnel. IA Hard ulterieurement aura planif
+        // multi-tour.
+        public const int MaxCastsPerTurn = 2;
     }
 }

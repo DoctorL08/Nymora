@@ -56,5 +56,29 @@ namespace Quantum
             int dy = y2 - y1; if (dy < 0) dy = -dy;
             return dx + dy;
         }
+
+        /// <summary>
+        /// Estime les degats d'un sort offensif Soulrender, ignorant buffs Pacte/Marque
+        /// (approximation pour le scoring greedy 2.16.a.iii). Pour les sorts dont
+        /// SpellDef.DamageAmount == 0 (formule dynamique), valeurs hardcodees ici.
+        ///
+        /// Returns 0 pour les sorts non-offensifs ou non-Soulrender. L'AI Easy n'utilise
+        /// que ces 6 sorts ; le reste (tactiques, self-buffs, signature Nightseer) sera
+        /// adresse en 2.17 / Phase 3 (IA polyvalente).
+        /// </summary>
+        public static int EstimateSpellDamage(SpellId spellId, byte hgSpend, byte hgMandatory)
+        {
+            switch (spellId)
+            {
+                // Bible V7.1 — values en dur, miroir des branches damage du SpellSystem.
+                case SpellId.SoulrenderTrancheAme:          return 220;
+                case SpellId.SoulrenderOuvrePlaie:          return hgSpend > 0 ? 230 : 110;
+                case SpellId.SoulrenderChargeBrutale:       return 180;
+                case SpellId.SoulrenderDetonationSanglante: return 60 + 40 * (hgMandatory + hgSpend);
+                case SpellId.SoulrenderCuree:               return 150;
+                case SpellId.SoulrenderAmeLaceree:          return 320;
+                default:                                    return 0;
+            }
+        }
     }
 }

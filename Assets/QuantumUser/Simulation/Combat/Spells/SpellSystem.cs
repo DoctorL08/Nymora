@@ -34,7 +34,13 @@ namespace Quantum
             }
         }
 
-        private static void TryCastSpell(Frame f, int playerIndex, CastSpellCommand cmd, int activePlayerIndex)
+        /// <summary>
+        /// Pipeline complet de cast d'un sort. Visible publiquement pour que l'IA
+        /// (AISystem en 2.16.a.iii) puisse l'appeler avec une CastSpellCommand
+        /// construite a la volee — meme path de validation et d'execution que les
+        /// commands clients, donc semantique strictement identique.
+        /// </summary>
+        public static void TryCastSpell(Frame f, int playerIndex, CastSpellCommand cmd, int activePlayerIndex)
         {
             if (playerIndex != activePlayerIndex)
             {
