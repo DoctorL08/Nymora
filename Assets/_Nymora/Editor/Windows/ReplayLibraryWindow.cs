@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Nymora.Combat.Replay;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
 
 namespace Nymora.Editor.Windows
@@ -125,13 +126,16 @@ namespace Nymora.Editor.Windows
 
                 using (new EditorGUILayout.HorizontalScope())
                 {
+                    var prevColor = GUI.color;
+                    GUI.color = new Color(0.55f, 0.90f, 0.65f);
+                    if (GUILayout.Button("Open in Replay", GUILayout.Width(130))) OpenInReplay(entry);
+                    GUI.color = prevColor;
                     if (GUILayout.Button("Reveal in Explorer", GUILayout.Width(140))) RevealInExplorer(entry.FullPath);
                     if (GUILayout.Button("Copy Path", GUILayout.Width(90))) EditorGUIUtility.systemCopyBuffer = entry.FullPath;
                     GUILayout.FlexibleSpace();
-                    var prev = GUI.color;
                     GUI.color = new Color(0.95f, 0.55f, 0.55f);
                     if (GUILayout.Button("Delete", GUILayout.Width(80))) ConfirmDelete(entry);
-                    GUI.color = prev;
+                    GUI.color = prevColor;
                 }
             }
         }
@@ -205,6 +209,47 @@ namespace Nymora.Editor.Windows
                 return;
             }
             EditorUtility.RevealInFinder(fullPath);
+        }
+
+        private void OpenInReplay(Entry entry)
+        {
+            if (!File.Exists(entry.FullPath))
+            {
+                _statusMessage = "Fichier introuvable : " + entry.FullPath;
+                return;
+            }
+
+            if (EditorApplication.isPlaying)
+            {
+                _statusMessage = "Stop Play Mode d'abord avant d'ouvrir un replay.";
+                return;
+            }
+
+            // Single-scene mode : on rouvre la scene source du replay (metadata.SceneName),
+            // fallback DefaultCombatSceneName si vide / introuvable.
+            string targetSceneName = entry.Metadata != null && !string.IsNullOrEmpty(entry.Metadata.SceneName)
+                ? entry.Metadata.SceneName
+                : ReplayPlaybackBridge.DefaultCombatSceneName;
+
+            var sceneGuids = AssetDatabase.FindAssets("t:Scene " + targetSceneName);
+            if (sceneGuids.Length == 0 && targetSceneName != ReplayPlaybackBridge.DefaultCombatSceneName)
+            {
+                // Retry avec la scene par defaut.
+                targetSceneName = ReplayPlaybackBridge.DefaultCombatSceneName;
+                sceneGuids = AssetDatabase.FindAssets("t:Scene " + targetSceneName);
+            }
+            if (sceneGuids.Length == 0)
+            {
+                _statusMessage = "Scene '" + targetSceneName + "' introuvable dans le projet.";
+                return;
+            }
+
+            string scenePath = AssetDatabase.GUIDToAssetPath(sceneGuids[0]);
+            if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
+
+            ReplayPlaybackBridge.RequestedReplayPath = entry.FullPath;
+            EditorSceneManager.OpenScene(scenePath);
+            EditorApplication.EnterPlaymode();
         }
 
         private void ConfirmDelete(Entry entry)
