@@ -207,7 +207,7 @@ namespace Nymora.Combat.Replay
         {
             if (_desyncDetected) return; // ne log que la premiere desync (les suivantes en cascade)
             _desyncDetected = true;
-            _desyncFrameNumber = c.Error.FrameNumber;
+            _desyncFrameNumber = c.Error.Tick;
             Debug.LogError(string.Format(
                 "[Nymora.ReplayPlayback] DESYNC detectee au frame {0}. " +
                 "Le replay ne correspond pas a l'execution courante — probablement un changement " +
