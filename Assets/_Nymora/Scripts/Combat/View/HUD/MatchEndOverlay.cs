@@ -154,9 +154,11 @@ namespace Nymora.Combat.View.HUD
             // 3.E.polish : en mode replay, le ReplayRecorder est force-disabled donc
             // HasPendingReplay sera false. On hide le bouton entierement pour clarte.
             bool replayMode = IsInReplayMode();
-            bool canSave = !replayMode && _replayRecorder != null && _replayRecorder.HasPendingReplay && !_replaySavedThisMatch;
             _saveReplayButton.gameObject.SetActive(!replayMode && _replayRecorder != null);
-            _saveReplayButton.interactable = canSave;
+            // Bouton toujours interactable (sauf si deja sauvegarde) : si la capture a
+            // echoue, OnSaveReplayClicked log un warning explicite plutot que de griser
+            // silencieusement (debug-friendly).
+            _saveReplayButton.interactable = !_replaySavedThisMatch;
 
             if (_saveReplayLabel != null)
             {
@@ -166,7 +168,19 @@ namespace Nymora.Combat.View.HUD
 
         private void OnSaveReplayClicked()
         {
-            if (_replayRecorder == null) return;
+            Debug.Log("[Nymora.HUD] Click Save Replay — recorder=" + (_replayRecorder != null) +
+                      " pending=" + (_replayRecorder != null && _replayRecorder.HasPendingReplay));
+            if (_replayRecorder == null)
+            {
+                Debug.LogWarning("[Nymora.HUD] ReplayRecorder ref non assignee dans le MatchEndOverlay Inspector.");
+                return;
+            }
+            if (!_replayRecorder.HasPendingReplay)
+            {
+                Debug.LogWarning("[Nymora.HUD] Aucun replay en attente — la capture Quantum a peut-etre echoue. " +
+                                 "Verifie les logs [Nymora.Replay] precedents.");
+                return;
+            }
             string path = _replayRecorder.SaveCurrentReplay();
             if (!string.IsNullOrEmpty(path))
             {

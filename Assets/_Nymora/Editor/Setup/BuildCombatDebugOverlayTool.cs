@@ -77,8 +77,10 @@ namespace Nymora.Editor.Setup
             SetObjectRef(so, "_content", content);
             so.ApplyModifiedPropertiesWithoutUndo();
 
-            // Hide par defaut (visible uniquement quand on tape F12).
-            panelGo.SetActive(false);
+            // IMPORTANT : panelGo reste ACTIF au start sinon Awake() n'est jamais appele,
+            // donc QuantumCallback.Subscribe n'a pas lieu et la touche de toggle est ignoree.
+            // Le component hide visuellement via SetVisible(false) en desactivant les enfants
+            // + le background Image (pas le GameObject porteur).
 
             EditorSceneManager.MarkSceneDirty(scene);
             Selection.activeGameObject = panelGo;

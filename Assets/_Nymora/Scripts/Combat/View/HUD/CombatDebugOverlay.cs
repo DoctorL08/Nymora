@@ -25,8 +25,8 @@ namespace Nymora.Combat.View.HUD
         [Tooltip("TMP_Text monospace ou s'affiche le dump.")]
         [SerializeField] private TMP_Text _content;
 
-        [Tooltip("Touche de toggle. F12 par defaut (universel AZERTY/QWERTY, libre).")]
-        [SerializeField] private KeyCode _toggleKey = KeyCode.F12;
+        [Tooltip("Touche de toggle. F11 par defaut (F1-F9 occupes par sorts CombatInputController, F12 par mode GM FogOfWarView).")]
+        [SerializeField] private KeyCode _toggleKey = KeyCode.F11;
 
         [Tooltip("Affichage initial au start de la scene.")]
         [SerializeField] private bool _showAtStart = false;
@@ -48,8 +48,21 @@ namespace Nymora.Combat.View.HUD
         private void SetVisible(bool on)
         {
             _visible = on;
-            GameObject target = _panel != null ? _panel : gameObject;
-            target.SetActive(on);
+            // Si _panel est un GameObject distinct, on toggle directement.
+            if (_panel != null && _panel != gameObject)
+            {
+                _panel.SetActive(on);
+                return;
+            }
+            // Sinon (_panel == self ou null) : on NE PEUT PAS faire SetActive(false)
+            // sur le GameObject porteur — ca tuerait Update() et empecherait le retoggle.
+            // On hide les enfants + le background Image a la place.
+            for (int i = 0; i < transform.childCount; i++)
+            {
+                transform.GetChild(i).gameObject.SetActive(on);
+            }
+            var bg = GetComponent<UnityEngine.UI.Image>();
+            if (bg != null) bg.enabled = on;
         }
 
         private void OnUpdateView(QuantumGame game)
