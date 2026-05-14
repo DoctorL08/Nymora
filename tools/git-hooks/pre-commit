@@ -13,7 +13,7 @@
 # =============================================================================
 
 staged_sim=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^Assets/QuantumUser/Simulation/.*\.cs$' | grep -v '/Generated/' || true)
-staged_combat_logic=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^Assets/_Nymora/Scripts/Combat/.*\.cs$' | grep -v '^Assets/_Nymora/Scripts/Combat/View/' || true)
+staged_combat_logic=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^Assets/_Nymora/Scripts/Combat/.*\.cs$' | grep -v '^Assets/_Nymora/Scripts/Combat/View/' | grep -v '^Assets/_Nymora/Scripts/Combat/Replay/' || true)
 
 staged=$(printf "%s\n%s" "$staged_sim" "$staged_combat_logic" | sed '/^$/d')
 
@@ -42,7 +42,7 @@ if [ -n "$violations" ]; then
   echo "Le code de SIMULATION doit etre 100% deterministe (Photon Quantum)."
   echo "Paths scannes :"
   echo "  - Assets/QuantumUser/Simulation/ (sauf Generated/)"
-  echo "  - Assets/_Nymora/Scripts/Combat/ (sauf View/ qui est cote rendu Unity)"
+  echo "  - Assets/_Nymora/Scripts/Combat/ (sauf View/ et Replay/ qui sont cote Unity)"
   echo ""
   echo "Interdits :"
   echo "  - Random.Range / UnityEngine.Random  -> utiliser f.RNG (Quantum)"

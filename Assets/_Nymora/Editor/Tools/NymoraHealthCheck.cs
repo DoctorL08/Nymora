@@ -120,6 +120,10 @@ namespace Nymora.Editor.Tools
                 // View/ = rendu Unity, Time.deltaTime y est legitime pour les animations.
                 if (excludeViewSubfolder && normalized.Contains("/Scripts/Combat/View/")) continue;
 
+                // Replay/ = capture/IO disque cote Unity (Brique 3.E.1), DateTime.UtcNow legitime
+                // pour horodater les fichiers .nymrep sauvegardes.
+                if (excludeViewSubfolder && normalized.Contains("/Scripts/Combat/Replay/")) continue;
+
                 // Generated/ = code auto-genere par le DSL Quantum, pas pertinent a scanner.
                 if (normalized.Contains("/Generated/")) continue;
 

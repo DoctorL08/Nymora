@@ -1,3 +1,4 @@
+using Nymora.Combat.Replay;
 using Quantum;
 using TMPro;
 using UnityEngine;
@@ -36,12 +37,23 @@ namespace Nymora.Combat.View.HUD
         [Tooltip("Click = AIConstants.CurrentDifficulty=Medium + reload scene.")]
         [SerializeField] private Button _restartMediumButton;
 
+        [Header("Replay (Brique 3.E.1)")]
+        [Tooltip("ReplayRecorder de la scene. Si laisse vide, le bouton 'Sauvegarder le replay' est masque.")]
+        [SerializeField] private ReplayRecorder _replayRecorder;
+        [Tooltip("Bouton qui ecrit le replay courant sur disque (Application.persistentDataPath/Replays/).")]
+        [SerializeField] private Button _saveReplayButton;
+        [Tooltip("Label TMP du bouton — change en 'Replay sauvegarde !' apres click.")]
+        [SerializeField] private TMP_Text _saveReplayLabel;
+        [SerializeField] private string _saveReplayDefaultText = "Sauvegarder le replay";
+        [SerializeField] private string _saveReplaySavedText = "Replay sauvegarde !";
+
         [Header("Couleurs titre")]
         [SerializeField] private Color _victoryColor = new Color(1.00f, 0.83f, 0.30f, 1f); // or
         [SerializeField] private Color _defeatColor = new Color(0.90f, 0.25f, 0.25f, 1f); // rouge
         [SerializeField] private Color _drawColor = new Color(0.75f, 0.75f, 0.75f, 1f); // gris
 
         private bool _shown;
+        private bool _replaySavedThisMatch;
 
         private void Awake()
         {
@@ -54,6 +66,11 @@ namespace Nymora.Combat.View.HUD
             {
                 _restartMediumButton.onClick.RemoveAllListeners();
                 _restartMediumButton.onClick.AddListener(() => OnRestartClicked(AIDifficulty.Medium));
+            }
+            if (_saveReplayButton != null)
+            {
+                _saveReplayButton.onClick.RemoveAllListeners();
+                _saveReplayButton.onClick.AddListener(OnSaveReplayClicked);
             }
             Hide();
         }
@@ -107,12 +124,39 @@ namespace Nymora.Combat.View.HUD
         {
             if (_panel != null) _panel.SetActive(true);
             _shown = true;
+            RefreshSaveReplayButton();
         }
 
         private void Hide()
         {
             if (_panel != null) _panel.SetActive(false);
             _shown = false;
+            _replaySavedThisMatch = false;
+        }
+
+        private void RefreshSaveReplayButton()
+        {
+            if (_saveReplayButton == null) return;
+
+            bool canSave = _replayRecorder != null && _replayRecorder.HasPendingReplay && !_replaySavedThisMatch;
+            _saveReplayButton.gameObject.SetActive(_replayRecorder != null);
+            _saveReplayButton.interactable = canSave;
+
+            if (_saveReplayLabel != null)
+            {
+                _saveReplayLabel.text = _replaySavedThisMatch ? _saveReplaySavedText : _saveReplayDefaultText;
+            }
+        }
+
+        private void OnSaveReplayClicked()
+        {
+            if (_replayRecorder == null) return;
+            string path = _replayRecorder.SaveCurrentReplay();
+            if (!string.IsNullOrEmpty(path))
+            {
+                _replaySavedThisMatch = true;
+                RefreshSaveReplayButton();
+            }
         }
 
         private void OnRestartClicked(AIDifficulty difficulty)
