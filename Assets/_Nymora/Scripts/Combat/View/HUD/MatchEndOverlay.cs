@@ -124,7 +124,20 @@ namespace Nymora.Combat.View.HUD
         {
             if (_panel != null) _panel.SetActive(true);
             _shown = true;
+            // 3.E.polish : si on est en mode replay (rejeu d'un .nymrep), on cache les
+            // boutons "Rejouer" (qui relanceraient un match normal en quittant le replay)
+            // et "Sauvegarder le replay" (replay deja existant, recorder force-disabled).
+            // Le user reste libre de quitter via le bouton du ReplayControlsPanel.
+            bool replayMode = IsInReplayMode();
+            if (_restartEasyButton != null) _restartEasyButton.gameObject.SetActive(!replayMode);
+            if (_restartMediumButton != null) _restartMediumButton.gameObject.SetActive(!replayMode);
             RefreshSaveReplayButton();
+        }
+
+        private static bool IsInReplayMode()
+        {
+            var c = Object.FindAnyObjectByType<ReplayPlaybackController>();
+            return c != null && c.enabled;
         }
 
         private void Hide()
@@ -138,8 +151,11 @@ namespace Nymora.Combat.View.HUD
         {
             if (_saveReplayButton == null) return;
 
-            bool canSave = _replayRecorder != null && _replayRecorder.HasPendingReplay && !_replaySavedThisMatch;
-            _saveReplayButton.gameObject.SetActive(_replayRecorder != null);
+            // 3.E.polish : en mode replay, le ReplayRecorder est force-disabled donc
+            // HasPendingReplay sera false. On hide le bouton entierement pour clarte.
+            bool replayMode = IsInReplayMode();
+            bool canSave = !replayMode && _replayRecorder != null && _replayRecorder.HasPendingReplay && !_replaySavedThisMatch;
+            _saveReplayButton.gameObject.SetActive(!replayMode && _replayRecorder != null);
             _saveReplayButton.interactable = canSave;
 
             if (_saveReplayLabel != null)

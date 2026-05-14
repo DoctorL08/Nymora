@@ -72,11 +72,12 @@ namespace Nymora.Combat.Replay
             try
             {
                 game.StartRecordingInput();
-                if (_verboseLogs) Debug.Log("[Nymora.Replay] Input recording demarre.", this);
+                game.StartRecordingChecksums();
+                if (_verboseLogs) Debug.Log("[Nymora.Replay] Input + checksum recording demarres.", this);
             }
             catch (Exception ex)
             {
-                Debug.LogWarning("[Nymora.Replay] StartRecordingInput a leve : " + ex.Message, this);
+                Debug.LogWarning("[Nymora.Replay] StartRecording a leve : " + ex.Message, this);
             }
         }
 
@@ -123,12 +124,10 @@ namespace Nymora.Combat.Replay
             QuantumReplayFile quantumReplay;
             try
             {
-                // includeChecksums=false : on n'a pas appele StartRecordingChecksums(), donc
-                // RecordedChecksums est null et passer true ferait throw une NRE interne.
-                // Les checksums ne sont pas requis pour rejouer (le determinisme garantit
-                // l'identite). Ils servent uniquement a detecter une desync — on les
-                // rebranchera en 3.E.2 si besoin via StartRecordingChecksums() en parallele.
-                quantumReplay = game.GetRecordedReplay(includeChecksums: false);
+                // 3.E.2.c : includeChecksums=true permet de detecter une desync au rejeu
+                // via Quantum.StartVerifyingChecksums cote playback. StartRecordingChecksums
+                // est appele a OnGameStarted ci-dessus, donc RecordedChecksums est non-null ici.
+                quantumReplay = game.GetRecordedReplay(includeChecksums: true);
             }
             catch (Exception ex)
             {

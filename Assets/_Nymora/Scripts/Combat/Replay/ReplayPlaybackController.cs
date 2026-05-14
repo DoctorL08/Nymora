@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+using System.Linq;
 using Nymora.Combat.View;
 using Nymora.Core.Data;
 using Photon.Deterministic;
@@ -40,6 +42,9 @@ namespace Nymora.Combat.Replay
         private bool _paused;
         private string _errorMessage;
         private bool _readyToStart;
+        private bool _desyncDetected;
+        private int _desyncFrameNumber = -1;
+        private bool _isSeeking;
 
         public bool IsRunning { get { return _runner != null && _runner.Session != null; } }
         public bool IsPaused { get { return _paused; } }
@@ -60,6 +65,9 @@ namespace Nymora.Combat.Replay
         public int LastTick { get { return _lastTick; } }
         public string ErrorMessage { get { return _errorMessage; } }
         public NymoraReplayMetadata Metadata { get { return _file != null ? _file.Metadata : null; } }
+        public bool HasDesync { get { return _desyncDetected; } }
+        public int DesyncFrameNumber { get { return _desyncFrameNumber; } }
+        public bool IsSeeking { get { return _isSeeking; } }
 
         private void Awake()
         {
@@ -175,6 +183,18 @@ namespace Nymora.Combat.Replay
                 Debug.Log(string.Format(
                     "[Nymora.ReplayPlayback] Replay demarre : tick 0 -> {0}, {1} vs {2}.",
                     _lastTick, _file.Metadata.Player0Class, _file.Metadata.Player1Class), this);
+
+                // 3.E.2.c — Detection desync. Si le replay contient des checksums,
+                // on demande a Quantum de les verifier tick-par-tick. Tout mismatch
+                // declenche CallbackChecksumError que l'on intercepte ci-dessous.
+                if (_quantumReplay.Checksums != null && _quantumReplay.Checksums.Checksums != null
+                    && _quantumReplay.Checksums.Checksums.Length > 0)
+                {
+                    _runner.Game.StartVerifyingChecksums(_quantumReplay.Checksums);
+                    QuantumCallback.Subscribe(this, (CallbackChecksumError c) => OnChecksumError(c));
+                    Debug.Log("[Nymora.ReplayPlayback] Verification checksums activee (" +
+                              _quantumReplay.Checksums.Checksums.Length + " entrees).", this);
+                }
             }
             catch (Exception ex)
             {
@@ -183,9 +203,22 @@ namespace Nymora.Combat.Replay
             }
         }
 
+        private void OnChecksumError(CallbackChecksumError c)
+        {
+            if (_desyncDetected) return; // ne log que la premiere desync (les suivantes en cascade)
+            _desyncDetected = true;
+            _desyncFrameNumber = c.Error.FrameNumber;
+            Debug.LogError(string.Format(
+                "[Nymora.ReplayPlayback] DESYNC detectee au frame {0}. " +
+                "Le replay ne correspond pas a l'execution courante — probablement un changement " +
+                "non-deterministe dans la simulation (Random/Time/DateTime sneake apres l'enregistrement).",
+                _desyncFrameNumber), this);
+        }
+
         private void Update()
         {
             if (!IsRunning) return;
+            if (_isSeeking) return; // la coroutine pilote le runner pendant le seek
 
             // Drive manuel en permanence : permet vitesse / pause / step propres.
             _runner.IsSessionUpdateDisabled = true;
@@ -230,6 +263,68 @@ namespace Nymora.Combat.Replay
         public void CycleSpeed()
         {
             _speedIndex = (_speedIndex + 1) % SpeedSteps.Length;
+        }
+
+        /// <summary>Rewind a tick 0 puis pause. Equivalent de SeekTo(0).</summary>
+        public void Restart()
+        {
+            SeekTo(0);
+        }
+
+        /// <summary>
+        /// Seek arbitraire (3.E.2.b) : shutdown du runner courant, restart depuis
+        /// tick 0 avec un nouvel input provider, fast-forward jusqu'a targetTick.
+        /// No-op si une seek est deja en cours ou si pas de replay valide charge.
+        /// </summary>
+        public void SeekTo(int targetTick)
+        {
+            if (_quantumReplay == null) return;
+            if (_isSeeking) return;
+            targetTick = Mathf.Clamp(targetTick, 0, _lastTick);
+            StartCoroutine(SeekCoroutine(targetTick));
+        }
+
+        private IEnumerator SeekCoroutine(int targetTick)
+        {
+            _isSeeking = true;
+            _paused = true;
+
+            try { QuantumRunner.ShutdownAll(); }
+            catch (Exception ex) { Debug.LogWarning("[Nymora.ReplayPlayback] ShutdownAll during seek : " + ex.Message); }
+            _runner = null;
+            _desyncDetected = false;
+            _desyncFrameNumber = -1;
+
+            int waitSafety = 0;
+            while (QuantumRunner.ActiveRunners.Any() && waitSafety++ < 120)
+            {
+                yield return null;
+            }
+
+            StartReplay();
+            if (_runner == null)
+            {
+                _isSeeking = false;
+                yield break;
+            }
+
+            if (targetTick > 0)
+            {
+                float dtPerTick = 1f / Math.Max(1, _runner.Session.SessionConfig.UpdateFPS);
+                int maxIter = Math.Max(200, targetTick * 4);
+                int safety = 0;
+                while (CurrentTick < targetTick && safety++ < maxIter)
+                {
+                    if (_runner.Session.IsReplayFinished) break;
+                    _runner.IsSessionUpdateDisabled = true;
+                    _runner.Service(dtPerTick * 20f);
+                    QuantumUnityDB.UpdateGlobal();
+                    if ((safety % 50) == 0) yield return null;
+                }
+            }
+
+            _isSeeking = false;
+            _paused = true;
         }
 
         private void OnDestroy()

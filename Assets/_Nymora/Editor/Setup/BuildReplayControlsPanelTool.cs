@@ -56,12 +56,12 @@ namespace Nymora.Editor.Setup
             panelRect.anchorMax = new Vector2(0.5f, 1f);
             panelRect.pivot = new Vector2(0.5f, 1f);
             panelRect.anchoredPosition = new Vector2(0f, -20f);
-            panelRect.sizeDelta = new Vector2(440f, 160f);
+            panelRect.sizeDelta = new Vector2(440f, 240f);
             var bg = panelGo.GetComponent<Image>();
             bg.color = new Color(0.05f, 0.05f, 0.08f, 0.85f);
             bg.raycastTarget = true;
 
-            // 4. Labels.
+            // 4. Labels haut.
             var matchInfo = BuildLabel(panelRect, "MatchInfoLabel",
                 anchoredPos: new Vector2(0f, -10f), size: new Vector2(420f, 24f),
                 fontSize: 16, color: new Color(0.85f, 0.85f, 0.95f), align: TextAlignmentOptions.Center,
@@ -72,26 +72,44 @@ namespace Nymora.Editor.Setup
                 fontSize: 14, color: new Color(0.70f, 0.85f, 1f), align: TextAlignmentOptions.Center,
                 text: "Tick 0 / 0");
 
-            // 5. Boutons (row centree).
-            float btnY = -90f;
+            // 5. Row 1 playback : Pause / Step / Speed.
+            float row1Y = -78f;
             Button playPauseBtn = BuildButton(panelRect, "BtnPlayPause",
-                anchoredPos: new Vector2(-130f, btnY), size: new Vector2(110f, 36f),
+                anchoredPos: new Vector2(-130f, row1Y), size: new Vector2(110f, 36f),
                 label: "Pause", out TMP_Text playPauseLabel);
             Button stepBtn = BuildButton(panelRect, "BtnStep",
-                anchoredPos: new Vector2(0f, btnY), size: new Vector2(110f, 36f),
+                anchoredPos: new Vector2(0f, row1Y), size: new Vector2(110f, 36f),
                 label: "Step +1", out _);
             Button speedBtn = BuildButton(panelRect, "BtnSpeed",
-                anchoredPos: new Vector2(130f, btnY), size: new Vector2(110f, 36f),
+                anchoredPos: new Vector2(130f, row1Y), size: new Vector2(110f, 36f),
                 label: "1×", out TMP_Text speedLabel);
 
-            // 6. Error label (en bas, hidden par defaut — sera show par les Controls si erreur).
+            // 6. Row 2 seek (3.E.2.b) : Restart / InputField tick / Seek.
+            float row2Y = -122f;
+            Button restartBtn = BuildButton(panelRect, "BtnRestart",
+                anchoredPos: new Vector2(-130f, row2Y), size: new Vector2(110f, 36f),
+                label: "Restart", out _);
+            TMP_InputField seekInput = BuildInputField(panelRect, "SeekInput",
+                anchoredPos: new Vector2(0f, row2Y), size: new Vector2(110f, 36f),
+                placeholder: "tick…");
+            Button seekBtn = BuildButton(panelRect, "BtnSeek",
+                anchoredPos: new Vector2(130f, row2Y), size: new Vector2(110f, 36f),
+                label: "Seek", out _);
+
+            // 7. Row 3 exit (3.E.polish) : bouton Quitter le replay.
+            float row3Y = -166f;
+            Button quitBtn = BuildButton(panelRect, "BtnQuit",
+                anchoredPos: new Vector2(0f, row3Y), size: new Vector2(200f, 36f),
+                label: "Quitter le replay", out _);
+
+            // 8. Error label tout en bas.
             var error = BuildLabel(panelRect, "ErrorLabel",
-                anchoredPos: new Vector2(0f, -140f), size: new Vector2(420f, 18f),
+                anchoredPos: new Vector2(0f, -210f), size: new Vector2(420f, 22f),
                 fontSize: 12, color: new Color(1f, 0.45f, 0.45f), align: TextAlignmentOptions.Center,
                 text: "");
             error.gameObject.SetActive(false);
 
-            // 7. Add ReplayPlaybackControls + wire refs.
+            // 9. Add ReplayPlaybackControls + wire refs.
             var controls = panelGo.AddComponent<ReplayPlaybackControls>();
             var so = new SerializedObject(controls);
             SetObjectRef(so, "_playPauseButton", playPauseBtn);
@@ -99,6 +117,10 @@ namespace Nymora.Editor.Setup
             SetObjectRef(so, "_stepButton", stepBtn);
             SetObjectRef(so, "_speedButton", speedBtn);
             SetObjectRef(so, "_speedLabel", speedLabel);
+            SetObjectRef(so, "_restartButton", restartBtn);
+            SetObjectRef(so, "_seekInput", seekInput);
+            SetObjectRef(so, "_seekButton", seekBtn);
+            SetObjectRef(so, "_quitButton", quitBtn);
             SetObjectRef(so, "_tickLabel", tick);
             SetObjectRef(so, "_errorLabel", error);
             SetObjectRef(so, "_matchInfoLabel", matchInfo);
@@ -239,6 +261,72 @@ namespace Nymora.Editor.Setup
             labelTmp.raycastTarget = false;
 
             return btn;
+        }
+
+        private static TMP_InputField BuildInputField(RectTransform parent, string name,
+            Vector2 anchoredPos, Vector2 size, string placeholder)
+        {
+            // Root : Image + TMP_InputField.
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(TMP_InputField));
+            go.transform.SetParent(parent, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = new Vector2(0.5f, 1f);
+            rt.anchorMax = new Vector2(0.5f, 1f);
+            rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = anchoredPos;
+            rt.sizeDelta = size;
+            var img = go.GetComponent<Image>();
+            img.color = new Color(0.10f, 0.12f, 0.18f, 1f);
+
+            // Text Area enfant avec RectMask2D.
+            var textAreaGo = new GameObject("Text Area", typeof(RectTransform), typeof(RectMask2D));
+            textAreaGo.transform.SetParent(go.transform, false);
+            var textAreaRt = textAreaGo.GetComponent<RectTransform>();
+            textAreaRt.anchorMin = Vector2.zero;
+            textAreaRt.anchorMax = Vector2.one;
+            textAreaRt.offsetMin = new Vector2(8f, 4f);
+            textAreaRt.offsetMax = new Vector2(-8f, -4f);
+
+            // Placeholder TMP.
+            var placeholderGo = new GameObject("Placeholder", typeof(RectTransform));
+            placeholderGo.transform.SetParent(textAreaGo.transform, false);
+            var placeholderRt = placeholderGo.GetComponent<RectTransform>();
+            placeholderRt.anchorMin = Vector2.zero;
+            placeholderRt.anchorMax = Vector2.one;
+            placeholderRt.offsetMin = Vector2.zero;
+            placeholderRt.offsetMax = Vector2.zero;
+            var placeholderTmp = placeholderGo.AddComponent<TextMeshProUGUI>();
+            placeholderTmp.text = placeholder;
+            placeholderTmp.fontSize = 14;
+            placeholderTmp.color = new Color(0.6f, 0.6f, 0.6f, 1f);
+            placeholderTmp.alignment = TextAlignmentOptions.MidlineLeft;
+            placeholderTmp.raycastTarget = false;
+
+            // Text TMP.
+            var textGo = new GameObject("Text", typeof(RectTransform));
+            textGo.transform.SetParent(textAreaGo.transform, false);
+            var textRt = textGo.GetComponent<RectTransform>();
+            textRt.anchorMin = Vector2.zero;
+            textRt.anchorMax = Vector2.one;
+            textRt.offsetMin = Vector2.zero;
+            textRt.offsetMax = Vector2.zero;
+            var textTmp = textGo.AddComponent<TextMeshProUGUI>();
+            textTmp.text = "";
+            textTmp.fontSize = 14;
+            textTmp.color = Color.white;
+            textTmp.alignment = TextAlignmentOptions.MidlineLeft;
+            textTmp.raycastTarget = false;
+
+            // Wire le InputField.
+            var input = go.GetComponent<TMP_InputField>();
+            input.textViewport = textAreaRt;
+            input.textComponent = textTmp;
+            input.placeholder = placeholderTmp;
+            input.contentType = TMP_InputField.ContentType.IntegerNumber;
+            input.fontAsset = textTmp.font;
+            input.pointSize = 14;
+
+            return input;
         }
 
         private static void SetObjectRef(SerializedObject so, string fieldName, Object value)

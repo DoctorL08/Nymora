@@ -10,20 +10,31 @@ namespace Nymora.Combat.Replay
     ///   - Play/Pause (toggle)
     ///   - Step (+1 tick puis pause)
     ///   - Speed (cycle 0.5× / 1× / 2× / 4×)
-    ///   - Label "Tick X / Y"
-    ///   - Label error (visible uniquement si erreur de chargement)
+    ///   - Restart (3.E.2.b) : rewind a tick 0 puis pause
+    ///   - Seek (3.E.2.b) : InputField tick cible + bouton Go
+    ///   - Quit (3.E.polish) : clear flag replay et reload scene
+    ///   - Label "Tick X / Y", "Seeking..." pendant un seek
+    ///   - Label error / desync warning
     /// </summary>
     public class ReplayPlaybackControls : MonoBehaviour
     {
         [Tooltip("Reference au controller. Auto-resolu si laisse vide (FindObjectByType).")]
         [SerializeField] private ReplayPlaybackController _controller;
 
-        [Header("Boutons")]
+        [Header("Boutons playback")]
         [SerializeField] private Button _playPauseButton;
         [SerializeField] private TMP_Text _playPauseLabel;
         [SerializeField] private Button _stepButton;
         [SerializeField] private Button _speedButton;
         [SerializeField] private TMP_Text _speedLabel;
+
+        [Header("Seek (3.E.2.b)")]
+        [SerializeField] private Button _restartButton;
+        [SerializeField] private TMP_InputField _seekInput;
+        [SerializeField] private Button _seekButton;
+
+        [Header("Exit (3.E.polish)")]
+        [SerializeField] private Button _quitButton;
 
         [Header("Labels info")]
         [SerializeField] private TMP_Text _tickLabel;
@@ -46,6 +57,9 @@ namespace Nymora.Combat.Replay
             if (_playPauseButton != null) _playPauseButton.onClick.AddListener(OnPlayPauseClicked);
             if (_stepButton != null) _stepButton.onClick.AddListener(OnStepClicked);
             if (_speedButton != null) _speedButton.onClick.AddListener(OnSpeedClicked);
+            if (_restartButton != null) _restartButton.onClick.AddListener(OnRestartClicked);
+            if (_seekButton != null) _seekButton.onClick.AddListener(OnSeekClicked);
+            if (_quitButton != null) _quitButton.onClick.AddListener(OnQuitClicked);
         }
 
         private void Update()
@@ -53,24 +67,43 @@ namespace Nymora.Combat.Replay
             if (_controller == null) return;
 
             bool hasErr = !string.IsNullOrEmpty(_controller.ErrorMessage);
+            bool hasDesync = _controller.HasDesync;
+            bool seeking = _controller.IsSeeking;
 
             if (_errorLabel != null)
             {
-                _errorLabel.gameObject.SetActive(hasErr);
+                _errorLabel.gameObject.SetActive(hasErr || hasDesync);
                 if (hasErr) _errorLabel.text = _controller.ErrorMessage;
+                else if (hasDesync) _errorLabel.text = string.Format(
+                    "DESYNC au frame {0} — replay diverge de la simulation courante.",
+                    _controller.DesyncFrameNumber);
             }
 
             if (hasErr)
             {
-                // Quand erreur, on grise les controles pour eviter clics inutiles.
-                SetInteractable(false);
+                // Erreur fatale = tout grise sauf Quit (pour pouvoir sortir).
+                SetPlaybackInteractable(false);
+                SetSeekInteractable(false);
+                if (_quitButton != null) _quitButton.interactable = true;
                 return;
             }
-            SetInteractable(true);
+
+            // Pendant un seek : grise tout sauf Quit.
+            bool playbackOk = !seeking;
+            SetPlaybackInteractable(playbackOk);
+            SetSeekInteractable(playbackOk);
+            if (_quitButton != null) _quitButton.interactable = true;
 
             if (_tickLabel != null)
             {
-                _tickLabel.text = string.Format("Tick {0} / {1}", _controller.CurrentTick, _controller.LastTick);
+                if (seeking)
+                {
+                    _tickLabel.text = "Seeking...";
+                }
+                else
+                {
+                    _tickLabel.text = string.Format("Tick {0} / {1}", _controller.CurrentTick, _controller.LastTick);
+                }
             }
 
             if (_playPauseLabel != null)
@@ -96,15 +129,44 @@ namespace Nymora.Combat.Replay
             }
         }
 
-        private void SetInteractable(bool on)
+        private void SetPlaybackInteractable(bool on)
         {
             if (_playPauseButton != null) _playPauseButton.interactable = on;
             if (_stepButton != null) _stepButton.interactable = on;
             if (_speedButton != null) _speedButton.interactable = on;
         }
 
+        private void SetSeekInteractable(bool on)
+        {
+            if (_restartButton != null) _restartButton.interactable = on;
+            if (_seekButton != null) _seekButton.interactable = on;
+            if (_seekInput != null) _seekInput.interactable = on;
+        }
+
         private void OnPlayPauseClicked() { if (_controller != null) _controller.TogglePause(); }
         private void OnStepClicked() { if (_controller != null) _controller.Step(); }
         private void OnSpeedClicked() { if (_controller != null) _controller.CycleSpeed(); }
+        private void OnRestartClicked() { if (_controller != null) _controller.Restart(); }
+
+        private void OnSeekClicked()
+        {
+            if (_controller == null || _seekInput == null) return;
+            if (int.TryParse(_seekInput.text, out int target))
+            {
+                _controller.SeekTo(target);
+            }
+        }
+
+        private void OnQuitClicked()
+        {
+            // 3.E.polish : sortir du mode replay = clear le flag et reload la scene
+            // courante. Le ReplayPlaybackController detectera Consume() = null et
+            // self-disable -> retour au mode match normal.
+            ReplayPlaybackBridge.RequestedReplayPath = null;
+            var active = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            try { Quantum.QuantumRunner.ShutdownAll(); }
+            catch { }
+            UnityEngine.SceneManagement.SceneManager.LoadScene(active.name);
+        }
     }
 }
