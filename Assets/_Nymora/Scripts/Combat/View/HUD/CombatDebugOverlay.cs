@@ -1,0 +1,134 @@
+using System.Text;
+using Quantum;
+using TMPro;
+using UnityEngine;
+
+namespace Nymora.Combat.View.HUD
+{
+    /// <summary>
+    /// Brique 3.E.3 — Overlay debug textuel toggleable avec F12. Lit le frame
+    /// Quantum verifie en lecture seule et formate un dump compact des infos
+    /// non visibles dans le HUD normal :
+    ///   - Header : Tick / Round / Phase / ActivePlayer / Winner
+    ///   - Combatants : PlayerIndex, Class, EntityRef, Pos, HP/PA/PM/Resource,
+    ///                  statuses textuels (Kind + Magnitude + TurnsLeft), marque
+    ///   - Obstacles : Kind, EntityRef, Pos, HP/MaxHP, Owner, ExpiresOnTurn
+    ///
+    /// Marche aussi pendant un replay (meme pipeline View).
+    /// Zero impact simu : lecture seule, hors-Update Quantum.
+    /// </summary>
+    public class CombatDebugOverlay : MonoBehaviour
+    {
+        [Tooltip("Panel racine a toggle (background + texte). Si null, on toggle le GameObject porteur.")]
+        [SerializeField] private GameObject _panel;
+
+        [Tooltip("TMP_Text monospace ou s'affiche le dump.")]
+        [SerializeField] private TMP_Text _content;
+
+        [Tooltip("Touche de toggle. F12 par defaut (universel AZERTY/QWERTY, libre).")]
+        [SerializeField] private KeyCode _toggleKey = KeyCode.F12;
+
+        [Tooltip("Affichage initial au start de la scene.")]
+        [SerializeField] private bool _showAtStart = false;
+
+        private readonly StringBuilder _sb = new StringBuilder(4096);
+        private bool _visible;
+
+        private void Awake()
+        {
+            QuantumCallback.Subscribe(this, (CallbackUpdateView c) => OnUpdateView(c.Game));
+            SetVisible(_showAtStart);
+        }
+
+        private void Update()
+        {
+            if (UnityEngine.Input.GetKeyDown(_toggleKey)) SetVisible(!_visible);
+        }
+
+        private void SetVisible(bool on)
+        {
+            _visible = on;
+            GameObject target = _panel != null ? _panel : gameObject;
+            target.SetActive(on);
+        }
+
+        private void OnUpdateView(QuantumGame game)
+        {
+            if (!_visible || _content == null) return;
+            var frame = game.Frames.Verified;
+            if (frame == null) return;
+
+            _sb.Clear();
+            AppendHeader(_sb, frame);
+            AppendCombatants(_sb, frame);
+            AppendObstacles(_sb, frame);
+            _content.text = _sb.ToString();
+        }
+
+        private static void AppendHeader(StringBuilder sb, Frame frame)
+        {
+            sb.AppendFormat("Tick {0}", frame.Number);
+            if (frame.TryGetSingleton<CombatState>(out var state))
+            {
+                sb.AppendFormat(" | Round {0} (sub {1}) | Phase {2} | Active P{3} | Winner {4}\n",
+                    state.TurnNumber, state.SubTurnInRound, state.CurrentPhase, state.ActivePlayerIndex,
+                    state.WinnerPlayerIndex < 0 ? "—" : "P" + state.WinnerPlayerIndex);
+                sb.AppendFormat("Timer ticks {0}\n", state.TurnTimerTicks);
+            }
+            else
+            {
+                sb.AppendLine(" | CombatState absent");
+            }
+            sb.AppendLine();
+        }
+
+        private static void AppendCombatants(StringBuilder sb, Frame frame)
+        {
+            sb.AppendLine("=== Combatants ===");
+            int count = 0;
+            var filter = frame.Filter<Combatant>();
+            while (filter.Next(out EntityRef e, out Combatant c))
+            {
+                count++;
+                sb.AppendFormat("[P{0}] {1}  E#{2}  Pos({3},{4})\n",
+                    c.PlayerIndex, c.Class, e.Index, c.GridX, c.GridY);
+                sb.AppendFormat("    HP {0}/{1}  PA {2}/{3}  PM {4}/{5}  Res {6}\n",
+                    c.HP, c.MaxHP, c.PA, c.MaxPA, c.PM, c.MaxPM, c.Resource);
+
+                bool anyStatus = false;
+                for (int i = 0; i < c.Statuses.Length; i++)
+                {
+                    var s = c.Statuses[i];
+                    if (s.Kind == StatusKind.None) continue;
+                    if (!anyStatus) { sb.Append("    Statuses: "); anyStatus = true; }
+                    else sb.Append(", ");
+                    sb.AppendFormat("{0}({1}T,M{2})", s.Kind, s.TurnsLeft, s.Magnitude);
+                }
+                if (anyStatus) sb.AppendLine();
+
+                if (c.CurrentMark != MarkKind.None)
+                {
+                    sb.AppendFormat("    Mark: {0} ({1}T, owner=P{2})\n",
+                        c.CurrentMark, c.MarkTurnsLeft, c.MarkOwnerPlayer);
+                }
+                sb.AppendLine();
+            }
+            if (count == 0) sb.AppendLine("  (none)");
+        }
+
+        private static void AppendObstacles(StringBuilder sb, Frame frame)
+        {
+            sb.AppendLine("=== Obstacles ===");
+            int count = 0;
+            var filter = frame.Filter<Obstacle>();
+            while (filter.Next(out EntityRef e, out Obstacle o))
+            {
+                count++;
+                sb.AppendFormat("  {0}  E#{1}  Pos({2},{3})  HP {4}/{5}  Owner=P{6}  Exp@{7}\n",
+                    o.Kind, e.Index, o.GridX, o.GridY, o.HP, o.MaxHP, o.OwnerPlayerIndex,
+                    o.ExpiresOnTurn == 0 ? "perm" : o.ExpiresOnTurn.ToString());
+            }
+            if (count == 0) sb.AppendLine("  (none)");
+        }
+    }
+}
