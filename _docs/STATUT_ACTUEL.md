@@ -3,24 +3,41 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 14 mai 2026 nuit profonde (⚒️ **Brique 3.3.b.iii Refacto Bible-correct ✅ LIVRÉE + E2E VALIDÉE** — 5 sorts tactiques Colossar refactorés Bible V7.1 exact suite découverte non-conformité. Pilier range 1→3, Mur 5 PA range 2→4 PA range 4 + option 1 FD = 5 segments boostés, Ancrage SELF -50% dmg → ENEMY range 4 -2 PM 2T + immune push 1T, Provocation 3 PA range 4 → 2 PA range 5 1T + 3 effets (-1 PM + +2 PA cost sorts non-ciblants + 100 dmg auto si pas adjacent fin tour), Brisure anti-obstacle inventé → cible ennemi 90 dmg pipeline + retire 1 buff prioritaire OU TRAUMA -2 PA. Memory rule créée : Bible-check obligatoire avant chaque livraison sort. E2E Provocation : -1 PM appliqué tour P1 confirmé. E2E Brisure : 90 dmg P1 1500→1410 + TRAUMA -2 PA appliqué P1 round suivant confirmé. CombatRulesVersion 17) — **READY 3.3.c (5 sorts survie + Signature EFFONDREMENT)** ⚒️  
+**Dernière mise à jour :** 14 mai 2026 nuit profonde (🎉 **COLOSSAR 16/16 SORTS COMPLET** — Phase 3.3.audit + 3.3.c + 3.3.d livrées et pushées sur GitHub `c1e01c4`. Audit Bible V7.1 → 7 corrections (Colossar PM 3→2, Pilier permanent, Représailles cap 4, RoncesAura+Empreinte, Détonation Onirique option 2 PR, Volée d'Épines Filet aligné, commentaires Spell.qtn). 3.3.c Survie : Stoïcisme (F5) + Garde Protectrice (F6) + Ressac Vital (F7) + Renvoi du Bouclier (F8) + Soin Lourd (F9) + 2 statuses (DamageReductionPercent, RipostAll) + 3 champs Combatant (HitsTaken{This,Last}Round, StoicismeExpiresOnTurn). 3.3.d Signature Effondrement (touche B) : annonce 1 tour + mécanique EJECTION+SWAP originale Lorenzo (snapshot ennemi en zone au cast, ejection axe-dominant calculée au trigger, swap caster ↔ position éjection → ennemi piégé centre Failles + Colossar hors zone), 4 PA + 3 FD, 200 dgts, Failles 100 HP destructibles via AoE adverse, buff 2T (+1 PM/-1 PA cost/-30% dmg). Refuse cast si pas d'ennemi en rayon 2. Polish massif View pure : TileHoverView (glow case + reveal HP obstacles), MovementRangePreview hover-driven (vert range au survol perso, jaune path au survol case), BFS contour obstacles dans CombatantRenderer (fix visuel "perso traverse Piliers"), fallback directionnel Stage N→Stage 0 CombatantView (fix bug SE/SW cassées post-2e Pilier), MarkSpriteLibrary étendu MarkKind (Traque/Empreinte NS), AutoSlice+BindClassVisuals tools, avatars Nightseer+Colossar binds. CombatRulesVersion 17→20) — **READY 3.4 NECRAM (16 sorts + passif Floraison + signature Virus Fatal)** 🎉  
 **Mis à jour par :** Claude (session courante)
 
 ---
 
 ## 🎯 OÙ ON EN EST
 
-**Phase actuelle :** 🚧 **Phase 3 EN COURS** — Combat Colossar + Necram + Ghostra (~16 briques en 5 blocs)
-**Brique en cours :** **3.3.c Sorts survie Colossar + Signature EFFONDREMENT** (5 sorts survie + 1 signature). 3.3.a.iii cap Représailles 4 retours en backlog. Brisure E2E avec destruction obstacle adverse également en backlog (manque setup 2× Colossar ou debug spawn ENEMY).
-**Bloc A Phase 3 :** ✅ **3.1 framework obstacles VALIDÉE** + ✅ **3.1.bis Colossar assets VALIDÉE** (14 mai 2026)
-**Bloc B Phase 3 (en cours)** : ✅ **3.2 Stats + FD + Densité Inerte VALIDÉE** + ✅ **3.3.a.i Frappe Lourde + Représailles + bonus adjacence VALIDÉE** + ✅ **3.3.a.ii Onde de Choc + Marteau Punisseur + Choc Sismique VALIDÉE** + ✅ **3.3.b.i Pilier + Mur + LoS fix VALIDÉE** + ✅ **3.3.b.ii Ancrage + Provocation + Brisure VALIDÉE** + ✅ **3.3.b.iii Refacto Bible-correct VALIDÉE** (14 mai 2026 nuit). **5/5 sorts offensifs + 5/5 sorts tactiques Colossar Bible V7.1 conformes E2E validés.** Reste 5 sorts survie + 1 signature (3.3.c) pour clore le Colossar.
-**Bug LoS Pilier/Mur ✅ FIX 3.3.b.i** : helper `ObstacleHelpers.HasLineOfSight` (Bresenham 2D OWN-friendly), hook pré-cast `SpellNeedsLineOfSight` pour 14 sorts directs distance, Charge Brutale break sur obstacle, Choc Sismique stop sur non-OWN.
-**Backlog IA 3.8** : `AISystem.TryGreedyCastSingle` ne check pas LoS dans son estim → l'IA gaspille des PA en castant des sorts à travers obstacles (observé : Charge Brutale 2× contre Mur en un tour). Pas bloquant pour Phase 3, à fix en 3.8 IA Hard MCTS.
-**Cadrage Phase 3** : 5 blocs (A préreqs / B Colossar / C Necram / D Ghostra / E IA Hard+Replay+Debug) — séquentiel par classe
+**Phase actuelle :** 🚧 **Phase 3 EN COURS** — Bloc B (Colossar) **CLÔTURÉ** ✅. Prochaine : **Bloc C Necram** (3.4).
+**Brique en cours :** **3.4 Necram** (16 sorts + passif Floraison + signature Virus Fatal). Bloc C Phase 3.
+**Bloc A Phase 3 :** ✅ **3.1 + 3.1.bis VALIDÉES** (14 mai 2026)
+**Bloc B Phase 3 :** ✅ **CLÔTURÉ 14 mai 2026 nuit** — Colossar **16/16 sorts** Bible V7.1 conformes E2E validés :
+  - ✅ 3.2 Stats + FD + Densité Inerte
+  - ✅ 3.3.a.i Frappe Lourde + Représailles + bonus adjacence (cap 4 retours fix audit)
+  - ✅ 3.3.a.ii Onde de Choc + Marteau Punisseur + Choc Sismique
+  - ✅ 3.3.b.i Pilier + Mur + LoS fix (Pilier permanent post-audit)
+  - ✅ 3.3.b.ii Ancrage + Provocation + Brisure
+  - ✅ 3.3.b.iii Refacto Bible-correct 5 tactiques
+  - ✅ **3.3.audit Pass Bible V7.1** (7 corrections Bible-strict + amendement Filet)
+  - ✅ **3.3.c Survie** : Stoïcisme + Garde Protectrice + Ressac Vital + Renvoi du Bouclier + Soin Lourd
+  - ✅ **3.3.d Effondrement** signature avec mécanique EJECTION+SWAP originale Lorenzo
+**Polish 3.3.d ✅ livré** : TileHoverView (glow + HP obstacles au survol), MovementRangePreview hover-driven, BFS contour obstacles (CombatantRenderer), fallback directionnel Stage N→0 (CombatantView), MarkSpriteLibrary étendu MarkKind (Traque/Empreinte Nightseer), AutoSlice + BindClassVisuals tools, avatars NS+CO binds.
+**Asset TODO** : VFX Effondrement (12 frames) — le `.gif` livré est animé 128×128 (1 frame seule lue par Unity). Redemander designer un export PNG sprite sheet horizontal 1536×128. Sort fonctionne sans VFX.
+**Cadrage Phase 3** : 5 blocs (A préreqs / B Colossar **CLÔTURÉ** / C Necram **EN COURS** / D Ghostra / E IA Hard+Replay+Debug) — séquentiel par classe
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)
-**Statut Phase 2 :** ✅ **CLÔTURÉE le 13 mai 2026 soir**. 17/17 briques validées + 2.12.bis + 2.13.a/b/c/d/e + 2.14 + 2.15.a/b/c + **2.16.a/b/c complets** (Bloc E IA). Bloc A ✅ 5/5, Bloc B ✅ 3/3, Bloc C ✅ 3/3, 2.13 ✅, 2.14 ✅, 2.15 ✅, **2.16 ✅ TERMINÉ** (IA Easy random + IA Medium greedy + scène 30_CombatIA + overlay Victory/Defeat + selecteur difficulté + AI pacing + mouvement cardinal cell-by-cell). **🏆 Soulrender + Nightseer 100% jouables, combat 1v1 vs IA E2E**.
+**Statut Phase 2 :** ✅ **CLÔTURÉE le 13 mai 2026 soir**. 17/17 briques validées + 2.12.bis + 2.13.a/b/c/d/e + 2.14 + 2.15.a/b/c + **2.16.a/b/c complets** (Bloc E IA). **🏆 Soulrender + Nightseer 100% jouables, combat 1v1 vs IA E2E**.
 
-**CombatRulesVersion :** **17** (bump 3.3.b.iii — refacto Bible-correct 5 sorts tactiques Colossar : Pilier range 3, Mur 4 PA range 4 + option 1 FD = 5 segments, Ancrage ENEMY -2 PM 2T + immune push 1T, Provocation 2 PA range 5 1T avec -1 PM + bump cost +2 PA si target non-provocateur + 100 dmg auto fin tour si pas adjacent, Brisure 3 PA range 2 = 90 dmg + retire 1 buff prio sinon TRAUMA -2 PA).
+**État classes Bible V7.1 (80 sorts canoniques) :**
+  - Soulrender : ✅ 16/16
+  - Nightseer  : ✅ 16/16
+  - Colossar   : ✅ 16/16 (clôturé aujourd'hui)
+  - Necram    : ❌ 0/16 — prochaine étape (Bloc C, Phase 3.4)
+  - Ghostra   : ❌ 0/16 (Bloc D, Phase 3.5)
+  - **Total implémenté : 48/80 = 60 %**
+
+**CombatRulesVersion :** **20** (bump 3.3.d — 5 sorts survie Colossar + 2 statuses + 3 champs Combatant + signature Effondrement avec mécanique swap + Failles ObstacleKind 100 HP destructibles + buff EffondrementActive 2T + sorts AoE damage étendus aux obstacles adverses).
 
 **Convention temporelle (depuis 2.14) :** **TurnNumber = round complet** (P0+P1 = 1 round, sémantique Dofus). Toutes les durées Bible V7.1 "N tours" = N rounds. Décrémentation statuses/marques/voiles/terrains uniquement en fin de dernier sous-tour du round. Cf memory `project_turn_semantics.md`.
 
