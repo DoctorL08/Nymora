@@ -39,6 +39,10 @@ namespace Nymora.Editor.Tools
             "Assets/_Nymora/Art/Sprites/Nightseer/Marks",
             "Assets/_Nymora/Art/Sprites/Colossar/VFX",
             "Assets/_Nymora/Art/Sprites/Colossar/Marques",
+            // 3.5.a.iii : dossiers Necram livres par designer (marque venin / tile zone putride / VFX signature).
+            "Assets/_Nymora/Art/Sprites/Necram/Marques",
+            "Assets/_Nymora/Art/Sprites/Necram/Tiles",
+            "Assets/_Nymora/Art/Sprites/Necram/VFX",
         };
 
         // Match .png ET .gif (designer Nightseer/Colossar livre des GIFs aplats horizontaux).

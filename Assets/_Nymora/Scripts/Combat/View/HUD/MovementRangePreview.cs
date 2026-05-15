@@ -39,6 +39,10 @@ namespace Nymora.Combat.View.HUD
         private readonly int[] _bestCost = new int[GridConstants.Count];
         private readonly int[] _queueBuf = new int[GridConstants.Count * 4];
         private readonly int[] _highlightedIdx = new int[GridConstants.Count];
+        // 3.5.b.iii Pas Spectral : marque les cases TRAVERSEES par un occupant ennemi
+        // (autorisees par le BFS quand le Necram a PasSpectralReady, mais non-stopables).
+        // Skip dans HighlightFullRange + HighlightPathTo (la case n'est pas une dest valide).
+        private readonly bool[] _occupiedTraversable = new bool[GridConstants.Count];
         private int _highlightedCount;
         private bool _gridReady;
         private Vector3 _centerOffset;
@@ -116,6 +120,9 @@ namespace Nymora.Combat.View.HUD
 
             int casterX = -1, casterY = -1, casterPM = 0;
             bool hasCaster = false;
+            // 3.5.b.iii : detection PasSpectralReady inline pour autoriser BFS a traverser ennemis.
+            bool casterHasPasSpectral = false;
+            NymoraClass casterClass = NymoraClass.None;
             var filter = frame.Filter<Combatant>();
             while (filter.Next(out EntityRef _, out Combatant c))
             {
@@ -124,6 +131,15 @@ namespace Nymora.Combat.View.HUD
                     casterX = c.GridX;
                     casterY = c.GridY;
                     casterPM = c.PM;
+                    casterClass = c.Class;
+                    for (int s = 0; s < StatusHelper.SlotCount; s++)
+                    {
+                        if (c.Statuses[s].Kind == StatusKind.PasSpectralReady && c.Statuses[s].TurnsLeft > 0)
+                        {
+                            casterHasPasSpectral = true;
+                            break;
+                        }
+                    }
                     hasCaster = true;
                     break;
                 }
@@ -135,8 +151,13 @@ namespace Nymora.Combat.View.HUD
             _activeCasterPM = casterPM;
             _hasActiveCaster = true;
 
+            // 3.5.b.iii : Pas Spectral autorise BFS a traverser cases occupees par ennemis
+            // (cohérent avec MovementSystem qui passe ignoreEnemyOccupants=true a A*).
+            bool ignoreEnemyOccupants = casterHasPasSpectral && casterClass == NymoraClass.Necram;
+
             // BFS / SPFA avec relaxation. Met a jour _bestCost (utilise dans Update Unity pour highlight).
             for (int i = 0; i < _bestCost.Length; i++) _bestCost[i] = int.MaxValue;
+            for (int i = 0; i < _occupiedTraversable.Length; i++) _occupiedTraversable[i] = false;
 
             int width = GridConstants.Width;
             int startIdx = casterY * width + casterX;
@@ -159,7 +180,11 @@ namespace Nymora.Combat.View.HUD
                     int ny = y + NeighborDY[d];
                     if (!GridHelpers.InBounds(nx, ny)) continue;
                     if (!GridHelpers.IsWalkable(frame, nx, ny)) continue;
-                    if (GridHelpers.GetOccupant(frame, nx, ny) != EntityRef.None) continue;
+                    EntityRef occ = GridHelpers.GetOccupant(frame, nx, ny);
+                    bool occupied = occ != EntityRef.None;
+                    if (occupied && !ignoreEnemyOccupants) continue;
+                    // Note : on n'exclut PAS les obstacles ici car GridHelpers.IsWalkable les
+                    // rejette deja (Pilier/Mur Colossar non traversables, meme via Pas Spectral).
 
                     int extra = GridHelpers.GetTerrainKind(frame, nx, ny) == TerrainKind.VapeurCarmin ? 1 : 0;
                     int newCost = curCost + 1 + extra;
@@ -169,6 +194,10 @@ namespace Nymora.Combat.View.HUD
                     if (newCost < _bestCost[nidx])
                     {
                         _bestCost[nidx] = newCost;
+                        // 3.5.b.iii : si la case est occupee (cas Pas Spectral), on la marque
+                        // pour la skip dans le highlight (case non-stopable mais traversee par
+                        // le path). Sinon flag reset car la case est une dest valide.
+                        _occupiedTraversable[nidx] = occupied;
                         if (tail < _queueBuf.Length) _queueBuf[tail++] = nidx;
                     }
                 }
@@ -205,6 +234,9 @@ namespace Nymora.Combat.View.HUD
             int targetIdx = gy * GridConstants.Width + gx;
             if (_bestCost[targetIdx] != int.MaxValue && _bestCost[targetIdx] > 0)
             {
+                // 3.5.b.iii : si hover sur case occupee (traversable mais non-stopable),
+                // ne pas tracer le path : le clic serait rejete par la sim.
+                if (_occupiedTraversable[targetIdx]) return;
                 HighlightPathTo(gx, gy);
                 return;
             }
@@ -221,6 +253,9 @@ namespace Nymora.Combat.View.HUD
             for (int idx = 0; idx < _bestCost.Length; idx++)
             {
                 if (_bestCost[idx] == int.MaxValue || _bestCost[idx] == 0) continue;
+                // 3.5.b.iii : skip les cases ennemies traversables (non-stopables) pour ne
+                // pas afficher la case du Soulrender comme destination valide.
+                if (_occupiedTraversable[idx]) continue;
                 int gx = idx % width;
                 int gy = idx / width;
                 var tile = _gridRenderer.GetTileView(gx, gy);
@@ -245,11 +280,17 @@ namespace Nymora.Combat.View.HUD
             {
                 int gx = curIdx % width;
                 int gy = curIdx / width;
-                var tile = _gridRenderer.GetTileView(gx, gy);
-                if (tile != null)
+                // 3.5.b.iii : skip highlight de la case ennemie traversee (la case appartient
+                // visuellement au Soulrender, l'utilisateur voit que le path passe DESSUS via
+                // les cases voisines). Le chainage cameFrom continue normalement.
+                if (!_occupiedTraversable[curIdx])
                 {
-                    tile.ApplyHighlight(_pathColor);
-                    _highlightedIdx[_highlightedCount++] = curIdx;
+                    var tile = _gridRenderer.GetTileView(gx, gy);
+                    if (tile != null)
+                    {
+                        tile.ApplyHighlight(_pathColor);
+                        _highlightedIdx[_highlightedCount++] = curIdx;
+                    }
                 }
                 // Trouve le voisin avec cost strictement inferieur (= predecesseur sur le path).
                 int curCost = _bestCost[curIdx];

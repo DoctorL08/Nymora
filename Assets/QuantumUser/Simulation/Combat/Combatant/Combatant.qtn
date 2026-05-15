@@ -176,4 +176,29 @@ component Combatant
     //   ex-caster) et le caster prend la position fuite de l'ennemi (hors zone). Mindgame
     //   Bible "le Colossar dicte". EntityRef.None = aucun ennemi en zone au cast (pas de swap).
     EntityRef EffondrementTargetEntity;
+
+    // 3.4 — Necram : marques venin EMPILABLES (Bible V7.1 passif "La Floraison").
+    //   Convention DIFFERENTE des marques Nightseer (CurrentMark, 1-only sans stack) :
+    //   ici c'est un compteur 0..4 marques actives sur ce combattant. Les marques tickent
+    //   au DEBUT du sub-turn du PORTEUR : VeninStacks * tickPerMark (30/40/50 selon
+    //   densite globale Floraison). Cap 4 par cible (Bible explicite Crachat Acide /
+    //   Inoculation).
+    //   Le DoT venin IGNORE :
+    //     - ShieldActive (passe a travers les boucliers)
+    //     - DamageReductionPercent (Garde Protectrice Colossar 30%)
+    //     - Densite Inerte (passif Colossar 8% par obstacle, cap 24%)
+    //   Les marques NE expirent PAS par duree (pas de TurnsLeft) — elles restent jusqu'a
+    //   consommation par Detonation Virulente, Virus Fatal (signature) ou kill+Morsure
+    //   Putride (transfert).
+    Int32 VeninStacks;
+
+    // 3.4 — Necram : tour du dernier tick venin sur ce porteur. Anti-double-tick si
+    //   plusieurs hooks dans le meme round. Init -1000 au spawn.
+    Int32 LastVeninTickOnTurn;
+
+    // 3.4 — Necram : PT (Putrefaction) deja gagnees pendant le tour courant du Necram.
+    //   Bible V7.1 ressource : "+1 PT chaque fois que le Necram applique une nouvelle
+    //   marque (max 2 PT par tour Necram)". Cap a 2 pour eviter le farming d'Inoculation
+    //   x4 en 1 tour. Reset a 0 au debut de chaque tour du Necram (TurnSystem.EnterTurnStart).
+    Int32 PutrefactionMarksGainedThisTurn;
 }

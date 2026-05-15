@@ -17,6 +17,9 @@
             // Pilier/Mur Colossar livres.
             factories.Add(new DebugSpawnObstacleCommand());
             factories.Add(new DebugDamageObstacleCommand());
+            // 3.4 — debug marque venin (touche F11). Sera retire en 3.5.a quand
+            // Crachat Acide / Inoculation livres.
+            factories.Add(new DebugApplyVeninCommand());
         }
     }
 }

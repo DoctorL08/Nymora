@@ -107,11 +107,11 @@ MonoBehaviour:
   _stage1SpriteNE: {fileID: 0}
   _stage2SpriteNE: {fileID: 0}
   _stage0ControllerSE: {fileID: 9100000, guid: 5124ac4f69a6c4148a392ccc3964664f, type: 2}
-  _stage1ControllerSE: {fileID: 0}
-  _stage2ControllerSE: {fileID: 0}
+  _stage1ControllerSE: {fileID: 9100000, guid: 213c53a10c03e0e4b813e9210096211e, type: 2}
+  _stage2ControllerSE: {fileID: 9100000, guid: 9c8eb5f48c8efd64fb0fff44b2e3c629, type: 2}
   _stage0ControllerNE: {fileID: 9100000, guid: a23528b7bf33fbb4dac1d427a5024109, type: 2}
-  _stage1ControllerNE: {fileID: 0}
-  _stage2ControllerNE: {fileID: 0}
+  _stage1ControllerNE: {fileID: 9100000, guid: 15f92a9332966ae40bf52311c19c0350, type: 2}
+  _stage2ControllerNE: {fileID: 9100000, guid: 786031f5b446d1845bfc8c45ce7e684e, type: 2}
 --- !u!95 &668035223687283352
 Animator:
   serializedVersion: 5

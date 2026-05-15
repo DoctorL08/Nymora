@@ -7,25 +7,24 @@ using UnityEngine;
 namespace Nymora.Editor.Tools
 {
     /// <summary>
-    /// 3.1.bis — Editor tool : automatise le setup des animations Colossar (stage0 only).
+    /// 3.1.bis — Editor tool : automatise le setup des animations Colossar (stages 0/1/2).
     /// Mirror du <see cref="BuildNightseerAnimator"/> et <see cref="BuildSoulrenderAnimator"/>
     /// — meme state machine, memes parametres, meme convention NE/SE + flipX pour NW/SW.
     ///
-    /// Specificite Colossar : pour l'instant le designer n'a livre que stage0 (Bible V7.1
-    /// Colossar atteint stage1/2 via Densite Inerte + nb obstacles, viendra avec les anims
-    /// stages 1+2 + 3.2 stats/passif). Le tool genere donc 2 controllers stage0 NE/SE
-    /// uniquement. Les fields _stage1/2Controller{NE,SE} du CombatantView restent null
-    /// (le PickController fallback sur le sprite statique stage 0 — CombatantView.SetStageAndFacing).
+    /// Stages Bible V7.1 : Colossar atteint stage1/2 via Densite Inerte + nb obstacles.
+    /// Le tool genere les 6 controllers (stage0/1/2 × NE/SE) et bind les 6 fields
+    /// _stage{0,1,2}Controller{NE,SE} du CombatantView. CombatantView.SetStageAndFacing
+    /// switche entre les 3 controllers selon le stage courant du combattant.
     ///
     /// Inputs (livres par le designer) :
-    ///   Assets/_Nymora/Art/Sprites/Colossar/Base/sources/COLOSSAR_animation_stage0_{NE,SE}.aseprite
+    ///   Assets/_Nymora/Art/Sprites/Colossar/Base/sources/COLOSSAR_animation_stage{0,1,2}_{NE,SE}.aseprite
     ///   Frame tags Aseprite attendus : idle / walk / attack / cast / hurt / death.
     ///
     /// Outputs (genere automatiquement) :
-    ///   Assets/_Nymora/Animations/Colossar/ColossarStage0_{NE,SE}.controller (2 controllers)
+    ///   Assets/_Nymora/Animations/Colossar/ColossarStage{0,1,2}_{NE,SE}.controller (6 controllers)
     ///   Update du prefab Combatant_Colossar :
     ///     - Add Animator si absent
-    ///     - Bind CombatantView : _animator + _stage0Controller{NE,SE}
+    ///     - Bind CombatantView : _animator + _stage{0,1,2}Controller{NE,SE}
     ///     - Fallback sprite : 1er Sprite du .aseprite stage0 SE
     ///
     /// Usage : Menu Nymora > Setup > Build Colossar Animator
@@ -35,20 +34,34 @@ namespace Nymora.Editor.Tools
     {
         private const string AseSE0 = "Assets/_Nymora/Art/Sprites/Colossar/Base/sources/COLOSSAR_animation_stage0_SE.aseprite";
         private const string AseNE0 = "Assets/_Nymora/Art/Sprites/Colossar/Base/sources/COLOSSAR_animation_stage0_NE.aseprite";
+        private const string AseSE1 = "Assets/_Nymora/Art/Sprites/Colossar/Base/sources/COLOSSAR_animation_stage1_SE.aseprite";
+        private const string AseNE1 = "Assets/_Nymora/Art/Sprites/Colossar/Base/sources/COLOSSAR_animation_stage1_NE.aseprite";
+        private const string AseSE2 = "Assets/_Nymora/Art/Sprites/Colossar/Base/sources/COLOSSAR_animation_stage2_SE.aseprite";
+        private const string AseNE2 = "Assets/_Nymora/Art/Sprites/Colossar/Base/sources/COLOSSAR_animation_stage2_NE.aseprite";
 
         private const string AnimFolder = "Assets/_Nymora/Animations/Colossar";
 
-        // Indices : 0 = SE stage 0, 1 = NE stage 0.
-        private static readonly string[] AsepritePaths = { AseSE0, AseNE0 };
+        // Indices : 0=SE/s0, 1=NE/s0, 2=SE/s1, 3=NE/s1, 4=SE/s2, 5=NE/s2.
+        // L'ordre SE-then-NE par stage est volontaire pour que le default Animator
+        // tombe sur SE stage 0 (controllers[0]).
+        private static readonly string[] AsepritePaths = { AseSE0, AseNE0, AseSE1, AseNE1, AseSE2, AseNE2 };
         private static readonly string[] CtrlPaths =
         {
             AnimFolder + "/ColossarStage0_SE.controller",
             AnimFolder + "/ColossarStage0_NE.controller",
+            AnimFolder + "/ColossarStage1_SE.controller",
+            AnimFolder + "/ColossarStage1_NE.controller",
+            AnimFolder + "/ColossarStage2_SE.controller",
+            AnimFolder + "/ColossarStage2_NE.controller",
         };
         private static readonly string[] BindFieldNames =
         {
             "_stage0ControllerSE",
             "_stage0ControllerNE",
+            "_stage1ControllerSE",
+            "_stage1ControllerNE",
+            "_stage2ControllerSE",
+            "_stage2ControllerNE",
         };
 
         private const string PrefabPath = "Assets/_Nymora/Prefabs/Combat/Combatants/Combatant_Colossar.prefab";
@@ -162,7 +175,7 @@ namespace Nymora.Editor.Tools
             AssetDatabase.Refresh();
 
             Selection.activeObject = AssetDatabase.LoadAssetAtPath<UnityEngine.Object>(CtrlPaths[0]);
-            Debug.Log("[BuildColossarAnimator] DONE. Stage0 only — stage1/2 a livrer plus tard par le designer.");
+            Debug.Log("[BuildColossarAnimator] DONE. 6 controllers stage0/1/2 × NE/SE generes et binds sur le prefab.");
         }
 
         private struct ClipSet

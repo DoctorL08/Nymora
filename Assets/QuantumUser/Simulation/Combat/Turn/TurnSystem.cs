@@ -185,6 +185,12 @@ namespace Quantum
                         combatant->PM += 1;
                         Log.Info($"[TurnSystem] Effondrement actif : +1 PM sur P{combatant->PlayerIndex} -> PM={combatant->PM}");
                     }
+
+                    // 3.4 — Passif Necram "La Floraison" : tick venin sur le porteur,
+                    // regen Necram tier 2+, halo toxique sur ennemis adjacents tier 2+,
+                    // reset PutrefactionMarksGainedThisTurn pour le Necram. Appel
+                    // unique sur le combattant actif (sub-turn start hook).
+                    NecramPassif.OnSubTurnStart(f, combatant, state->TurnNumber);
                 }
             }
 
@@ -249,6 +255,42 @@ namespace Quantum
                         }
                         break;
                     }
+                    break;
+                }
+            }
+
+            // 3.5.a.iii — Brume Toxique fin de tour : si le combattant actif (qui vient de finir
+            // son sub-turn) est sur une case BrumeToxique -> +1 marque venin (sans dgts, Bible
+            // V7.1). Skip Necram (decision design Lorenzo 2026-05-15). Trigger a CHAQUE
+            // sub-turn (pas seulement dernier du round) car la Bible parle de "qui finit son
+            // tour" = par unite, pas par round.
+            {
+                var brumeFilter = f.Filter<Combatant>();
+                while (brumeFilter.NextUnsafe(out EntityRef _, out Combatant* actBrume))
+                {
+                    if (actBrume->PlayerIndex != state->ActivePlayerIndex) continue;
+                    if (actBrume->HP <= 0) break; // mort, skip
+                    if (actBrume->Class == NymoraClass.Necram) break;
+                    if (GridHelpers.GetTerrainKind(f, actBrume->GridX, actBrume->GridY) != TerrainKind.BrumeToxique) break;
+                    VeninHelpers.ApplyMark(f, actBrume, SpellRegistry.BrumeToxiqueMarksOnHit, state->TurnNumber);
+                    Log.Info($"[TurnSystem] Brume Toxique fin de tour : +1 marque sur P{actBrume->PlayerIndex} ({actBrume->GridX},{actBrume->GridY})");
+                    break;
+                }
+            }
+
+            // 3.5.b.iii — Pas Spectral : consume PasSpectralReady a la fin du sub-turn du porteur.
+            // Le status est pose avec turnsLeft=1 + AppliedOnTurn=currentTurn donc DecrementAllOnTurnEnd
+            // le skipperait au last sub-turn et il ne s'eteindrait que round+1, ce qui violerait
+            // la regle Bible "+2 PM CE tour". On le retire ici manuellement pour qu'il dure
+            // strictement le sub-turn courant du porteur.
+            {
+                var pasSpectralFilter = f.Filter<Combatant>();
+                while (pasSpectralFilter.NextUnsafe(out EntityRef _, out Combatant* actPS))
+                {
+                    if (actPS->PlayerIndex != state->ActivePlayerIndex) continue;
+                    if (!StatusHelper.Has(actPS, StatusKind.PasSpectralReady)) break;
+                    StatusHelper.Consume(actPS, StatusKind.PasSpectralReady);
+                    Log.Info($"[TurnSystem] Pas Spectral consume sur P{actPS->PlayerIndex} (fin sub-turn)");
                     break;
                 }
             }

@@ -267,6 +267,82 @@ namespace Quantum
         public const int EffondrementCooldownTurns    = 4;    // 4 tours apres usage (re-castable si FD remonte a 3)
         public const int EffondrementFailleHP         = 100;   // Bible-balance : Faille destructible par AoE adverse (Lorenzo design 3.3.d)
 
+        // 3.5.a.i — Necram Offensifs base (Bible V7.1).
+        // Crachat Acide : sort de base "80% utilisation early-game". Combine dgts directs + setup marques.
+        public const int CrachatAcideDmg              = 90;    // dgts directs
+        public const int CrachatAcideMarksApplied     = 2;     // applique 2 marques venin (cap 4/cible)
+        public const int CrachatAcideRangeMax         = 4;     // portee Manhattan
+        public const int CrachatAcidePACost           = 3;
+
+        // Morsure Putride : finisher melee qui scale avec marques + transfere les marques au kill.
+        // Bible : 110 dgts + 22/marque (max +90 = 200 total max). Si target meurt -> marques sur ennemi le plus proche.
+        public const int MorsurePutrideDmgBase        = 110;   // dgts base
+        public const int MorsurePutrideDmgPerMark     = 22;    // bonus dgts par marque venin sur la cible
+        public const int MorsurePutrideDmgBonusCap    = 90;    // cap bonus marques (= 22 * 4 = 88, arrondi 90 Bible)
+        public const int MorsurePutridePACost         = 4;
+
+        // 3.5.a.ii — Necram Offensifs burst/AoE (Bible V7.1).
+        // Detonation Virulente : 80 dgts immediats + consomme TOUTES les marques (50/marque). 4 marques = 280.
+        public const int DetonationVirulenteDmgBase   = 80;    // dgts immediats
+        public const int DetonationVirulenteDmgPerMark = 50;   // dgts par marque consommee
+        public const int DetonationVirulenteRangeMax  = 4;     // portee Manhattan
+        public const int DetonationVirulentePACost    = 4;
+
+        // Faux Decharnee : 130 dgts AoE Square3x3 autour caster + heal Necram 30/marque cumule (cap +120 = 4 marques).
+        public const int FauxDecharneeDmg             = 130;   // dgts par cible touchee
+        public const int FauxDecharneeHealPerMark     = 30;    // heal Necram par marque active sur cibles touchees
+        public const int FauxDecharneeHealCap         = 120;   // cap heal total (= 4 marques * 30)
+        public const int FauxDecharneePACost          = 4;
+
+        // 3.5.a.iii — Brume Toxique : zone DoT 3x3 / 2 tours (Bible V7.1).
+        public const int BrumeToxiqueDmgImmediate     = 60;    // dgts pose sur unite deja dans zone
+        public const int BrumeToxiqueDmgOnEnter       = 30;    // dgts unite qui entre dans zone
+        public const int BrumeToxiqueMarksOnHit       = 1;     // 1 marque appliquee a chaque trigger (pose / entree / fin de tour)
+        public const int BrumeToxiqueRangeMax         = 4;     // portee Manhattan caster -> centre zone
+        public const int BrumeToxiqueTurns            = 2;     // duree (skip-decrement)
+        public const int BrumeToxiquePACost           = 4;
+
+        // 3.5.b.i — Inoculation : setup pur, 1 PA range 5, 2 marques cap 4 (Bible V7.1).
+        public const int InoculationPACost            = 1;
+        public const int InoculationRangeMax          = 5;
+        public const int InoculationMarksApplied      = 2;
+
+        // 3.5.b.i — Marque Sacrificielle : buff DoT, 2 PA range 5, +20 dmg flat par tick venin sur la cible pendant 3 rounds (Bible V7.1).
+        // Effet neutre si pas de marques actives au cast (le bonus declenchera des qu'une marque sera posee).
+        public const int MarqueSacrificiellePACost    = 2;
+        public const int MarqueSacrificielleRangeMax  = 5;
+        public const int MarqueSacrificielleBonusDmgPerTick = 20;
+        public const int MarqueSacrificielleTurns     = 3;
+
+        // 3.5.b.ii — Symbiose Morbide : self-buff lifesteal DoT (Bible V7.1).
+        // 3 PA, self, status 2 rounds. A chaque tick venin sur un ennemi, le Necram porteur
+        // du status est soigne de min(stacks, 4) * 8 HP (max +32 HP/tick, +64 sur 2 rounds).
+        public const int SymbioseMorbidePACost        = 3;
+        public const int SymbioseMorbideHealPerMarkPerTick = 8;
+        public const int SymbioseMorbideMaxMarksForHeal = 4;
+        public const int SymbioseMorbideTurns         = 2;
+
+        // 3.5.b.iv — Contagion : propagation AoE marques (Bible V7.1).
+        // 3 PA, range 5, target ennemie marquee requise. Copie min(stacks, cap) marques sur
+        // autres ennemis rayon 3 Manhattan de la cible. Cap 3 default, 4 avec 2 PT optionnel.
+        // En 1v1 (pas d'autres ennemis du caster) : +1 marque sur la cible (boost de tick).
+        public const int ContagionPACost              = 3;
+        public const int ContagionRangeMax            = 5;
+        public const int ContagionPropagationRadius   = 3;     // Manhattan rayon autour de la cible
+        public const int ContagionCapDefault          = 3;     // cap marques copiees default
+        public const int ContagionCapBoosted          = 4;     // cap avec 2 PT optionnel
+        public const int ContagionPTCostForBoost      = 2;     // PT optionnel pour cap boost
+        public const int Contagion1v1FallbackMarks    = 1;     // +1 marque sur cible en 1v1
+
+        // 3.5.b.iii — Pas Spectral : mobilite + traversee ennemis (Bible V7.1).
+        // 2 PA, self. +2 PM ce tour (cap si refresh meme tour). Apply PasSpectralReady (sub-turn).
+        // Tant que actif : MovementSystem passe ignoreEnemyOccupants=true a A* pour les
+        // MoveCommand du Necram, et pose +1 marque venin sur chaque ennemi present sur les
+        // cases intermediaires du path (destination skip car deja validee libre).
+        public const int PasSpectralPACost            = 2;
+        public const int PasSpectralPMBonus           = 2;
+        public const int PasSpectralMarksPerCrossing  = 1;
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -1223,6 +1299,198 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,             // pas d'effet damage au cast
+                    };
+                    return true;
+
+                // -------------------------------------------------------------
+                // NECRAM — Bible V7.1 (3.5.a.i Offensifs base)
+                // -------------------------------------------------------------
+
+                // Crachat Acide : 3 PA, range 4, 90 dgts + applique 2 marques venin (cap 4/cible).
+                // ApplyMark fait en post-damage dans le handler SpellSystem.
+                case SpellId.NecramCrachatAcide:
+                    def = new SpellDef
+                    {
+                        PACost = CrachatAcidePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = CrachatAcideRangeMax,
+                        DamageAmount = CrachatAcideDmg,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Morsure Putride : 4 PA, melee 1, 110 dgts + 22/marque (cap +90). Si kill -> transfere
+                // les marques sur l'ennemi vivant le plus proche. Bonus dgts compute en handler (pre-damage).
+                case SpellId.NecramMorsurePutride:
+                    def = new SpellDef
+                    {
+                        PACost = MorsurePutridePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 1,
+                        DamageAmount = MorsurePutrideDmgBase, // 110 base, +22/marque modife en handler
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Detonation Virulente : 4 PA, range 4, 80 dgts + consomme TOUTES marques (50/marque).
+                // Bonus dgts compute en handler (pre-damage), reset VeninStacks=0 en post-damage.
+                case SpellId.NecramDetonationVirulente:
+                    def = new SpellDef
+                    {
+                        PACost = DetonationVirulentePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = DetonationVirulenteRangeMax,
+                        DamageAmount = DetonationVirulenteDmgBase, // 80 base, +50/marque modife en handler
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Faux Decharnee : 4 PA, AoE Square3x3 autour caster, 130 dgts par cible. Heal Necram
+                // selon marques sur cibles touchees (post-damage, somme cumulee). Filter=Self pour
+                // que cmd.TargetX/Y soient redirigees vers caster cell par CombatInputController.
+                case SpellId.NecramFauxDecharnee:
+                    def = new SpellDef
+                    {
+                        PACost = FauxDecharneePACost,
+                        Shape = TargetingShape.Square3x3, // 9 cases (centre + 8 voisines, AoE iso)
+                        Filter = TargetingFilter.Self,    // target = case caster
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = FauxDecharneeDmg,  // 130 par cible touchee (autre que caster)
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Brume Toxique : 4 PA, range 4, AoE 3x3 centree sur cible souris, 2 tours.
+                // DamageAmount override en 60 dans handler pour les unites DEJA dans la zone a la pose
+                // (Bible distingue 60 pose / 30 entree / +1m fin de tour). Le terrain est pose
+                // dans le handler post-damage en parallele.
+                case SpellId.NecramBrumeToxique:
+                    def = new SpellDef
+                    {
+                        PACost = BrumeToxiquePACost,
+                        Shape = TargetingShape.Square3x3,  // 9 cases AoE
+                        Filter = TargetingFilter.AnyTile,  // case quelconque (vide ou avec unite)
+                        RangeMin = 1,
+                        RangeMax = BrumeToxiqueRangeMax,
+                        DamageAmount = BrumeToxiqueDmgImmediate, // 60 dgts par cible deja dans la zone
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // 3.5.b.i — Inoculation : setup pur. 1 PA, range 5, applique 2 marques venin sur
+                // une cible ennemie (cap 4 gere par VeninHelpers.ApplyMark). Pas de damage. Handler
+                // custom dans SpellSystem pour le ApplyMark (IsOffensive=0 -> skip damage loop).
+                case SpellId.NecramInoculation:
+                    def = new SpellDef
+                    {
+                        PACost = InoculationPACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = InoculationRangeMax,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.5.b.i — Marque Sacrificielle : buff DoT sur la cible. 2 PA, range 5,
+                // applique status MarqueSacrificielle (magnitude=20, duree 3 rounds). Hook dans
+                // VeninHelpers.TryTick pour bonus +20 dmg/tick. Pas de damage direct (IsOffensive=0).
+                case SpellId.NecramMarqueSacrificielle:
+                    def = new SpellDef
+                    {
+                        PACost = MarqueSacrificiellePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = MarqueSacrificielleRangeMax,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.5.b.ii — Symbiose Morbide : self-buff lifesteal DoT. 3 PA, self, status 2
+                // rounds. Hook dans VeninHelpers.TryTick : tout Necram porteur soigne par tick
+                // venin sur ennemis. Pas de damage direct (IsOffensive=0).
+                case SpellId.NecramSymbioseMorbide:
+                    def = new SpellDef
+                    {
+                        PACost = SymbioseMorbidePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.5.b.iv — Contagion : propagation AoE marques. 3 PA, range 5. Filter Enemy +
+                // pre-validation target marquee dans le handler. HGCostMaxOptional=2 PT pour
+                // boost cap copie (3->4). Pas de damage direct (IsOffensive=0).
+                case SpellId.NecramContagion:
+                    def = new SpellDef
+                    {
+                        PACost = ContagionPACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = ContagionRangeMax,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = ContagionPTCostForBoost,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.5.b.iii — Pas Spectral : mobilite + traversee ennemis. 2 PA self. Pas de
+                // damage direct (IsOffensive=0). Effet gere dans le handler SpellSystem (PM +2
+                // + Apply PasSpectralReady) puis dans MovementSystem (A* traverse + marques).
+                case SpellId.NecramPasSpectral:
+                    def = new SpellDef
+                    {
+                        PACost = PasSpectralPACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
                     };
                     return true;
 

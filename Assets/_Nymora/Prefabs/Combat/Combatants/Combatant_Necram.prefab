@@ -1,6 +1,6 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
---- !u!1 &2644071964246177066
+--- !u!1 &2438611266191234329
 GameObject:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -8,38 +8,38 @@ GameObject:
   m_PrefabAsset: {fileID: 0}
   serializedVersion: 6
   m_Component:
-  - component: {fileID: 5131345836668828008}
-  - component: {fileID: 6899713615534839053}
-  - component: {fileID: 6322774685570890229}
+  - component: {fileID: 14910369897272062}
+  - component: {fileID: 1835645513323735861}
+  - component: {fileID: 4965029974946175924}
   m_Layer: 0
-  m_Name: Combatant_Necram
+  m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!4 &5131345836668828008
+--- !u!4 &14910369897272062
 Transform:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2644071964246177066}
+  m_GameObject: {fileID: 2438611266191234329}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 0, y: -0.2, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 5131345836668828008}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!212 &6899713615534839053
+--- !u!212 &1835645513323735861
 SpriteRenderer:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2644071964246177066}
+  m_GameObject: {fileID: 2438611266191234329}
   m_Enabled: 1
   m_CastShadows: 0
   m_ReceiveShadows: 0
@@ -74,7 +74,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 100
-  m_Sprite: {fileID: 21300000, guid: 1f9029bfdb99c6d47b734f55c7aba201, type: 3}
+  m_Sprite: {fileID: 8688105048043780050, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -85,6 +85,60 @@ SpriteRenderer:
   m_WasSpriteAssigned: 1
   m_MaskInteraction: 0
   m_SpriteSortPoint: 0
+--- !u!95 &4965029974946175924
+Animator:
+  serializedVersion: 5
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2438611266191234329}
+  m_Enabled: 1
+  m_Avatar: {fileID: 0}
+  m_Controller: {fileID: 9100000, guid: b0cddcb7385628140a4a658f15db5fb3, type: 2}
+  m_CullingMode: 0
+  m_UpdateMode: 0
+  m_ApplyRootMotion: 0
+  m_LinearVelocityBlending: 0
+  m_StabilizeFeet: 0
+  m_WarningMessage: 
+  m_HasTransformHierarchy: 1
+  m_AllowConstantClipSamplingOptimization: 1
+  m_KeepAnimatorStateOnDisable: 0
+  m_WriteDefaultValuesOnDisable: 0
+--- !u!1 &2644071964246177066
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5131345836668828008}
+  - component: {fileID: 6322774685570890229}
+  m_Layer: 0
+  m_Name: Combatant_Necram
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5131345836668828008
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2644071964246177066}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 14910369897272062}
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &6322774685570890229
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -97,4 +151,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e63b66d09c7965147a73e1e6e902514d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _sprite: {fileID: 6899713615534839053}
+  _sprite: {fileID: 1835645513323735861}
+  _animator: {fileID: 4965029974946175924}
+  _stage0SpriteSE: {fileID: 0}
+  _stage1SpriteSE: {fileID: 0}
+  _stage2SpriteSE: {fileID: 0}
+  _stage0SpriteNE: {fileID: 0}
+  _stage1SpriteNE: {fileID: 0}
+  _stage2SpriteNE: {fileID: 0}
+  _stage0ControllerSE: {fileID: 9100000, guid: b0cddcb7385628140a4a658f15db5fb3, type: 2}
+  _stage1ControllerSE: {fileID: 9100000, guid: 2d5ab720989652d408db242c1cadb5d3, type: 2}
+  _stage2ControllerSE: {fileID: 9100000, guid: d91a6d556e521d54db2e9c227acf23d5, type: 2}
+  _stage0ControllerNE: {fileID: 9100000, guid: b06704a6ec7b8b34f8db643a755a3825, type: 2}
+  _stage1ControllerNE: {fileID: 9100000, guid: 03f2e0749c07ae34ebe8ed465248e4da, type: 2}
+  _stage2ControllerNE: {fileID: 9100000, guid: 1bbd3529b7d24b34fbb0b782b8f6eeab, type: 2}

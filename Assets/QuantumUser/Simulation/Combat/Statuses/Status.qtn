@@ -70,6 +70,29 @@ enum StatusKind : Byte
                                        //   (EffectiveStats.GetPACost), et -30% dgts subis (via Status
                                        //   DamageReductionPercent applique en parallele avec cap combine 50%).
                                        //   Magnitude unused (0). Pose au TRIGGER (pas au cast), apres l'annonce.
+
+    // Necram (3.5.b.i — Tactiques)
+    MarqueSacrificielle          = 18, // Bible V7.1 : Magnitude = bonus dmg flat par tick venin sur le porteur
+                                       //   (20 fixe). Duree 3 rounds. Hook dans VeninHelpers.TryTick :
+                                       //   totalDmg += Magnitude si actif. S'applique meme si pas de marques
+                                       //   actives au cast (Bible "effet neutre" sans marques, le bonus
+                                       //   declenchera des qu'une marque sera posee).
+
+    // Necram (3.5.b.ii — Tactiques)
+    SymbioseMorbide              = 19, // Bible V7.1 : self-buff lifesteal DoT. Magnitude = heal par marque
+                                       //   par tick (8 fixe). Duree 2 rounds. Hook dans VeninHelpers.TryTick :
+                                       //   tout Necram vivant porteur du status est soigne de
+                                       //   min(target.VeninStacks, 4) * Magnitude HP a chaque tick venin sur
+                                       //   un ennemi (max +32 HP/tick, +64 sur 2 rounds avec 4 marques).
+
+    // Necram (3.5.b.iii — Tactiques mobilite)
+    PasSpectralReady             = 20, // Bible V7.1 : buff Pas Spectral. Magnitude inutilisee (0).
+                                       //   Duree = sub-turn courant du porteur (consume dans
+                                       //   TurnSystem.EnterTurnEnd quand ActivePlayerIndex == porteur).
+                                       //   Tant que actif : AStarPathfinder recoit ignoreEnemyOccupants=true
+                                       //   pour les MoveCommand du Necram, et MovementSystem.ApplyMove pose
+                                       //   +1 marque venin sur chaque ennemi present sur les cases
+                                       //   intermediaires du path (skip destination).
 }
 
 struct Status

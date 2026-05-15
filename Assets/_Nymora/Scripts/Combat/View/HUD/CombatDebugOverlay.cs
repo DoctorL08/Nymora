@@ -124,6 +124,11 @@ namespace Nymora.Combat.View.HUD
                     sb.AppendFormat("    Mark: {0} ({1}T, owner=P{2})\n",
                         c.CurrentMark, c.MarkTurnsLeft, c.MarkOwnerPlayer);
                 }
+                if (c.VeninStacks > 0)
+                {
+                    sb.AppendFormat("    Venin: {0}/{1} marques (lastTick={2})\n",
+                        c.VeninStacks, Quantum.VeninHelpers.MaxStacksPerTarget, c.LastVeninTickOnTurn);
+                }
                 sb.AppendLine();
             }
             if (count == 0) sb.AppendLine("  (none)");

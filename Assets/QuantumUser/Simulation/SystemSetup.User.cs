@@ -27,6 +27,9 @@
             // Init ObstacleSingleton + tick expirations + process des commandes DEBUG
             // (Spawn/Damage). Sera repris par les sorts Pilier/Mur en 3.3.b.
             systems.Add(new ObstacleSystem());
+            // 3.4 — process DebugApplyVeninCommand (cheat F11) en attendant Crachat Acide /
+            // Inoculation en 3.5.a qui feront ca via SpellSystem.
+            systems.Add(new NecramSystem());
         }
     }
 }

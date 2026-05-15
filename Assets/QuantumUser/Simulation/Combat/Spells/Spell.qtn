@@ -84,6 +84,20 @@ enum SpellId : Byte
 
     // COLOSSAR 3.3.d — SIGNATURE
     ColossarEffondrement          = 65,  // 3.3.d — Signature : 4 PA, AoE rayon 2 autour caster. Coute 3/3 FD (consomme tout, reset 0). Annonce 1 tour a l'avance. Trigger au prochain sub-turn caster : 200 dgts ennemis dans rayon + ejection vers case libre + Failles 2 tours (impraticables). Buff 2 tours : +1 PM, -1 PA cost, -30% dgts subis. Cooldown 4 tours.
+
+    // NECRAM (Bible V7.1 — 5 offensifs + 5 tactiques + 5 survie + signature) — Phase 3.5
+    NecramCrachatAcide            = 70,  // 3.5.a.i — Offensif : 3 PA, range 4, 90 dgts + applique 2 marques venin (cap 4/cible). Sort de base.
+    NecramMorsurePutride          = 71,  // 3.5.a.i — Offensif finisher : 4 PA, melee 1, 110 dgts + 22 par marque (max +90, total max 200). Si kill : marques transferees sur ennemi vivant le plus proche.
+    NecramDetonationVirulente     = 72,  // 3.5.a.ii — Offensif burst : 4 PA, range 4, 80 dgts + 50/marque consommee (4 marques = 280 dmg). Reset VeninStacks=0 post-damage.
+    NecramFauxDecharnee           = 73,  // 3.5.a.ii — Offensif AoE sustain : 4 PA, melee Square3x3 autour caster, 130 dgts par cible. Necram heal 30 HP/marque active sur cibles touchees (cap +120 = 4 marques).
+    NecramBrumeToxique            = 74,  // 3.5.a.iii — Offensif zone DoT : 4 PA, range 4, AoE 3x3 / 2 tours. Pose : 60 dgts +1 marque unite dans zone. Entree : 30 dgts +1 marque. Fin de tour dans zone : +1 marque.
+
+    // NECRAM 3.5.b — TACTIQUES
+    NecramInoculation             = 75,  // 3.5.b.i — Tactique setup pur : 1 PA, range 5, applique 2 marques venin (cap 4). Pas de damage.
+    NecramMarqueSacrificielle     = 76,  // 3.5.b.i — Tactique buff DoT : 2 PA, range 5, status 3 rounds. +20 dgts flat par tick venin sur la cible. Effet neutre si pas de marques actives au cast.
+    NecramSymbioseMorbide         = 77,  // 3.5.b.ii — Tactique self-buff lifesteal : 3 PA, self, status 2 rounds. Necram heal +8 HP par marque par tick venin sur ennemis (max +32 HP/tick = 4 marques * 8, +64 sur 2 rounds).
+    NecramContagion               = 78,  // 3.5.b.iv — Tactique propagation : 3 PA, range 5, target ennemie marquee requise. Copie min(stacks, cap) marques sur autres ennemis rayon 3 (Manhattan) de la cible. Cap 3 default, ou 4 avec 2 PT optionnel. En 1v1 (pas d'autres ennemis) : +1 marque sur la cible (boost).
+    NecramPasSpectral             = 79,  // 3.5.b.iii — Tactique mobilite : 2 PA, self. +2 PM ce tour (cap si refresh) + status PasSpectralReady (sub-turn). Tant que actif : A* traverse ennemis, +1 marque venin par ennemi traverse sur cases intermediaires.
 }
 
 enum SpellEffectKind : Byte

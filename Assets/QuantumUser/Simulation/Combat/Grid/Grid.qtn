@@ -13,6 +13,7 @@ enum TerrainKind : Byte
     None         = 0,
     VapeurCarmin = 1,  // Soulrender (Charge Brutale, classe transforme map) : -1 PM en traversee, 1 tour
     SangCoagule  = 2,  // Soulrender (Detonation Sanglante, signature Ame Laceree, passif <20% HP) : 30 dgts debut de tour, 2 tours
+    BrumeToxique = 3,  // Necram (3.5.a.iii Brume Toxique) : zone DoT 3x3 2 tours. Pose : 60 dgts +1 marque unite dans zone. Entree : 30 dgts +1 marque. Fin de tour dans zone : +1 marque.
 }
 
 // 2.14 — Pieges deposes sur cases par le Nightseer (Bible V7.1).

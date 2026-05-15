@@ -26,6 +26,10 @@ namespace Nymora.Combat.View.Animation
         [Tooltip("Frames de Sang Coagule (terrain pose par Detonation Sanglante / Ame Laceree).")]
         [SerializeField] private Sprite[] _sangCoaguleFrames;
 
+        [Header("Necram (3.5.a.iii)")]
+        [Tooltip("Frames de Brume Toxique (zone DoT 3x3 posee par Brume Toxique).")]
+        [SerializeField] private Sprite[] _brumeToxiqueFrames;
+
         // Phase 3+ : ajouter les terrains des autres classes (Filet de Ronces Nightseer, mines, etc).
 
         public Sprite[] GetFrames(TerrainKind kind)
@@ -34,6 +38,7 @@ namespace Nymora.Combat.View.Animation
             {
                 case TerrainKind.VapeurCarmin: return _vapeurCarminFrames;
                 case TerrainKind.SangCoagule:  return _sangCoaguleFrames;
+                case TerrainKind.BrumeToxique: return _brumeToxiqueFrames;
                 default: return null;
             }
         }

@@ -22,3 +22,4 @@ MonoBehaviour:
   - {fileID: -1138651674, guid: d16fc1cc650c14448bd3a78382ebb7a3, type: 3}
   - {fileID: 805259442, guid: d16fc1cc650c14448bd3a78382ebb7a3, type: 3}
   - {fileID: -1879211569, guid: d16fc1cc650c14448bd3a78382ebb7a3, type: 3}
+  _brumeToxiqueFrames: []

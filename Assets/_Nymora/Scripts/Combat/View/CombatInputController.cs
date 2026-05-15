@@ -161,6 +161,10 @@ namespace Nymora.Combat.View
             bool keyF7 = UnityEngine.Input.GetKeyDown(KeyCode.F7);
             bool keyF8 = UnityEngine.Input.GetKeyDown(KeyCode.F8);
             bool keyF9 = UnityEngine.Input.GetKeyDown(KeyCode.F9);
+            // 3.4 — touche F11 : DEBUG, applique +1 marque venin Necram sur la cible
+            // ennemie sous la souris. Sera retiree en 3.5.a quand Crachat Acide /
+            // Inoculation feront ca proprement via SpellSystem.
+            bool keyF11 = UnityEngine.Input.GetKeyDown(KeyCode.F11);
             bool keyB  = UnityEngine.Input.GetKeyDown(KeyCode.B); // 2.11 signature Ame Laceree
             // 2.14 — touche T : DEBUG, pose un Voile Nightseer 2 tours sur la case sous la souris.
             // Sera retiree en 2.15 quand les sorts Nightseer (Pas Furtif, Voile d'Ombre, Champ
@@ -233,6 +237,7 @@ namespace Nymora.Combat.View
                             || key6 || key7 || key8 || key9 || key0
                             || keyF1 || keyF2 || keyF3 || keyF4
                             || keyF5 || keyF6 || keyF7 || keyF8 || keyF9 // 3.3.c Colossar Survie
+                            || keyF11 // 3.4 debug Necram apply venin
                             || keyB || keyT
                             || keyAzA || keyAzZ || keyE || keyR || keyV
                             || keyAzQ || keyS || keyD || keyF || keyG
@@ -435,6 +440,17 @@ namespace Nymora.Combat.View
                 return;
             }
 
+            // 3.4 — touche F11 : DEBUG applique +1 marque venin Necram sur la cible
+            // ennemie sous la souris. NecramSystem cote sim accepte uniquement si
+            // senderPlayer == joueur actif. Retire en 3.5.a (Crachat Acide / Inoculation).
+            if (keyF11)
+            {
+                var veninCmd = new DebugApplyVeninCommand { TargetX = gx, TargetY = gy };
+                game.SendCommand(senderPlayer, veninCmd);
+                Debug.Log($"[Nymora.CombatInput] Sent DEBUG ApplyVenin player={senderPlayer} target=({gx},{gy})");
+                return;
+            }
+
             // 3.3.b.i — touche P : Pilier (sort tactique Colossar, remplace ancien debug spawn 3.1).
             //           touche O : Mur de Pierre (3 cases perpendiculaires axe caster->cible).
             //           touche U : DEBUG damage 50 sur obstacle (gardee pour test destruction Densite Inerte +30 HP).
@@ -509,62 +525,172 @@ namespace Nymora.Combat.View
             }
 
             // 2.15.a — sorts Nightseer offensifs (lettres AZERTY A/Z/E/R/V).
+            // 2.15.a / 3.5.a.i — Touche A AZERTY contextuelle :
+            //   Nightseer -> Tir Precis (3 PA, range 6, 200 dgts +80 Traque)
+            //   Necram    -> Crachat Acide (3 PA, range 4, 90 dgts + 2 marques venin)
             if (keyAzA)
             {
-                SendSpellAt(game, senderPlayer, SpellId.NightseerTirPrecis, gx, gy, 0);
+                SpellId azaSpell = SpellId.NightseerTirPrecis;
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsA)
+                    && casterClsA == Quantum.NymoraClass.Necram)
+                {
+                    azaSpell = SpellId.NecramCrachatAcide;
+                }
+                SendSpellAt(game, senderPlayer, azaSpell, gx, gy, 0);
                 return;
             }
+            // 2.15.a / 3.5.a.i — Touche Z AZERTY contextuelle :
+            //   Nightseer -> Volee d'Epines (ligne 5, 130 dgts + Filet derniere case)
+            //   Necram    -> Morsure Putride (4 PA, melee 1, 110 + 22/marque, transfert marques au kill)
             if (keyAzZ)
             {
-                SendSpellAt(game, senderPlayer, SpellId.NightseerVoleeDEpines, gx, gy, 0);
+                SpellId azzSpell = SpellId.NightseerVoleeDEpines;
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsZ)
+                    && casterClsZ == Quantum.NymoraClass.Necram)
+                {
+                    azzSpell = SpellId.NecramMorsurePutride;
+                }
+                SendSpellAt(game, senderPlayer, azzSpell, gx, gy, 0);
                 return;
             }
+            // 2.15.a / 3.5.a.ii — Touche E AZERTY contextuelle :
+            //   Nightseer -> Detonation Onirique (4 PA, range 5, AoE 2x2, +80 Voile)
+            //                 (Shift+E = 2 PR optionnel -> range 10)
+            //   Necram    -> Detonation Virulente (4 PA, range 4, 80 + 50/marque consommee)
             if (keyE)
             {
-                // Bible V7.1 : Shift+E = depense 2 PR (optionnel) -> portee passe de 5 a 10.
-                byte detoPr = (byte)(shiftHeld ? 2 : 0);
-                SendSpellAt(game, senderPlayer, SpellId.NightseerDetonationOnirique, gx, gy, detoPr);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsE)
+                    && casterClsE == Quantum.NymoraClass.Necram)
+                {
+                    SendSpellAt(game, senderPlayer, SpellId.NecramDetonationVirulente, gx, gy, 0);
+                }
+                else
+                {
+                    // Bible V7.1 : Shift+E = depense 2 PR (optionnel) -> portee passe de 5 a 10.
+                    byte detoPr = (byte)(shiftHeld ? 2 : 0);
+                    SendSpellAt(game, senderPlayer, SpellId.NightseerDetonationOnirique, gx, gy, detoPr);
+                }
                 return;
             }
+            // 2.15.a / 3.5.a.ii — Touche R AZERTY contextuelle :
+            //   Nightseer -> Frappe de l'Ombre (4 PA, range 3, 200 dgts +100 si target deplacee)
+            //   Necram    -> Faux Decharnee (4 PA, AoE Square3x3 autour caster, 130/cible + heal/marque)
+            //                Faux Decharnee est self-target : on redirige la case ciblee vers caster.
             if (keyR)
             {
-                SendSpellAt(game, senderPlayer, SpellId.NightseerFrappeDeLOmbre, gx, gy, 0);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsR)
+                    && casterClsR == Quantum.NymoraClass.Necram)
+                {
+                    if (TryGetCasterCell(game, senderPlayer, out int fxC, out int fyC))
+                        SendSpellAt(game, senderPlayer, SpellId.NecramFauxDecharnee, fxC, fyC, 0);
+                }
+                else
+                {
+                    SendSpellAt(game, senderPlayer, SpellId.NightseerFrappeDeLOmbre, gx, gy, 0);
+                }
                 return;
             }
+            // 3.5.a.iii — Touche V context-aware (AZERTY) :
+            //   Nightseer -> Salve Mortelle (5 PA, range 6, AoE croix 5)
+            //   Necram    -> Brume Toxique (4 PA, range 4, AoE 3x3 / 2 rounds)
             if (keyV)
             {
-                SendSpellAt(game, senderPlayer, SpellId.NightseerSalveMortelle, gx, gy, 0);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsV)
+                    && casterClsV == Quantum.NymoraClass.Necram)
+                {
+                    SendSpellAt(game, senderPlayer, SpellId.NecramBrumeToxique, gx, gy, 0);
+                }
+                else
+                {
+                    SendSpellAt(game, senderPlayer, SpellId.NightseerSalveMortelle, gx, gy, 0);
+                }
                 return;
             }
 
-            // 2.15.b — sorts Nightseer tactiques (lettres AZERTY Q/S/D/F/G).
+            // 2.15.b / 3.5.b.i — sorts tactiques (lettres AZERTY Q/S/D/F/G).
+            // Touche Q context-aware : Nightseer -> Marque du Chasseur (range 5, Traque) / Necram -> Inoculation (1 PA, range 5, 2 marques venin).
             if (keyAzQ)
             {
-                SendSpellAt(game, senderPlayer, SpellId.NightseerMarqueDuChasseur, gx, gy, 0);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsQ)
+                    && casterClsQ == Quantum.NymoraClass.Necram)
+                {
+                    SendSpellAt(game, senderPlayer, SpellId.NecramInoculation, gx, gy, 0);
+                }
+                else
+                {
+                    SendSpellAt(game, senderPlayer, SpellId.NightseerMarqueDuChasseur, gx, gy, 0);
+                }
                 return;
             }
+            // Touche S context-aware : Nightseer -> Filet de Ronces (range 4, trap) / Necram -> Marque Sacrificielle (2 PA, range 5, +20 dmg/tick venin 3 rounds).
             if (keyS)
             {
-                SendSpellAt(game, senderPlayer, SpellId.NightseerFiletDeRonces, gx, gy, 0);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsS)
+                    && casterClsS == Quantum.NymoraClass.Necram)
+                {
+                    SendSpellAt(game, senderPlayer, SpellId.NecramMarqueSacrificielle, gx, gy, 0);
+                }
+                else
+                {
+                    SendSpellAt(game, senderPlayer, SpellId.NightseerFiletDeRonces, gx, gy, 0);
+                }
                 return;
             }
+            // Touche D context-aware : Nightseer -> Champ de Mines (range 3, AoE 3x3 / 3 mines voilees) / Necram -> Symbiose Morbide (3 PA, self, lifesteal DoT 2 rounds).
             if (keyD)
             {
-                SendSpellAt(game, senderPlayer, SpellId.NightseerChampDeMines, gx, gy, 0);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsD)
+                    && casterClsD == Quantum.NymoraClass.Necram)
+                {
+                    // Self-cast : target = position du caster (resolu cote sim via Filter=Self range 0,
+                    // mais on envoie quand meme la case caster pour rester coherent avec les autres self-casts).
+                    if (TryGetCasterCell(game, senderPlayer, out int ncX, out int ncY))
+                    {
+                        SendSpellAt(game, senderPlayer, SpellId.NecramSymbioseMorbide, ncX, ncY, 0);
+                    }
+                }
+                else
+                {
+                    SendSpellAt(game, senderPlayer, SpellId.NightseerChampDeMines, gx, gy, 0);
+                }
                 return;
             }
+            // Touche F context-aware :
+            //   Nightseer -> Bourrasque (push 3, shift = 1 PR -> push 5)
+            //   Necram    -> Contagion (3 PA, range 5, propagation marques rayon 3 ; shift = 2 PT optionnel -> cap copie 3->4)
             if (keyF)
             {
-                // Shift+F = 1 PR depense -> push 5 cases (au lieu de 3).
-                byte pr = (byte)(shiftHeld ? 1 : 0);
-                SendSpellAt(game, senderPlayer, SpellId.NightseerBourrasque, gx, gy, pr);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsF)
+                    && casterClsF == Quantum.NymoraClass.Necram)
+                {
+                    byte ptSpend = (byte)(shiftHeld ? 2 : 0); // 2 PT pour cap boost 3->4
+                    SendSpellAt(game, senderPlayer, SpellId.NecramContagion, gx, gy, ptSpend);
+                }
+                else
+                {
+                    // Shift+F = 1 PR depense -> push 5 cases (au lieu de 3).
+                    byte pr = (byte)(shiftHeld ? 1 : 0);
+                    SendSpellAt(game, senderPlayer, SpellId.NightseerBourrasque, gx, gy, pr);
+                }
                 return;
             }
+            // Touche G context-aware :
+            //   Nightseer -> Souffle Glacial (AoE croix 3 autour caster, 70 dgts + push 1 + -1 PM)
+            //   Necram    -> Pas Spectral (3.5.b.iii — 2 PA self, +2 PM ce tour, traverse ennemis +1 marque par traverse)
             if (keyG)
             {
-                // Souffle Glacial = self target. On envoie la case du caster (TryGetCasterCell).
-                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
-                    SendSpellAt(game, senderPlayer, SpellId.NightseerSouffleGlacial, cx, cy, 0);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsG)
+                    && casterClsG == Quantum.NymoraClass.Necram)
+                {
+                    if (TryGetCasterCell(game, senderPlayer, out int psX, out int psY))
+                        SendSpellAt(game, senderPlayer, SpellId.NecramPasSpectral, psX, psY, 0);
+                }
+                else
+                {
+                    // Souffle Glacial = self target. On envoie la case du caster (TryGetCasterCell).
+                    if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                        SendSpellAt(game, senderPlayer, SpellId.NightseerSouffleGlacial, cx, cy, 0);
+                }
                 return;
             }
 

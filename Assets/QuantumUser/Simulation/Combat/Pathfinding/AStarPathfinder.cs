@@ -34,13 +34,18 @@ namespace Quantum
         /// </summary>
         /// <param name="pathOutBuffer">buffer de sortie, doit contenir au moins maxSteps elements (indices grille).</param>
         /// <param name="pathLength">longueur du chemin trouve (0 si return false).</param>
+        /// <param name="ignoreEnemyOccupants">3.5.b.iii Pas Spectral : si true, les cases occupees
+        /// par un Combatant (autres que start/target) ne bloquent pas le path. Obstacles
+        /// Pilier/Mur Colossar restent bloquants. La destination doit etre libre (validee plus
+        /// haut), Pas Spectral n'autorise que la TRAVERSEE.</param>
         public static bool TryFindPath(
             Frame f,
             int startX, int startY,
             int targetX, int targetY,
             int maxSteps,
             int* pathOutBuffer,
-            out int pathLength)
+            out int pathLength,
+            bool ignoreEnemyOccupants = false)
         {
             pathLength = 0;
 
@@ -119,7 +124,9 @@ namespace Quantum
                     // Une case occupee bloque le passage, SAUF si c'est notre case de
                     // depart (le combattant qui se deplace) ou la case cible (deja
                     // validee comme libre plus haut, mais redondance defensive).
-                    if (nIdx != startIdx && nIdx != targetIdx
+                    // 3.5.b.iii Pas Spectral : si ignoreEnemyOccupants=true, on traverse
+                    // les occupants (les obstacles restent bloquants ci-dessous).
+                    if (!ignoreEnemyOccupants && nIdx != startIdx && nIdx != targetIdx
                         && GridHelpers.GetOccupant(f, nx, ny) != EntityRef.None) continue;
                     // 3.1 — un obstacle (Pilier/Mur) bloque le passage. Pas d'exception
                     // pour startIdx/targetIdx : si un obstacle est sur le start, le

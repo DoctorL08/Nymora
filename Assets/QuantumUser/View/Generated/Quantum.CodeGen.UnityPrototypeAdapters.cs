@@ -87,6 +87,9 @@ namespace Quantum.Prototypes.Unity {
     public Int32 EffondrementAnnouncedOnTurn;
     public Int32 LastEffondrementUsedOnTurn;
     public Quantum.QuantumEntityPrototype EffondrementTargetEntity;
+    public Int32 VeninStacks;
+    public Int32 LastVeninTickOnTurn;
+    public Int32 PutrefactionMarksGainedThisTurn;
     partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.CombatantPrototype prototype);
     public override Quantum.Prototypes.CombatantPrototype Convert(Quantum.QuantumEntityPrototypeConverter converter) {
       var result = new Quantum.Prototypes.CombatantPrototype();
@@ -125,6 +128,9 @@ namespace Quantum.Prototypes.Unity {
       converter.Convert(this.EffondrementAnnouncedOnTurn, out result.EffondrementAnnouncedOnTurn);
       converter.Convert(this.LastEffondrementUsedOnTurn, out result.LastEffondrementUsedOnTurn);
       converter.Convert(this.EffondrementTargetEntity, out result.EffondrementTargetEntity);
+      converter.Convert(this.VeninStacks, out result.VeninStacks);
+      converter.Convert(this.LastVeninTickOnTurn, out result.LastVeninTickOnTurn);
+      converter.Convert(this.PutrefactionMarksGainedThisTurn, out result.PutrefactionMarksGainedThisTurn);
       ConvertUser(converter, ref result);
       return result;
     }

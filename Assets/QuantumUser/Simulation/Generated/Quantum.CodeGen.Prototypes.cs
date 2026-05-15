@@ -113,6 +113,9 @@ namespace Quantum.Prototypes {
     public Int32 EffondrementAnnouncedOnTurn;
     public Int32 LastEffondrementUsedOnTurn;
     public MapEntityId EffondrementTargetEntity;
+    public Int32 VeninStacks;
+    public Int32 LastVeninTickOnTurn;
+    public Int32 PutrefactionMarksGainedThisTurn;
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.Combatant component = default;
         Materialize((Frame)f, ref component, in context);
@@ -156,6 +159,9 @@ namespace Quantum.Prototypes {
         result.EffondrementAnnouncedOnTurn = this.EffondrementAnnouncedOnTurn;
         result.LastEffondrementUsedOnTurn = this.LastEffondrementUsedOnTurn;
         PrototypeValidator.FindMapEntity(this.EffondrementTargetEntity, in context, out result.EffondrementTargetEntity);
+        result.VeninStacks = this.VeninStacks;
+        result.LastVeninTickOnTurn = this.LastVeninTickOnTurn;
+        result.PutrefactionMarksGainedThisTurn = this.PutrefactionMarksGainedThisTurn;
     }
   }
   [System.SerializableAttribute()]

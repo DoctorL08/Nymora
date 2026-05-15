@@ -17,14 +17,12 @@ namespace Quantum
 
         public override void OnInit(Frame f)
         {
-            // 3.1.bis : P0 passe en Colossar (Lorenzo demande de tester visuellement les
-            // anims Colossar livrees par le designer + valider le rendu en jeu). Le Colossar
-            // a 2 PM (-1 vs autres classes) et n'a pas encore de logique gameplay propre
-            // (ressource FD + passif Densite Inerte arrivent en 3.2). Donc P0 Colossar peut
-            // bouger / cast les sorts Soulrender (pas de check class encore) / poser des
-            // Piliers via touche P (3.1 framework). P1 reste Soulrender pour avoir un
-            // adversaire avec lequel tester. Reviens a la config qui te convient en 3.2+.
-            SpawnCombatant(f, playerIndex: 0, nymoraClass: NymoraClass.Colossar, x: P1SpawnX, y: P1SpawnY);
+            // P0 = Necram (tester visuellement les anims Necram livrees par le designer).
+            // Necram n'a pas encore de logique gameplay propre (passif La Floraison + 16 sorts
+            // a venir Phase 3 Bloc C). SpellBar vide, frappe-au-corps via clic adjacent uniquement.
+            // P1 reste Soulrender comme adversaire. Pour switch en local : remplace NymoraClass.Necram
+            // ci-dessous par .Soulrender / .Nightseer / .Colossar / .Ghostra.
+            SpawnCombatant(f, playerIndex: 0, nymoraClass: NymoraClass.Necram, x: P1SpawnX, y: P1SpawnY);
             SpawnCombatant(f, playerIndex: 1, nymoraClass: NymoraClass.Soulrender, x: P2SpawnX, y: P2SpawnY);
         }
 

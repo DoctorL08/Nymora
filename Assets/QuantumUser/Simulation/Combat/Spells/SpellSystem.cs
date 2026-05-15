@@ -294,6 +294,32 @@ namespace Quantum
                 }
             }
 
+            // 3.5.a.iii — Brume Toxique : pre-validation chevauchement. Refuse le cast si AU
+            // MOINS UNE des 9 cases du AoE 3x3 cible chevauche une Brume existante. PA NON
+            // consomme (decision design Lorenzo 2026-05-15 : pas de stack/refresh).
+            if (cmd.Spell == SpellId.NecramBrumeToxique)
+            {
+                bool brumeOverlap = false;
+                for (int bdx = -1; bdx <= 1 && !brumeOverlap; bdx++)
+                {
+                    for (int bdy = -1; bdy <= 1 && !brumeOverlap; bdy++)
+                    {
+                        int btx = cmd.TargetX + bdx;
+                        int bty = cmd.TargetY + bdy;
+                        if (!GridHelpers.InBounds(btx, bty)) continue;
+                        if (GridHelpers.GetTerrainKind(f, btx, bty) == TerrainKind.BrumeToxique)
+                        {
+                            brumeOverlap = true;
+                        }
+                    }
+                }
+                if (brumeOverlap)
+                {
+                    Log.Warn($"[Spell] rejet : Brume Toxique chevauche une Brume existante sur AoE 3x3 centree ({cmd.TargetX},{cmd.TargetY}). PA non consomme.");
+                    return;
+                }
+            }
+
             // ===== Consommation des ressources =====
             caster->PA -= effectivePACost;
 
@@ -387,6 +413,48 @@ namespace Quantum
             int nightseerPrescienceGain = 0;       // Tir Precis sur Traque : +1 PR cumulable per hit
             int volEpinesLastHitX = -1;            // Volee d'Epines : derniere case touchee pour pose Filet
             int volEpinesLastHitY = -1;
+            // 3.5.a.ii — Faux Decharnee : somme cumulee des marques sur cibles touchees (pour heal post-loop).
+            int fauxDecharneeMarksTotal = 0;
+
+            // 3.5.a.iii — Brume Toxique : custom handler. Pose terrain BrumeToxique sur les 9
+            // cases AoE 3x3 (effectBuffer). Pour chaque occupant present ET non-Necram (decision
+            // design caster + classe immunisee) : 60 dmg BYPASS shield/reduction (Bible V7.1
+            // "DoT ignore boucliers, reductions, sustains") + 1 marque venin. Skip damage loop
+            // standard via early return : pas de HG gain, pas de reflect, pas de Densite Inerte
+            // — la Brume est une zone DoT, pas une attaque directe.
+            if (cmd.Spell == SpellId.NecramBrumeToxique)
+            {
+                for (int bi = 0; bi < effectCount; bi++)
+                {
+                    int bidx = effectBuffer[bi];
+                    int bcx = bidx % GridConstants.Width;
+                    int bcy = bidx / GridConstants.Width;
+
+                    // Pose terrain (override SangCoagule/VapeurCarmin si present sur la case).
+                    GridHelpers.SetTerrain(f, bcx, bcy, TerrainKind.BrumeToxique,
+                        SpellRegistry.BrumeToxiqueTurns, currentTurn);
+
+                    EntityRef bocc = GridHelpers.GetOccupant(f, bcx, bcy);
+                    if (bocc == EntityRef.None) continue;
+                    if (bocc == casterEntity) continue;
+                    if (!f.Unsafe.TryGetPointer<Combatant>(bocc, out Combatant* boccC)) continue;
+                    if (boccC->Class == NymoraClass.Necram) continue; // skip Necram (design)
+                    if (boccC->HP <= 0) continue;
+
+                    int hpBefore = boccC->HP;
+                    boccC->HP -= SpellRegistry.BrumeToxiqueDmgImmediate;
+                    if (boccC->HP < 0) boccC->HP = 0;
+                    boccC->DamageTakenThisRound += SpellRegistry.BrumeToxiqueDmgImmediate;
+                    Log.Info($"[Spell] Brume Toxique pose : -{SpellRegistry.BrumeToxiqueDmgImmediate} HP bypass sur P{boccC->PlayerIndex} ({bcx},{bcy}) HP {hpBefore} -> {boccC->HP}");
+
+                    if (boccC->HP > 0)
+                    {
+                        VeninHelpers.ApplyMark(f, boccC, SpellRegistry.BrumeToxiqueMarksOnHit, currentTurn);
+                    }
+                }
+                Log.Info($"[Spell] Brume Toxique posee centree ({cmd.TargetX},{cmd.TargetY}), 9 cases, {SpellRegistry.BrumeToxiqueTurns} rounds");
+                return;
+            }
 
             // 2.15.a — Boucle damage : entree conditionnee a IsOffensive (pas DamageAmount > 0)
             // pour permettre aux sorts a damage 100% custom-per-cell d'y entrer aussi (ex Salve
@@ -500,6 +568,35 @@ namespace Quantum
                                 magnitude: SpellRegistry.MarteauPunisseurTraumaPAMagnitude,
                                 turnsLeft: SpellRegistry.MarteauPunisseurTraumaTurns, currentTurn);
                             Log.Info($"[Spell] Marteau Punisseur DEPLETED : {dmgThisTarget} dgts + TRAUMA -{SpellRegistry.MarteauPunisseurTraumaPAMagnitude} PA sur P{targetC->PlayerIndex} (PA={targetC->PA})");
+                        }
+                    }
+                    else if (cmd.Spell == SpellId.NecramMorsurePutride)
+                    {
+                        // 3.5.a.i — Bible Morsure Putride : 110 base + 22 par marque venin
+                        // sur la cible (cap bonus +90, total max 200). Si kill : transfert
+                        // des marques sur l'ennemi le plus proche (geree apres apply damage).
+                        int marks = targetC->VeninStacks;
+                        if (marks > 0)
+                        {
+                            int bonusUncapped = marks * SpellRegistry.MorsurePutrideDmgPerMark;
+                            int bonus = bonusUncapped > SpellRegistry.MorsurePutrideDmgBonusCap
+                                ? SpellRegistry.MorsurePutrideDmgBonusCap
+                                : bonusUncapped;
+                            dmgThisTarget = SpellRegistry.MorsurePutrideDmgBase + bonus;
+                            Log.Info($"[Spell] Morsure Putride : {SpellRegistry.MorsurePutrideDmgBase} + {bonus} dgts ({marks} marques * {SpellRegistry.MorsurePutrideDmgPerMark}, cap {SpellRegistry.MorsurePutrideDmgBonusCap}) = {dmgThisTarget} sur P{targetC->PlayerIndex}");
+                        }
+                    }
+                    else if (cmd.Spell == SpellId.NecramDetonationVirulente)
+                    {
+                        // 3.5.a.ii — Bible Detonation Virulente : 80 base + 50 par marque consommee.
+                        // 4 marques = 80 + 200 = 280 dmg. Marques sont retirees en post-damage (apres
+                        // que targetC->VeninStacks ait servi a calculer le bonus).
+                        int marks = targetC->VeninStacks;
+                        if (marks > 0)
+                        {
+                            int bonus = marks * SpellRegistry.DetonationVirulenteDmgPerMark;
+                            dmgThisTarget = SpellRegistry.DetonationVirulenteDmgBase + bonus;
+                            Log.Info($"[Spell] Detonation Virulente : {SpellRegistry.DetonationVirulenteDmgBase} + {bonus} dgts ({marks} marques * {SpellRegistry.DetonationVirulenteDmgPerMark}) = {dmgThisTarget} sur P{targetC->PlayerIndex}");
                         }
                     }
 
@@ -622,6 +719,15 @@ namespace Quantum
                             killedTargetX = cx;
                             killedTargetY = cy;
                             Log.Info($"[Spell] KILL : P{targetC->PlayerIndex} tombe a HP=0 sur ({cx},{cy})");
+
+                            // 3.5.a.i — Morsure Putride : transfert des marques venin de la cible morte
+                            // vers l'ennemi du Necram (= allie de la cible morte) vivant le plus proche
+                            // (Manhattan). Bible : "Si la cible meurt : toutes ses marques sont transferees
+                            // sur l'unite ennemie la plus proche". En 1v1 pas d'autre cible -> marques perdues.
+                            if (cmd.Spell == SpellId.NecramMorsurePutride && targetC->VeninStacks > 0)
+                            {
+                                VeninHelpers.TryTransferVeninOnKill(f, targetC, caster->PlayerIndex, currentTurn);
+                            }
                         }
 
                         // 2.11 Passif LE CRI (<20% HP post-hit) : Sang Coagule croix 5 autour caster.
@@ -701,6 +807,49 @@ namespace Quantum
                             }
                         }
                     }
+
+                    // 3.5.a.i — Crachat Acide : applique 2 marques venin sur target apres damage
+                    // (Bible : "90 dgts ET 2 marques", cap 4/cible). Skip si cible morte (cas rare
+                    // car 90 < 1500 HP base, mais possible si HP critique).
+                    if (cmd.Spell == SpellId.NecramCrachatAcide && targetC->HP > 0)
+                    {
+                        VeninHelpers.ApplyMark(f, targetC, SpellRegistry.CrachatAcideMarksApplied, currentTurn);
+                    }
+
+                    // 3.5.a.ii — Detonation Virulente : consomme TOUTES les marques de la cible
+                    // (post-damage, le bonus a deja ete applique en pre-damage). Reset stacks=0.
+                    if (cmd.Spell == SpellId.NecramDetonationVirulente && targetC->VeninStacks > 0)
+                    {
+                        int marksConsumed = targetC->VeninStacks;
+                        VeninHelpers.RemoveAllMarks(targetC);
+                        Log.Info($"[Spell] Detonation Virulente : {marksConsumed} marques consommees sur P{targetC->PlayerIndex}");
+                    }
+
+                    // 3.5.a.ii — Faux Decharnee : accumule les marques sur cibles touchees (snapshot
+                    // PRE-damage pour qu'une cible morte compte quand meme). Le heal est applique
+                    // post-loop apres avoir totalise toutes les cibles AoE.
+                    if (cmd.Spell == SpellId.NecramFauxDecharnee)
+                    {
+                        fauxDecharneeMarksTotal += targetC->VeninStacks;
+                    }
+                }
+            }
+
+            // 3.5.a.ii — Faux Decharnee : heal Necram caster selon marques cumulees sur cibles
+            // touchees (cap +120 HP = 4 marques). Applique post-loop, apres que tous les targets
+            // AoE aient ete totalises. Si aucune marque sur les cibles touchees -> 0 heal.
+            if (cmd.Spell == SpellId.NecramFauxDecharnee && fauxDecharneeMarksTotal > 0 && caster->HP > 0)
+            {
+                int healUncapped = fauxDecharneeMarksTotal * SpellRegistry.FauxDecharneeHealPerMark;
+                int heal = healUncapped > SpellRegistry.FauxDecharneeHealCap
+                    ? SpellRegistry.FauxDecharneeHealCap
+                    : healUncapped;
+                int hpBefore = caster->HP;
+                caster->HP = caster->HP + heal > caster->MaxHP ? caster->MaxHP : caster->HP + heal;
+                int realHeal = caster->HP - hpBefore;
+                if (realHeal > 0)
+                {
+                    Log.Info($"[Spell] Faux Decharnee heal Necram P{caster->PlayerIndex} : +{realHeal} HP ({fauxDecharneeMarksTotal} marques * {SpellRegistry.FauxDecharneeHealPerMark}, cap {SpellRegistry.FauxDecharneeHealCap}) : {hpBefore}->{caster->HP}");
                 }
             }
 
@@ -1343,6 +1492,144 @@ namespace Quantum
                         MarkHelpers.ApplyMark(targetC, MarkKind.Traque,
                             SpellRegistry.MarqueDuChasseurTurns, caster->PlayerIndex, currentTurn);
                         Log.Info($"[Spell] Marque du Chasseur : Traque {SpellRegistry.MarqueDuChasseurTurns} tours sur P{targetC->PlayerIndex}");
+                    }
+                    break;
+                }
+
+                // 3.5.b.i — Inoculation : applique 2 marques venin sur la cible ennemie (cap 4
+                // gere par VeninHelpers.ApplyMark). Pas de damage. Filter Enemy + LoS check deja
+                // appliques en amont. Putrefaction Necram +1 PT (gere dans ApplyMark via hook).
+                case SpellId.NecramInoculation:
+                {
+                    EntityRef target = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (target != EntityRef.None
+                        && f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetInoc)
+                        && targetInoc->PlayerIndex != caster->PlayerIndex
+                        && targetInoc->HP > 0)
+                    {
+                        VeninHelpers.ApplyMark(f, targetInoc, SpellRegistry.InoculationMarksApplied, currentTurn);
+                        Log.Info($"[Spell] Inoculation : +{SpellRegistry.InoculationMarksApplied} marques venin sur P{targetInoc->PlayerIndex} (silent, no damage)");
+                    }
+                    break;
+                }
+
+                // 3.5.b.i — Marque Sacrificielle : applique status MarqueSacrificielle sur la
+                // cible ennemie (magnitude=20, duree 3 rounds). Hook dans VeninHelpers.TryTick
+                // bonus +20 dmg/tick. Pas de damage direct. Effet neutre si cible n'a pas de
+                // marques (Bible : "sans marques actives, l'effet est neutre" — bonus dort).
+                case SpellId.NecramMarqueSacrificielle:
+                {
+                    EntityRef target = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (target != EntityRef.None
+                        && f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetMS)
+                        && targetMS->PlayerIndex != caster->PlayerIndex
+                        && targetMS->HP > 0)
+                    {
+                        StatusHelper.Apply(targetMS, StatusKind.MarqueSacrificielle,
+                            magnitude: SpellRegistry.MarqueSacrificielleBonusDmgPerTick,
+                            turnsLeft: SpellRegistry.MarqueSacrificielleTurns,
+                            currentTurn);
+                        Log.Info($"[Spell] Marque Sacrificielle : +{SpellRegistry.MarqueSacrificielleBonusDmgPerTick} dgts/tick venin sur P{targetMS->PlayerIndex} pendant {SpellRegistry.MarqueSacrificielleTurns} rounds");
+                    }
+                    break;
+                }
+
+                // 3.5.b.ii — Symbiose Morbide : self-buff lifesteal DoT. 3 PA, range 0. Applique
+                // status SymbioseMorbide sur le caster Necram (magnitude=8, duree 2 rounds).
+                // Le hook heal est dans VeninHelpers.TryTick : a chaque tick venin sur un ennemi,
+                // tout Necram porteur du status est soigne de min(stacks, 4) * 8 HP.
+                case SpellId.NecramSymbioseMorbide:
+                {
+                    StatusHelper.Apply(caster, StatusKind.SymbioseMorbide,
+                        magnitude: SpellRegistry.SymbioseMorbideHealPerMarkPerTick,
+                        turnsLeft: SpellRegistry.SymbioseMorbideTurns,
+                        currentTurn);
+                    Log.Info($"[Spell] Symbiose Morbide active sur P{caster->PlayerIndex} : heal +{SpellRegistry.SymbioseMorbideHealPerMarkPerTick}/marque/tick venin pendant {SpellRegistry.SymbioseMorbideTurns} rounds (cap {SpellRegistry.SymbioseMorbideMaxMarksForHeal} marques = max +{SpellRegistry.SymbioseMorbideHealPerMarkPerTick * SpellRegistry.SymbioseMorbideMaxMarksForHeal} HP/tick)");
+                    break;
+                }
+
+                // 3.5.b.iii — Pas Spectral (Bible V7.1) : 2 PA self. +2 PM ce tour (cap si refresh
+                // meme sub-turn — eviter exploit re-cast pour stacker PM) + Apply PasSpectralReady
+                // turnsLeft=1 magnitude=0. Le status est consume dans TurnSystem.EnterTurnEnd quand
+                // ActivePlayerIndex == porteur (= fin de SON sub-turn). Tant que actif :
+                // MovementSystem passe ignoreEnemyOccupants=true a A* et pose +1 marque venin par
+                // ennemi present sur les cases intermediaires du path.
+                case SpellId.NecramPasSpectral:
+                {
+                    bool alreadyActive = StatusHelper.Has(caster, StatusKind.PasSpectralReady);
+                    if (!alreadyActive)
+                    {
+                        caster->PM += SpellRegistry.PasSpectralPMBonus;
+                        Log.Info($"[Spell] Pas Spectral active sur P{caster->PlayerIndex} : +{SpellRegistry.PasSpectralPMBonus} PM (PM={caster->PM}), traversee ennemis armee pour ce sub-turn");
+                    }
+                    else
+                    {
+                        Log.Info($"[Spell] Pas Spectral re-cast sur P{caster->PlayerIndex} : refresh traversee (PM inchange, cap +{SpellRegistry.PasSpectralPMBonus} deja accorde)");
+                    }
+                    StatusHelper.Apply(caster, StatusKind.PasSpectralReady,
+                        magnitude: 0,
+                        turnsLeft: 1,
+                        currentTurn);
+                    break;
+                }
+
+                // 3.5.b.iv — Contagion : propagation AoE marques venin. La cible doit etre marquee
+                // (sinon no-op silencieux post-PA, Bible "Cible une unite ENNEMIE marquée").
+                // Copie min(target.stacks, cap) marques sur autres ennemis rayon 3 Manhattan
+                // de la cible. Cap default 3, ou 4 avec 2 PT optionnel (hgSpend >= 2). En 1v1
+                // (aucun autre ennemi du caster) : +1 marque sur la cible elle-meme (boost tick).
+                case SpellId.NecramContagion:
+                {
+                    EntityRef contTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (contTarget == EntityRef.None
+                        || !f.Unsafe.TryGetPointer<Combatant>(contTarget, out Combatant* targetCont)
+                        || targetCont->PlayerIndex == caster->PlayerIndex
+                        || targetCont->HP <= 0)
+                    {
+                        Log.Info($"[Spell] Contagion : pas de cible valide en ({cmd.TargetX},{cmd.TargetY}), PA deja consomme");
+                        break;
+                    }
+
+                    if (targetCont->VeninStacks <= 0)
+                    {
+                        Log.Info($"[Spell] Contagion : cible P{targetCont->PlayerIndex} non marquee, no-op");
+                        break;
+                    }
+
+                    int cap = (hgSpend >= SpellRegistry.ContagionPTCostForBoost)
+                        ? SpellRegistry.ContagionCapBoosted
+                        : SpellRegistry.ContagionCapDefault;
+                    int stacksToCopy = targetCont->VeninStacks > cap ? cap : targetCont->VeninStacks;
+
+                    // Cherche les autres ennemis du caster dans rayon Manhattan 3 de la cible.
+                    int propagated = 0;
+                    var contFilter = f.Filter<Combatant>();
+                    while (contFilter.NextUnsafe(out EntityRef _, out Combatant* otherC))
+                    {
+                        if (otherC == targetCont) continue;
+                        if (otherC->PlayerIndex == caster->PlayerIndex) continue; // pas allies/self
+                        if (otherC->HP <= 0) continue;
+                        int dxOther = otherC->GridX - targetCont->GridX;
+                        int dyOther = otherC->GridY - targetCont->GridY;
+                        int absDxO = dxOther < 0 ? -dxOther : dxOther;
+                        int absDyO = dyOther < 0 ? -dyOther : dyOther;
+                        int distOther = absDxO + absDyO;
+                        if (distOther > SpellRegistry.ContagionPropagationRadius) continue;
+
+                        VeninHelpers.ApplyMark(f, otherC, stacksToCopy, currentTurn);
+                        Log.Info($"[Spell] Contagion : +{stacksToCopy} marques copiees sur P{otherC->PlayerIndex} (rayon {distOther} de cible P{targetCont->PlayerIndex})");
+                        propagated++;
+                    }
+
+                    if (propagated == 0)
+                    {
+                        // 1v1 fallback : +1 marque sur la cible (boost tick).
+                        VeninHelpers.ApplyMark(f, targetCont, SpellRegistry.Contagion1v1FallbackMarks, currentTurn);
+                        Log.Info($"[Spell] Contagion 1v1 (pas d'autres ennemis) : +{SpellRegistry.Contagion1v1FallbackMarks} marque boost sur P{targetCont->PlayerIndex}");
+                    }
+                    else
+                    {
+                        Log.Info($"[Spell] Contagion propagation : {stacksToCopy} marques sur {propagated} ennemi(s) (cap {cap}, hgSpend={hgSpend})");
                     }
                     break;
                 }
@@ -2144,6 +2431,10 @@ namespace Quantum
                 // Colossar distance.
                 case SpellId.ColossarMarteauPunisseur:     // range 2
                 case SpellId.ColossarMurDePierre:          // range 2 (pose, mais Bible : on doit voir l'emplacement)
+                // Necram tactiques (3.5.b.i / 3.5.b.iv).
+                case SpellId.NecramInoculation:            // range 5, apply marque
+                case SpellId.NecramMarqueSacrificielle:    // range 5, apply status
+                case SpellId.NecramContagion:              // range 5, propagation marques
                     return true;
                 default:
                     return false;

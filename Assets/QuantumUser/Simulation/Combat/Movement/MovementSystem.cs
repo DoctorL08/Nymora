@@ -109,10 +109,16 @@ namespace Quantum
                 return;
             }
 
+            // 3.5.b.iii — Pas Spectral : si le combatant est un Necram porteur de
+            // PasSpectralReady, A* peut traverser les ennemis ET on appliquera +1 marque venin
+            // par ennemi traverse dans ApplyMove. Skip Manhattan==1 (pas de case intermediaire).
+            bool pasSpectralActive = combatant->Class == NymoraClass.Necram
+                                  && StatusHelper.Has(combatant, StatusKind.PasSpectralReady);
+
             // Cas adjacent (1 case) : skip A* pour optimiser
             if (manhattan == 1)
             {
-                ApplyMove(f, combatant, combatantEntity, targetX, targetY, 1 + extraCostVapeur);
+                ApplyMove(f, combatant, combatantEntity, targetX, targetY, 1 + extraCostVapeur, null, 0, false);
                 return;
             }
 
@@ -124,7 +130,8 @@ namespace Quantum
                     targetX, targetY,
                     combatant->PM,
                     pathBuffer,
-                    out int pathLength))
+                    out int pathLength,
+                    ignoreEnemyOccupants: pasSpectralActive))
             {
                 Log.Warn($"[Movement] rejet : pas de chemin <= PM={combatant->PM} vers ({targetX},{targetY})");
                 return;
@@ -137,10 +144,11 @@ namespace Quantum
                 return;
             }
 
-            ApplyMove(f, combatant, combatantEntity, targetX, targetY, totalCost);
+            ApplyMove(f, combatant, combatantEntity, targetX, targetY, totalCost, pathBuffer, pathLength, pasSpectralActive);
         }
 
-        private static void ApplyMove(Frame f, Combatant* combatant, EntityRef entity, int targetX, int targetY, int cost)
+        private static void ApplyMove(Frame f, Combatant* combatant, EntityRef entity, int targetX, int targetY, int cost,
+                                      int* pathBuffer, int pathLength, bool applyPasSpectralCrossings)
         {
             GridHelpers.SetOccupant(f, combatant->GridX, combatant->GridY, EntityRef.None);
             combatant->GridX = targetX;
@@ -150,10 +158,50 @@ namespace Quantum
 
             Log.Info($"[Movement] P{combatant->PlayerIndex} -> ({targetX},{targetY}) cost={cost} PM restant={combatant->PM}");
 
+            int currentTurn = f.TryGetSingleton<CombatState>(out var st) ? st.TurnNumber : 0;
+
+            // 3.5.b.iii — Pas Spectral : pose +1 marque venin sur chaque ennemi present sur les
+            // cases INTERMEDIAIRES du path (skip destination, deja validee libre). Le pathBuffer
+            // contient les indices grille des cases successives, start exclu et target inclus
+            // au dernier index. On itere donc [0, pathLength-1) pour ne pas toucher la dest.
+            if (applyPasSpectralCrossings && pathBuffer != null && pathLength > 1)
+            {
+                for (int i = 0; i < pathLength - 1; i++)
+                {
+                    int crossingIdx = pathBuffer[i];
+                    int cx = crossingIdx % GridConstants.Width;
+                    int cy = crossingIdx / GridConstants.Width;
+                    EntityRef occ = GridHelpers.GetOccupant(f, cx, cy);
+                    if (occ == EntityRef.None) continue;
+                    if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* crossed)) continue;
+                    if (crossed->PlayerIndex == combatant->PlayerIndex) continue; // skip allie/self
+                    if (crossed->HP <= 0) continue;
+                    VeninHelpers.ApplyMark(f, crossed, SpellRegistry.PasSpectralMarksPerCrossing, currentTurn);
+                    Log.Info($"[Pas Spectral] Necram P{combatant->PlayerIndex} traverse P{crossed->PlayerIndex} en ({cx},{cy}) : +{SpellRegistry.PasSpectralMarksPerCrossing} marque venin");
+                }
+            }
+
             // 2.15.b — Trigger trap eventuel sur la case d'arrivee (Filet de Ronces, Mine).
             // L'helper gere damage + Empreinte + MovementMalus + Clear trap + +1 PR au owner.
-            int currentTurn = f.TryGetSingleton<CombatState>(out var st) ? st.TurnNumber : 0;
             FogHelpers.TryTriggerTrapOnEnter(f, entity, combatant, targetX, targetY, currentTurn);
+
+            // 3.5.a.iii — Brume Toxique entry : -30 HP bypass shield/reduction + 1 marque venin
+            // si l'unite entre sur une case BrumeToxique. Skip Necram (decision design : classe
+            // immunisee a la Brume des autres Necram + a sa propre Brume).
+            if (combatant->HP > 0
+                && combatant->Class != NymoraClass.Necram
+                && GridHelpers.GetTerrainKind(f, targetX, targetY) == TerrainKind.BrumeToxique)
+            {
+                int hpBefore = combatant->HP;
+                combatant->HP -= SpellRegistry.BrumeToxiqueDmgOnEnter;
+                if (combatant->HP < 0) combatant->HP = 0;
+                combatant->DamageTakenThisRound += SpellRegistry.BrumeToxiqueDmgOnEnter;
+                Log.Info($"[Movement] Brume Toxique entry : -{SpellRegistry.BrumeToxiqueDmgOnEnter} HP bypass sur P{combatant->PlayerIndex} ({targetX},{targetY}) HP {hpBefore} -> {combatant->HP}");
+                if (combatant->HP > 0)
+                {
+                    VeninHelpers.ApplyMark(f, combatant, SpellRegistry.BrumeToxiqueMarksOnHit, currentTurn);
+                }
+            }
         }
     }
 }
