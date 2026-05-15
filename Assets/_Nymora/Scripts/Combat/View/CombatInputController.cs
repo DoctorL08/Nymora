@@ -713,11 +713,24 @@ namespace Nymora.Combat.View
                 }
                 return;
             }
+            // Touche X context-aware :
+            //   Nightseer -> Pas Furtif (Shift+X = 1 PR -> case d'arrivee Voilee 2 tours)
+            //   Necram    -> Pulse Sanguin Vert (Shift+X = 1 PT -> +30 HP additionnel)
             if (keyX)
             {
-                // Shift+X = 1 PR -> case d'arrivee Voilee 2 tours.
-                byte pr = (byte)(shiftHeld ? 1 : 0);
-                SendSpellAt(game, senderPlayer, SpellId.NightseerPasFurtif, gx, gy, pr);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsX)
+                    && casterClsX == Quantum.NymoraClass.Necram)
+                {
+                    byte pt = (byte)(shiftHeld ? 1 : 0);
+                    if (TryGetCasterCell(game, senderPlayer, out int psX, out int psY))
+                        SendSpellAt(game, senderPlayer, SpellId.NecramPulseSanguinVert, psX, psY, pt);
+                }
+                else
+                {
+                    // Shift+X = 1 PR -> case d'arrivee Voilee 2 tours.
+                    byte pr = (byte)(shiftHeld ? 1 : 0);
+                    SendSpellAt(game, senderPlayer, SpellId.NightseerPasFurtif, gx, gy, pr);
+                }
                 return;
             }
             // Touche C context-aware :
@@ -738,10 +751,21 @@ namespace Nymora.Combat.View
                 }
                 return;
             }
+            // Touche N context-aware :
+            //   Nightseer -> Seve Sauvage (self heal, target = caster cell)
+            //   Necram    -> Drain Vital (60 dgts range 4 + heal Necram 30 ou 60 si target.marques>=3)
             if (keyN)
             {
-                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
-                    SendSpellAt(game, senderPlayer, SpellId.NightseerSeveSauvage, cx, cy, 0);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsN)
+                    && casterClsN == Quantum.NymoraClass.Necram)
+                {
+                    SendSpellAt(game, senderPlayer, SpellId.NecramDrainVital, gx, gy, 0);
+                }
+                else
+                {
+                    if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                        SendSpellAt(game, senderPlayer, SpellId.NightseerSeveSauvage, cx, cy, 0);
+                }
                 return;
             }
             if (keyAzM)

@@ -865,6 +865,22 @@ namespace Quantum
                         VeninHelpers.ApplyMark(f, targetC, SpellRegistry.CrachatAcideMarksApplied, currentTurn);
                     }
 
+                    // 3.5.c.iii — Drain Vital : heal Necram caster post-damage. Base 30 HP, bonus
+                    // 60 HP si target.VeninStacks >= 3 au moment du cast (snapshot post-damage,
+                    // marques cible NON consommees). Heal applique meme si target meurt sur les 60
+                    // dmg (Bible : le siphon). Cap MaxHP standard. Skip si caster mort.
+                    if (cmd.Spell == SpellId.NecramDrainVital && caster->HP > 0)
+                    {
+                        int targetMarks = targetC->VeninStacks;
+                        int healAmount = targetMarks >= SpellRegistry.DrainVitalMarksThreshold
+                            ? SpellRegistry.DrainVitalHealBonus
+                            : SpellRegistry.DrainVitalHealBase;
+                        int hpBeforeHeal = caster->HP;
+                        caster->HP += healAmount;
+                        if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
+                        Log.Info($"[Spell] Drain Vital : P{caster->PlayerIndex} heal +{healAmount} HP (target P{targetC->PlayerIndex} marques={targetMarks}/threshold {SpellRegistry.DrainVitalMarksThreshold}) HP {hpBeforeHeal} -> {caster->HP}");
+                    }
+
                     // 3.5.a.ii — Detonation Virulente : consomme TOUTES les marques de la cible
                     // (post-damage, le bonus a deja ete applique en pre-damage). Reset stacks=0.
                     if (cmd.Spell == SpellId.NecramDetonationVirulente && targetC->VeninStacks > 0)
@@ -1686,6 +1702,37 @@ namespace Quantum
                         turnsLeft: SpellRegistry.CarapaceVisqueuseTurns,
                         currentTurn);
                     Log.Info($"[Spell] Carapace Visqueuse active sur P{caster->PlayerIndex} : Shield {SpellRegistry.CarapaceVisqueuseShieldHP} HP / {SpellRegistry.CarapaceVisqueuseTurns} rounds + flag riposte +{SpellRegistry.CarapaceVisqueuseMarksOnMeleeAttacker} marque attaquant melee qui frappe le bouclier");
+                    break;
+                }
+
+                // 3.5.c.iv — Pulse Sanguin Vert (Bible V7.1) : 3 PA self. Heal Necram caster
+                // base 70 + 15/marque venin somme sur ennemis vivants Manhattan <=4 (cap bonus
+                // +90 HP). +30 HP additionnel si hgSpend >= 1 (1 PT optionnel via Shift+X).
+                // Marques NON consommees. Cap MaxHP standard. Pas de dmg.
+                case SpellId.NecramPulseSanguinVert:
+                {
+                    int sumMarks = 0;
+                    var pulseFilter = f.Filter<Combatant>();
+                    while (pulseFilter.NextUnsafe(out EntityRef _, out Combatant* pulseEnemy))
+                    {
+                        if (pulseEnemy->HP <= 0) continue;
+                        if (pulseEnemy->PlayerIndex == caster->PlayerIndex) continue;
+                        int dxP = pulseEnemy->GridX - caster->GridX; if (dxP < 0) dxP = -dxP;
+                        int dyP = pulseEnemy->GridY - caster->GridY; if (dyP < 0) dyP = -dyP;
+                        int distP = dxP + dyP;
+                        if (distP > SpellRegistry.PulseSanguinVertMarksRange) continue;
+                        sumMarks += pulseEnemy->VeninStacks;
+                    }
+                    int bonusUncapped = sumMarks * SpellRegistry.PulseSanguinVertHealPerMark;
+                    int bonusCapped = bonusUncapped > SpellRegistry.PulseSanguinVertHealCap
+                        ? SpellRegistry.PulseSanguinVertHealCap
+                        : bonusUncapped;
+                    int ptBonus = (hgSpend >= 1) ? SpellRegistry.PulseSanguinVertOptionalPTBonus : 0;
+                    int totalHeal = SpellRegistry.PulseSanguinVertHealBase + bonusCapped + ptBonus;
+                    int hpBeforePulse = caster->HP;
+                    caster->HP += totalHeal;
+                    if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
+                    Log.Info($"[Spell] Pulse Sanguin Vert : P{caster->PlayerIndex} heal +{totalHeal} HP (base {SpellRegistry.PulseSanguinVertHealBase} + bonus {bonusCapped} [{sumMarks} marques sommees rayon {SpellRegistry.PulseSanguinVertMarksRange}, cap {SpellRegistry.PulseSanguinVertHealCap}] + PT {ptBonus}) HP {hpBeforePulse} -> {caster->HP}");
                     break;
                 }
 

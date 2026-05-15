@@ -367,6 +367,30 @@ namespace Quantum
         public const int CarapaceVisqueuseTurns               = 2;
         public const int CarapaceVisqueuseMarksOnMeleeAttacker = 1;
 
+        // 3.5.c.iii — Drain Vital : heal offensif a distance (Bible V7.1).
+        // 3 PA range 4, 60 dgts cible. Caster Necram heal HealBase (30) ou HealBonus (60)
+        // si target.VeninStacks >= MarksThreshold (3) au moment du cast (snapshot post-damage).
+        // Marques cible NON consommees. Heal applique meme si target meurt sur les 60 dmg.
+        // Cap MaxHP standard. Pas de status applique.
+        public const int DrainVitalPACost          = 3;
+        public const int DrainVitalRangeMax        = 4;
+        public const int DrainVitalDamage          = 60;
+        public const int DrainVitalHealBase        = 30;
+        public const int DrainVitalHealBonus       = 60;
+        public const int DrainVitalMarksThreshold  = 3;
+
+        // 3.5.c.iv — Pulse Sanguin Vert : heal de zone (Bible V7.1).
+        // 3 PA self. Heal Necram caster : HealBase (70) + min(sumVeninStacksEnemiesInRadius, capMarks) * HealPerMark.
+        // PulseSanguinVertHealCap = 90 HP de bonus (= 6 marques * 15). +30 HP additionnel si hgSpend>=1 (1 PT).
+        // Itere tous ennemis vivants Manhattan <= MarksRange (4) du caster.
+        // Marques NON consommees. Cap MaxHP standard. Pas de dmg.
+        public const int PulseSanguinVertPACost          = 3;
+        public const int PulseSanguinVertHealBase        = 70;
+        public const int PulseSanguinVertHealPerMark     = 15;
+        public const int PulseSanguinVertHealCap         = 90;
+        public const int PulseSanguinVertMarksRange      = 4;
+        public const int PulseSanguinVertOptionalPTBonus = 30;
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -1553,6 +1577,44 @@ namespace Quantum
                         DamageAmount = 0,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.5.c.iii — Drain Vital : 3 PA range 4, 60 dgts cible ennemie. Damage applique
+                // via le damage pipeline standard. Heal caster Necram applique post-damage dans
+                // SpellSystem (30 base, 60 si target.VeninStacks >= 3).
+                case SpellId.NecramDrainVital:
+                    def = new SpellDef
+                    {
+                        PACost = DrainVitalPACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = DrainVitalRangeMax,
+                        DamageAmount = DrainVitalDamage,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // 3.5.c.iv — Pulse Sanguin Vert : 3 PA self. Heal Necram caster base 70 + 15/marque
+                // (cap +90) somme sur ennemis vivants Manhattan <=4. +30 HP si 1 PT optionnel.
+                // Effet pose dans le handler SpellSystem (pas de damage path).
+                case SpellId.NecramPulseSanguinVert:
+                    def = new SpellDef
+                    {
+                        PACost = PulseSanguinVertPACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 1,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
                     };
