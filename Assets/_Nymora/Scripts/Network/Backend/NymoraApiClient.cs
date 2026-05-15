@@ -68,6 +68,54 @@ namespace Nymora.Network.Backend
         public UniTask<ApiResult<MeResponse>> GetMeAsync(CancellationToken ct = default)
             => GetJsonAsync<MeResponse>("/auth/me", requireAuth: true, ct);
 
+        public UniTask<ApiResult<ProfileMeResponse>> GetProfileMeAsync(CancellationToken ct = default)
+            => GetJsonAsync<ProfileMeResponse>("/profile/me", requireAuth: true, ct);
+
+        // ====== Brique 4.10 — Amis ======
+
+        public UniTask<ApiResult<FriendsListResponse>> GetFriendsAsync(CancellationToken ct = default)
+            => GetJsonAsync<FriendsListResponse>("/friends", requireAuth: true, ct);
+
+        public UniTask<ApiResult<FriendRequestsResponse>> GetFriendRequestsAsync(CancellationToken ct = default)
+            => GetJsonAsync<FriendRequestsResponse>("/friends/requests", requireAuth: true, ct);
+
+        public UniTask<ApiResult<FriendRequestCreatedResponse>> SendFriendRequestAsync(string targetDisplayName, CancellationToken ct = default)
+            => PostJsonAsync<FriendRequestCreatedResponse>("/friends/request",
+                new FriendRequestBody { targetDisplayName = targetDisplayName }, requireAuth: true, ct);
+
+        public UniTask<ApiResult<FriendRespondResponse>> RespondFriendRequestAsync(string friendshipId, bool accepted, CancellationToken ct = default)
+            => PostJsonAsync<FriendRespondResponse>("/friends/respond",
+                new FriendRespondBody { friendshipId = friendshipId, accepted = accepted }, requireAuth: true, ct);
+
+        /// <summary>DELETE /friends/:friendUserId. Retourne ApiResult avec status code 204 si OK.</summary>
+        public async UniTask<ApiResult<EmptyResponse>> RemoveFriendAsync(string friendUserId, CancellationToken ct = default)
+        {
+            using var req = UnityWebRequest.Delete($"{_settings.BaseUrl}/friends/{friendUserId}");
+            req.downloadHandler = new DownloadHandlerBuffer();
+            req.timeout = _settings.TimeoutSeconds;
+            ApplyAuth(req, requireAuth: true);
+            ApplyClientVersion(req);
+
+            try
+            {
+                await req.SendWebRequest().WithCancellation(ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return ApiResult<EmptyResponse>.Failure(0, "request cancelled");
+            }
+            catch (UnityWebRequestException e)
+            {
+                int status = (int)e.ResponseCode;
+                string err = e.Message;
+                return ApiResult<EmptyResponse>.Failure(status, err);
+            }
+
+            int code = (int)req.responseCode;
+            // 204 No Content -> succes sans body
+            return ApiResult<EmptyResponse>.Success(new EmptyResponse(), code);
+        }
+
         /// <summary>
         /// Interroge le serveur sur les versions supportees. N'envoie PAS le header de version
         /// pour eviter le chicken-and-egg (sinon un client trop vieux ne pourrait meme pas

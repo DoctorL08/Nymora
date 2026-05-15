@@ -76,6 +76,13 @@ namespace Nymora.Hub
                 BgColor = new Color(0.25f, 0.4f, 0.65f, 1f),
                 Execute = WhisperTarget,
             });
+            // 4.10 Amis — action Ajouter en ami (violet)
+            _actions.Add(new MenuAction
+            {
+                Label = "Ajouter en ami",
+                BgColor = new Color(0.45f, 0.30f, 0.60f, 1f),
+                Execute = AddFriendTarget,
+            });
             // 4.13 Modération — action Signaler (orange)
             _actions.Add(new MenuAction
             {
@@ -218,6 +225,26 @@ namespace Nymora.Hub
                 return;
             }
             HubChatClient.Instance.SendReport(targetSub);
+            Hide();
+        }
+
+        private void AddFriendTarget(HubAvatar target)
+        {
+            if (target == null) { Hide(); return; }
+            var targetSub = target.Sub;
+            if (string.IsNullOrEmpty(targetSub))
+            {
+                Debug.LogWarning("[ChallengePopup] Avatar remote sans NetSub — ami annulé.");
+                Hide();
+                return;
+            }
+            if (HubChatClient.Instance == null)
+            {
+                Debug.LogWarning("[ChallengePopup] HubChatClient.Instance null — ami annulé.");
+                Hide();
+                return;
+            }
+            HubChatClient.Instance.SendFriendRequestByUserId(targetSub);
             Hide();
         }
     }

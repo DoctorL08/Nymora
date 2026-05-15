@@ -3,8 +3,10 @@
     "rootNamespace": "Nymora.Hub",
     "references": [
         "Nymora.Core",
+        "Nymora.Network",
         "Fusion.Unity",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "UniTask"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

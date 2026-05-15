@@ -38,6 +38,11 @@ namespace Nymora.Hub
         public string MyUserId { get; private set; }
         public string MyEmail { get; private set; }
 
+        // 4.12 — Expose le JWT dev pour reutilisation par HubProfilePanel (REST /profile/me).
+        // En dev local, Lorenzo colle un seul devToken ici et tout le hub (WS + REST) l'utilise.
+        // Quand le flow login 00_Login sera systematise, basculer sur AuthService + PlayerPrefs.
+        public string DevToken => _devToken;
+
         public event Action<string, string> OnWelcome;                 // sub, email
         public event Action<string, string, string> OnMessageReceived; // channel, from, text
         public event Action<string, string, string> OnWhisperReceived; // from, to, text
@@ -47,6 +52,15 @@ namespace Nymora.Hub
         public event Action<string, string, string> OnMatchReady;              // matchId, opponentSub, opponentEmail (4.8.d.i)
         public event Action<string> OnReportSent;                              // targetEmail (4.13)
         public event Action<string, long> OnModerationNotice;                  // kind (reported|muted), muteUntil ms (4.13)
+        // 4.10 — Friend events
+        public event Action<string, string, string> OnIncomingFriendRequest;     // friendshipId, fromUserId, fromDisplayName
+        public event Action<string, string, string> OnFriendRequestSent;         // friendshipId, toUserId, toDisplayName
+        public event Action<string, bool, string, string> OnFriendRequestResponse; // friendshipId, accepted, fromUserId, fromDisplayName
+        public event Action<string, string> OnFriendRemoved;                     // friendUserId (l'autre), friendDisplayName
+        // 4.10.g — Online status events
+        public event Action<string[]> OnFriendsOnlineList;                       // friendUserIds[] (au connect)
+        public event Action<string> OnFriendOnline;                              // friendUserId (un ami vient online)
+        public event Action<string> OnFriendOffline;                             // friendUserId (un ami passe offline)
         public event Action OnConnected;
         public event Action<string> OnDisconnected;
 
@@ -56,7 +70,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, ReportSent, ModerationNotice }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline }
 
         private struct IncomingEvent
         {
@@ -74,6 +88,13 @@ namespace Nymora.Hub
             public bool Accepted;
             public string ModerationKind;
             public long MuteUntil;
+            // 4.10
+            public string FriendshipId;
+            public string FromDisplayName;
+            public string ToDisplayName;
+            public string FriendDisplayName;
+            // 4.10.g — online status
+            public string[] FriendUserIds;
         }
 
         private void Awake()
@@ -255,6 +276,63 @@ namespace Nymora.Hub
                             MuteUntil = msg.payload?.muteUntil ?? 0L,
                         });
                         break;
+                    case "INCOMING_FRIEND_REQUEST":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.IncomingFriendRequest,
+                            FriendshipId = msg.payload?.friendshipId ?? "",
+                            From = msg.payload?.fromUserId ?? "",
+                            FromDisplayName = msg.payload?.fromDisplayName ?? "",
+                        });
+                        break;
+                    case "FRIEND_REQUEST_SENT":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.FriendRequestSent,
+                            FriendshipId = msg.payload?.friendshipId ?? "",
+                            To = msg.payload?.toUserId ?? "",
+                            ToDisplayName = msg.payload?.toDisplayName ?? "",
+                        });
+                        break;
+                    case "FRIEND_REQUEST_RESPONSE":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.FriendRequestResponse,
+                            FriendshipId = msg.payload?.friendshipId ?? "",
+                            Accepted = msg.payload != null && msg.payload.accepted,
+                            From = msg.payload?.fromUserId ?? "",
+                            FromDisplayName = msg.payload?.fromDisplayName ?? "",
+                        });
+                        break;
+                    case "FRIEND_REMOVED":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.FriendRemoved,
+                            From = msg.payload?.friendUserId ?? "",
+                            FriendDisplayName = msg.payload?.friendDisplayName ?? "",
+                        });
+                        break;
+                    case "FRIENDS_ONLINE_LIST":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.FriendsOnlineList,
+                            FriendUserIds = msg.payload?.friendUserIds ?? new string[0],
+                        });
+                        break;
+                    case "FRIEND_ONLINE":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.FriendOnline,
+                            From = msg.payload?.friendUserId ?? "",
+                        });
+                        break;
+                    case "FRIEND_OFFLINE":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.FriendOffline,
+                            From = msg.payload?.friendUserId ?? "",
+                        });
+                        break;
                     case "ERROR":
                         Debug.LogWarning($"[ChatClient] Server ERROR: {msg.payload?.code}/{msg.payload?.message}");
                         break;
@@ -292,6 +370,16 @@ namespace Nymora.Hub
             public Opponent[] opponents;
             public string kind;     // MODERATION_NOTICE
             public long muteUntil;  // MODERATION_NOTICE
+            // 4.10 friends
+            public string friendshipId;
+            public string fromUserId;
+            public string fromDisplayName;
+            public string toUserId;
+            public string toDisplayName;
+            public string friendUserId;
+            public string friendDisplayName;
+            // 4.10.g — online list
+            public string[] friendUserIds;
         }
 
         [Serializable]
@@ -349,6 +437,27 @@ namespace Nymora.Hub
                     case EventKind.ModerationNotice:
                         OnModerationNotice?.Invoke(ev.ModerationKind, ev.MuteUntil);
                         break;
+                    case EventKind.IncomingFriendRequest:
+                        OnIncomingFriendRequest?.Invoke(ev.FriendshipId, ev.From, ev.FromDisplayName);
+                        break;
+                    case EventKind.FriendRequestSent:
+                        OnFriendRequestSent?.Invoke(ev.FriendshipId, ev.To, ev.ToDisplayName);
+                        break;
+                    case EventKind.FriendRequestResponse:
+                        OnFriendRequestResponse?.Invoke(ev.FriendshipId, ev.Accepted, ev.From, ev.FromDisplayName);
+                        break;
+                    case EventKind.FriendRemoved:
+                        OnFriendRemoved?.Invoke(ev.From, ev.FriendDisplayName);
+                        break;
+                    case EventKind.FriendsOnlineList:
+                        OnFriendsOnlineList?.Invoke(ev.FriendUserIds ?? new string[0]);
+                        break;
+                    case EventKind.FriendOnline:
+                        OnFriendOnline?.Invoke(ev.From);
+                        break;
+                    case EventKind.FriendOffline:
+                        OnFriendOffline?.Invoke(ev.From);
+                        break;
                 }
             }
         }
@@ -392,6 +501,42 @@ namespace Nymora.Hub
             if (!IsConnected || string.IsNullOrWhiteSpace(targetUser)) return;
             string escapedTarget = EscapeJsonString(targetUser);
             string json = $"{{\"type\":\"REPORT_USER\",\"payload\":{{\"targetUser\":\"{escapedTarget}\"}}}}";
+            await SendJsonAsync(json);
+        }
+
+        // ====== Brique 4.10 — Amis ======
+
+        public async void SendFriendRequest(string targetDisplayName)
+        {
+            if (!IsConnected || string.IsNullOrWhiteSpace(targetDisplayName)) return;
+            string escaped = EscapeJsonString(targetDisplayName);
+            string json = $"{{\"type\":\"SEND_FRIEND_REQUEST\",\"payload\":{{\"targetUser\":\"{escaped}\"}}}}";
+            await SendJsonAsync(json);
+        }
+
+        /// <summary>4.10 — Variante par UUID, utilisée par ChallengePopup (clic avatar remote, on a NetSub).</summary>
+        public async void SendFriendRequestByUserId(string targetUserId)
+        {
+            if (!IsConnected || string.IsNullOrWhiteSpace(targetUserId)) return;
+            string escaped = EscapeJsonString(targetUserId);
+            string json = $"{{\"type\":\"SEND_FRIEND_REQUEST\",\"payload\":{{\"targetUserId\":\"{escaped}\"}}}}";
+            await SendJsonAsync(json);
+        }
+
+        public async void RespondFriendRequest(string friendshipId, bool accepted)
+        {
+            if (!IsConnected || string.IsNullOrWhiteSpace(friendshipId)) return;
+            string escaped = EscapeJsonString(friendshipId);
+            string acceptedStr = accepted ? "true" : "false";
+            string json = $"{{\"type\":\"RESPOND_FRIEND_REQUEST\",\"payload\":{{\"friendshipId\":\"{escaped}\",\"accepted\":{acceptedStr}}}}}";
+            await SendJsonAsync(json);
+        }
+
+        public async void RemoveFriend(string friendUserId)
+        {
+            if (!IsConnected || string.IsNullOrWhiteSpace(friendUserId)) return;
+            string escaped = EscapeJsonString(friendUserId);
+            string json = $"{{\"type\":\"REMOVE_FRIEND\",\"payload\":{{\"friendUserId\":\"{escaped}\"}}}}";
             await SendJsonAsync(json);
         }
 
