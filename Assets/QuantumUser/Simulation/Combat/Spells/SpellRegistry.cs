@@ -343,6 +343,30 @@ namespace Quantum
         public const int PasSpectralPMBonus           = 2;
         public const int PasSpectralMarksPerCrossing  = 1;
 
+        // 3.5.c.i — Voile de Pestilence : aura defensive 2 rounds (Bible V7.1).
+        // 3 PA self. Apply PestilenceAura turnsLeft=2 (refresh-only).
+        // Hook 1 (TurnSystem.EnterTurnEnd) : fin sub-turn d'un ennemi a Manhattan <=2 d'un
+        //   Necram porteur de Voile -> +1 marque venin sur l'ennemi.
+        // Hook 2 (SpellSystem damage loop, apres reflect) : si target porte Voile ET le sort
+        //   est melee (RangeMax == 1) -> +1 marque venin sur l'attaquant (cap 4 via ApplyMark).
+        public const int VoilePestilencePACost            = 3;
+        public const int VoilePestilenceTurns             = 2;
+        public const int VoilePestilenceAdjacencyRange    = 2;     // Manhattan <= 2 du Necram
+        public const int VoilePestilenceMarksOnAdjacency  = 1;
+        public const int VoilePestilenceMarksOnMeleeAttacker = 1;
+
+        // 3.5.c.ii — Carapace Visqueuse : bouclier piege 2 rounds (Bible V7.1).
+        // 3 PA self. Apply ShieldActive Magnitude=110 HP + status CarapaceVisqueuse flag 2 rounds.
+        // Hook (SpellSystem damage loop, apres bloc absorption shield) : si target porte
+        // CarapaceVisqueuse ET shield a absorbe >=1 dmg ET sort melee (RangeMax==1)
+        // -> +1 marque venin sur l'attaquant (cap 4 via ApplyMark).
+        // Trigger meme si shield absorbe tout le dmg (HP_loss=0, "frappe le bouclier" Bible).
+        // Pas de trigger si shield deja brise (shieldBefore=0).
+        public const int CarapaceVisqueusePACost              = 3;
+        public const int CarapaceVisqueuseShieldHP            = 110;
+        public const int CarapaceVisqueuseTurns               = 2;
+        public const int CarapaceVisqueuseMarksOnMeleeAttacker = 1;
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -1482,6 +1506,46 @@ namespace Quantum
                     def = new SpellDef
                     {
                         PACost = PasSpectralPACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.5.c.i — Voile de Pestilence : aura defensive 2 rounds, 3 PA self. Pas de
+                // damage direct (IsOffensive=0). Effet pose dans le handler SpellSystem (Apply
+                // PestilenceAura). Hooks dans TurnSystem.EnterTurnEnd (adjacence) + SpellSystem
+                // damage loop (riposte marque).
+                case SpellId.NecramVoilePestilence:
+                    def = new SpellDef
+                    {
+                        PACost = VoilePestilencePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.5.c.ii — Carapace Visqueuse : bouclier piege 2 rounds, 3 PA self. Pas de
+                // damage direct (IsOffensive=0). Effet pose dans le handler SpellSystem (Apply
+                // ShieldActive 110 HP + CarapaceVisqueuse flag). Hook riposte marque dans
+                // SpellSystem damage loop (apres absorption shield, avant bloc HP loss).
+                case SpellId.NecramCarapaceVisqueuse:
+                    def = new SpellDef
+                    {
+                        PACost = CarapaceVisqueusePACost,
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.Self,
                         RangeMin = 0,

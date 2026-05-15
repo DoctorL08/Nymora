@@ -694,11 +694,23 @@ namespace Nymora.Combat.View
                 return;
             }
 
-            // 2.15.c — sorts Nightseer survie (lettres AZERTY W/X/C/N/M).
+            // 2.15.c / 3.5.c — sorts survie (lettres AZERTY W/X/C/N/M).
+            // Touche W context-aware :
+            //   Nightseer -> Voile d'Ombre (Untargetable 1 round)
+            //   Necram    -> Voile de Pestilence (aura 2 rounds : adjacence + riposte marque)
             if (keyAzW)
             {
-                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
-                    SendSpellAt(game, senderPlayer, SpellId.NightseerVoileDOmbre, cx, cy, 0);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsW)
+                    && casterClsW == Quantum.NymoraClass.Necram)
+                {
+                    if (TryGetCasterCell(game, senderPlayer, out int vpX, out int vpY))
+                        SendSpellAt(game, senderPlayer, SpellId.NecramVoilePestilence, vpX, vpY, 0);
+                }
+                else
+                {
+                    if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                        SendSpellAt(game, senderPlayer, SpellId.NightseerVoileDOmbre, cx, cy, 0);
+                }
                 return;
             }
             if (keyX)
@@ -708,10 +720,22 @@ namespace Nymora.Combat.View
                 SendSpellAt(game, senderPlayer, SpellId.NightseerPasFurtif, gx, gy, pr);
                 return;
             }
+            // Touche C context-aware :
+            //   Nightseer -> Camouflage Ronces (ShieldActive 130 HP + RoncesAura 70 dgts adjacents)
+            //   Necram    -> Carapace Visqueuse (ShieldActive 110 HP + flag riposte marque sur attaquant melee)
             if (keyC)
             {
-                if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
-                    SendSpellAt(game, senderPlayer, SpellId.NightseerCamouflageRonces, cx, cy, 0);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsC)
+                    && casterClsC == Quantum.NymoraClass.Necram)
+                {
+                    if (TryGetCasterCell(game, senderPlayer, out int cvX, out int cvY))
+                        SendSpellAt(game, senderPlayer, SpellId.NecramCarapaceVisqueuse, cvX, cvY, 0);
+                }
+                else
+                {
+                    if (TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                        SendSpellAt(game, senderPlayer, SpellId.NightseerCamouflageRonces, cx, cy, 0);
+                }
                 return;
             }
             if (keyN)

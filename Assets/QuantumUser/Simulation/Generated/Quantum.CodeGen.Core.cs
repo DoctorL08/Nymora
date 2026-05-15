@@ -145,6 +145,8 @@ namespace Quantum {
     NecramSymbioseMorbide = 77,
     NecramContagion = 78,
     NecramPasSpectral = 79,
+    NecramVoilePestilence = 80,
+    NecramCarapaceVisqueuse = 81,
   }
   public enum StatusKind : byte {
     None = 0,
@@ -167,7 +169,9 @@ namespace Quantum {
     EffondrementActive = 17,
     MarqueSacrificielle = 18,
     SymbioseMorbide = 19,
+    PestilenceAura = 21,
     PasSpectralReady = 20,
+    CarapaceVisqueuse = 22,
   }
   public enum TargetingFilter : byte {
     None = 0,

@@ -85,6 +85,18 @@ enum StatusKind : Byte
                                        //   min(target.VeninStacks, 4) * Magnitude HP a chaque tick venin sur
                                        //   un ennemi (max +32 HP/tick, +64 sur 2 rounds avec 4 marques).
 
+    // Necram (3.5.c.i — Survie aura)
+    PestilenceAura               = 21, // Bible V7.1 : aura defensive 2 rounds. Magnitude inutilisee (0).
+                                       //   Hook 1 (TurnSystem.EnterTurnEnd) : fin du sub-turn d'un ennemi a
+                                       //     Manhattan <= 2 du porteur -> +1 marque venin sur l'ennemi.
+                                       //   Hook 2 (SpellSystem damage loop) : si le porteur subit une ATTAQUE
+                                       //     MELEE (Chebyshev caster-cible <= 1 au moment du dmg, soit 8
+                                       //     voisines + soi du caster post-deplacement), +1 marque venin sur
+                                       //     l'attaquant. Bible-strict : couvre Charge Brutale post-move,
+                                       //     Faux Decharnee Square3x3, Tranche-Ame, etc. Rejette les sorts
+                                       //     distants (Crachat range 4, Tir Precis range 4).
+                                       //   Refresh-only : recast meme tour remet turnsLeft a 2 (pas de stack).
+
     // Necram (3.5.b.iii — Tactiques mobilite)
     PasSpectralReady             = 20, // Bible V7.1 : buff Pas Spectral. Magnitude inutilisee (0).
                                        //   Duree = sub-turn courant du porteur (consume dans
@@ -93,6 +105,23 @@ enum StatusKind : Byte
                                        //   pour les MoveCommand du Necram, et MovementSystem.ApplyMove pose
                                        //   +1 marque venin sur chaque ennemi present sur les cases
                                        //   intermediaires du path (skip destination).
+
+    // Necram (3.5.c.ii — Survie bouclier piege)
+    CarapaceVisqueuse            = 22, // Bible V7.1 : flag bouclier piege. Magnitude inutilisee (0).
+                                       //   Duree 2 rounds, applique en parallele de ShieldActive (110 HP).
+                                       //   Hook (SpellSystem damage loop, apres bloc d'absorption shield) :
+                                       //   si target porte CarapaceVisqueuse ET le shield a absorbe au moins
+                                       //   1 dmg de l'attaque ET ATTAQUE MELEE (Chebyshev caster-cible <= 1
+                                       //   au moment du dmg, soit 8 voisines + soi du caster post-deplacement)
+                                       //   -> +1 marque venin sur l'attaquant (cap 4 via ApplyMark).
+                                       //   Bible-strict : couvre Charge Brutale post-move, Faux Decharnee
+                                       //   Square3x3, Tranche-Ame, etc. Rejette les sorts distants.
+                                       //   Bible "frappe le bouclier" = condition absorbed >= 1 (le hook
+                                       //   trigger meme si shield absorbe TOUT le dmg, donc HP_loss=0).
+                                       //   Si shield deja brise avant l'attaque -> pas de trigger (le bouclier
+                                       //   n'est plus la, l'epine ne pique plus).
+                                       //   Refresh-only : recast meme tour remet turnsLeft a 2 (ShieldActive
+                                       //   reset a 110 HP, CarapaceVisqueuse reset a 2 rounds).
 }
 
 struct Status

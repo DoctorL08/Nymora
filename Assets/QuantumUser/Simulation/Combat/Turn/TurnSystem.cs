@@ -278,6 +278,37 @@ namespace Quantum
                 }
             }
 
+            // 3.5.c.i — Voile de Pestilence (hook adjacence) : a la fin du sub-turn de l'ennemi
+            // (= player actif qui finit son tour), iter les Necrams porteurs de PestilenceAura
+            // ennemis ; si Manhattan <= 2 entre Necram et l'ennemi finissant -> +1 marque venin
+            // sur l'ennemi. Skip si le Necram porteur est mort (HP <= 0).
+            {
+                var endingFilter = f.Filter<Combatant>();
+                while (endingFilter.NextUnsafe(out EntityRef _, out Combatant* ending))
+                {
+                    if (ending->PlayerIndex != state->ActivePlayerIndex) continue;
+                    if (ending->HP <= 0) break;
+                    // Iter tous les combattants porteurs de PestilenceAura ennemis du finissant.
+                    var veiledFilter = f.Filter<Combatant>();
+                    while (veiledFilter.NextUnsafe(out EntityRef _, out Combatant* veiled))
+                    {
+                        if (veiled->PlayerIndex == ending->PlayerIndex) continue;
+                        if (veiled->HP <= 0) continue;
+                        if (!StatusHelper.Has(veiled, StatusKind.PestilenceAura)) continue;
+                        int dxV = ending->GridX - veiled->GridX;
+                        int dyV = ending->GridY - veiled->GridY;
+                        int adxV = dxV < 0 ? -dxV : dxV;
+                        int adyV = dyV < 0 ? -dyV : dyV;
+                        int distV = adxV + adyV;
+                        if (distV > SpellRegistry.VoilePestilenceAdjacencyRange) continue;
+                        VeninHelpers.ApplyMark(f, ending,
+                            SpellRegistry.VoilePestilenceMarksOnAdjacency, state->TurnNumber);
+                        Log.Info($"[Voile Pestilence] P{ending->PlayerIndex} fin sub-turn a Manhattan {distV} du Necram P{veiled->PlayerIndex} : +{SpellRegistry.VoilePestilenceMarksOnAdjacency} marque venin");
+                    }
+                    break;
+                }
+            }
+
             // 3.5.b.iii — Pas Spectral : consume PasSpectralReady a la fin du sub-turn du porteur.
             // Le status est pose avec turnsLeft=1 + AppliedOnTurn=currentTurn donc DecrementAllOnTurnEnd
             // le skipperait au last sub-turn et il ne s'eteindrait que round+1, ce qui violerait

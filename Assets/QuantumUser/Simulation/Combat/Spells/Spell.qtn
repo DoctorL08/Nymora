@@ -98,6 +98,10 @@ enum SpellId : Byte
     NecramSymbioseMorbide         = 77,  // 3.5.b.ii — Tactique self-buff lifesteal : 3 PA, self, status 2 rounds. Necram heal +8 HP par marque par tick venin sur ennemis (max +32 HP/tick = 4 marques * 8, +64 sur 2 rounds).
     NecramContagion               = 78,  // 3.5.b.iv — Tactique propagation : 3 PA, range 5, target ennemie marquee requise. Copie min(stacks, cap) marques sur autres ennemis rayon 3 (Manhattan) de la cible. Cap 3 default, ou 4 avec 2 PT optionnel. En 1v1 (pas d'autres ennemis) : +1 marque sur la cible (boost).
     NecramPasSpectral             = 79,  // 3.5.b.iii — Tactique mobilite : 2 PA, self. +2 PM ce tour (cap si refresh) + status PasSpectralReady (sub-turn). Tant que actif : A* traverse ennemis, +1 marque venin par ennemi traverse sur cases intermediaires.
+
+    // NECRAM 3.5.c — SURVIE
+    NecramVoilePestilence         = 80,  // 3.5.c.i — Survie aura : 3 PA self, status PestilenceAura 2 rounds. Fin sub-turn ennemi a dist Manhattan <=2 du porteur -> +1 marque. Sort melee subi par le porteur -> +1 marque sur l'attaquant.
+    NecramCarapaceVisqueuse       = 81,  // 3.5.c.ii — Survie bouclier piege : 3 PA self, ShieldActive 110 HP / 2 rounds + status CarapaceVisqueuse flag 2 rounds. Attaquant melee qui frappe le bouclier (shield absorbe >=1 dmg) -> +1 marque venin sur l'attaquant. Trigger meme si shield absorbe tout (HP loss=0). Pas de trigger si shield deja brise.
 }
 
 enum SpellEffectKind : Byte

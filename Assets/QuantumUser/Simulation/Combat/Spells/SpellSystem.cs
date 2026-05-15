@@ -679,9 +679,11 @@ namespace Quantum
 
                     int totalShieldBypass = rageOuverteBypass + oeilTraqueBypass;
                     int dmgToShield = dmgThisTarget - totalShieldBypass; // partie shield-able
+                    int shieldAbsorbedThisHit = 0; // tracker pour hook Carapace Visqueuse (3.5.c.ii)
                     if (shieldBefore > 0 && dmgToShield > 0)
                     {
                         int absorbed = dmgToShield > shieldBefore ? shieldBefore : dmgToShield;
+                        shieldAbsorbedThisHit = absorbed;
                         int shieldAfter = shieldBefore - absorbed;
                         if (shieldAfter == 0)
                         {
@@ -694,6 +696,31 @@ namespace Quantum
                             Log.Info($"[Spell] Shield absorbe {absorbed} sur P{targetC->PlayerIndex} ({cx},{cy}) (shield {shieldBefore} -> {shieldAfter})");
                         }
                         dmgToShield -= absorbed;
+                    }
+
+                    // 3.5.c.ii — Carapace Visqueuse hook (Bible V7.1) : si la cible porte
+                    // CarapaceVisqueuse ET le shield a absorbe au moins 1 dmg de cette attaque
+                    // ET le sort est ATTAQUE MELEE (Chebyshev caster-cible <= 1 au moment du dmg)
+                    // -> +1 marque venin sur l'attaquant.
+                    // Bible-strict : couvre Tranche-Ame (range 1), Charge Brutale post-move
+                    // (caster adjacent target), Faux Decharnee AoE, Curee... Rejette les sorts
+                    // distants (Crachat Acide range 4, Tir Precis range 4, etc.).
+                    // Place AVANT le bloc `if (totalHPLoss > 0)` pour trigger meme si shield
+                    // absorbe tout le dmg (HP_loss=0). Bible : "frappe le bouclier" = absorbed>=1.
+                    // Skip si caster mort (defensif, pas de reflect avant ici donc tjrs vivant).
+                    int dxCar = caster->GridX - cx; if (dxCar < 0) dxCar = -dxCar;
+                    int dyCar = caster->GridY - cy; if (dyCar < 0) dyCar = -dyCar;
+                    bool isMeleeAttackForCarapace = dxCar <= 1 && dyCar <= 1;
+                    if (isMeleeAttackForCarapace
+                        && shieldAbsorbedThisHit > 0
+                        && StatusHelper.Has(targetC, StatusKind.CarapaceVisqueuse)
+                        && caster->PlayerIndex != targetC->PlayerIndex
+                        && caster->HP > 0)
+                    {
+                        int attackerStacksBefore = caster->VeninStacks;
+                        VeninHelpers.ApplyMark(f, caster,
+                            SpellRegistry.CarapaceVisqueuseMarksOnMeleeAttacker, currentTurn);
+                        Log.Info($"[Carapace Visqueuse] P{caster->PlayerIndex} frappe melee bouclier de P{targetC->PlayerIndex} (absorbe {shieldAbsorbedThisHit}) : +{SpellRegistry.CarapaceVisqueuseMarksOnMeleeAttacker} marque sur attaquant (stacks {attackerStacksBefore} -> {caster->VeninStacks})");
                     }
 
                     int totalHPLoss = dmgToShield + totalShieldBypass; // ce qui passe au HP
@@ -788,6 +815,28 @@ namespace Quantum
                             {
                                 Log.Info($"[Spell] Reflect : cap 4 retours atteint sur P{targetC->PlayerIndex}, skip");
                             }
+                        }
+
+                        // 3.5.c.i — Voile de Pestilence (hook 2) : si la cible porte PestilenceAura
+                        // et le sort est ATTAQUE MELEE (Chebyshev caster-cible <= 1 au moment du dmg),
+                        // +1 marque venin sur l'attaquant.
+                        // Bible-strict : couvre Tranche-Ame (range 1), Charge Brutale post-move (caster
+                        // adjacent target), Faux Decharnee (AoE 8 voisines), Curee... Rejette les sorts
+                        // distants (Crachat Acide range 4, Tir Precis range 4, etc.).
+                        // Conditionne au caster encore vivant (sinon Riposte Carmin l'a tue avant).
+                        // Pas de check VeninStacks cap : ApplyMark cap deja a 4 en interne.
+                        int dxAtt = caster->GridX - cx; if (dxAtt < 0) dxAtt = -dxAtt;
+                        int dyAtt = caster->GridY - cy; if (dyAtt < 0) dyAtt = -dyAtt;
+                        bool isMeleeAttack = dxAtt <= 1 && dyAtt <= 1;
+                        if (isMeleeAttack
+                            && StatusHelper.Has(targetC, StatusKind.PestilenceAura)
+                            && caster->PlayerIndex != targetC->PlayerIndex
+                            && caster->HP > 0)
+                        {
+                            int attackerStacksBefore = caster->VeninStacks;
+                            VeninHelpers.ApplyMark(f, caster,
+                                SpellRegistry.VoilePestilenceMarksOnMeleeAttacker, currentTurn);
+                            Log.Info($"[Voile Pestilence] P{caster->PlayerIndex} attaque melee P{targetC->PlayerIndex} (porteur Voile) : +{SpellRegistry.VoilePestilenceMarksOnMeleeAttacker} marque sur attaquant (stacks {attackerStacksBefore} -> {caster->VeninStacks})");
                         }
 
                         // Gain HG cote CIBLE (Bible V7.1) : Soulrender qui subit, max 1 par tour adverse.
@@ -1299,15 +1348,47 @@ namespace Quantum
                             Log.Info($"[Ancrage] -{anchorMagCB}% dmg sur P{hitC->PlayerIndex} (Charge Brutale) : {dmgBeforeAnchorCB} -> {dmgLeft}");
                         }
                         int shieldBefore = StatusHelper.GetMagnitude(hitC, StatusKind.ShieldActive, 0);
+                        int shieldAbsorbedByChargeBrutale = 0;
                         if (shieldBefore > 0)
                         {
                             int absorbed = dmgLeft > shieldBefore ? shieldBefore : dmgLeft;
+                            shieldAbsorbedByChargeBrutale = absorbed;
                             int shieldAfter = shieldBefore - absorbed;
                             if (shieldAfter == 0) StatusHelper.Consume(hitC, StatusKind.ShieldActive);
                             else StatusHelper.SetMagnitude(hitC, StatusKind.ShieldActive, shieldAfter);
                             dmgLeft -= absorbed;
                             Log.Info($"[Spell] Charge Brutale : shield absorbe {absorbed} sur P{hitC->PlayerIndex}");
                         }
+
+                        // 3.5.c.i — Voile de Pestilence hook (Bible V7.1) : Charge Brutale finit
+                        // ADJACENT a la cible (post-move), donc c'est une attaque melee. Si la cible
+                        // porte PestilenceAura -> +1 marque venin sur l'attaquant. Charge Brutale
+                        // bypass le pipeline standard donc on rebranche le hook ici manuellement.
+                        if (StatusHelper.Has(hitC, StatusKind.PestilenceAura)
+                            && caster->PlayerIndex != hitC->PlayerIndex
+                            && caster->HP > 0)
+                        {
+                            int attackerStacksBefore = caster->VeninStacks;
+                            VeninHelpers.ApplyMark(f, caster,
+                                SpellRegistry.VoilePestilenceMarksOnMeleeAttacker, currentTurn);
+                            Log.Info($"[Voile Pestilence] P{caster->PlayerIndex} Charge Brutale sur P{hitC->PlayerIndex} (porteur Voile) : +{SpellRegistry.VoilePestilenceMarksOnMeleeAttacker} marque sur attaquant (stacks {attackerStacksBefore} -> {caster->VeninStacks})");
+                        }
+
+                        // 3.5.c.ii — Carapace Visqueuse hook (Bible V7.1) : Charge Brutale est melee
+                        // (caster adjacent post-move). Si la cible porte CarapaceVisqueuse ET le shield
+                        // a absorbe >=1 dmg -> +1 marque venin sur l'attaquant. Charge Brutale bypass
+                        // le pipeline standard donc on rebranche le hook ici manuellement.
+                        if (shieldAbsorbedByChargeBrutale > 0
+                            && StatusHelper.Has(hitC, StatusKind.CarapaceVisqueuse)
+                            && caster->PlayerIndex != hitC->PlayerIndex
+                            && caster->HP > 0)
+                        {
+                            int attackerStacksBeforeC = caster->VeninStacks;
+                            VeninHelpers.ApplyMark(f, caster,
+                                SpellRegistry.CarapaceVisqueuseMarksOnMeleeAttacker, currentTurn);
+                            Log.Info($"[Carapace Visqueuse] P{caster->PlayerIndex} Charge Brutale frappe bouclier P{hitC->PlayerIndex} (absorbe {shieldAbsorbedByChargeBrutale}) : +{SpellRegistry.CarapaceVisqueuseMarksOnMeleeAttacker} marque sur attaquant (stacks {attackerStacksBeforeC} -> {caster->VeninStacks})");
+                        }
+
                         if (dmgLeft > 0)
                         {
                             hitC->HP -= dmgLeft;
@@ -1570,6 +1651,41 @@ namespace Quantum
                         magnitude: 0,
                         turnsLeft: 1,
                         currentTurn);
+                    break;
+                }
+
+                // 3.5.c.i — Voile de Pestilence (Bible V7.1) : 3 PA self. Apply PestilenceAura
+                // turnsLeft=2 (refresh-only). 2 hooks distincts :
+                //   1. Adjacence fin de sub-turn : TurnSystem.EnterTurnEnd iter ennemi finissant
+                //      son sub-turn, +1 marque si Manhattan <=2 d'un Necram porteur.
+                //   2. Riposte marque : damage loop SpellSystem (ce fichier, bloc reflect),
+                //      +1 marque sur l'attaquant si sort melee (RangeMax==1).
+                case SpellId.NecramVoilePestilence:
+                {
+                    StatusHelper.Apply(caster, StatusKind.PestilenceAura,
+                        magnitude: 0,
+                        turnsLeft: SpellRegistry.VoilePestilenceTurns,
+                        currentTurn);
+                    Log.Info($"[Spell] Voile de Pestilence active sur P{caster->PlayerIndex} : aura 2 rounds, +1 marque ennemi adjacent (Manhattan <={SpellRegistry.VoilePestilenceAdjacencyRange}) fin sub-turn + riposte +1 marque attaquant melee");
+                    break;
+                }
+
+                // 3.5.c.ii — Carapace Visqueuse (Bible V7.1) : 3 PA self. Apply ShieldActive
+                // 110 HP / 2 rounds + CarapaceVisqueuse flag 2 rounds. Hook (damage loop, apres
+                // bloc absorption shield) : si attaquant melee frappe le bouclier (shield absorbe
+                // >=1 dmg) -> +1 marque venin sur attaquant. Refresh-only (recast meme tour reset
+                // shield a 110 HP + duree a 2 rounds, pas de stack).
+                case SpellId.NecramCarapaceVisqueuse:
+                {
+                    StatusHelper.Apply(caster, StatusKind.ShieldActive,
+                        magnitude: SpellRegistry.CarapaceVisqueuseShieldHP,
+                        turnsLeft: SpellRegistry.CarapaceVisqueuseTurns,
+                        currentTurn);
+                    StatusHelper.Apply(caster, StatusKind.CarapaceVisqueuse,
+                        magnitude: 0,
+                        turnsLeft: SpellRegistry.CarapaceVisqueuseTurns,
+                        currentTurn);
+                    Log.Info($"[Spell] Carapace Visqueuse active sur P{caster->PlayerIndex} : Shield {SpellRegistry.CarapaceVisqueuseShieldHP} HP / {SpellRegistry.CarapaceVisqueuseTurns} rounds + flag riposte +{SpellRegistry.CarapaceVisqueuseMarksOnMeleeAttacker} marque attaquant melee qui frappe le bouclier");
                     break;
                 }
 
