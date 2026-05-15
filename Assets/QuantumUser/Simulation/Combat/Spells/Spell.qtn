@@ -104,6 +104,7 @@ enum SpellId : Byte
     NecramCarapaceVisqueuse       = 81,  // 3.5.c.ii — Survie bouclier piege : 3 PA self, ShieldActive 110 HP / 2 rounds + status CarapaceVisqueuse flag 2 rounds. Attaquant melee qui frappe le bouclier (shield absorbe >=1 dmg) -> +1 marque venin sur l'attaquant. Trigger meme si shield absorbe tout (HP loss=0). Pas de trigger si shield deja brise.
     NecramDrainVital              = 82,  // 3.5.c.iii — Survie heal offensif : 3 PA, range 4, 60 dgts cible. Caster Necram heal 30 HP (ou 60 HP si target.VeninStacks>=3). Marques cible NON consommees (pas de reset post-cast). Heal applique meme si target meurt sur les 60 dmg. Cap MaxHP standard.
     NecramPulseSanguinVert        = 83,  // 3.5.c.iv — Survie heal zone : 3 PA self, no dmg. Necram heal 70 HP + 15 HP par marque venin somme sur tous les ennemis vivants Manhattan <=4 (cap bonus +90 HP = 6 marques). Avec 1 PT optionnel (Shift+X) : +30 HP additionnel. Marques NON consommees. Cap MaxHP standard.
+    NecramCoconPutride            = 84,  // 3.5.c.v — Survie panic signature : 4 PA self, gate HP <30% requis, 1x/match. Necram heal 220 HP (cap MaxHP) + +1 marque venin sur tous ennemis vivants Manhattan <=4 du caster. Bible "L'explosion fongique : le Necram a l'agonie devient soudain le Necram avec 6+ marques sur la map".
 }
 
 enum SpellEffectKind : Byte

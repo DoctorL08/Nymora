@@ -768,9 +768,21 @@ namespace Nymora.Combat.View
                 }
                 return;
             }
+            // Touche M (AZERTY) context-aware :
+            //   Nightseer -> Evanescence (teleport invisible jusqu'a 4 cases)
+            //   Necram    -> Cocon Putride (panic signature : heal 220 + marques venin AoE Manhattan<=4, gate HP<30%, 1x/match)
             if (keyAzM)
             {
-                SendSpellAt(game, senderPlayer, SpellId.NightseerEvanescence, gx, gy, 0);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsM)
+                    && casterClsM == Quantum.NymoraClass.Necram)
+                {
+                    if (TryGetCasterCell(game, senderPlayer, out int cmX, out int cmY))
+                        SendSpellAt(game, senderPlayer, SpellId.NecramCoconPutride, cmX, cmY, 0);
+                }
+                else
+                {
+                    SendSpellAt(game, senderPlayer, SpellId.NightseerEvanescence, gx, gy, 0);
+                }
                 return;
             }
 

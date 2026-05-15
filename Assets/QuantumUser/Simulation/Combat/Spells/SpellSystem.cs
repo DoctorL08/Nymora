@@ -137,6 +137,18 @@ namespace Quantum
                 }
             }
 
+            // 3.5.c.v — Cocon Putride : conditionnel HP < 30% MaxHP (Bible V7.1 panic signature).
+            // Check avant consommation PA pour eviter de "perdre" le cast (style Dernier Souffle).
+            // Le check OncePerMatch est gere par le systeme generique (OncePerMatchBit/Flags).
+            if (cmd.Spell == SpellId.NecramCoconPutride)
+            {
+                if (caster->HP * 100 >= caster->MaxHP * SpellRegistry.CoconPutrideHpThresholdPct)
+                {
+                    Log.Warn($"[Spell] rejet : Cocon Putride requiert HP < {SpellRegistry.CoconPutrideHpThresholdPct}% (actuel {caster->HP}/{caster->MaxHP})");
+                    return;
+                }
+            }
+
             // 2.11 : Ame Laceree cooldown 4 tours apres usage. Detonation 5 HG set aussi
             // LastAmeLaceeUsedOnTurn (interdit Ame Laceree). Bible : re-castable si HG remonte
             // a 5 ET cooldown expire.
@@ -1733,6 +1745,38 @@ namespace Quantum
                     caster->HP += totalHeal;
                     if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
                     Log.Info($"[Spell] Pulse Sanguin Vert : P{caster->PlayerIndex} heal +{totalHeal} HP (base {SpellRegistry.PulseSanguinVertHealBase} + bonus {bonusCapped} [{sumMarks} marques sommees rayon {SpellRegistry.PulseSanguinVertMarksRange}, cap {SpellRegistry.PulseSanguinVertHealCap}] + PT {ptBonus}) HP {hpBeforePulse} -> {caster->HP}");
+                    break;
+                }
+
+                // 3.5.c.v — Cocon Putride (Bible V7.1 panic signature) : 4 PA self, gate HP <30%
+                // verifie en amont. Heal Necram 220 HP (cap MaxHP) + applique +1 marque venin sur
+                // tous ennemis vivants Manhattan <=4 du caster. 1x/match via OncePerMatchBit
+                // (gere par le systeme generique). En 1v1 : marque 1 ennemi. En 2v2/3v3 :
+                // marque jusqu'a 3 ennemis -> boost massif Putrefaction (cap +2 PT/tour Necram
+                // respecte par GainPutrefactionFromMarkApply via ApplyMark).
+                case SpellId.NecramCoconPutride:
+                {
+                    int hpBeforeCocon = caster->HP;
+                    caster->HP += SpellRegistry.CoconPutrideHealAmount;
+                    if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
+                    Log.Info($"[Spell] Cocon Putride : P{caster->PlayerIndex} heal +{SpellRegistry.CoconPutrideHealAmount} HP HP {hpBeforeCocon} -> {caster->HP}");
+
+                    int enemiesMarked = 0;
+                    var coconFilter = f.Filter<Combatant>();
+                    while (coconFilter.NextUnsafe(out EntityRef _, out Combatant* coconEnemy))
+                    {
+                        if (coconEnemy->HP <= 0) continue;
+                        if (coconEnemy->PlayerIndex == caster->PlayerIndex) continue;
+                        int dxC = coconEnemy->GridX - caster->GridX; if (dxC < 0) dxC = -dxC;
+                        int dyC = coconEnemy->GridY - caster->GridY; if (dyC < 0) dyC = -dyC;
+                        int distC = dxC + dyC;
+                        if (distC > SpellRegistry.CoconPutrideMarksRange) continue;
+                        int stacksBeforeCocon = coconEnemy->VeninStacks;
+                        VeninHelpers.ApplyMark(f, coconEnemy, SpellRegistry.CoconPutrideMarksPerEnemy, currentTurn);
+                        enemiesMarked++;
+                        Log.Info($"[Cocon Putride] P{caster->PlayerIndex} marque P{coconEnemy->PlayerIndex} (Manhattan {distC} <= {SpellRegistry.CoconPutrideMarksRange}) : stacks {stacksBeforeCocon} -> {coconEnemy->VeninStacks}");
+                    }
+                    Log.Info($"[Spell] Cocon Putride : {enemiesMarked} ennemi(s) marque(s) dans rayon {SpellRegistry.CoconPutrideMarksRange} du Necram P{caster->PlayerIndex}");
                     break;
                 }
 

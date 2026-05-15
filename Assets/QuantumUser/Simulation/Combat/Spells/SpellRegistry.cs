@@ -50,6 +50,7 @@ namespace Quantum
         public const byte OncePerMatchBitPacteDeSang   = 0;
         public const byte OncePerMatchBitDernierSouffle = 1;
         public const byte OncePerMatchBitNightseerEvanescence = 2;
+        public const byte OncePerMatchBitNecramCoconPutride = 3;
 
         // Constantes Bible V7.1 partagees par plusieurs sorts / systemes.
         public const int PeauDeFerShieldHP            = 200;
@@ -390,6 +391,18 @@ namespace Quantum
         public const int PulseSanguinVertHealCap         = 90;
         public const int PulseSanguinVertMarksRange      = 4;
         public const int PulseSanguinVertOptionalPTBonus = 30;
+
+        // 3.5.c.v — Cocon Putride : panic signature (Bible V7.1).
+        // 4 PA self. Gate HP <30% requis (rejet propre avant consume PA, style Dernier Souffle).
+        // 1x/match (OncePerMatchBitNecramCoconPutride). Heal Necram caster CoconPutrideHealAmount (220 HP).
+        // Applique +CoconPutrideMarksPerEnemy (1) marque venin sur tous ennemis vivants Manhattan
+        // <= CoconPutrideMarksRange (4) du caster. Cap 4/cible respecte par ApplyMark.
+        // Cap +2 PT/tour Necram via marques appliquees respecte. Pas de status durable.
+        public const int CoconPutridePACost          = 4;
+        public const int CoconPutrideHpThresholdPct  = 30;
+        public const int CoconPutrideHealAmount      = 220;
+        public const int CoconPutrideMarksRange      = 4;
+        public const int CoconPutrideMarksPerEnemy   = 1;
 
         public static bool TryGet(SpellId id, out SpellDef def)
         {
@@ -1616,6 +1629,25 @@ namespace Quantum
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 1,
                         OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.5.c.v — Cocon Putride : 4 PA self, panic signature 1x/match. Gate HP <30%
+                // verifie inline dans TryCastSpell (style Dernier Souffle / Evanescence) AVANT
+                // consume PA. Effet pose dans le handler SpellSystem (heal self + AoE marques).
+                case SpellId.NecramCoconPutride:
+                    def = new SpellDef
+                    {
+                        PACost = CoconPutridePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNecramCoconPutride,
                         IsOffensive = 0,
                     };
                     return true;

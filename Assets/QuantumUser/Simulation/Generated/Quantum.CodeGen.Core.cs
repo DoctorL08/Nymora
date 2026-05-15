@@ -149,6 +149,7 @@ namespace Quantum {
     NecramCarapaceVisqueuse = 81,
     NecramDrainVital = 82,
     NecramPulseSanguinVert = 83,
+    NecramCoconPutride = 84,
   }
   public enum StatusKind : byte {
     None = 0,
