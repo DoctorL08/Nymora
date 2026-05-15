@@ -3,15 +3,26 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
-**Dernière mise à jour :** 14 mai 2026 (session courante, Lorenzo AFK travail autonome Claude) — 🎉 **BLOC E REPLAY SYSTEM COMPLET** local commits `adff404` (3.E.1) → `3152e7f` (3.E.2) → `88e4e74` (3.E.3) → `b1b7d51` (3.E.finition). Bloc E lite (Replay + Debug Overlay) **CLÔTURÉ** 4 briques sur 4 prévues (3.E.4 Combat Inspector skip — redondant avec 3.E.3 overlay + 3.E.2 step). **3.E.1 Replay capture** : ReplayRecorder hook Quantum, .nymrep wrap QuantumReplayFile + metadata, ReplayLibraryWindow (`Nymora > Combat > Replay Library`), bouton "Sauvegarder le replay" dans MatchEndOverlay. **3.E.2 Replay playback** single-scene mode (refactor B — pas de 31_CombatReplay à maintenir), PlayerPrefs-backed bridge (survie domain reload), Play/Pause/Step/Speed (cycle 0.5×/1×/2×/4×). **3.E.2.b Seek arbitraire** : Restart (rewind 0) + InputField tick cible + Seek (coroutine shutdown + restart + FF). **3.E.2.c Détection desync** via Quantum.StartVerifyingChecksums + CallbackChecksumError. **3.E.3 Debug overlay F12** : TMP monospace dump combatants/statuses/obstacles, lecture seule frame Quantum verified, marche aussi en replay. **3.E.polish UX** : MatchEndOverlay hide Rejouer + Save en mode replay, bouton "Quitter le replay" qui clear flag + reload scene. 2 Editor Setup tools : BuildReplayControlsPanelTool + BuildCombatDebugOverlayTool (idempotents, auto-wire SerializedObject). HealthCheck + pre-commit hook : exclusion `Scripts/Combat/Replay/` pour DateTime légitime côté IO. Plan Phase 4 (13 briques en 5 blocs) sauvé en memory. **READY PHASE 4 dès retour Lorenzo**.  
+**Dernière mise à jour :** 14 mai 2026 (session soir) — 🎉 **BRIQUE 4.6 VALIDÉE E2E** — chat global multi-instance OK (dev-1 ↔ dev-2). Diagnostic 2nd user identique : `npm run dev:token dev-2 ...` sans `--` → npm bouffe les args → token signé en dev-1. Correctif workflow : toujours `npm run dev:token -- <sub> <email>`. **Prochaine brique : 4.7 — Canaux Privé/Combat + filtre anti-insulte server-side**.  
 **Mis à jour par :** Claude (session courante)
 
 ---
 
 ## 🎯 OÙ ON EN EST
 
-**Phase actuelle :** 🚧 **Phase 3 EN COURS** — Bloc B (Colossar) **CLÔTURÉ** ✅. Prochaine : **Bloc C Necram** (3.4).
-**Brique en cours :** **3.4 Necram** (16 sorts + passif Floraison + signature Virus Fatal). Bloc C Phase 3.
+**Phase actuelle :** 🚧 **PHASE 4 OUVERTE** — Hub Communautaire + Social (~8 semaines, 13 briques en 5 blocs). Plan validé memory `project_phase4_plan.md` 14 mai 2026.
+**Brique en cours :** **Import map designer v3** — 🔧 **CODE LIVRÉ, TEST E2E PENDING**. Décisions Lorenzo 2026-05-15 : (1) nouvelle version map `map_hub_sans_fond.png` du designer (remplace la précédente), (2) vidéo de fond désactivée (bloc commenté dans Editor tool, MP4 conservé sur disque pour usage futur), (3) scale auto de la map pour matcher la grille via nouveau composant `HubBackgroundImage` (scale = `grid.Width * tw * scaleMultiplier / sprite.naturalWidth`, scaleMultiplier 1.4 default ajustable, yOffset ajustable). Reordering : BackgroundImage créé APRES HubGrid dans l'Editor tool pour pouvoir wire la ref `_grid` directement.
+**Brique précédente :** ✅ **4.13 Modération light** validée — Signaler + mutes progressifs + filtre.
+**Brique précédente :** ✅ **4.10.refacto ChallengePopup data-driven** validée — pattern `List<MenuAction>` + boutons instanciés runtime via VerticalLayoutGroup.
+**Brique précédente :** ✅ **4.8.d.iii stub + 4.9** boucle E2E complète validée (défi → match stub → retour hub avec result coloré).
+**4.10 Amis (plein)** : DIFFÉRÉ — décision Lorenzo 14 mai 2026 soir. Persistance Postgres requiert adaptation `dev:token` pour upsert User en DB. À frais avec Docker setup propre.
+**Brique précédente :** ✅ **4.8.d.ii Transition scène hub → combat casual** validée E2E + fix shutdown propre Fusion. Unity `MatchBridge` (static cross-scène) + `HubMatchTransition` (async Task : delay + await runner.Shutdown() + SceneManager.LoadScene) + `MatchTestLogger` (lit MatchBridge dans 33_CombatCasual stub). 2 Editor tools : `CreateCombatCasualSceneTool` (génère scène + add BuildSettings) + `CreateCommunityHubSceneTool` étendu (HubMatchTransition GO + add BuildSettings). Log `[Hub] Runner shutdown : Ok` + `[Fusion] Left Room` clean, plus de warning `HubGridRenderer introuvable`.
+**Brique précédente :** ✅ **4.8.d.i Protocole MATCH_READY** validée E2E (MATCH_READY reçu + opponent résolu sur main thread, system line cyan OK).
+**Antérieures :** ✅ 4.8.c popup Accept/Refuse, ✅ 4.8.b wire backend défi, ✅ 4.8.a popup local, ✅ 4.7 chat privé, ✅ 4.6 chat global.
+**Brique précédente :** ✅ **4.8.b Wire backend défi (SEND_CHALLENGE)** validée E2E (clic Défier → CHALLENGE_SENT ack + INCOMING_CHALLENGE forwardé au target). Backend `WELCOME` + handler `SEND_CHALLENGE` + randomUUID. Unity `HubChatClient.MyUserId/MyEmail`, `SendChallenge`, 3 events (OnWelcome/OnIncomingChallenge/OnChallengeSent), `HubAvatar.NetSub<_16>` race-safe via OnWelcome. **Incident résolu** : ajout `[Networked] NetSub` a déclenché `InvalidOperationException: Invalid Length: 2595` côté remote — fix = régén prefab + scène + rebuild standalone (memory `feedback_networked_field_regen_protocol.md` sauvegardée). Emoji ⚔ retiré (manquant dans LiberationSans SDF), remplacé par `[DEFI]` ASCII.
+**Brique antérieure :** ✅ **4.8.a Popup défi local** validée (clic avatar remote → popup, bouton Défier → Debug.Log).
+**Brique antérieure :** ✅ **4.7 Chat privé + filtre anti-insulte** validée E2E (multi-instance dev-1 ↔ dev-2 OK). Backend `profanityFilter.ts` + userPool + `SEND_WHISPER`. Unity tabs Global/Privé + parser `/w`.
+**Phase 3 :** ⏸️ **Partiellement clôturée** — Bloc A (préreqs cross-classe) + Bloc B (Colossar 16/16) + **Bloc E lite (Replay + Debug Overlay)** ✅. **Bloc C Necram (0/16) + Bloc D Ghostra (0/16) + Bloc E IA Hard MCTS DIFFÉRÉS** — décision Lorenzo 14 mai 2026 : prioriser Phase 4 (Hub commu) car bibliothèque V7.1 sur 3 classes (Soulrender + Nightseer + Colossar) suffisante pour valider le fun en multi. Necram + Ghostra + IA Hard à reprendre post-Phase 4 ou en parallèle si bandwidth.
 **Bloc A Phase 3 :** ✅ **3.1 + 3.1.bis VALIDÉES** (14 mai 2026)
 **Bloc B Phase 3 :** ✅ **CLÔTURÉ 14 mai 2026 nuit** — Colossar **16/16 sorts** Bible V7.1 conformes E2E validés :
   - ✅ 3.2 Stats + FD + Densité Inerte
@@ -25,7 +36,8 @@
   - ✅ **3.3.d Effondrement** signature avec mécanique EJECTION+SWAP originale Lorenzo
 **Polish 3.3.d ✅ livré** : TileHoverView (glow + HP obstacles au survol), MovementRangePreview hover-driven, BFS contour obstacles (CombatantRenderer), fallback directionnel Stage N→0 (CombatantView), MarkSpriteLibrary étendu MarkKind (Traque/Empreinte Nightseer), AutoSlice + BindClassVisuals tools, avatars NS+CO binds.
 **Asset TODO** : VFX Effondrement (12 frames) — le `.gif` livré est animé 128×128 (1 frame seule lue par Unity). Redemander designer un export PNG sprite sheet horizontal 1536×128. Sort fonctionne sans VFX.
-**Cadrage Phase 3** : 5 blocs (A préreqs / B Colossar **CLÔTURÉ** / C Necram **EN COURS** / D Ghostra / E IA Hard+Replay+Debug) — séquentiel par classe
+**Cadrage Phase 3 (état final partiel)** : Bloc A préreqs ✅ / Bloc B Colossar ✅ / Bloc C Necram ⏸️ DIFFÉRÉ / Bloc D Ghostra ⏸️ DIFFÉRÉ / Bloc E IA Hard MCTS ⏸️ DIFFÉRÉ + **Bloc E lite Replay/Debug ✅ CLÔTURÉ** (14 mai 2026)
+**Cadrage Phase 4** (memory `project_phase4_plan.md`) : 5 blocs / 13 briques — Bloc A Photon Fusion + Scene Hub (4.1→4.4) / Bloc B Backend WS + Chat (4.5→4.7) / Bloc C Défi casual (4.8→4.9) / Bloc D Social amis+clans (4.10→4.11) / Bloc E Profil + Modération (4.12→4.13). Contrainte **local-first** : pas d'Hetzner avant 4.4 validée (gate multi-instance 2 clients PC Lorenzo).
 **Statut Phase 1 :** ✅ **CLÔTURÉE le 11 mai 2026** (1.13 reportée Phase 7, sinon 14/14 briques validées)
 **Statut Phase 2 :** ✅ **CLÔTURÉE le 13 mai 2026 soir**. 17/17 briques validées + 2.12.bis + 2.13.a/b/c/d/e + 2.14 + 2.15.a/b/c + **2.16.a/b/c complets** (Bloc E IA). **🏆 Soulrender + Nightseer 100% jouables, combat 1v1 vs IA E2E**.
 
@@ -33,9 +45,9 @@
   - Soulrender : ✅ 16/16
   - Nightseer  : ✅ 16/16
   - Colossar   : ✅ 16/16 (clôturé aujourd'hui)
-  - Necram    : ❌ 0/16 — prochaine étape (Bloc C, Phase 3.4)
-  - Ghostra   : ❌ 0/16 (Bloc D, Phase 3.5)
-  - **Total implémenté : 48/80 = 60 %**
+  - Necram    : ❌ 0/16 — DIFFÉRÉ post-Phase 4 (Bloc C Phase 3 mis en pause 14 mai 2026)
+  - Ghostra   : ❌ 0/16 — DIFFÉRÉ post-Phase 4 (Bloc D Phase 3 mis en pause 14 mai 2026)
+  - **Total implémenté : 48/80 = 60 %** (suffisant pour ouvrir le Hub commu Phase 4 ; Necram + Ghostra repris quand bandwidth)
 
 **CombatRulesVersion :** **20** (bump 3.3.d — 5 sorts survie Colossar + 2 statuses + 3 champs Combatant + signature Effondrement avec mécanique swap + Failles ObstacleKind 100 HP destructibles + buff EffondrementActive 2T + sorts AoE damage étendus aux obstacles adverses).
 
@@ -69,6 +81,87 @@ Lorenzo veut **éliminer le maximum de bugs structurels avant qu'ils n'apparaiss
 ---
 
 ## ✅ BRIQUES VALIDÉES
+
+- **Brique 4.5** — Backend Express + WebSocket + JWT minimaliste (validée 14 mai 2026) — **repo nymora-backend**
+  - `npm install ws @types/ws` (ws 8.20.1).
+  - `src/websocket/wsServer.ts` : WebSocket server attaché au HTTP Express via `noServer: true` + handle upgrade manuel. JWT validé AVANT acceptation (reject 401 si invalide). Token via query string `ws://host/?token=...`. Stocke `userId` + `email` sur le WebSocket object.
+  - `src/websocket/channels.ts` : ChannelRegistry in-memory (`Map<string, Set<AuthenticatedWebSocket>>`). 2 canaux init : `global` + `system`. Methods `join` / `leave` / `removeClient` / `broadcast`. Pas de persist Postgres (4.7 plus tard).
+  - Protocol JSON : `{ type, channel, payload, timestamp }`. Client → serveur : `JOIN_CHANNEL` / `LEAVE_CHANNEL` / `SEND_MESSAGE`. Serveur → client : `CHANNEL_MESSAGE` / `ERROR`.
+  - Patch `src/index.ts` : récupère le `Server` HTTP retourné par `app.listen()` + appelle `attachWebSocketServer(httpServer)`.
+  - `src/scripts/test-ws.ts` (script `npm run test:ws`) : signe JWT local → connect → JOIN_CHANNEL global → SEND_MESSAGE → vérif echo CHANNEL_MESSAGE. PASSED.
+  - `src/scripts/test-ws-reject.ts` (script `npm run test:ws:reject`) : token bidon → reject 401 vérifié. PASSED.
+
+---
+
+- **Brique 4.4.b** — Build standalone Windows + 2 instances multi-joueur (validée 14 mai 2026) 🎯 **GATE PASSÉE**
+  - `HubAvatar.ColorForPlayer(PlayerRef)` static : HSV deterministe via hash(InputAuthority.RawEncoded). Cosmétique ineffective sur sprite rouge Soulrender (multiplication couleurs) — accepté tel quel par Lorenzo, pas de besoin gameplay.
+  - Build Settings : scène `10_CommunityHub.unity` ajoutée. Build standalone Windows x86_64 Development Build dans `Build_4_4_b/NymoraHub.exe`.
+  - E2E validé : `NymoraHub.exe` + Unity Editor Play en parallèle → 2 avatars visibles dans chaque fenêtre, déplacements répliqués via `[Networked] NetGridX/Y` + Render() interpolation, **aucun désync** observé.
+  - **🎯 PHASE 4 BLOC A CLOS** — toute la fondation Hub (Fusion install + scène + grille + avatar networked + multi-instance) est validée. Décision : feu vert pour avancer Bloc B (Backend WS + Chat) sans investissement payant tant que pas besoin. Hetzner toujours différé jusqu'à besoin réel beta-test externe.
+
+---
+
+- **Brique 4.4.a** — Réplication position avatar via [Networked] GridX/Y + Render() interpolation (validée 14 mai 2026)
+  - `HubAvatar.cs` : ajout `[Networked] NetGridX/Y { get; set; }` + override `Render()` pour interpoler `transform.position` vers world(NetGridX, NetGridY) sur non-State Authority. Lerp factor 0.25 par frame.
+  - `SetGridPosition` pousse NetGridX/Y au réseau sur State Authority (end-of-step uniquement, ~4 updates/sec à 4 tiles/sec). `SetWorldPositionInterpolated` reste 100% local (lerp tile-par-tile pendant le mouvement).
+  - **`Nymora.Hub.asmdef`** : `allowUnsafeCode: true` (sinon `FieldAccessException` du weaver Fusion qui accède au `NetworkBehaviour.Ptr` internal unsafe). À retenir pour toute nouvelle asmdef Nymora avec `[Networked]` properties.
+  - E2E validé solo : click-to-move marche comme 4.3.c, comportement E2E identique. La réplication ne se révèle qu'en multi-instance (validée 4.4.b).
+
+---
+
+- **Brique 4.3.c** — Avatar networked Fusion + spawn via Runner.Spawn OnPlayerJoined (validée 14 mai 2026)
+  - `Scripts/Hub/HubAvatar.cs` refacto `MonoBehaviour → NetworkBehaviour`. Static `Local` set dans `Spawned()` si `Object.HasStateAuthority`. Init grid via `FindFirstObjectByType<HubGridRenderer>()`. SetGridPosition(10,10) au spawn.
+  - `Scripts/Hub/HubBootstrap.cs` implémente `INetworkRunnerCallbacks` (19 méthodes, 3 utilisées : OnPlayerJoined, OnPlayerLeft, OnShutdown). `_avatarPrefab : NetworkObject` SerializedField. `runner.AddCallbacks(this)` post-StartGame. `OnPlayerJoined` filtre `player == runner.LocalPlayer` → `Runner.Spawn(prefab, Vector3.zero, identity, player)`.
+  - `Scripts/Hub/HubInputController.cs` patch : utilise `HubAvatar.Local` au lieu de SerializedField → pas besoin de wiring scène-à-prefab.
+  - `Scripts/Hub/HubCamera.cs` patch : fallback `HubAvatar.Local.transform` si `_target` null.
+  - `Editor/Setup/CreateHubAvatarPrefabTool.cs` : génère `Prefabs/Hub/HubAvatar.prefab` avec SpriteRenderer + NetworkObject + HubAvatar + HubMovementController. Idempotent.
+  - `Editor/Setup/CreateCommunityHubSceneTool.cs` refacto : plus de HubAvatar scène, câble `HubAvatar.prefab` dans `HubBootstrap._avatarPrefab` via SerializedObject.
+  - **NetworkProjectConfig.fusion** : `AssembliesToWeave` += `"Nymora.Hub"` (sinon Fusion weaver ignore notre asmdef → `NetworkBehaviour has not been weaved` exception).
+  - **Dette technique 4.4** : `NetworkTransform` RETIRÉ du prefab — il resettait `transform.position` à chaque tick simulation, cassant le click-to-move local. À reintroduire en 4.4 soit reconfig predicted, soit pattern `[Networked] GridX/GridY` + interpolation `Render()`. En l'état 4.3.c, la position avatar n'est PAS répliquée aux autres clients — sera traité en 4.4.a.
+  - E2E validé solo : Play → grille → connecté Fusion → OnPlayerJoined → spawn avatar (NetworkId) → clic gauche → A* path → marche smooth tile par tile → caméra suit.
+
+---
+
+- **Brique 4.3.b** — Avatar local + click-to-move + A* tile-based (validée 14 mai 2026)
+  - `Scripts/Hub/HubAvatar.cs` : sprite player position grid (int), SetGridPosition / SetWorldPositionInterpolated, sorting order = baseSortingOrder - (gx+gy), baseSorting 100 (avatar devant les tiles).
+  - `Scripts/Hub/HubPathfinder.cs` : A* tile-based 4-conn Manhattan, callback `isWalkable`, retourne `List<(int gx, int gy)>` (sans la case de départ, avec la cible). Null si pas de path / out of bounds / start==target. Open list O(n) suffisant pour 400 nodes.
+  - `Scripts/Hub/HubMovementController.cs` : Queue<(gx,gy)> + lerp world space tile par tile. 4 tiles/sec par défaut. IsMoving property publique. StopImmediate / Follow.
+  - `Scripts/Hub/HubInputController.cs` : `Input.GetMouseButtonDown(0)` → `EventSystem.IsPointerOverGameObject()` ignore UI → `camera.ScreenToWorldPoint` → `IsoProjection.WorldToGrid` → `HubPathfinder.FindPath` → `MovementController.Follow`. Logs `[HubInput]` (path / hors grille / pas de chemin). `IsWalkable` stub = always true (obstacles en 4.x ultérieur quand designer livre).
+  - Editor Tool : auto-câble Soulrender_Placeholder.png sur avatar + 4 refs sur InputController + HubCamera.target = HubAvatar.transform.
+  - HubPivot.cs et HubCamera.cs gardés inchangés (HubPivot non instancié par le tool mais le fichier reste — sera supprimé après 4.3.c validée).
+  - E2E validé : avatar spawn au (10,10), clic gauche → A* path → marche smooth tile par tile, caméra suit, clic hors grille / sur self = no-op propre, Fusion toujours connecté en parallèle.
+
+---
+
+- **Brique 4.3.a** — Grille hub iso 20×20 + caméra-follow placeholder (validée 14 mai 2026)
+  - `Scripts/Hub/IsoProjection.cs` : dup pure (60 lignes math statique) de `Combat.View.IsoProjection`. Isolation asmdef Nymora.Hub vs Nymora.Combat préservée — pas de cross-référence (règle sacrée n°4).
+  - `Scripts/Hub/HubGridRenderer.cs` : génère 400 tiles iso 2:1 runtime au Start. Width/Height/TileWorldWidth/Height SerializedField. Sprite via `TilePlaceholder.png` partagé avec Combat. Sorting order décroissant avec (gx+gy).
+  - `Scripts/Hub/HubCamera.cs` : camera-follow lerp 0.1, target Transform. Préserve Z = -10. SetTarget() public pour rebinding runtime (4.3.b remplacera Pivot par HubAvatar).
+  - `Scripts/Hub/HubPivot.cs` : placeholder ZQSD via Input.GetAxisRaw("Horizontal"/"Vertical"). 4 units/sec. **Jetable** : sera supprimé en 4.3.b au profit de l'avatar joueur click-to-move A*.
+  - `Editor/Setup/CreateCommunityHubSceneTool.cs` réécrit : auto-câble TilePlaceholder.png dans HubGridRenderer via SerializedObject + wire Pivot→HubCamera target. Idempotent.
+  - Camera ortho size 8 (large pour voir ~6 tiles autour du pivot).
+  - E2E validé : Play Mode → grille iso 20×20 visible centrée, ZQSD déplace pivot, caméra suit smooth, Fusion toujours connecté en parallèle.
+
+---
+
+- **Brique 4.2** — Scène `10_CommunityHub` + NetworkRunner Fusion Shared Mode (validée 14 mai 2026)
+  - `Assets/_Nymora/Scripts/Hub/HubBootstrap.cs` : MonoBehaviour spawn `NetworkRunner` programmatique + `StartGame(GameMode.Shared, SessionName="nymora-hub-dev", PlayerCount=100)` async. Logs `[Hub]` (StartGame / Connected / failed).
+  - `Assets/_Nymora/Scripts/Hub/Nymora.Hub.asmdef` enrichi : référence `"Fusion.Unity"` ajoutée.
+  - `Assets/_Nymora/Editor/Setup/CreateCommunityHubSceneTool.cs` : Editor Tool menu `Nymora > Setup > Create Community Hub Scene`. Génère `Assets/_Nymora/Scenes/10_CommunityHub.unity` avec Main Camera ortho (size 5, fond `#262630`) + GameObject `HubBootstrap`. Idempotent (popup overwrite).
+  - **Fix warning Fusion TickRate** : `Assets/Photon/Fusion/Resources/NetworkProjectConfig.fusion` → `TickRateSelection.Client` 64→32 pour aligner avec Shared Mode (Fusion override en 32Hz runtime de toute façon). Console désormais propre.
+  - E2E validé : Play Mode → log `[Hub] Connected. LocalPlayer=[Player:1] Region=eu` (~1-2s). Pas de warning, pas d'exception. Session Photon rejoignable depuis n'importe quel client lançant la scène.
+
+---
+
+- **Brique 4.1** — Photon Fusion 2 SDK install + PhotonAppSettings Fusion (validée 14 mai 2026)
+  - SDK Fusion 2 latest stable importé depuis dashboard.photonengine.com → `Assets/Photon/Fusion/`
+  - AppId Fusion (créé en 1.1) collé dans `Assets/Photon/Fusion/Resources/PhotonAppSettings.asset` (gitignored)
+  - **Patch conflit ScriptedImporter** : `Assets/Photon/Fusion/Editor/FusionEditorConfigImporter.cs` désactivé via `#if FUSION_EDITORCONFIG_IMPORTER_ENABLED` (jamais activé). Sentinelle commentaire `NYMORA PATCH (Brique 4.1)` à préserver lors des updates Fusion SDK. Quantum garde son importer `.editorconfig` (installé en premier).
+  - `.gitignore` enrichi : exclusions `Assets/Photon/Fusion/Resources/PhotonAppSettings.asset` + fallback `Assets/Photon/Resources/PhotonAppSettings.asset`
+  - HealthCheck = 0 erreur critique, Console propre, Fusion Hub accessible via `Tools → Fusion → Fusion Hub`
+  - Aucun code C# Nymora ajouté (brique 100% setup d'outil). `Nymora.Hub` asmdef référencera `Fusion.Runtime` en 4.2.
+
+---
 
 - **Brique 0.1** — Installation Unity et création du projet (validée 8 mai 2026)
   - Projet Unity Nymora créé, Universal 2D, Unity 2022.3.62f3
@@ -855,6 +948,17 @@ La Phase 0 passe de **8 briques (2 semaines)** à **10 briques (2.5 semaines)** 
 ---
 
 ## 📝 JOURNAL DE BORD (les sessions importantes)
+
+### 14 mai 2026 (session courante post-Bloc E lite) — 🚀 **OUVERTURE PHASE 4 (Hub Communautaire + Social)**
+- **Contexte** : retour Lorenzo après session AFK où Claude a livré Bloc E lite Replay/Debug (commits `adff404` → `b1b7d51`). Plan Phase 4 validé en memory (`project_phase4_plan.md`) : 13 briques en 5 blocs, ~8 semaines, contrainte local-first jusqu'à 4.4.
+- **Décisions clés** :
+  - **Phase 3 partiellement clôturée** : Bloc A + Bloc B Colossar + Bloc E lite Replay/Debug ✅. **Bloc C Necram + Bloc D Ghostra + Bloc E IA Hard MCTS différés** post-Phase 4 (ou parallèle si bandwidth). Rationale : 3 classes (Soulrender + Nightseer + Colossar) suffisantes pour valider le fun multijoueur, on bascule sur Hub commu pour activer le combat ranked 1v1 et le défi casual.
+  - **Local-first jusqu'à 4.4 validée** (gate multi-instance 2 clients sur PC Lorenzo qui se voient se déplacer) : pas d'Hetzner, pas de domaine, pas de licence payante avant validation gameplay. Cf memory `feedback_minimize_costs_before_gameplay_validation.md`.
+  - **Designer travaille sans backend** : place-holders avatar hub + décors map + PNJ livrés en *late insert* dans le bloc concerné quand Necram + Ghostra finis côté art. Cf memory `project_team_setup.md`.
+  - **Sub-agents autorisés "PARALLEL CONTROLLED"** : Phase 4 est dans la zone où sub-agents OK pour tâches strictement indépendantes (ex: 4.10 Amis + 4.11 Clans) AVEC accord explicite Lorenzo. Défaut = séquentiel.
+- **Brique 4.1 ouverte** : Photon Fusion 2 SDK install + PhotonAppSettings Fusion (latest stable, AppId Fusion déjà créé en 1.1).
+
+---
 
 ### 14 mai 2026 nuit profonde (5) — ⚒️ Brique 3.3.b.iii ✅ Refacto Bible-correct 5 sorts tactiques Colossar
 - **Contexte** : avant d'attaquer 3.3.c, Lorenzo a demandé `"Donne-moi la Bible exacte d'abord"`. Lecture Bible V7.1 a révélé que **les 5 sorts tactiques livrés en 3.3.b.i + 3.3.b.ii étaient NON-CONFORMES** (constantes inventées, effets manquants, mauvaise cible). Refacto rétroactif immédiat avant de continuer.

@@ -86,6 +86,17 @@ Assets/_Nymora/Settings/PhotonAppSettings.asset.meta
 Assets/QuantumUser/Resources/PhotonServerSettings.asset
 Assets/QuantumUser/Resources/PhotonServerSettings.asset.meta
 
+# Photon Fusion 2 SDK — PhotonAppSettings contient l'AppId Fusion, JAMAIS commit
+# (chemin par défaut Fusion 2 ; fallback large au cas où l'install pose le SO ailleurs)
+Assets/Photon/Fusion/Resources/PhotonAppSettings.asset
+Assets/Photon/Fusion/Resources/PhotonAppSettings.asset.meta
+Assets/Photon/Resources/PhotonAppSettings.asset
+Assets/Photon/Resources/PhotonAppSettings.asset.meta
+
+# Photon Fusion 2 demos — samples du SDK, ré-importables depuis l'Asset Store
+Assets/Photon/FusionDemos/
+Assets/Photon/FusionDemos.meta
+
 # -----------------------------------------------------------------------------
 # OS-specific
 # -----------------------------------------------------------------------------

@@ -2,11 +2,13 @@
     "name": "Nymora.Hub",
     "rootNamespace": "Nymora.Hub",
     "references": [
-        "Nymora.Core"
+        "Nymora.Core",
+        "Fusion.Unity",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
-    "allowUnsafeCode": false,
+    "allowUnsafeCode": true,
     "overrideReferences": false,
     "precompiledReferences": [],
     "autoReferenced": true,
