@@ -165,6 +165,14 @@ namespace Nymora.Network.Backend
                 new AwardXpBody { classId = classId, amount = amount, source = source },
                 requireAuth: true, ct);
 
+        // ====== Brique 5.2 — Succès ======
+
+        public UniTask<ApiResult<AchievementCatalogResponse>> GetAchievementsCatalogAsync(CancellationToken ct = default)
+            => GetJsonAsync<AchievementCatalogResponse>("/achievements/catalog", requireAuth: true, ct);
+
+        public UniTask<ApiResult<AchievementsMeResponse>> GetAchievementsMeAsync(CancellationToken ct = default)
+            => GetJsonAsync<AchievementsMeResponse>("/achievements/me", requireAuth: true, ct);
+
         /// <summary>DELETE /clans/me — chef seul. Retourne ApiResult avec body { status:'DISBANDED', clanId }.</summary>
         public async UniTask<ApiResult<ClanDisbandResponse>> DisbandClanAsync(CancellationToken ct = default)
         {

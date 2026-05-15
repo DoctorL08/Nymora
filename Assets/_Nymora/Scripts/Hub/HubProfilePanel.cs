@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Nymora.Network.Backend;
 using TMPro;
@@ -65,6 +66,18 @@ namespace Nymora.Hub
         [Header("Classes tab — 5 rows (Soulrender, Nightseer, Colossar, Necram, Ghostra)")]
         [SerializeField] private ClassProgressionRow[] _classRows;
 
+        // ====== Brique 5.2 — Achievements tab ======
+        [Header("Achievements tab")]
+        [SerializeField] private RectTransform _achievementsContainer;
+        [SerializeField] private TextMeshProUGUI _achievementsHeader;
+        [SerializeField] private float _achievementItemHeight = 48f;
+        [SerializeField] private Color _achievementBgLocked = new Color(0.18f, 0.20f, 0.25f, 1f);
+        [SerializeField] private Color _achievementBgUnlocked = new Color(0.20f, 0.32f, 0.22f, 1f);
+        [SerializeField] private Color _achievementCategoryColor = new Color(0.85f, 0.85f, 0.9f, 1f);
+        [SerializeField] private Color _achievementProgressBgColor = new Color(0.10f, 0.10f, 0.12f, 1f);
+        [SerializeField] private Color _achievementProgressFillColor = new Color(0.35f, 0.65f, 0.45f, 1f);
+        [SerializeField] private Color _achievementPointsColor = new Color(0.95f, 0.85f, 0.4f, 1f);
+
         [Header("Tab style")]
         [SerializeField] private Color _tabActiveColor = new Color(0.25f, 0.4f, 0.65f, 1f);
         [SerializeField] private Color _tabInactiveColor = new Color(0.2f, 0.2f, 0.24f, 1f);
@@ -75,6 +88,14 @@ namespace Nymora.Hub
         private ProfileTab _activeTab = ProfileTab.View;
         private bool _hasFetchedOnce;
         private bool _hasFetchedProgressionOnce;
+        // 5.2 achievements
+        private bool _hasFetchedAchievementsOnce;
+        private AchievementDefDto[] _catalog;
+        private readonly Dictionary<string, UserAchievementDto> _myAchievementsById = new Dictionary<string, UserAchievementDto>();
+        private readonly Dictionary<string, GameObject> _achievementItemGOs = new Dictionary<string, GameObject>();
+        private readonly List<GameObject> _spawnedAchievementGOs = new List<GameObject>();
+        // Chat UI reference for unlock toast (set via 4.10 wire ; fallback null si pas wire)
+        [SerializeField] private HubChatUI _chatUIForAchievementToast;
 
         public bool IsOpen => _panelRoot != null && _panelRoot.activeSelf;
 
@@ -124,6 +145,8 @@ namespace Nymora.Hub
             {
                 HubChatClient.Instance.OnXpAwarded += HandleXpAwarded;
                 HubChatClient.Instance.OnClassLevelUp += HandleClassLevelUp;
+                HubChatClient.Instance.OnAchievementProgress += HandleAchievementProgress;
+                HubChatClient.Instance.OnAchievementUnlocked += HandleAchievementUnlocked;
             }
         }
 
@@ -134,6 +157,8 @@ namespace Nymora.Hub
             {
                 HubChatClient.Instance.OnXpAwarded -= HandleXpAwarded;
                 HubChatClient.Instance.OnClassLevelUp -= HandleClassLevelUp;
+                HubChatClient.Instance.OnAchievementProgress -= HandleAchievementProgress;
+                HubChatClient.Instance.OnAchievementUnlocked -= HandleAchievementUnlocked;
             }
         }
 
@@ -169,6 +194,11 @@ namespace Nymora.Hub
             if (tab == ProfileTab.Classes && !_hasFetchedProgressionOnce)
             {
                 FetchProgressionAsync().Forget();
+            }
+            // 5.2 — Lazy fetch achievements au 1er switch sur Achievements
+            if (tab == ProfileTab.Achievements && !_hasFetchedAchievementsOnce)
+            {
+                FetchAchievementsAsync().Forget();
             }
         }
 
@@ -296,6 +326,220 @@ namespace Nymora.Hub
         {
             // Visual feedback minimal pour MVP : juste log. Animation popup à venir en 5.9 polish.
             Debug.Log($"[ProfilePanel] LEVEL UP {classId} → niveau {newLevel}");
+        }
+
+        // ====== Brique 5.2 — Achievements tab logic ======
+
+        private async UniTask FetchAchievementsAsync()
+        {
+            string token = ResolveDevToken();
+            if (string.IsNullOrEmpty(token)) return;
+            _api.SetBearerToken(token);
+
+            var catalogTask = _api.GetAchievementsCatalogAsync();
+            var meTask = _api.GetAchievementsMeAsync();
+            var catalogRes = await catalogTask;
+            var meRes = await meTask;
+
+            if (!catalogRes.IsSuccess || !meRes.IsSuccess)
+            {
+                Debug.LogWarning($"[ProfilePanel] achievements fetch failed ({catalogRes.StatusCode}/{meRes.StatusCode})");
+                return;
+            }
+
+            _catalog = catalogRes.Data.achievements ?? new AchievementDefDto[0];
+            _myAchievementsById.Clear();
+            if (meRes.Data.items != null)
+            {
+                foreach (var item in meRes.Data.items)
+                {
+                    _myAchievementsById[item.achievementId] = item;
+                }
+            }
+            UpdateAchievementsHeader(meRes.Data.unlockedCount, meRes.Data.totalCount, meRes.Data.totalPoints);
+            RebuildAchievementsUI();
+            _hasFetchedAchievementsOnce = true;
+        }
+
+        private void UpdateAchievementsHeader(int unlocked, int total, int points)
+        {
+            if (_achievementsHeader != null)
+            {
+                _achievementsHeader.text = $"<b>{unlocked}/{total}</b> succès · <color=#f5dc66>{points} points</color>";
+            }
+        }
+
+        private void RebuildAchievementsUI()
+        {
+            if (_achievementsContainer == null || _catalog == null) return;
+
+            // Cleanup
+            foreach (var go in _spawnedAchievementGOs) if (go != null) Destroy(go);
+            _spawnedAchievementGOs.Clear();
+            _achievementItemGOs.Clear();
+
+            // Group by category dans l'ordre fixe
+            string[] categoryOrder = { "first_steps", "combat", "progression" };
+            string[] categoryLabels = { "Premiers pas", "Combat", "Progression" };
+
+            for (int ci = 0; ci < categoryOrder.Length; ci++)
+            {
+                string cat = categoryOrder[ci];
+                var inCat = new List<AchievementDefDto>();
+                foreach (var d in _catalog) if (d.category == cat) inCat.Add(d);
+                if (inCat.Count == 0) continue;
+
+                SpawnCategoryHeader(_achievementsContainer, categoryLabels[ci], inCat.Count);
+                foreach (var def in inCat)
+                {
+                    SpawnAchievementItem(_achievementsContainer, def);
+                }
+            }
+        }
+
+        private void SpawnCategoryHeader(RectTransform parent, string label, int count)
+        {
+            var go = new GameObject($"CatHeader_{label}", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            go.transform.SetParent(parent, false);
+            var tmp = go.GetComponent<TextMeshProUGUI>();
+            tmp.text = $"<b>{label}</b> ({count})";
+            tmp.fontSize = 18;
+            tmp.color = _achievementCategoryColor;
+            tmp.alignment = TextAlignmentOptions.MidlineLeft;
+            tmp.richText = true;
+            go.GetComponent<LayoutElement>().preferredHeight = 28f;
+            _spawnedAchievementGOs.Add(go);
+        }
+
+        private void SpawnAchievementItem(RectTransform parent, AchievementDefDto def)
+        {
+            _myAchievementsById.TryGetValue(def.id, out var my);
+            bool unlocked = my != null && my.unlocked;
+            int progress = my?.progress ?? 0;
+
+            var item = new GameObject($"Achv_{def.id}",
+                typeof(RectTransform), typeof(Image), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+            item.transform.SetParent(parent, false);
+            item.GetComponent<Image>().color = unlocked ? _achievementBgUnlocked : _achievementBgLocked;
+            var hl = item.GetComponent<HorizontalLayoutGroup>();
+            hl.padding = new RectOffset(12, 12, 6, 6);
+            hl.spacing = 10;
+            hl.childForceExpandHeight = true;
+            hl.childControlHeight = true;
+            hl.childControlWidth = true;
+            hl.childAlignment = TextAnchor.MiddleLeft;
+            item.GetComponent<LayoutElement>().preferredHeight = _achievementItemHeight;
+
+            // Icon (✓ ou 🔒)
+            var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            iconGo.transform.SetParent(item.transform, false);
+            var iconTmp = iconGo.GetComponent<TextMeshProUGUI>();
+            iconTmp.text = unlocked ? "<color=#7fff7f>✓</color>" : "<color=#888888>•</color>";
+            iconTmp.fontSize = 24;
+            iconTmp.alignment = TextAlignmentOptions.Center;
+            iconTmp.richText = true;
+            iconGo.GetComponent<LayoutElement>().preferredWidth = 28f;
+
+            // Title (flex)
+            var titleGo = new GameObject("Title", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            titleGo.transform.SetParent(item.transform, false);
+            var titleTmp = titleGo.GetComponent<TextMeshProUGUI>();
+            titleTmp.text = def.title;
+            titleTmp.fontSize = 16;
+            titleTmp.color = unlocked ? Color.white : new Color(0.85f, 0.85f, 0.88f);
+            titleTmp.alignment = TextAlignmentOptions.MidlineLeft;
+            titleTmp.fontStyle = unlocked ? FontStyles.Bold : FontStyles.Normal;
+            titleGo.GetComponent<LayoutElement>().flexibleWidth = 1f;
+
+            // Progress bar (mini)
+            var barBg = new GameObject("ProgBg", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            barBg.transform.SetParent(item.transform, false);
+            barBg.GetComponent<Image>().color = _achievementProgressBgColor;
+            var barBgLe = barBg.GetComponent<LayoutElement>();
+            barBgLe.preferredWidth = 120f;
+            barBgLe.preferredHeight = 12f;
+
+            var barFill = new GameObject("ProgFill", typeof(RectTransform), typeof(Image));
+            barFill.transform.SetParent(barBg.transform, false);
+            var barFillImg = barFill.GetComponent<Image>();
+            barFillImg.color = _achievementProgressFillColor;
+            barFillImg.type = Image.Type.Filled;
+            barFillImg.fillMethod = Image.FillMethod.Horizontal;
+            barFillImg.fillOrigin = (int)Image.OriginHorizontal.Left;
+            float pct = def.target > 0 ? Mathf.Clamp01((float)progress / def.target) : 1f;
+            barFillImg.fillAmount = pct;
+            var barFillRt = barFill.GetComponent<RectTransform>();
+            barFillRt.anchorMin = Vector2.zero; barFillRt.anchorMax = Vector2.one;
+            barFillRt.offsetMin = Vector2.zero; barFillRt.offsetMax = Vector2.zero;
+
+            // Progress text
+            var progGo = new GameObject("ProgText", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            progGo.transform.SetParent(item.transform, false);
+            var progTmp = progGo.GetComponent<TextMeshProUGUI>();
+            progTmp.text = $"{progress}/{def.target}";
+            progTmp.fontSize = 14;
+            progTmp.color = new Color(0.8f, 0.8f, 0.85f);
+            progTmp.alignment = TextAlignmentOptions.MidlineRight;
+            progGo.GetComponent<LayoutElement>().preferredWidth = 60f;
+
+            // Points
+            var ptsGo = new GameObject("Points", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            ptsGo.transform.SetParent(item.transform, false);
+            var ptsTmp = ptsGo.GetComponent<TextMeshProUGUI>();
+            ptsTmp.text = $"{def.points}<size=70%> pts</size>";
+            ptsTmp.fontSize = 14;
+            ptsTmp.color = _achievementPointsColor;
+            ptsTmp.alignment = TextAlignmentOptions.MidlineRight;
+            ptsTmp.fontStyle = FontStyles.Bold;
+            ptsTmp.richText = true;
+            ptsGo.GetComponent<LayoutElement>().preferredWidth = 70f;
+
+            _spawnedAchievementGOs.Add(item);
+            _achievementItemGOs[def.id] = item;
+        }
+
+        private void HandleAchievementProgress(string achievementId, int oldProgress, int newProgress, int target, bool justUnlocked)
+        {
+            // Update cache
+            if (!_myAchievementsById.TryGetValue(achievementId, out var existing) || existing == null)
+            {
+                existing = new UserAchievementDto { achievementId = achievementId, target = target };
+                _myAchievementsById[achievementId] = existing;
+            }
+            existing.progress = newProgress;
+            existing.target = target;
+            existing.unlocked = justUnlocked || existing.unlocked;
+
+            // Rebuild si on a fetché une fois (sinon item pas spawné, on attend la 1ère ouverture)
+            if (_hasFetchedAchievementsOnce && _activeTab == ProfileTab.Achievements)
+            {
+                // Refetch /me léger pour avoir le totalPoints à jour
+                RefreshAchievementsHeaderAsync().Forget();
+                RebuildAchievementsUI();
+            }
+        }
+
+        private async UniTask RefreshAchievementsHeaderAsync()
+        {
+            string token = ResolveDevToken();
+            if (string.IsNullOrEmpty(token)) return;
+            _api.SetBearerToken(token);
+            var res = await _api.GetAchievementsMeAsync();
+            if (res.IsSuccess)
+            {
+                UpdateAchievementsHeader(res.Data.unlockedCount, res.Data.totalCount, res.Data.totalPoints);
+            }
+        }
+
+        private void HandleAchievementUnlocked(string achievementId, string title, int points)
+        {
+            Debug.Log($"[ProfilePanel] ACHIEVEMENT UNLOCKED : {title} (+{points} pts)");
+            // Toast dans le chat (visible même panel fermé)
+            if (_chatUIForAchievementToast != null)
+            {
+                _chatUIForAchievementToast.AppendSystemLineExternal(
+                    $"<color=#ffd700>🏆 Succès débloqué : <b>{title}</b> (+{points} pts)</color>");
+            }
         }
     }
 }

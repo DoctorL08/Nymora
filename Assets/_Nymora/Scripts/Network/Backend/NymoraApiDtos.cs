@@ -298,4 +298,42 @@ namespace Nymora.Network.Backend
         public int xpToNext;
         public bool leveledUp;
     }
+
+    // ====== Brique 5.2 — Succès ======
+
+    [Serializable]
+    public class AchievementDefDto
+    {
+        public string id;
+        public string category;   // "first_steps" | "combat" | "progression"
+        public string title;
+        public string description;
+        public int target;
+        public int points;
+    }
+
+    [Serializable]
+    public class AchievementCatalogResponse
+    {
+        public AchievementDefDto[] achievements;
+    }
+
+    [Serializable]
+    public class UserAchievementDto
+    {
+        public string achievementId;
+        public int progress;
+        public int target;
+        public bool unlocked;
+        public string unlockedAt; // ISO string, null si non unlocked
+    }
+
+    [Serializable]
+    public class AchievementsMeResponse
+    {
+        public int totalPoints;
+        public int unlockedCount;
+        public int totalCount;
+        public UserAchievementDto[] items;
+    }
 }

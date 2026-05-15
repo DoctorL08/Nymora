@@ -88,6 +88,10 @@ namespace Nymora.Hub
             public int XpToNext;
             public string Source;
         }
+
+        // 5.2 — Achievement events
+        public event Action<string, int, int, int, bool> OnAchievementProgress;  // id, oldProgress, newProgress, target, justUnlocked
+        public event Action<string, string, int> OnAchievementUnlocked;          // id, title, points
         public event Action OnConnected;
         public event Action<string> OnDisconnected;
 
@@ -97,7 +101,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, XpAwarded, ClassLevelUp }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked }
 
         private struct IncomingEvent
         {
@@ -137,6 +141,14 @@ namespace Nymora.Hub
             public int NewXp;
             public int Gained;
             public int XpToNext;
+            // 5.2 — achievements
+            public string AchievementId;
+            public int OldProgress;
+            public int NewProgress;
+            public int Target;
+            public bool Unlocked;
+            public string Title;
+            public int Points;
         }
 
         private void Awake()
@@ -457,6 +469,26 @@ namespace Nymora.Hub
                             NewLevel = msg.payload?.newLevel ?? 0,
                         });
                         break;
+                    case "ACHIEVEMENT_PROGRESS":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.AchievementProgress,
+                            AchievementId = msg.payload?.achievementId ?? "",
+                            OldProgress = msg.payload?.oldProgress ?? 0,
+                            NewProgress = msg.payload?.newProgress ?? 0,
+                            Target = msg.payload?.target ?? 0,
+                            Unlocked = msg.payload != null && msg.payload.unlocked,
+                        });
+                        break;
+                    case "ACHIEVEMENT_UNLOCKED":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.AchievementUnlocked,
+                            AchievementId = msg.payload?.achievementId ?? "",
+                            Title = msg.payload?.title ?? "",
+                            Points = msg.payload?.points ?? 0,
+                        });
+                        break;
                     case "ERROR":
                         Debug.LogWarning($"[ChatClient] Server ERROR: {msg.payload?.code}/{msg.payload?.message}");
                         break;
@@ -523,6 +555,14 @@ namespace Nymora.Hub
             public int gained;
             public int xpToNext;
             public string source;
+            // 5.2 — achievements
+            public string achievementId;
+            public int oldProgress;
+            public int newProgress;
+            public int target;
+            public bool unlocked;
+            public string title;
+            public int points;
         }
 
         [Serializable]
@@ -634,6 +674,12 @@ namespace Nymora.Hub
                         break;
                     case EventKind.ClassLevelUp:
                         OnClassLevelUp?.Invoke(ev.ClassId, ev.NewLevel);
+                        break;
+                    case EventKind.AchievementProgress:
+                        OnAchievementProgress?.Invoke(ev.AchievementId, ev.OldProgress, ev.NewProgress, ev.Target, ev.Unlocked);
+                        break;
+                    case EventKind.AchievementUnlocked:
+                        OnAchievementUnlocked?.Invoke(ev.AchievementId, ev.Title, ev.Points);
                         break;
                 }
             }
