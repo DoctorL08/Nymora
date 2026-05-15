@@ -407,6 +407,26 @@ namespace Quantum
         public const int CoconPutrideMarksRange      = 4;
         public const int CoconPutrideMarksPerEnemy   = 1;
 
+        // 3.5.c.vi — Virus Fatal (SIGNATURE Necram, Bible V7.1 lignes 855-866).
+        // 2 PA, range 5, Filter Enemy. Cout : 6/6 PT (consomme tout = HGCostMandatory=6 sur la
+        // generique Resource). Cooldown 4 tours apres usage (Bible : "Reutilisable si PT remonte
+        // a 6 ET cooldown expire"). Effet : declenche un tick venin sur la cible "instantanement
+        // x3" (multiplicateur Floraison applique). Calcul handler :
+        //   baseDmg = stacks * GetTickDmgPerMark(densityGlobal)
+        //   marqueSacBonus = StatusHelper.GetMagnitude(target, MarqueSacrificielle, 0)
+        //   totalDmg = (baseDmg + marqueSacBonus) * VirusFatalMultiplier  // interpretation litterale "tick x3"
+        // Bypass shield + reduction (comme tick venin standard). Hook Symbiose Morbide :
+        // chaque Necram porteur heal min(stacks, 4) * Magnitude * VirusFatalMultiplier (idem x3).
+        // Si cible survit : VeninStacks = 0 (Bible "Les marques sont consommees").
+        // Si cible meurt : marques transferees sur ennemi vivant le plus proche via
+        // VeninHelpers.TryTransferVeninOnKill (Bible "marques restent disponibles pour Contagion
+        // / Detonation Virulente sur d'autres cibles"). En 1v1 = perdues silencieusement.
+        public const int VirusFatalPACost           = 2;
+        public const int VirusFatalRangeMax         = 5;
+        public const int VirusFatalPTCost           = 6;   // mandatory (consomme toute la jauge cap 6)
+        public const int VirusFatalMultiplier       = 3;   // "tick x 3" Bible
+        public const int VirusFatalCooldownTurns    = 4;   // 4 tours = 4 rounds (convention TurnNumber)
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -1652,6 +1672,26 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNecramCoconPutride,
                         IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.5.c.vi — Virus Fatal (SIGNATURE Necram). 2 PA, range 5, Filter Enemy,
+                // 6/6 PT mandatory (consomme toute la jauge via HGCostMandatory generique).
+                // Cooldown 4 tours verifie inline dans TryCastSpell AVANT consume PA (pattern
+                // Ame Laceree / Traquenard / Effondrement). Damage custom dans le handler
+                // (tick venin * 3, hooks Symbiose, transfert marques sur kill).
+                case SpellId.NecramVirusFatal:
+                    def = new SpellDef
+                    {
+                        PACost = VirusFatalPACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = VirusFatalRangeMax,
+                        DamageAmount = 0, // custom calc dans handler
+                        HGCostMandatory = (byte)VirusFatalPTCost, // 6 PT (consomme toute la jauge)
+                        HGCostMaxOptional = 0,
+                        IsOffensive = 1,
                     };
                     return true;
 

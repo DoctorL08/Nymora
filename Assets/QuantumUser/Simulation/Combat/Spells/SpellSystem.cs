@@ -149,6 +149,21 @@ namespace Quantum
                 }
             }
 
+            // 3.5.c.vi — Virus Fatal (SIGNATURE Necram) : cooldown 4 tours apres usage. Pattern
+            // identique Ame Laceree / Traquenard / Effondrement. Check AVANT consume PA pour
+            // eviter de "perdre" le cast. Gate Resource >= 6 (PT cap) gere par le pipeline
+            // generique HGCostMandatory=6 plus bas.
+            if (cmd.Spell == SpellId.NecramVirusFatal)
+            {
+                int currentTurnVF = f.TryGetSingleton<CombatState>(out var stateVF) ? stateVF.TurnNumber : 0;
+                int turnsSinceUseVF = currentTurnVF - caster->LastVirusFatalUsedOnTurn;
+                if (turnsSinceUseVF < SpellRegistry.VirusFatalCooldownTurns)
+                {
+                    Log.Warn($"[Spell] rejet : Virus Fatal en cooldown ({turnsSinceUseVF}/{SpellRegistry.VirusFatalCooldownTurns} tours depuis dernier usage tour {caster->LastVirusFatalUsedOnTurn})");
+                    return;
+                }
+            }
+
             // 2.11 : Ame Laceree cooldown 4 tours apres usage. Detonation 5 HG set aussi
             // LastAmeLaceeUsedOnTurn (interdit Ame Laceree). Bible : re-castable si HG remonte
             // a 5 ET cooldown expire.
@@ -1777,6 +1792,91 @@ namespace Quantum
                         Log.Info($"[Cocon Putride] P{caster->PlayerIndex} marque P{coconEnemy->PlayerIndex} (Manhattan {distC} <= {SpellRegistry.CoconPutrideMarksRange}) : stacks {stacksBeforeCocon} -> {coconEnemy->VeninStacks}");
                     }
                     Log.Info($"[Spell] Cocon Putride : {enemiesMarked} ennemi(s) marque(s) dans rayon {SpellRegistry.CoconPutrideMarksRange} du Necram P{caster->PlayerIndex}");
+                    break;
+                }
+
+                // 3.5.c.vi — Virus Fatal (SIGNATURE Necram, Bible V7.1 lignes 855-866) : declenche
+                // un tick venin instantane * 3 sur la cible (multiplicateur Floraison applique).
+                // 6 PT deja consommes par le pipeline generique (HGCostMandatory=6 -> Resource=0).
+                // Damage = (stacks * GetTickDmgPerMark(densityGlobal) + MarqueSacBonus) * 3.
+                // Bypass shield + reduction (comme TryTick standard). Hook Symbiose Morbide x3.
+                // Si cible survit : VeninStacks = 0 (consommees). Si cible meurt : marques
+                // transferees sur ennemi vivant le plus proche via TryTransferVeninOnKill
+                // (Bible "marques restent disponibles pour Contagion / Detonation Virulente sur
+                // d'autres cibles"). En 1v1 = perdues silencieusement. Set cooldown apres.
+                case SpellId.NecramVirusFatal:
+                {
+                    EntityRef vfTargetEntity = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (vfTargetEntity == EntityRef.None
+                        || !f.Unsafe.TryGetPointer<Combatant>(vfTargetEntity, out Combatant* vfTarget))
+                    {
+                        Log.Warn($"[Spell] Virus Fatal : pas de cible vivante en ({cmd.TargetX},{cmd.TargetY})");
+                        caster->LastVirusFatalUsedOnTurn = currentTurn; // cooldown applique meme si miss (PT consommee deja)
+                        break;
+                    }
+                    if (vfTarget->HP <= 0)
+                    {
+                        Log.Warn($"[Spell] Virus Fatal : cible deja morte");
+                        caster->LastVirusFatalUsedOnTurn = currentTurn;
+                        break;
+                    }
+                    if (vfTarget->VeninStacks <= 0)
+                    {
+                        Log.Warn($"[Spell] Virus Fatal : cible sans marques venin (cast gaspille). Cooldown active, PT consommees.");
+                        caster->LastVirusFatalUsedOnTurn = currentTurn;
+                        break;
+                    }
+
+                    int vfStacks = vfTarget->VeninStacks;
+                    int vfDensity = VeninHelpers.GetGlobalDensity(f);
+                    int vfDmgPerMark = VeninHelpers.GetTickDmgPerMark(vfDensity);
+                    int vfBaseDmg = vfStacks * vfDmgPerMark;
+                    int vfMarqueSacBonus = StatusHelper.GetMagnitude(vfTarget, StatusKind.MarqueSacrificielle, 0);
+                    int vfTotalDmg = (vfBaseDmg + vfMarqueSacBonus) * SpellRegistry.VirusFatalMultiplier;
+
+                    // Bypass shield + reduction (comme tick venin standard via VeninHelpers.TryTick).
+                    int vfHpBefore = vfTarget->HP;
+                    vfTarget->HP -= vfTotalDmg;
+                    if (vfTarget->HP < 0) vfTarget->HP = 0;
+                    vfTarget->DamageTakenThisRound += vfTotalDmg;
+                    bool vfKilled = (vfTarget->HP <= 0);
+
+                    Log.Info($"[Virus Fatal] P{caster->PlayerIndex} -> P{vfTarget->PlayerIndex} : {vfStacks} marques * {vfDmgPerMark} dmg/marque (density {vfDensity}) + {vfMarqueSacBonus} (MarqueSac) tout * {SpellRegistry.VirusFatalMultiplier} = -{vfTotalDmg} HP (HP {vfHpBefore} -> {vfTarget->HP}, killed={vfKilled})");
+
+                    // Symbiose Morbide hook : tick venin -> heal Necram porteur. Interpretation
+                    // litterale "tick x 3" : heal aussi multiplie par VirusFatalMultiplier.
+                    int vfStacksForHeal = vfStacks > 4 ? 4 : vfStacks;
+                    var vfSymFilter = f.Filter<Combatant>();
+                    while (vfSymFilter.NextUnsafe(out EntityRef _, out Combatant* vfNec))
+                    {
+                        if (vfNec->Class != NymoraClass.Necram) continue;
+                        if (vfNec->HP <= 0) continue;
+                        int vfHealPerMark = StatusHelper.GetMagnitude(vfNec, StatusKind.SymbioseMorbide, 0);
+                        if (vfHealPerMark <= 0) continue;
+                        int vfHealAmount = vfStacksForHeal * vfHealPerMark * SpellRegistry.VirusFatalMultiplier;
+                        int vfNecHpBefore = vfNec->HP;
+                        vfNec->HP = vfNec->HP + vfHealAmount > vfNec->MaxHP ? vfNec->MaxHP : vfNec->HP + vfHealAmount;
+                        int vfRealHeal = vfNec->HP - vfNecHpBefore;
+                        if (vfRealHeal > 0)
+                        {
+                            Log.Info($"[Symbiose Morbide] Virus Fatal x{SpellRegistry.VirusFatalMultiplier} : Necram P{vfNec->PlayerIndex} heal +{vfRealHeal} HP : {vfNecHpBefore}->{vfNec->HP}");
+                        }
+                    }
+
+                    // Marques : consommees si survit, transferees si tuee (Bible).
+                    if (vfKilled)
+                    {
+                        VeninHelpers.TryTransferVeninOnKill(f, vfTarget, caster->PlayerIndex, currentTurn);
+                    }
+                    else
+                    {
+                        vfTarget->VeninStacks = 0;
+                        Log.Info($"[Virus Fatal] Marques consommees sur P{vfTarget->PlayerIndex} (VeninStacks -> 0)");
+                    }
+
+                    // Set cooldown (Bible : Reutilisable si PT remonte a 6 ET cooldown expire).
+                    caster->LastVirusFatalUsedOnTurn = currentTurn;
+                    Log.Info($"[Virus Fatal] Cooldown active sur P{caster->PlayerIndex} jusqu'au tour {currentTurn + SpellRegistry.VirusFatalCooldownTurns}");
                     break;
                 }
 

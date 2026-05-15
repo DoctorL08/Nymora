@@ -201,4 +201,9 @@ component Combatant
     //   marque (max 2 PT par tour Necram)". Cap a 2 pour eviter le farming d'Inoculation
     //   x4 en 1 tour. Reset a 0 au debut de chaque tour du Necram (TurnSystem.EnterTurnStart).
     Int32 PutrefactionMarksGainedThisTurn;
+
+    // 3.5.c.vi — Virus Fatal (signature Necram) : tour du dernier usage. Default -1000
+    //   (pas de cooldown au spawn). Cooldown 4 tours Bible V7.1 :
+    //   currentTurn - LastVirusFatalUsedOnTurn < 4 -> reject.
+    Int32 LastVirusFatalUsedOnTurn;
 }

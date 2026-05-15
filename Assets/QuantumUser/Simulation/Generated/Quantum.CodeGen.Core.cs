@@ -150,6 +150,7 @@ namespace Quantum {
     NecramDrainVital = 82,
     NecramPulseSanguinVert = 83,
     NecramCoconPutride = 84,
+    NecramVirusFatal = 85,
   }
   public enum StatusKind : byte {
     None = 0,
@@ -931,36 +932,36 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct Combatant : Quantum.IComponent {
-    public const Int32 SIZE = 272;
+    public const Int32 SIZE = 280;
     public const Int32 ALIGNMENT = 8;
-    [FieldOffset(112)]
+    [FieldOffset(116)]
     public Int32 PlayerIndex;
     [FieldOffset(1)]
     public NymoraClass Class;
     [FieldOffset(24)]
     public Int32 HP;
-    [FieldOffset(88)]
-    public Int32 MaxHP;
-    [FieldOffset(104)]
-    public Int32 PA;
     [FieldOffset(92)]
-    public Int32 MaxPA;
+    public Int32 MaxHP;
     [FieldOffset(108)]
-    public Int32 PM;
+    public Int32 PA;
     [FieldOffset(96)]
+    public Int32 MaxPA;
+    [FieldOffset(112)]
+    public Int32 PM;
+    [FieldOffset(100)]
     public Int32 MaxPM;
     [FieldOffset(16)]
     public Int32 GridX;
     [FieldOffset(20)]
     public Int32 GridY;
-    [FieldOffset(124)]
+    [FieldOffset(128)]
     public Int32 Resource;
     [FieldOffset(60)]
     public Int32 LastResourceGainOnHitTurn;
-    [FieldOffset(144)]
+    [FieldOffset(152)]
     [FramePrinter.FixedArrayAttribute(typeof(Status), 8)]
     private fixed Byte _Statuses_[128];
-    [FieldOffset(100)]
+    [FieldOffset(104)]
     public Int32 OncePerMatchUsedFlags;
     [FieldOffset(4)]
     public Int32 BonusPANextTurn;
@@ -978,11 +979,11 @@ namespace Quantum {
     public Int32 LastCastSequence;
     [FieldOffset(0)]
     public MarkKind CurrentMark;
-    [FieldOffset(84)]
+    [FieldOffset(88)]
     public Int32 MarkTurnsLeft;
-    [FieldOffset(76)]
-    public Int32 MarkAppliedOnTurn;
     [FieldOffset(80)]
+    public Int32 MarkAppliedOnTurn;
+    [FieldOffset(84)]
     public Int32 MarkOwnerPlayer;
     [FieldOffset(8)]
     public Int32 DamageTakenThisRound;
@@ -990,9 +991,9 @@ namespace Quantum {
     public Int32 LastTrapTriggeredOnTurn;
     [FieldOffset(68)]
     public Int32 LastTraquenardUsedOnTurn;
-    [FieldOffset(120)]
+    [FieldOffset(124)]
     public Int32 RepresaillesReflectsLeft;
-    [FieldOffset(128)]
+    [FieldOffset(132)]
     public Int32 StoicismeExpiresOnTurn;
     [FieldOffset(32)]
     public Int32 HitsTakenThisRound;
@@ -1002,14 +1003,16 @@ namespace Quantum {
     public Int32 EffondrementAnnouncedOnTurn;
     [FieldOffset(56)]
     public Int32 LastEffondrementUsedOnTurn;
-    [FieldOffset(136)]
+    [FieldOffset(144)]
     public EntityRef EffondrementTargetEntity;
-    [FieldOffset(132)]
+    [FieldOffset(136)]
     public Int32 VeninStacks;
     [FieldOffset(72)]
     public Int32 LastVeninTickOnTurn;
-    [FieldOffset(116)]
+    [FieldOffset(120)]
     public Int32 PutrefactionMarksGainedThisTurn;
+    [FieldOffset(76)]
+    public Int32 LastVirusFatalUsedOnTurn;
     public readonly FixedArray<Status> Statuses {
       get {
         fixed (byte* p = _Statuses_) { return new FixedArray<Status>(p, 16, 8); }
@@ -1056,6 +1059,7 @@ namespace Quantum {
         hash = hash * 31 + VeninStacks.GetHashCode();
         hash = hash * 31 + LastVeninTickOnTurn.GetHashCode();
         hash = hash * 31 + PutrefactionMarksGainedThisTurn.GetHashCode();
+        hash = hash * 31 + LastVirusFatalUsedOnTurn.GetHashCode();
         return hash;
       }
     }
@@ -1082,6 +1086,7 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->LastTrapTriggeredOnTurn);
         serializer.Stream.Serialize(&p->LastTraquenardUsedOnTurn);
         serializer.Stream.Serialize(&p->LastVeninTickOnTurn);
+        serializer.Stream.Serialize(&p->LastVirusFatalUsedOnTurn);
         serializer.Stream.Serialize(&p->MarkAppliedOnTurn);
         serializer.Stream.Serialize(&p->MarkOwnerPlayer);
         serializer.Stream.Serialize(&p->MarkTurnsLeft);

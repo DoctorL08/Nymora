@@ -60,6 +60,7 @@ namespace Quantum
                 EffondrementAnnouncedOnTurn = -1, // 3.3.d : pas d'annonce active au spawn.
                 LastEffondrementUsedOnTurn = -1000, // 3.3.d : signature jouable des FD=3 au spawn.
                 EffondrementTargetEntity = EntityRef.None, // 3.3.d : pas de cible snapshot au spawn.
+                LastVirusFatalUsedOnTurn = -1000, // 3.5.c.vi : signature jouable des PT=6 au spawn.
             };
 
             var entity = f.Create();

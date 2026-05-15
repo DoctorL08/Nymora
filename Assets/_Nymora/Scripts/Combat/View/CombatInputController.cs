@@ -408,7 +408,8 @@ namespace Nymora.Combat.View
             //   Soulrender → Ame Laceree    (melee 1, 5 HG, 320 dgts + heal 50%, cooldown 4 tours)
             //   Nightseer  → Traquenard     (range 5, 4 PR, teleport adjacent + 280 dgts + Paralysie, cooldown 4 tours)
             //   Colossar   → Effondrement   (self, 3 FD, annonce 1 tour, AoE rayon 2 + Failles + buff 2T)
-            //   Phase 3 ajoutera Necram/Ghostra avec leurs propres signatures.
+            //   Necram     → Virus Fatal    (range 5, 6 PT, tick venin x3 sur cible, transfert marques si kill, cooldown 4 tours)
+            //   Phase 3 ajoutera Ghostra avec sa signature.
             if (keyB)
             {
                 SpellId sigSpell = SpellId.SoulrenderAmeLaceree;
@@ -416,6 +417,7 @@ namespace Nymora.Combat.View
                 {
                     if (casterClass == Quantum.NymoraClass.Nightseer) sigSpell = SpellId.NightseerTraquenard;
                     else if (casterClass == Quantum.NymoraClass.Colossar) sigSpell = SpellId.ColossarEffondrement;
+                    else if (casterClass == Quantum.NymoraClass.Necram) sigSpell = SpellId.NecramVirusFatal;
                 }
                 // Effondrement est self-target : on redirige la case ciblee vers la case caster.
                 if (sigSpell == SpellId.ColossarEffondrement
