@@ -73,6 +73,21 @@ namespace Nymora.Hub
         public event Action<string, string, string, string> OnClanMemberLeft;
             // clanId, userId, displayName, reason ('left'|'kicked')
         public event Action<string> OnClanDisbanded;                             // clanId
+        // 5.1 — Progression events
+        public event Action<XpAwardedData> OnXpAwarded;
+        public event Action<string, int> OnClassLevelUp;                         // classId, newLevel
+
+        public struct XpAwardedData
+        {
+            public string ClassId;
+            public int OldLevel;
+            public int NewLevel;
+            public int OldXp;
+            public int NewXp;
+            public int Gained;
+            public int XpToNext;
+            public string Source;
+        }
         public event Action OnConnected;
         public event Action<string> OnDisconnected;
 
@@ -82,7 +97,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, XpAwarded, ClassLevelUp }
 
         private struct IncomingEvent
         {
@@ -114,6 +129,14 @@ namespace Nymora.Hub
             public string ClanBannerColor;
             public string Role;
             public string NewRole;
+            // 5.1 — progression
+            public string ClassId;
+            public int OldLevel;
+            public int NewLevel;
+            public int OldXp;
+            public int NewXp;
+            public int Gained;
+            public int XpToNext;
         }
 
         private void Awake()
@@ -412,6 +435,28 @@ namespace Nymora.Hub
                             ClanId = msg.payload?.clanId ?? "",
                         });
                         break;
+                    case "XP_AWARDED":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.XpAwarded,
+                            ClassId = msg.payload?.classId ?? "",
+                            OldLevel = msg.payload?.oldLevel ?? 0,
+                            NewLevel = msg.payload?.newLevel ?? 0,
+                            OldXp = msg.payload?.oldXp ?? 0,
+                            NewXp = msg.payload?.newXp ?? 0,
+                            Gained = msg.payload?.gained ?? 0,
+                            XpToNext = msg.payload?.xpToNext ?? 0,
+                            Reason = msg.payload?.source ?? "", // reuse Reason field for source
+                        });
+                        break;
+                    case "CLASS_LEVEL_UP":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.ClassLevelUp,
+                            ClassId = msg.payload?.classId ?? "",
+                            NewLevel = msg.payload?.newLevel ?? 0,
+                        });
+                        break;
                     case "ERROR":
                         Debug.LogWarning($"[ChatClient] Server ERROR: {msg.payload?.code}/{msg.payload?.message}");
                         break;
@@ -469,6 +514,15 @@ namespace Nymora.Hub
             public string role;
             public string newRole;
             public string reason;
+            // 5.1 — progression
+            public string classId;
+            public int oldLevel;
+            public int newLevel;
+            public int oldXp;
+            public int newXp;
+            public int gained;
+            public int xpToNext;
+            public string source;
         }
 
         [Serializable]
@@ -564,6 +618,22 @@ namespace Nymora.Hub
                         break;
                     case EventKind.ClanDisbanded:
                         OnClanDisbanded?.Invoke(ev.ClanId);
+                        break;
+                    case EventKind.XpAwarded:
+                        OnXpAwarded?.Invoke(new XpAwardedData
+                        {
+                            ClassId = ev.ClassId,
+                            OldLevel = ev.OldLevel,
+                            NewLevel = ev.NewLevel,
+                            OldXp = ev.OldXp,
+                            NewXp = ev.NewXp,
+                            Gained = ev.Gained,
+                            XpToNext = ev.XpToNext,
+                            Source = ev.Reason,
+                        });
+                        break;
+                    case EventKind.ClassLevelUp:
+                        OnClassLevelUp?.Invoke(ev.ClassId, ev.NewLevel);
                         break;
                 }
             }

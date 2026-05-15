@@ -51,6 +51,20 @@ namespace Nymora.Hub
         [SerializeField] private TextMeshProUGUI _viewLastLoginAt;
         [SerializeField] private TextMeshProUGUI _viewStatusLine;
 
+        // ====== Brique 5.1 — Classes tab (progression XP) ======
+
+        [Serializable]
+        public struct ClassProgressionRow
+        {
+            public string classId;          // "Soulrender" | "Nightseer" | "Colossar" | "Necram" | "Ghostra"
+            public TextMeshProUGUI levelLabel;
+            public TextMeshProUGUI xpLabel;
+            public Image xpBarFill;          // Image en mode Filled, fillAmount mis a jour
+        }
+
+        [Header("Classes tab — 5 rows (Soulrender, Nightseer, Colossar, Necram, Ghostra)")]
+        [SerializeField] private ClassProgressionRow[] _classRows;
+
         [Header("Tab style")]
         [SerializeField] private Color _tabActiveColor = new Color(0.25f, 0.4f, 0.65f, 1f);
         [SerializeField] private Color _tabInactiveColor = new Color(0.2f, 0.2f, 0.24f, 1f);
@@ -60,6 +74,7 @@ namespace Nymora.Hub
         private NymoraApiClient _api;
         private ProfileTab _activeTab = ProfileTab.View;
         private bool _hasFetchedOnce;
+        private bool _hasFetchedProgressionOnce;
 
         public bool IsOpen => _panelRoot != null && _panelRoot.activeSelf;
 
@@ -103,9 +118,23 @@ namespace Nymora.Hub
             if (_tabCosmeticsButton != null) _tabCosmeticsButton.onClick.RemoveAllListeners();
         }
 
+        private void Start()
+        {
+            if (HubChatClient.Instance != null)
+            {
+                HubChatClient.Instance.OnXpAwarded += HandleXpAwarded;
+                HubChatClient.Instance.OnClassLevelUp += HandleClassLevelUp;
+            }
+        }
+
         private void OnDestroy()
         {
             if (Instance == this) Instance = null;
+            if (HubChatClient.Instance != null)
+            {
+                HubChatClient.Instance.OnXpAwarded -= HandleXpAwarded;
+                HubChatClient.Instance.OnClassLevelUp -= HandleClassLevelUp;
+            }
         }
 
         public void Open()
@@ -136,6 +165,11 @@ namespace Nymora.Hub
             if (_contentAchievements != null) _contentAchievements.SetActive(tab == ProfileTab.Achievements);
             if (_contentCosmetics != null) _contentCosmetics.SetActive(tab == ProfileTab.Cosmetics);
             UpdateTabStyles();
+            // 5.1 — Lazy fetch progression au 1er switch sur Classes
+            if (tab == ProfileTab.Classes && !_hasFetchedProgressionOnce)
+            {
+                FetchProgressionAsync().Forget();
+            }
         }
 
         private void UpdateTabStyles()
@@ -204,6 +238,64 @@ namespace Nymora.Hub
         private static string ResolveDevToken()
         {
             return HubChatClient.Instance?.DevToken;
+        }
+
+        // ====== Brique 5.1 — Classes tab logic ======
+
+        private async UniTask FetchProgressionAsync()
+        {
+            string token = ResolveDevToken();
+            if (string.IsNullOrEmpty(token)) return;
+            _api.SetBearerToken(token);
+
+            var res = await _api.GetProgressionMeAsync();
+            if (!res.IsSuccess)
+            {
+                Debug.LogWarning($"[ProfilePanel] /progression/me failed: {res.StatusCode} {res.ErrorMessage}");
+                return;
+            }
+            ApplyProgressionData(res.Data);
+            _hasFetchedProgressionOnce = true;
+        }
+
+        private void ApplyProgressionData(ProgressionMeResponse data)
+        {
+            if (data?.progressions == null || _classRows == null) return;
+            foreach (var prog in data.progressions)
+            {
+                ApplyRow(prog.classId, prog.level, prog.xp, prog.xpToNext);
+            }
+        }
+
+        private void ApplyRow(string classId, int level, int xp, int xpToNext)
+        {
+            if (_classRows == null) return;
+            for (int i = 0; i < _classRows.Length; i++)
+            {
+                var row = _classRows[i];
+                if (row.classId != classId) continue;
+                if (row.levelLabel != null) row.levelLabel.text = $"Niv. {level}";
+                if (row.xpLabel != null)
+                {
+                    row.xpLabel.text = xpToNext > 0 ? $"{xp} / {xpToNext} XP" : "MAX";
+                }
+                if (row.xpBarFill != null)
+                {
+                    row.xpBarFill.fillAmount = xpToNext > 0 ? Mathf.Clamp01((float)xp / xpToNext) : 1f;
+                }
+                return;
+            }
+        }
+
+        private void HandleXpAwarded(HubChatClient.XpAwardedData data)
+        {
+            ApplyRow(data.ClassId, data.NewLevel, data.NewXp, data.XpToNext);
+        }
+
+        private void HandleClassLevelUp(string classId, int newLevel)
+        {
+            // Visual feedback minimal pour MVP : juste log. Animation popup à venir en 5.9 polish.
+            Debug.Log($"[ProfilePanel] LEVEL UP {classId} → niveau {newLevel}");
         }
     }
 }

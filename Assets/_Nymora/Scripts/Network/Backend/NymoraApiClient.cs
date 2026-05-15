@@ -155,6 +155,16 @@ namespace Nymora.Network.Backend
         public UniTask<ApiResult<ClanLeaveResponse>> LeaveClanAsync(CancellationToken ct = default)
             => PostJsonAsync<ClanLeaveResponse>("/clans/me/leave", new EmptyResponse(), requireAuth: true, ct);
 
+        // ====== Brique 5.1 — Progression ======
+
+        public UniTask<ApiResult<ProgressionMeResponse>> GetProgressionMeAsync(CancellationToken ct = default)
+            => GetJsonAsync<ProgressionMeResponse>("/progression/me", requireAuth: true, ct);
+
+        public UniTask<ApiResult<AwardXpResponse>> AwardXpAsync(string classId, int amount, string source = null, CancellationToken ct = default)
+            => PostJsonAsync<AwardXpResponse>("/progression/award-xp",
+                new AwardXpBody { classId = classId, amount = amount, source = source },
+                requireAuth: true, ct);
+
         /// <summary>DELETE /clans/me — chef seul. Retourne ApiResult avec body { status:'DISBANDED', clanId }.</summary>
         public async UniTask<ApiResult<ClanDisbandResponse>> DisbandClanAsync(CancellationToken ct = default)
         {

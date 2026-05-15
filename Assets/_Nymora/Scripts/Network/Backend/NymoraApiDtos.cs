@@ -263,4 +263,39 @@ namespace Nymora.Network.Backend
         public string newRole;
         public string kickedUserId;
     }
+
+    // ====== Brique 5.1 — Progression (XP par classe) ======
+
+    [Serializable]
+    public class ClassProgressionDto
+    {
+        public string classId;  // "Soulrender" | "Nightseer" | "Colossar" | "Necram" | "Ghostra"
+        public int level;
+        public int xp;
+        public int xpToNext;    // 0 si level >= cap
+    }
+
+    [Serializable]
+    public class ProgressionMeResponse
+    {
+        public ClassProgressionDto[] progressions;
+    }
+
+    [Serializable]
+    public class AwardXpBody
+    {
+        public string classId;
+        public int amount;
+        public string source;
+    }
+
+    [Serializable]
+    public class AwardXpResponse
+    {
+        public string classId;
+        public int level;
+        public int xp;
+        public int xpToNext;
+        public bool leveledUp;
+    }
 }
