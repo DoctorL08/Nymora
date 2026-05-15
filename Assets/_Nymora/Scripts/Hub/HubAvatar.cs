@@ -35,7 +35,9 @@ namespace Nymora.Hub
         // et sémantique tile (cliquable via HubInputController).
         [Networked] public Vector3 NetWorldPos { get; set; }
         // 4.8.b — sub backend pousse par State Auth au Spawn (depuis HubChatClient.MyUserId)
-        [Networked] public NetworkString<_16> NetSub { get; set; }
+        // 4.11 hotfix — passe en _64 car les UUID (36 chars) etaient tronques a 16 par _16,
+        // ce qui faisait echouer SEND_FRIEND_REQUEST et POST /clans/invite par UUID.
+        [Networked] public NetworkString<_64> NetSub { get; set; }
 
         private SpriteRenderer _sr;
         private HubGridRenderer _grid;

@@ -149,4 +149,118 @@ namespace Nymora.Network.Backend
         public string status; // "ACCEPTED" | "DECLINED"
         public string fromUserId;
     }
+
+    // ====== Brique 4.11 — Clans ======
+
+    [Serializable]
+    public class ClanMemberDto
+    {
+        public string userId;
+        public string displayName;
+        public string role;      // "Leader" | "Officer" | "Member" | "Recruit"
+        public string joinedAt;
+    }
+
+    [Serializable]
+    public class ClanDto
+    {
+        public string clanId;
+        public string name;
+        public string bannerColor;
+        public string description;
+        public string createdAt;
+        public string myRole;    // peut etre null si pas membre
+        public ClanMemberDto[] members;
+    }
+
+    [Serializable]
+    public class ClanInviteDto
+    {
+        public string inviteId;
+        public string clanId;
+        public string clanName;
+        public string clanBannerColor;
+        public string fromUserId;
+        public string fromDisplayName;
+        public string createdAt;
+    }
+
+    [Serializable]
+    public class ClanInvitesListResponse
+    {
+        public ClanInviteDto[] invites;
+    }
+
+    [Serializable]
+    public class CreateClanBody
+    {
+        public string name;
+        public string description;
+        public string bannerColor;
+    }
+
+    [Serializable]
+    public class ClanInviteBody
+    {
+        public string targetDisplayName; // null si on utilise targetUserId
+        public string targetUserId;      // null si on utilise targetDisplayName
+    }
+
+    [Serializable]
+    public class ClanInviteCreatedResponse
+    {
+        public string inviteId;
+        public string toUserId;
+        public string toDisplayName;
+    }
+
+    [Serializable]
+    public class ClanRespondBody
+    {
+        public bool accepted;
+    }
+
+    [Serializable]
+    public class ClanRespondResponse
+    {
+        public string status;     // "ACCEPTED" | "DECLINED"
+        public string clanId;
+        public string fromUserId;
+    }
+
+    [Serializable]
+    public class ClanPromoteBody
+    {
+        public string targetUserId;
+        public string newRole;    // "Officer" | "Member" | "Recruit"
+    }
+
+    [Serializable]
+    public class ClanKickBody
+    {
+        public string targetUserId;
+    }
+
+    [Serializable]
+    public class ClanLeaveResponse
+    {
+        public string status;
+        public string clanId;
+    }
+
+    [Serializable]
+    public class ClanDisbandResponse
+    {
+        public string status;
+        public string clanId;
+    }
+
+    [Serializable]
+    public class ClanGenericOkResponse
+    {
+        public string status;
+        public string targetUserId;
+        public string newRole;
+        public string kickedUserId;
+    }
 }

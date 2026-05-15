@@ -61,6 +61,18 @@ namespace Nymora.Hub
         public event Action<string[]> OnFriendsOnlineList;                       // friendUserIds[] (au connect)
         public event Action<string> OnFriendOnline;                              // friendUserId (un ami vient online)
         public event Action<string> OnFriendOffline;                             // friendUserId (un ami passe offline)
+        // 4.11 — Clan events
+        public event Action<string, string, string, string, string, string> OnIncomingClanInvite;
+            // inviteId, clanId, clanName, clanBannerColor, fromUserId, fromDisplayName
+        public event Action<string, bool, string, string, string> OnClanInviteResponse;
+            // inviteId, accepted, clanId, fromUserId, fromDisplayName
+        public event Action<string, string, string, string> OnClanMemberJoined;
+            // clanId, userId, displayName, role
+        public event Action<string, string, string, string> OnClanMemberRoleChanged;
+            // clanId, userId, displayName, newRole
+        public event Action<string, string, string, string> OnClanMemberLeft;
+            // clanId, userId, displayName, reason ('left'|'kicked')
+        public event Action<string> OnClanDisbanded;                             // clanId
         public event Action OnConnected;
         public event Action<string> OnDisconnected;
 
@@ -70,7 +82,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded }
 
         private struct IncomingEvent
         {
@@ -95,6 +107,13 @@ namespace Nymora.Hub
             public string FriendDisplayName;
             // 4.10.g — online status
             public string[] FriendUserIds;
+            // 4.11 — clan (Reason est partage avec Disconnected, c'est OK car events disjoints)
+            public string InviteId;
+            public string ClanId;
+            public string ClanName;
+            public string ClanBannerColor;
+            public string Role;
+            public string NewRole;
         }
 
         private void Awake()
@@ -333,6 +352,66 @@ namespace Nymora.Hub
                             From = msg.payload?.friendUserId ?? "",
                         });
                         break;
+                    case "INCOMING_CLAN_INVITE":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.IncomingClanInvite,
+                            InviteId = msg.payload?.inviteId ?? "",
+                            ClanId = msg.payload?.clanId ?? "",
+                            ClanName = msg.payload?.clanName ?? "",
+                            ClanBannerColor = msg.payload?.clanBannerColor ?? "",
+                            From = msg.payload?.fromUserId ?? "",
+                            FromDisplayName = msg.payload?.fromDisplayName ?? "",
+                        });
+                        break;
+                    case "CLAN_INVITE_RESPONSE":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.ClanInviteResponse,
+                            InviteId = msg.payload?.inviteId ?? "",
+                            Accepted = msg.payload != null && msg.payload.accepted,
+                            ClanId = msg.payload?.clanId ?? "",
+                            From = msg.payload?.fromUserId ?? "",
+                            FromDisplayName = msg.payload?.fromDisplayName ?? "",
+                        });
+                        break;
+                    case "CLAN_MEMBER_JOINED":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.ClanMemberJoined,
+                            ClanId = msg.payload?.clanId ?? "",
+                            From = msg.payload?.userId ?? "",
+                            FromDisplayName = msg.payload?.displayName ?? "",
+                            Role = msg.payload?.role ?? "",
+                        });
+                        break;
+                    case "CLAN_MEMBER_ROLE_CHANGED":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.ClanMemberRoleChanged,
+                            ClanId = msg.payload?.clanId ?? "",
+                            From = msg.payload?.userId ?? "",
+                            FromDisplayName = msg.payload?.displayName ?? "",
+                            NewRole = msg.payload?.newRole ?? "",
+                        });
+                        break;
+                    case "CLAN_MEMBER_LEFT":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.ClanMemberLeft,
+                            ClanId = msg.payload?.clanId ?? "",
+                            From = msg.payload?.userId ?? "",
+                            FromDisplayName = msg.payload?.displayName ?? "",
+                            Reason = msg.payload?.reason ?? "",
+                        });
+                        break;
+                    case "CLAN_DISBANDED":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.ClanDisbanded,
+                            ClanId = msg.payload?.clanId ?? "",
+                        });
+                        break;
                     case "ERROR":
                         Debug.LogWarning($"[ChatClient] Server ERROR: {msg.payload?.code}/{msg.payload?.message}");
                         break;
@@ -380,6 +459,16 @@ namespace Nymora.Hub
             public string friendDisplayName;
             // 4.10.g — online list
             public string[] friendUserIds;
+            // 4.11 — clan
+            public string inviteId;
+            public string clanId;
+            public string clanName;
+            public string clanBannerColor;
+            public string userId;
+            public string displayName;
+            public string role;
+            public string newRole;
+            public string reason;
         }
 
         [Serializable]
@@ -457,6 +546,24 @@ namespace Nymora.Hub
                         break;
                     case EventKind.FriendOffline:
                         OnFriendOffline?.Invoke(ev.From);
+                        break;
+                    case EventKind.IncomingClanInvite:
+                        OnIncomingClanInvite?.Invoke(ev.InviteId, ev.ClanId, ev.ClanName, ev.ClanBannerColor, ev.From, ev.FromDisplayName);
+                        break;
+                    case EventKind.ClanInviteResponse:
+                        OnClanInviteResponse?.Invoke(ev.InviteId, ev.Accepted, ev.ClanId, ev.From, ev.FromDisplayName);
+                        break;
+                    case EventKind.ClanMemberJoined:
+                        OnClanMemberJoined?.Invoke(ev.ClanId, ev.From, ev.FromDisplayName, ev.Role);
+                        break;
+                    case EventKind.ClanMemberRoleChanged:
+                        OnClanMemberRoleChanged?.Invoke(ev.ClanId, ev.From, ev.FromDisplayName, ev.NewRole);
+                        break;
+                    case EventKind.ClanMemberLeft:
+                        OnClanMemberLeft?.Invoke(ev.ClanId, ev.From, ev.FromDisplayName, ev.Reason);
+                        break;
+                    case EventKind.ClanDisbanded:
+                        OnClanDisbanded?.Invoke(ev.ClanId);
                         break;
                 }
             }

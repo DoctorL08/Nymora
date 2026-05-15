@@ -51,7 +51,7 @@ namespace Nymora.Hub
             }
             Instance = this;
             if (_panel != null) _panel.SetActive(false);
-            BuildActions();
+            // 4.11 polish — BuildActions() est appele dans Show() pour reflechir l'etat clan dynamique.
         }
 
         private void OnDestroy()
@@ -83,6 +83,17 @@ namespace Nymora.Hub
                 BgColor = new Color(0.45f, 0.30f, 0.60f, 1f),
                 Execute = AddFriendTarget,
             });
+            // 4.11 Clan — action Inviter dans clan (bleu marine).
+            // Affichee uniquement si le user a un clan ET le droit d'inviter (Leader/Officer).
+            if (HubClanPanel.Instance != null && HubClanPanel.Instance.CanInviteToClan)
+            {
+                _actions.Add(new MenuAction
+                {
+                    Label = "Inviter dans clan",
+                    BgColor = new Color(0.25f, 0.35f, 0.55f, 1f),
+                    Execute = ClanInviteTarget,
+                });
+            }
             // 4.13 Modération — action Signaler (orange)
             _actions.Add(new MenuAction
             {
@@ -108,6 +119,8 @@ namespace Nymora.Hub
                 var sr = target.GetComponent<SpriteRenderer>();
                 _targetColorSwatch.color = sr != null ? sr.color : Color.white;
             }
+            // 4.11 polish — rebuild la liste d'actions selon l'etat actuel (clan etc.)
+            BuildActions();
             RebuildButtonsUI();
             _panel.SetActive(true);
         }
@@ -245,6 +258,28 @@ namespace Nymora.Hub
                 return;
             }
             HubChatClient.Instance.SendFriendRequestByUserId(targetSub);
+            Hide();
+        }
+
+        // 4.11 — Invitation clan : passe par REST via HubClanPanel.Instance pour faciliter
+        // la gestion du feedback (succès / déjà en clan / pas chef). Si pas de panel = pas de clan.
+        private void ClanInviteTarget(HubAvatar target)
+        {
+            if (target == null) { Hide(); return; }
+            var targetSub = target.Sub;
+            if (string.IsNullOrEmpty(targetSub))
+            {
+                Debug.LogWarning("[ChallengePopup] Avatar remote sans NetSub — invitation clan annulée.");
+                Hide();
+                return;
+            }
+            if (HubClanPanel.Instance == null)
+            {
+                Debug.LogWarning("[ChallengePopup] HubClanPanel.Instance null — invitation clan annulée.");
+                Hide();
+                return;
+            }
+            HubClanPanel.Instance.InviteByUserIdFromContextMenu(targetSub);
             Hide();
         }
     }

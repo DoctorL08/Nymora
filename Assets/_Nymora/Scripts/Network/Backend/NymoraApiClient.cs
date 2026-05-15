@@ -116,6 +116,80 @@ namespace Nymora.Network.Backend
             return ApiResult<EmptyResponse>.Success(new EmptyResponse(), code);
         }
 
+        // ====== Brique 4.11 — Clans ======
+
+        public UniTask<ApiResult<ClanDto>> CreateClanAsync(string name, string description = null, string bannerColor = null, CancellationToken ct = default)
+            => PostJsonAsync<ClanDto>("/clans",
+                new CreateClanBody { name = name, description = description, bannerColor = bannerColor },
+                requireAuth: true, ct);
+
+        public UniTask<ApiResult<ClanDto>> GetMyClanAsync(CancellationToken ct = default)
+            => GetJsonAsync<ClanDto>("/clans/me", requireAuth: true, ct);
+
+        public UniTask<ApiResult<ClanDto>> GetClanByIdAsync(string clanId, CancellationToken ct = default)
+            => GetJsonAsync<ClanDto>($"/clans/{clanId}", requireAuth: true, ct);
+
+        public UniTask<ApiResult<ClanInvitesListResponse>> GetClanInvitesAsync(CancellationToken ct = default)
+            => GetJsonAsync<ClanInvitesListResponse>("/clans/invites/list", requireAuth: true, ct);
+
+        public UniTask<ApiResult<ClanInviteCreatedResponse>> InviteToClanByDisplayNameAsync(string targetDisplayName, CancellationToken ct = default)
+            => PostJsonAsync<ClanInviteCreatedResponse>("/clans/invite",
+                new ClanInviteBody { targetDisplayName = targetDisplayName }, requireAuth: true, ct);
+
+        public UniTask<ApiResult<ClanInviteCreatedResponse>> InviteToClanByUserIdAsync(string targetUserId, CancellationToken ct = default)
+            => PostJsonAsync<ClanInviteCreatedResponse>("/clans/invite",
+                new ClanInviteBody { targetUserId = targetUserId }, requireAuth: true, ct);
+
+        public UniTask<ApiResult<ClanRespondResponse>> RespondClanInviteAsync(string inviteId, bool accepted, CancellationToken ct = default)
+            => PostJsonAsync<ClanRespondResponse>($"/clans/invites/{inviteId}/respond",
+                new ClanRespondBody { accepted = accepted }, requireAuth: true, ct);
+
+        public UniTask<ApiResult<ClanGenericOkResponse>> PromoteClanMemberAsync(string targetUserId, string newRole, CancellationToken ct = default)
+            => PostJsonAsync<ClanGenericOkResponse>("/clans/me/promote",
+                new ClanPromoteBody { targetUserId = targetUserId, newRole = newRole }, requireAuth: true, ct);
+
+        public UniTask<ApiResult<ClanGenericOkResponse>> KickClanMemberAsync(string targetUserId, CancellationToken ct = default)
+            => PostJsonAsync<ClanGenericOkResponse>("/clans/me/kick",
+                new ClanKickBody { targetUserId = targetUserId }, requireAuth: true, ct);
+
+        public UniTask<ApiResult<ClanLeaveResponse>> LeaveClanAsync(CancellationToken ct = default)
+            => PostJsonAsync<ClanLeaveResponse>("/clans/me/leave", new EmptyResponse(), requireAuth: true, ct);
+
+        /// <summary>DELETE /clans/me — chef seul. Retourne ApiResult avec body { status:'DISBANDED', clanId }.</summary>
+        public async UniTask<ApiResult<ClanDisbandResponse>> DisbandClanAsync(CancellationToken ct = default)
+        {
+            using var req = UnityWebRequest.Delete($"{_settings.BaseUrl}/clans/me");
+            req.downloadHandler = new DownloadHandlerBuffer();
+            req.timeout = _settings.TimeoutSeconds;
+            ApplyAuth(req, requireAuth: true);
+            ApplyClientVersion(req);
+
+            try
+            {
+                await req.SendWebRequest().WithCancellation(ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return ApiResult<ClanDisbandResponse>.Failure(0, "request cancelled");
+            }
+            catch (UnityWebRequestException e)
+            {
+                return ApiResult<ClanDisbandResponse>.Failure((int)e.ResponseCode, e.Message);
+            }
+
+            int code = (int)req.responseCode;
+            string text = req.downloadHandler != null ? req.downloadHandler.text : string.Empty;
+            try
+            {
+                var data = JsonUtility.FromJson<ClanDisbandResponse>(text);
+                return ApiResult<ClanDisbandResponse>.Success(data, code);
+            }
+            catch
+            {
+                return ApiResult<ClanDisbandResponse>.Success(new ClanDisbandResponse { status = "DISBANDED" }, code);
+            }
+        }
+
         /// <summary>
         /// Interroge le serveur sur les versions supportees. N'envoie PAS le header de version
         /// pour eviter le chicken-and-egg (sinon un client trop vieux ne pourrait meme pas
