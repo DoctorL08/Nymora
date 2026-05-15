@@ -380,12 +380,15 @@ namespace Quantum
         public const int DrainVitalHealBonus       = 60;
         public const int DrainVitalMarksThreshold  = 3;
 
-        // 3.5.c.iv — Pulse Sanguin Vert : heal de zone (Bible V7.1).
-        // 3 PA self. Heal Necram caster : HealBase (70) + min(sumVeninStacksEnemiesInRadius, capMarks) * HealPerMark.
-        // PulseSanguinVertHealCap = 90 HP de bonus (= 6 marques * 15). +30 HP additionnel si hgSpend>=1 (1 PT).
-        // Itere tous ennemis vivants Manhattan <= MarksRange (4) du caster.
-        // Marques NON consommees. Cap MaxHP standard. Pas de dmg.
-        public const int PulseSanguinVertPACost          = 3;
+        // 3.5.c.iv — Pulse Sanguin Vert : heal de zone (Bible V7.1 — sort canonique "REGENERATION NECROTIQUE").
+        // NOTE NOM : la Bible nomme ce sort "Regeneration Necrotique" (ligne 971). On garde la constante
+        // PulseSanguinVert* dans le code par soucis de non-regression (sort deja livre, scene/prefabs
+        // binds, replays, STATUT historiques). Decision Lorenzo 16 mai post-audit Bible.
+        // 2 PA self (Bible explicite ligne 973). Heal Necram caster : HealBase (70) + min(sumVeninStacks
+        // EnemiesInRadius, capMarks) * HealPerMark. PulseSanguinVertHealCap = 90 HP de bonus (= 6 marques * 15).
+        // +30 HP additionnel si hgSpend>=1 (1 PT). Itere tous ennemis vivants Manhattan <= MarksRange (4)
+        // du caster. Marques NON consommees. Cap MaxHP standard. Pas de dmg.
+        public const int PulseSanguinVertPACost          = 2;
         public const int PulseSanguinVertHealBase        = 70;
         public const int PulseSanguinVertHealPerMark     = 15;
         public const int PulseSanguinVertHealCap         = 90;
