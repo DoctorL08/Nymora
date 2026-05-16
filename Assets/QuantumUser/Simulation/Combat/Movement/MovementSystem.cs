@@ -87,6 +87,14 @@ namespace Quantum
                 Log.Warn($"[Movement] rejet : ({targetX},{targetY}) bloquee par un obstacle");
                 return;
             }
+            // 3.7.a.i.4 — TOUT leurre Ghostra bloque la destination (Bible-strict :
+            // impossible de marcher sur une silhouette, allié ou ennemie). La Ghostra
+            // doit utiliser la Permutation Angle 3 pour échanger avec un de ses leurres.
+            if (DecoyHelpers.HasAnyDecoyAt(f, targetX, targetY))
+            {
+                Log.Warn($"[Movement] rejet : ({targetX},{targetY}) occupee par un leurre Ghostra");
+                return;
+            }
 
             // Heuristique rapide : si meme la distance Manhattan optimale depasse PM, inutile d'appeler A*.
             int dx = targetX - combatant->GridX;
@@ -131,7 +139,8 @@ namespace Quantum
                     combatant->PM,
                     pathBuffer,
                     out int pathLength,
-                    ignoreEnemyOccupants: pasSpectralActive))
+                    ignoreEnemyOccupants: pasSpectralActive,
+                    casterPlayerIndex: combatant->PlayerIndex))
             {
                 Log.Warn($"[Movement] rejet : pas de chemin <= PM={combatant->PM} vers ({targetX},{targetY})");
                 return;

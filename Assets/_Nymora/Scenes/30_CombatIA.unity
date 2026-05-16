@@ -6468,11 +6468,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _gridSettings: {fileID: 11400000, guid: e28dde8a0c27b744889dfe45f498a670, type: 2}
   _combatantRenderer: {fileID: 1246937100}
-  _placeholderSprite: {fileID: 21300000, guid: ce9eb058347645146ae14aef4c40a443, type: 3}
+  _placeholderSprite: {fileID: -4618120519007728642, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  _decoyIdleController: {fileID: 9100000, guid: 80363a828a60c284895a43b6eaa5f026, type: 2}
   _decoyScale: {x: 1.16, y: 1.16, z: 1}
   _decoyYOffset: -0.22
   _decoySortingOrder: 5
-  _decoyAlpha: 1
+  _decoyAlpha: 0.85
+  _decoyTint: {r: 0.7, g: 0.88, b: 1, a: 1}
 --- !u!4 &1191541219
 Transform:
   m_ObjectHideFlags: 0

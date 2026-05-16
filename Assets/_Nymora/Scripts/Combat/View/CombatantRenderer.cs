@@ -39,6 +39,11 @@ namespace Nymora.Combat.View
         // 1 seule anim). Switch sur LastCastSequence (compteur monotone du DSL).
         private readonly Dictionary<EntityRef, int> _lastHP = new Dictionary<EntityRef, int>(2);
         private readonly Dictionary<EntityRef, int> _lastCastSeq = new Dictionary<EntityRef, int>(2);
+        // 3.7.a.i — Track Permutation Ghostra pour snap instantané au lieu de walk lerp.
+        // Si combatant.LastPermutationOnTurn > cache -> une Permutation vient d'avoir lieu
+        // -> on snap le visuel (téléport, Bible "invisible cote adversaire") au lieu de
+        // walk anim entre les 2 positions swappées.
+        private readonly Dictionary<EntityRef, int> _lastPermutationOnTurn = new Dictionary<EntityRef, int>(2);
         private Vector3 _centerOffset;
         private bool _gridReady;
 
@@ -232,7 +237,29 @@ namespace Nymora.Combat.View
                     }
                 }
 
-                view.UpdateGridPosition(combatant.GridX, combatant.GridY, world, intermediates, intermediatesCount);
+                // 3.7.a.i — Detect Permutation Ghostra : si LastPermutationOnTurn a augmente
+                // depuis le dernier tick, c'est qu'une permutation vient d'avoir lieu -> snap
+                // instantane (Bible "invisible cote adversaire") au lieu de walk anim.
+                bool isPermutationSnap = false;
+                if (combatant.Class == NymoraClass.Ghostra)
+                {
+                    int prevPermutTurn = _lastPermutationOnTurn.TryGetValue(entity, out var pt) ? pt : int.MinValue;
+                    if (combatant.LastPermutationOnTurn > prevPermutTurn && combatant.LastPermutationOnTurn > 0)
+                    {
+                        isPermutationSnap = true;
+                        _lastPermutationOnTurn[entity] = combatant.LastPermutationOnTurn;
+                    }
+                }
+
+                if (isPermutationSnap)
+                {
+                    // 3.7.a.i — VFX téléportation : fade out + snap + flash bleu spectral + fade in.
+                    view.PlayTeleportEffect(combatant.GridX, combatant.GridY, world);
+                }
+                else
+                {
+                    view.UpdateGridPosition(combatant.GridX, combatant.GridY, world, intermediates, intermediatesCount);
+                }
 
                 // 2.12 : push stage visuel (selon ressource Bible V7.1) + facing iso selon mouvement.
                 // 2.16.c.vi : pendant que le View consomme ses waypoints (animation cardinal

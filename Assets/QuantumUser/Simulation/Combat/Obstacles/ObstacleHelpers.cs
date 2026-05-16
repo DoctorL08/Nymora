@@ -197,6 +197,9 @@ namespace Quantum
                 if (e2 > -dy) { err -= dy; cx += sx; }
                 if (e2 < dx)  { err += dx; cy += sy; }
                 if (cx == x1 && cy == y1) return true; // arrivee : la case cible elle-meme ne bloque pas
+                // 3.7.a.i.4 — un leurre Ghostra ennemi bloque la LoS (Bible-strict :
+                // "indiscernable cote adversaire" -> doit bloquer comme une vraie unité).
+                if (DecoyHelpers.HasEnemyDecoyAt(f, casterPlayerIndex, cx, cy)) return false;
                 // Case intermediaire : check obstacle bloquant.
                 EntityRef obsE = GetObstacleAt(f, cx, cy);
                 if (obsE == EntityRef.None) continue;

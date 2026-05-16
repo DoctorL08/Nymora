@@ -479,9 +479,11 @@ namespace Nymora.Combat.View
                 if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsP)
                     && casterClsP == Quantum.NymoraClass.Ghostra)
                 {
-                    var permCmd = new PermutationCommand { SlotIndex = -1 }; // -1 = auto-pick 1er slot
+                    // 3.7.a.i.4 — Permutation cible la case sous la souris. Bible-strict :
+                    // le joueur doit cliquer sur un de ses leurres pour le swap precis.
+                    var permCmd = new PermutationCommand { TargetX = gx, TargetY = gy };
                     game.SendCommand(senderPlayer, permCmd);
-                    Debug.Log($"[Nymora.CombatInput] Sent Permutation player={senderPlayer} (Ghostra)");
+                    Debug.Log($"[Nymora.CombatInput] Sent Permutation player={senderPlayer} target=({gx},{gy}) (Ghostra)");
                     return;
                 }
                 SendSpellAt(game, senderPlayer, SpellId.ColossarPilier, gx, gy, 0);

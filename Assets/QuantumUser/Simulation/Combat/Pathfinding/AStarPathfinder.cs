@@ -45,7 +45,8 @@ namespace Quantum
             int maxSteps,
             int* pathOutBuffer,
             out int pathLength,
-            bool ignoreEnemyOccupants = false)
+            bool ignoreEnemyOccupants = false,
+            int casterPlayerIndex = -1)
         {
             pathLength = 0;
 
@@ -55,6 +56,10 @@ namespace Quantum
             if (GridHelpers.GetOccupant(f, targetX, targetY) != EntityRef.None) return false;
             // 3.1 — refus si obstacle (Pilier/Mur Colossar) sur la case cible.
             if (ObstacleHelpers.HasObstacleAt(f, targetX, targetY)) return false;
+            // 3.7.a.i.4 — TOUT leurre Ghostra bloque la destination (Bible-strict :
+            // impossible de marcher sur une silhouette, qu'elle soit alliée ou ennemie).
+            // Skip si ignoreEnemyOccupants (Pas Spectral Necram, Pas de l'Au-Delà Ghostra).
+            if (!ignoreEnemyOccupants && DecoyHelpers.HasAnyDecoyAt(f, targetX, targetY)) return false;
 
             int startIdx = GridHelpers.Index(startX, startY);
             int targetIdx = GridHelpers.Index(targetX, targetY);
@@ -133,6 +138,9 @@ namespace Quantum
                     // combattant n'est pas la (impossible par construction). Si sur le
                     // target, on a deja rejete plus haut.
                     if (ObstacleHelpers.HasObstacleAt(f, nx, ny)) continue;
+                    // 3.7.a.i.4 — TOUT leurre Ghostra bloque le passage (Bible-strict).
+                    // Pas Spectral / Pas de l'Au-Delà : ignoreEnemyOccupants=true -> skip.
+                    if (!ignoreEnemyOccupants && DecoyHelpers.HasAnyDecoyAt(f, nx, ny)) continue;
 
                     int tentativeG = gScore[currentIdx] + 1;
                     if (tentativeG >= gScore[nIdx]) continue;

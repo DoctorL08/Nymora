@@ -23,16 +23,20 @@ namespace Nymora.Combat.View
         [SerializeField] private GridSettings _gridSettings;
         [Tooltip("Reference au CombatantRenderer pour recuperer le SpriteRenderer de la vraie Ghostra (visuel identique). Si null, fallback sur _placeholderSprite.")]
         [SerializeField] private CombatantRenderer _combatantRenderer;
-        [Tooltip("Sprite affiche sur les leurres si CombatantRenderer null ou Ghostra introuvable. Drag-and-drop l'avatar Ghostra 128px ou le 1er frame stage0_SE.")]
+        [Tooltip("Sprite fallback si _decoyIdleController null. Sert de 1er sprite statique avant que l'animator demarre. Drag-and-drop le 1er frame idle de stage0_SE.")]
         [SerializeField] private Sprite _placeholderSprite;
+        [Tooltip("AnimatorController joue sur les leurres (Bible-strict idle-only). Default = GhostraStage0_SE.controller : son etat default est Idle, et comme on ne trigger jamais Walk/Cast/Attack sur le leurre, il boucle en Idle indefiniment. Pour les leurres en mouvement (permutation), reste statique mais avec respiration idle.")]
+        [SerializeField] private RuntimeAnimatorController _decoyIdleController;
         [Tooltip("Scale appliquee au GameObject leurre. Default 1.16 (calibre Lorenzo, aligne avec RestructureGhostraPrefabTool).")]
         [SerializeField] private Vector3 _decoyScale = new Vector3(1.16f, 1.16f, 1f);
         [Tooltip("Y offset applique au sprite leurre (aligne avec le Visual.LocalPosition.y du prefab Ghostra : -0.22).")]
         [SerializeField] private float _decoyYOffset = -0.22f;
         [Tooltip("Sorting order applique aux leurres. Default 5 (au-dessus des tiles, sous la vraie Ghostra ~10).")]
         [SerializeField] private int _decoySortingOrder = 5;
-        [Tooltip("Alpha du sprite leurre. 1 = identique a la vraie Ghostra. <1 utile pour debug visuel (transparence = c'est un leurre).")]
-        [SerializeField, Range(0f, 1f)] private float _decoyAlpha = 1f;
+        [Tooltip("Alpha du sprite leurre. 1 = identique a la vraie Ghostra. Default 0.85 = legerement translucide pour aider le joueur a distinguer ses leurres.")]
+        [SerializeField, Range(0f, 1f)] private float _decoyAlpha = 0.85f;
+        [Tooltip("Tint applique au sprite leurre (cote joueur Ghostra seulement). Default cyan pale pour aider a distinguer les leurres de la vraie Ghostra. Bible-strict: cote adversaire les leurres devraient etre indiscernables (sans tint) - a gerer en multijoueur futur.")]
+        [SerializeField] private Color _decoyTint = new Color(0.7f, 0.88f, 1.0f, 1.0f); // bleu pale spectral
 
         // Cle composite (ghostraEntity, slotIndex) -> GameObject leurre actif.
         private readonly Dictionary<(EntityRef ghostra, int slot), GameObject> _decoyVisuals
@@ -142,46 +146,45 @@ namespace Nymora.Combat.View
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sortingOrder = _decoySortingOrder;
-            sr.color = new Color(1f, 1f, 1f, _decoyAlpha);
+            // 3.7.a.i.4 — tint cote joueur Ghostra (alpha + couleur) pour distinguer les
+            // leurres de la vraie Ghostra (visuellement). Bible-strict cote adversaire
+            // (multijoueur futur) : tint=blanc opaque pour rendre indiscernable.
+            sr.color = new Color(_decoyTint.r, _decoyTint.g, _decoyTint.b, _decoyAlpha);
+
+            // 3.7.a.i.4 — ajoute Animator avec controller idle-only. Comme on ne trigger
+            // jamais Walk/Cast/Attack sur le leurre, il boucle en Idle (default state).
+            // Si _decoyIdleController null, fallback sprite statique via _placeholderSprite.
+            if (_decoyIdleController != null)
+            {
+                var anim = go.AddComponent<Animator>();
+                anim.runtimeAnimatorController = _decoyIdleController;
+                anim.applyRootMotion = false;
+            }
+            else if (_placeholderSprite != null)
+            {
+                sr.sprite = _placeholderSprite;
+            }
             return go;
         }
 
         /// <summary>
-        /// Copie le sprite courant de la vraie Ghostra sur le GameObject leurre, ou
-        /// fallback sur _placeholderSprite si lookup impossible.
+        /// 3.7.a.i.4 — No-op si l'Animator du leurre gere lui-meme le sprite (cas standard
+        /// avec _decoyIdleController bind). Sinon fallback sur _placeholderSprite statique.
+        /// Les leurres NE reproduisent PAS les anims de la vraie Ghostra (walk/cast/attack/hurt)
+        /// : ils tournent leur propre Animator idle-only et restent donc figés en pose Idle
+        /// (avec la petite anim de respiration idle classique, pas un sprite statique).
         /// </summary>
         private void SyncSpriteFromGhostra(GameObject decoyGo, EntityRef ghostraEntity)
         {
+            // Si un Animator est present (idle-only controller bind), il drive le sprite.
+            // Sinon fallback sur _placeholderSprite statique.
+            if (decoyGo.GetComponent<Animator>() != null) return;
             var sr = decoyGo.GetComponent<SpriteRenderer>();
             if (sr == null) return;
-
-            Sprite source = _placeholderSprite;
-            if (_combatantRenderer != null)
+            if (_placeholderSprite != null && sr.sprite != _placeholderSprite)
             {
-                var ghostraSR = FindGhostraSpriteRenderer(ghostraEntity);
-                if (ghostraSR != null && ghostraSR.sprite != null)
-                {
-                    source = ghostraSR.sprite;
-                }
+                sr.sprite = _placeholderSprite;
             }
-            if (sr.sprite != source) sr.sprite = source;
-        }
-
-        private SpriteRenderer FindGhostraSpriteRenderer(EntityRef ghostra)
-        {
-            // CombatantRenderer expose _views en private — pas d'accesseur public actuellement.
-            // Fallback : on cherche par nom dans les enfants de scene (les vrais GameObjects
-            // Combatant_P{X}_Ghostra sont enfants de CombatantRenderer.transform).
-            if (_combatantRenderer == null) return null;
-            var t = _combatantRenderer.transform;
-            for (int i = 0; i < t.childCount; i++)
-            {
-                var child = t.GetChild(i);
-                if (!child.name.Contains("Ghostra")) continue;
-                var sr = child.GetComponentInChildren<SpriteRenderer>();
-                if (sr != null) return sr;
-            }
-            return null;
         }
 
         private void ClearAll()

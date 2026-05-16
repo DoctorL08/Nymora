@@ -1374,6 +1374,18 @@ namespace Quantum
                             break;
                         }
 
+                        // 3.7.a.i.4 — Bible V7.1 Ghostra : un leurre stoppe la Charge (visuellement
+                        // indiscernable de la vraie). Le caster s'arrete sur la case precedente, le
+                        // leurre est detruit (Bible "sort qui touche un leurre le detruit"). Pas de
+                        // damage (le sort a touche un leurre, pas une cible vivante).
+                        if (DecoyHelpers.TryFindEnemyDecoyForCaster(f, caster->PlayerIndex, cx, cy,
+                            out Combatant* decoyGhostra, out int decoySlot))
+                        {
+                            Log.Info($"[Spell] Charge Brutale : stoppee par leurre Ghostra P{decoyGhostra->PlayerIndex} en ({cx},{cy}) — leurre detruit, pas de damage");
+                            DecoyHelpers.DestroyAtSlot(decoyGhostra, decoySlot);
+                            break;
+                        }
+
                         EntityRef occ = GridHelpers.GetOccupant(f, cx, cy);
                         if (occ != EntityRef.None && occ != casterEntity)
                         {

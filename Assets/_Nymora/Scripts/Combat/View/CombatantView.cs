@@ -1,3 +1,4 @@
+using System.Collections;
 using Quantum;
 using UnityEngine;
 using SpellCategory = Nymora.Core.Enums.SpellCategory;
@@ -191,6 +192,97 @@ namespace Nymora.Combat.View
                 // Range pour une grille 15x17 : 1000 - 30*10 = 700 (min). Toujours > 0.
                 _sprite.sortingOrder = 1000 - (gx + gy) * 10;
             }
+        }
+
+        /// <summary>
+        /// 3.7.a.i — Snap instantané à une position (téléport visuel sans lerp/walk).
+        /// Utilisé par la Permutation Ghostra (Bible "INVISIBLE cote adversaire") pour
+        /// éviter une animation de marche entre les 2 positions swappées. Reset waypoints.
+        ///
+        /// Met aussi à jour GridX/Y + sorting order (comme UpdateGridPosition) mais skip
+        /// toute interpolation. Le facing est laissé inchangé (la Permutation n'a pas de
+        /// "direction de mouvement" Bible-cohérente).
+        /// </summary>
+        public void SnapToPosition(int gx, int gy, Vector3 worldPosition)
+        {
+            GridX = gx;
+            GridY = gy;
+            transform.position = worldPosition;
+
+            // Reset queue de waypoints : tout consommé, pas de move en cours.
+            _waypointCount = 0;
+            _waypointIdx = 0;
+            _hasTarget = true;
+            _facingAppliedForWaypointIdx = -1;
+
+            if (_sprite != null)
+            {
+                _sprite.sortingOrder = 1000 - (gx + gy) * 10;
+            }
+        }
+
+        // 3.7.a.i — Coroutine VFX téléportation Permutation Ghostra (Bible "invisible
+        // cote adversaire"). Sequence : fade out 0.15s → snap + flash bleu spectral 0.08s
+        // → fade in 0.20s. Couleur de flash mappée sur le fantasy Ghostra (bleu pâle).
+        private Coroutine _teleportCoroutine;
+        private const float TeleportFadeOutDuration = 0.15f;
+        private const float TeleportFlashDuration = 0.08f;
+        private const float TeleportFadeInDuration = 0.20f;
+        private static readonly Color TeleportFlashColor = new Color(0.6f, 0.85f, 1.0f, 1.0f); // bleu spectral
+
+        /// <summary>
+        /// 3.7.a.i — Joue le VFX téléportation Permutation Ghostra : fade out à la position
+        /// actuelle → snap à la nouvelle position avec flash bleu spectral → fade in. Plus
+        /// joli que le snap pur. Override toute coroutine VFX en cours.
+        ///
+        /// Si _sprite est null (rare), fallback sur SnapToPosition pur.
+        /// </summary>
+        public void PlayTeleportEffect(int gx, int gy, Vector3 worldPosition)
+        {
+            if (_sprite == null)
+            {
+                SnapToPosition(gx, gy, worldPosition);
+                return;
+            }
+            if (_teleportCoroutine != null) StopCoroutine(_teleportCoroutine);
+            _teleportCoroutine = StartCoroutine(TeleportRoutine(gx, gy, worldPosition));
+        }
+
+        private IEnumerator TeleportRoutine(int gx, int gy, Vector3 worldPosition)
+        {
+            Color baseColor = _sprite.color;
+            // Si on a déjà été interrompu en pleine animation, baseColor peut être altéré.
+            // On force la base à blanc opaque pour normaliser.
+            Color normalColor = new Color(1f, 1f, 1f, 1f);
+
+            // Phase 1 : fade out alpha 1→0 à la position courante.
+            float t = 0f;
+            while (t < TeleportFadeOutDuration)
+            {
+                t += Time.deltaTime;
+                float k = t / TeleportFadeOutDuration;
+                if (k > 1f) k = 1f;
+                _sprite.color = new Color(normalColor.r, normalColor.g, normalColor.b, 1f - k);
+                yield return null;
+            }
+
+            // Phase 2 : snap à la nouvelle position + flash bleu spectral (alpha 1).
+            SnapToPosition(gx, gy, worldPosition);
+            _sprite.color = TeleportFlashColor;
+            yield return new WaitForSeconds(TeleportFlashDuration);
+
+            // Phase 3 : fade flash → couleur normale.
+            t = 0f;
+            while (t < TeleportFadeInDuration)
+            {
+                t += Time.deltaTime;
+                float k = t / TeleportFadeInDuration;
+                if (k > 1f) k = 1f;
+                _sprite.color = Color.Lerp(TeleportFlashColor, normalColor, k);
+                yield return null;
+            }
+            _sprite.color = normalColor;
+            _teleportCoroutine = null;
         }
 
         /// <summary>

@@ -84,7 +84,15 @@ namespace Quantum
                     Log.Warn($"[Ghostra] Permutation rejetee : P{playerIndex} n'est pas Ghostra");
                     return;
                 }
-                DecoyHelpers.TryPermute(f, e, c, cmd.SlotIndex, currentTurn);
+                // 3.7.a.i.4 — Resolve slot index from TargetX/Y (case visée à la souris).
+                // Bible-strict : le joueur doit cliquer précisément sur un de ses leurres.
+                int slot = DecoyHelpers.FindSlotAtPosition(c, cmd.TargetX, cmd.TargetY);
+                if (slot < 0)
+                {
+                    Log.Warn($"[Permutation] Rejet : case ({cmd.TargetX},{cmd.TargetY}) ne contient pas un de vos leurres. Cliquez sur un leurre pour le swap.");
+                    return;
+                }
+                DecoyHelpers.TryPermute(f, e, c, slot, currentTurn);
                 return;
             }
         }

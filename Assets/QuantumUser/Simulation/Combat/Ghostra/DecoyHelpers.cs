@@ -148,6 +148,88 @@ namespace Quantum
         }
 
         /// <summary>
+        /// 3.7.a.i.4 — Bible-strict : un leurre Ghostra ennemi BLOQUE la LoS et les
+        /// sorts ciblés (pour préserver l'illusion "indiscernable cote adversaire").
+        /// Retourne true si un leurre appartenant à une Ghostra du camp OPPOSE à
+        /// `casterPlayerIndex` occupe (x,y).
+        ///
+        /// `casterPlayerIndex == -1` : retourne false (mode neutre — pas de notion d'ennemi).
+        /// Pour les checks de MOUVEMENT, utiliser <see cref="HasAnyDecoyAt"/> à la place
+        /// (tous les leurres bloquent — un combattant ne peut pas marcher sur une silhouette).
+        /// </summary>
+        public static bool HasEnemyDecoyAt(Frame f, int casterPlayerIndex, int x, int y)
+        {
+            if (casterPlayerIndex < 0) return false;
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->Class != NymoraClass.Ghostra) continue;
+                if (c->HP <= 0) continue;
+                if (c->PlayerIndex == casterPlayerIndex) continue; // skip Ghostra allié/self
+                for (int i = 0; i < MaxDecoys; i++)
+                {
+                    if (c->Decoys[i].Kind == DecoyKind.None) continue;
+                    if (c->Decoys[i].PosX == x && c->Decoys[i].PosY == y) return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 3.7.a.i.4 — Bible-strict mouvement : TOUS les leurres bloquent la case
+        /// (impossible de marcher sur une silhouette, qu'elle soit alliée ou ennemie).
+        /// La Ghostra elle-même ne peut pas marcher sur ses propres leurres — pour
+        /// échanger sa position avec un leurre, elle doit utiliser la Permutation Angle 3.
+        ///
+        /// Utilisé par MovementSystem / AStarPathfinder / MovementHelpers.MoveNonPM.
+        /// Pour la LoS et les sorts ciblés, utiliser <see cref="HasEnemyDecoyAt"/>.
+        /// </summary>
+        public static bool HasAnyDecoyAt(Frame f, int x, int y)
+        {
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->Class != NymoraClass.Ghostra) continue;
+                if (c->HP <= 0) continue;
+                for (int i = 0; i < MaxDecoys; i++)
+                {
+                    if (c->Decoys[i].Kind == DecoyKind.None) continue;
+                    if (c->Decoys[i].PosX == x && c->Decoys[i].PosY == y) return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// 3.7.a.i.4 — Variante claire pour le caller : cherche un leurre Ghostra ENNEMI
+        /// à `casterPlayerIndex` sur (x,y). Retourne (true + slot + ghostraPtr) si trouve.
+        /// Equivalent à TryFindEnemyDecoyAt mais avec sémantique caster-centrée.
+        /// Utilise par Charge Brutale pour consume le leurre traversé (Bible "AoE/sort
+        /// qui touche un leurre le détruit").
+        /// </summary>
+        public static bool TryFindEnemyDecoyForCaster(Frame f, int casterPlayerIndex, int x, int y, out Combatant* outGhostra, out int outSlotIndex)
+        {
+            outGhostra = null;
+            outSlotIndex = -1;
+            if (casterPlayerIndex < 0) return false;
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->Class != NymoraClass.Ghostra) continue;
+                if (c->HP <= 0) continue;
+                if (c->PlayerIndex == casterPlayerIndex) continue; // skip Ghostra allié/self
+                int slot = FindSlotAtPosition(c, x, y);
+                if (slot >= 0)
+                {
+                    outGhostra = c;
+                    outSlotIndex = slot;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>
         /// 3.6 — Cherche un decoy d'un Ghostra ennemi sur la case (x,y) cote `targetCamp`.
         /// Retourne (true + slotIndex + ghostraPtr) si trouve, false sinon.
         /// Utilise par SpellSystem (3.7) pour intercepter les sorts cibles : si un sort

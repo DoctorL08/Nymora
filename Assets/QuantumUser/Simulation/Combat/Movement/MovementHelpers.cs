@@ -24,6 +24,9 @@ namespace Quantum
             if (!GridHelpers.InBounds(toX, toY)) return false;
             if (!GridHelpers.IsWalkable(f, toX, toY)) return false;
             if (GridHelpers.GetOccupant(f, toX, toY) != EntityRef.None) return false;
+            // 3.7.a.i.4 — TOUT leurre Ghostra bloque la destination (Bible-strict).
+            // Applique a tout sort-move (Charge Brutale, recul Tranche-Ame, etc.).
+            if (DecoyHelpers.HasAnyDecoyAt(f, toX, toY)) return false;
 
             int fromX = combatant->GridX;
             int fromY = combatant->GridY;
