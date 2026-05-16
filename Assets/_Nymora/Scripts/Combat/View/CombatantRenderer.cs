@@ -39,6 +39,14 @@ namespace Nymora.Combat.View
         // 1 seule anim). Switch sur LastCastSequence (compteur monotone du DSL).
         private readonly Dictionary<EntityRef, int> _lastHP = new Dictionary<EntityRef, int>(2);
         private readonly Dictionary<EntityRef, int> _lastCastSeq = new Dictionary<EntityRef, int>(2);
+        // 3.7.b.ii — Track Pas dans l'Ombre Ghostra (meme pattern Permutation) : si
+        // combatant.LastPasDansLOmbreOnTurn a augmente -> teleport visuel au lieu de walk.
+        private readonly Dictionary<EntityRef, int> _lastPasDansLOmbreOnTurn = new Dictionary<EntityRef, int>(2);
+        // 3.7.a.iii — Track Frappe Fantome Ghostra : pas de [Networked] field dedie (eviter regen
+        // lourde). On detecte via LastCastOnTurn + LastCastSpellId == GhostraFrappeFantome.
+        // Cache la derniere valeur de LastCastOnTurn QUAND le spell etait Frappe Fantome.
+        private readonly Dictionary<EntityRef, int> _lastFrappeFantomeCastTurn = new Dictionary<EntityRef, int>(2);
+
         // 3.7.a.i — Track Permutation Ghostra pour snap instantané au lieu de walk lerp.
         // Si combatant.LastPermutationOnTurn > cache -> une Permutation vient d'avoir lieu
         // -> on snap le visuel (téléport, Bible "invisible cote adversaire") au lieu de
@@ -237,23 +245,40 @@ namespace Nymora.Combat.View
                     }
                 }
 
-                // 3.7.a.i — Detect Permutation Ghostra : si LastPermutationOnTurn a augmente
-                // depuis le dernier tick, c'est qu'une permutation vient d'avoir lieu -> snap
-                // instantane (Bible "invisible cote adversaire") au lieu de walk anim.
-                bool isPermutationSnap = false;
+                // 3.7.a.i / 3.7.b.ii — Detect Permutation OU Pas dans l'Ombre Ghostra : si
+                // LastPermutationOnTurn OU LastPasDansLOmbreOnTurn a augmente depuis le dernier
+                // tick -> anim teleport (fade out/in + flash spectral) au lieu de walk lerp.
+                bool isTeleportSnap = false;
                 if (combatant.Class == NymoraClass.Ghostra)
                 {
                     int prevPermutTurn = _lastPermutationOnTurn.TryGetValue(entity, out var pt) ? pt : int.MinValue;
                     if (combatant.LastPermutationOnTurn > prevPermutTurn && combatant.LastPermutationOnTurn > 0)
                     {
-                        isPermutationSnap = true;
+                        isTeleportSnap = true;
                         _lastPermutationOnTurn[entity] = combatant.LastPermutationOnTurn;
+                    }
+                    int prevPDOTurn = _lastPasDansLOmbreOnTurn.TryGetValue(entity, out var pdo) ? pdo : int.MinValue;
+                    if (combatant.LastPasDansLOmbreOnTurn > prevPDOTurn && combatant.LastPasDansLOmbreOnTurn > 0)
+                    {
+                        isTeleportSnap = true;
+                        _lastPasDansLOmbreOnTurn[entity] = combatant.LastPasDansLOmbreOnTurn;
+                    }
+                    // 3.7.a.iii — Frappe Fantome : detecte via LastCastSpellId. Pas de [Networked]
+                    // dedie pour eviter regen. Trigger une fois par cast (LastCastOnTurn change).
+                    if (combatant.LastCastSpellId == SpellId.GhostraFrappeFantome && combatant.LastCastOnTurn > 0)
+                    {
+                        int prevFFTurn = _lastFrappeFantomeCastTurn.TryGetValue(entity, out var ff) ? ff : int.MinValue;
+                        if (combatant.LastCastOnTurn > prevFFTurn)
+                        {
+                            isTeleportSnap = true;
+                            _lastFrappeFantomeCastTurn[entity] = combatant.LastCastOnTurn;
+                        }
                     }
                 }
 
-                if (isPermutationSnap)
+                if (isTeleportSnap)
                 {
-                    // 3.7.a.i — VFX téléportation : fade out + snap + flash bleu spectral + fade in.
+                    // 3.7.a.i / 3.7.b.ii — VFX téléportation : fade out + snap + flash bleu spectral + fade in.
                     view.PlayTeleportEffect(combatant.GridX, combatant.GridY, world);
                 }
                 else
@@ -428,29 +453,36 @@ namespace Nymora.Combat.View
         /// </summary>
         private IsoFacing ResolveFacing(EntityRef entity, Combatant self)
         {
-            int gx = self.GridX;
-            int gy = self.GridY;
+            // 3.7.a.i.0 / 3.7.b.iii — Quantum est source-of-truth pour le Facing.
+            //   - Spawn : init dans CombatantSystem (P0=NE, P1=NW).
+            //   - Move : MovementSystem.ApplyMove + MovementHelpers.MoveNonPM update depuis dx/dy.
+            //   - Cast non-Self : SpellSystem.TryCastSpell update vers cible.
+            //   - Volte-Face : flip 180° via FacingHelpers.Opposite + DirectionLocked 1 round.
+            //   - Pas dans l'Ombre : pivot adj enemies vers Ghostra.
+            // La View consomme juste cette valeur — pas de recalcul cote View.
+            //
+            // ⚠️ MISMATCH ENUM Quantum (SE=0/NE=1/NW=2/SW=3) vs View (NE=0/SE=1/NW=2/SW=3) :
+            //   le cast par valeur entiere FAUSSE le mapping SE<->NE. Mapping explicite obligatoire.
+            IsoFacing facingFromQuantum = QuantumToViewFacing(self.Facing);
+            _lastGridPos[entity] = new GridPos(self.GridX, self.GridY);
+            _lastFacings[entity] = facingFromQuantum;
+            return facingFromQuantum;
+        }
 
-            if (_lastGridPos.TryGetValue(entity, out var last))
+        /// <summary>
+        /// 3.7.b.iii hotfix : Quantum IsoFacing (SE=0/NE=1/NW=2/SW=3) ne s'aligne pas
+        /// par valeur avec View IsoFacing (NE=0/SE=1/NW=2/SW=3). Mapping explicite.
+        /// </summary>
+        private static IsoFacing QuantumToViewFacing(Quantum.IsoFacing q)
+        {
+            switch (q)
             {
-                int dxGrid = gx - last.X;
-                int dyGrid = gy - last.Y;
-                if (dxGrid != 0 || dyGrid != 0)
-                {
-                    var moved = FacingFromGridDelta(dxGrid, dyGrid);
-                    _lastFacings[entity] = moved;
-                    _lastGridPos[entity] = new GridPos(gx, gy);
-                    return moved;
-                }
-                // Pas de mouvement : conserve le dernier facing connu.
-                return _lastFacings.TryGetValue(entity, out var prev) ? prev : IsoFacing.SE;
+                case Quantum.IsoFacing.NE: return IsoFacing.NE;
+                case Quantum.IsoFacing.SE: return IsoFacing.SE;
+                case Quantum.IsoFacing.NW: return IsoFacing.NW;
+                case Quantum.IsoFacing.SW: return IsoFacing.SW;
+                default:                   return IsoFacing.SE;
             }
-
-            // 1er frame : pas de position precedente -> facing initial vers l'ennemi.
-            var initial = FacingTowardEnemy(entity, self);
-            _lastGridPos[entity] = new GridPos(gx, gy);
-            _lastFacings[entity] = initial;
-            return initial;
         }
 
         /// <summary>

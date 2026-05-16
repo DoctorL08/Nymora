@@ -63,11 +63,17 @@ namespace Quantum
                 EffondrementTargetEntity = EntityRef.None, // 3.3.d : pas de cible snapshot au spawn.
                 LastVirusFatalUsedOnTurn = -1000, // 3.5.c.vi : signature jouable des PT=6 au spawn.
                 LastPermutationOnTurn = -1000,    // 3.6 : permutation jouable des Angle 3 au spawn.
+                LastPasDansLOmbreOnTurn = -1000,  // 3.7.b.ii : Pas dans l'Ombre jouable au spawn (cap 1x/tour).
+                LastFacingForcedOnTurn = -1000,   // 3.7.a.iii : pas de direction forcee au spawn (lu par Frappe Fantome).
+                LastDagueLanceeOnTurn = -1000,    // 3.7.b.iv : Dague Lancee jouable au spawn (cap 2x/tour).
+                DagueLanceeCountThisTurn = 0,     // 3.7.b.iv : 0 cast au spawn.
                 LastExecutionSpectraleUsedOnTurn = -1000, // 3.6 : signature Ghostra jouable au spawn (reserve pour 3.7.d).
-                // 3.7.a.i.0 : facing initial face-a-face. P0 spawn a gauche (3,8) regarde NE (vers P1).
-                //   P1 spawn a droite (11,8) regarde NW (vers P0). Bible V7.1 attaque dorsale = direction
-                //   opposee au regard de la cible. Cf FacingHelpers.IsDorsalHit.
-                Facing = (playerIndex == 0) ? IsoFacing.NE : IsoFacing.NW,
+                // 3.7.a.i.0 / 3.7.b.iii hotfix : facing initial face-a-face Bible-correct geometrique iso.
+                //   P0 spawn (3,8) regarde NE (vers P1en 11,8 — world delta +x +y = NE).
+                //   P1 spawn (11,8) regarde SW (vers P0 en 3,8 — world delta -x -y = SW).
+                //   Initialement P1 etait NW (erreur), masquee par FacingTowardEnemy au spawn cote View.
+                //   Maintenant que Quantum est source-of-truth (3.7.b.iii), correction obligatoire.
+                Facing = (playerIndex == 0) ? IsoFacing.NE : IsoFacing.SW,
             };
 
             var entity = f.Create();

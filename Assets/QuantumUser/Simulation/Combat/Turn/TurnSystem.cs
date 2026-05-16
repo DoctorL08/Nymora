@@ -193,9 +193,10 @@ namespace Quantum
                     NecramPassif.OnSubTurnStart(f, combatant, state->TurnNumber);
 
                     // 3.6 — Passif Ghostra "L'Angle Mort" : tick lifetime des leurres
-                    // (expiration apres 2 rounds) pour la Ghostra active. Pas d'effet
-                    // continu type halo Necram — le passif Angle 1/2/3 est conditionnel
-                    // (sur dorsal hit, gere dans SpellSystem en 3.7).
+                    // (expiration apres DecoyHelpers.LifetimeRounds rounds, amende a 4 rounds
+                    // par Lorenzo le 16 mai pour laisser le temps au setup combo) pour la
+                    // Ghostra active. Pas d'effet continu type halo Necram — le passif
+                    // Angle 1/2/3 est conditionnel (sur dorsal hit, gere dans SpellSystem en 3.7).
                     GhostraPassif.OnSubTurnStart(f, combatant, state->TurnNumber);
                 }
             }

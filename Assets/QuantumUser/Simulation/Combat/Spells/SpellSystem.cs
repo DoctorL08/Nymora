@@ -164,6 +164,57 @@ namespace Quantum
                 }
             }
 
+            // 3.7.b.ii — Pas dans l'Ombre : cap 1x/tour (decision Lorenzo). Reject AVANT consume PA.
+            // Pattern Permutation : check LastPasDansLOmbreOnTurn == currentTurn.
+            if (cmd.Spell == SpellId.GhostraPasDansLOmbre)
+            {
+                int currentTurnPDO = f.TryGetSingleton<CombatState>(out var statePDO) ? statePDO.TurnNumber : 0;
+                if (caster->LastPasDansLOmbreOnTurn == currentTurnPDO)
+                {
+                    Log.Warn($"[Spell] rejet : Pas dans l'Ombre deja utilise ce tour (round {currentTurnPDO}, cap 1x/tour)");
+                    return;
+                }
+            }
+
+            // 3.7.b.iv — Dague Lancee : cap 2x/tour (amendement Lorenzo 16 mai). Reject AVANT consume PA.
+            //   Pattern : si LastDagueLanceeOnTurn == currentTurn ET DagueLanceeCountThisTurn >= 2 -> reject.
+            //   Sinon le handler post-damage incremente le compteur (et reset si nouveau tour).
+            if (cmd.Spell == SpellId.GhostraDagueLancee)
+            {
+                int currentTurnDL = f.TryGetSingleton<CombatState>(out var stateDL) ? stateDL.TurnNumber : 0;
+                int countThisRound = (caster->LastDagueLanceeOnTurn == currentTurnDL)
+                    ? caster->DagueLanceeCountThisTurn
+                    : 0;
+                if (countThisRound >= SpellRegistry.DagueLanceeMaxUsagesPerTurn)
+                {
+                    Log.Warn($"[Spell] rejet : Dague Lancee deja utilisee {countThisRound}x ce tour (cap {SpellRegistry.DagueLanceeMaxUsagesPerTurn}/tour, round {currentTurnDL})");
+                    return;
+                }
+            }
+
+            // 3.7.a.iii — Frappe Fantome : pre-check case libre adjacente target. Reject AVANT consume PA
+            // si aucune case dispo (4 cardinaux Manhattan=1 autour target tous occupes/obstacles/hors grille).
+            // Priorite case DORSALE (derriere target.Facing) pour combo dorsal garanti.
+            // Le teleport effectif a lieu plus loin (juste avant la boucle damage), apres consume PA.
+            if (cmd.Spell == SpellId.GhostraFrappeFantome)
+            {
+                // Resolve target pour avoir target.Facing (pre-check ne consomme rien).
+                EntityRef ffPrecheckTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                IsoFacing ffPrecheckFacing = IsoFacing.SE; // default fallback safe (anyway target sera resolu de toute facon)
+                if (ffPrecheckTarget != EntityRef.None
+                    && f.Unsafe.TryGetPointer<Combatant>(ffPrecheckTarget, out Combatant* ffPrecheckTargetC))
+                {
+                    ffPrecheckFacing = ffPrecheckTargetC->Facing;
+                }
+
+                if (!TryFindFreeCellAdjacentToTarget(f, cmd.TargetX, cmd.TargetY, ffPrecheckFacing,
+                        out int _ffPrecheckX, out int _ffPrecheckY))
+                {
+                    Log.Warn($"[Spell] rejet : Frappe Fantome impossible, aucune case libre adjacente target ({cmd.TargetX},{cmd.TargetY})");
+                    return;
+                }
+            }
+
             // 2.11 : Ame Laceree cooldown 4 tours apres usage. Detonation 5 HG set aussi
             // LastAmeLaceeUsedOnTurn (interdit Ame Laceree). Bible : re-castable si HG remonte
             // a 5 ET cooldown expire.
@@ -483,6 +534,45 @@ namespace Quantum
                 return;
             }
 
+            // 3.7.a.iii — Frappe Fantome : teleport caster sur case libre adjacente target AVANT
+            // la boucle damage, pour que le dorsal Ghostra (calcule depuis caster.GridX/Y vs
+            // target.Facing) bénéficie de la nouvelle position. Priorite case DORSALE (Lorenzo
+            // amendement 16 mai) -> combo F (Dague Lancee 90°) -> T (Frappe Fantome) garantit
+            // un teleport dans le dos. Le pre-check pre-PA a deja garanti qu'au moins une case
+            // est libre, on rappelle le helper pour recuperer les coords.
+            if (cmd.Spell == SpellId.GhostraFrappeFantome)
+            {
+                // Resolve target.Facing au moment du teleport (post-Dague Lancee = facing pivot 90°).
+                EntityRef ffMainTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                IsoFacing ffMainFacing = IsoFacing.SE;
+                if (ffMainTarget != EntityRef.None
+                    && f.Unsafe.TryGetPointer<Combatant>(ffMainTarget, out Combatant* ffMainTargetC))
+                {
+                    ffMainFacing = ffMainTargetC->Facing;
+                }
+
+                if (TryFindFreeCellAdjacentToTarget(f, cmd.TargetX, cmd.TargetY, ffMainFacing,
+                        out int ffTpX, out int ffTpY))
+                {
+                    int ffOldX = caster->GridX, ffOldY = caster->GridY;
+                    bool ffMoved = MovementHelpers.MoveNonPM(f, casterEntity, caster, ffTpX, ffTpY);
+                    if (ffMoved)
+                    {
+                        // Apres teleport, MoveNonPM update caster.Facing depuis delta(ffOldX,ffOldY -> ffTpX,ffTpY).
+                        // Mais Bible : Ghostra doit regarder LA TARGET, pas continuer sa direction de teleport.
+                        // On override caster.Facing pour pointer vers target depuis la nouvelle position.
+                        caster->Facing = FacingHelpers.FacingFromGridDelta(cmd.TargetX - ffTpX, cmd.TargetY - ffTpY);
+                        Log.Info($"[Spell] Frappe Fantome : P{caster->PlayerIndex} teleport ({ffOldX},{ffOldY}) -> ({ffTpX},{ffTpY}) face target ({cmd.TargetX},{cmd.TargetY})");
+                    }
+                    else
+                    {
+                        // Edge case : MoveNonPM a echoue malgre le pre-check. On laisse le pipeline
+                        // continuer (damage applique depuis position d'origine, pas de teleport).
+                        Log.Warn($"[Spell] Frappe Fantome : teleport ({ffTpX},{ffTpY}) refuse par MoveNonPM (race condition ?), damage applique depuis position d'origine ({ffOldX},{ffOldY})");
+                    }
+                }
+            }
+
             // 2.15.a — Boucle damage : entree conditionnee a IsOffensive (pas DamageAmount > 0)
             // pour permettre aux sorts a damage 100% custom-per-cell d'y entrer aussi (ex Salve
             // Mortelle 220 centre/130 cotes, DamageAmount = 0 dans SpellDef).
@@ -647,6 +737,18 @@ namespace Quantum
                             Log.Info($"[Spell] Lame Vorace Spectrale +{SpellRegistry.LameVoracePlaieBonus} dgts (PlaieOuverte sur P{targetC->PlayerIndex}, non consommee)");
                         }
                     }
+                    else if (cmd.Spell == SpellId.GhostraSaigneAme)
+                    {
+                        // 3.7.a.ii — Bible Saigne-Ame : 200 base + 70 si target a PlaieOuverte
+                        // (la plaie est CONSOMMEE post-damage sur cible survivante — consume gere
+                        // dans le post-damage handler car on a besoin de wasKill pour discriminer).
+                        // Bonus dorsal applique generiquement plus bas.
+                        if (StatusHelper.Has(targetC, StatusKind.PlaieOuverte))
+                        {
+                            dmgThisTarget += SpellRegistry.SaigneAmePlaieBonus;
+                            Log.Info($"[Spell] Saigne-Ame +{SpellRegistry.SaigneAmePlaieBonus} dgts (PlaieOuverte sur P{targetC->PlayerIndex}, sera consomme si survit)");
+                        }
+                    }
 
                     // 3.7.a — Bonus dorsal Ghostra (Bible Angle Mort) : applique a TOUS les sorts
                     // offensifs Ghostra. +0 si Angle 1 (0 leurre) ou hit non dorsal, +50 si Angle 2
@@ -659,6 +761,16 @@ namespace Quantum
                         {
                             dmgThisTarget += dorsalBonus;
                             Log.Info($"[Angle Mort] +{dorsalBonus} dmg DORSAL sur P{targetC->PlayerIndex} (sort {cmd.Spell}) -> total {dmgThisTarget}");
+                        }
+
+                        // 3.7.b.v — Marque de l'Ombre : si la cible porte le status, tous les sorts
+                        //   Ghostra sur elle gagnent +20 dgts (magnitude du status). Bible "Buff de
+                        //   pression : +20 sur tous les sorts Ghostra pendant 2 tours".
+                        if (StatusHelper.Has(targetC, StatusKind.MarqueDeLOmbre))
+                        {
+                            int markBonus = StatusHelper.GetMagnitude(targetC, StatusKind.MarqueDeLOmbre, SpellRegistry.MarqueDeLOmbreDmgBonus);
+                            dmgThisTarget += markBonus;
+                            Log.Info($"[Marque de l'Ombre] +{markBonus} dmg sur P{targetC->PlayerIndex} (sort {cmd.Spell}) -> total {dmgThisTarget}");
                         }
                     }
 
@@ -1083,6 +1195,17 @@ namespace Quantum
                 }
             }
 
+            // 3.7.b.iii — Update caster.Facing au cast pour les sorts non-Self.
+            //   Quantum est source-of-truth pour le Facing depuis 3.7.a.i. La View (CombatantRenderer.ResolveFacing)
+            //   lit self.Facing directement, donc le perso doit "regarder" sa cible cote sim au moment du cast
+            //   (sinon sprite reste oriente comme avant le cast). Auparavant cette logique etait
+            //   un hack View-only ; on la promote en Quantum pour cohérence cross-frame.
+            if (spellDef.Filter != TargetingFilter.Self
+                && (cmd.TargetX != caster->GridX || cmd.TargetY != caster->GridY))
+            {
+                caster->Facing = FacingHelpers.FacingFromGridDelta(cmd.TargetX - caster->GridX, cmd.TargetY - caster->GridY);
+            }
+
             // 2.12.bis : tracker du dernier cast pour driver les anims cote View (cast/attack).
             // La View pole la diff `LastCastOnTurn` et map `LastCastSpellId` vers SpellCategory pour
             // choisir l'anim (Survival/Tactical/Offensive/Signature) + range pour Attack vs Cast.
@@ -1378,11 +1501,13 @@ namespace Quantum
                         // indiscernable de la vraie). Le caster s'arrete sur la case precedente, le
                         // leurre est detruit (Bible "sort qui touche un leurre le detruit"). Pas de
                         // damage (le sort a touche un leurre, pas une cible vivante).
+                        // 3.7.b.i — DestroyByEnemyAction applique le heal Bible-conforme selon Kind
+                        // (Réplique Fantôme +40 HP, Réplique Protectrice +60 HP, Standard pas de heal).
                         if (DecoyHelpers.TryFindEnemyDecoyForCaster(f, caster->PlayerIndex, cx, cy,
                             out Combatant* decoyGhostra, out int decoySlot))
                         {
                             Log.Info($"[Spell] Charge Brutale : stoppee par leurre Ghostra P{decoyGhostra->PlayerIndex} en ({cx},{cy}) — leurre detruit, pas de damage");
-                            DecoyHelpers.DestroyAtSlot(decoyGhostra, decoySlot);
+                            DecoyHelpers.DestroyByEnemyAction(decoyGhostra, decoySlot);
                             break;
                         }
 
@@ -1939,6 +2064,285 @@ namespace Quantum
                     // Set cooldown (Bible : Reutilisable si PT remonte a 6 ET cooldown expire).
                     caster->LastVirusFatalUsedOnTurn = currentTurn;
                     Log.Info($"[Virus Fatal] Cooldown active sur P{caster->PlayerIndex} jusqu'au tour {currentTurn + SpellRegistry.VirusFatalCooldownTurns}");
+                    break;
+                }
+
+                // -------------------------------------------------------------
+                // 3.7.b — GHOSTRA Tactiques
+                // -------------------------------------------------------------
+
+                // Réplique Fantôme (3.7.b.i) — Bible V7.1 ligne 1127 (amendee 16 mai sur la duree) :
+                //   "Pose un Leurre sur une case vide a 4 cases. Le Leurre est visuellement
+                //    identique a la Ghostra. Dure DecoyHelpers.LifetimeRounds rounds (=4 amende
+                //    le 16 mai par Lorenzo, Bible orig disait 2 mais pas le temps de combo) ou
+                //    jusqu'a interaction. Si le Leurre survit la duree complete, la Ghostra
+                //    regagne 80 HP. Si le Leurre est detruit par un sort adverse, +40 HP."
+                //
+                // Implementation : wrappe DecoyHelpers.TrySpawn(DecoyKind.RepliqueFantome).
+                // Le helper rejette (logs warn) si cap 3 atteint, case occupee, obstacle, leurre
+                // deja la. Heal lifecycle gere dans DecoyHelpers (TickLifetime +80 / DestroyByEnemyAction +40).
+                // SpellSystem core a deja consomme le PA AVANT d'appeler ce handler — si le spawn
+                // echoue, le PA reste consomme (Bible : decision joueur, on n'annule pas).
+                case SpellId.GhostraRepliqueFantome:
+                {
+                    bool spawned = DecoyHelpers.TrySpawn(f, caster,
+                        cmd.TargetX, cmd.TargetY,
+                        DecoyKind.RepliqueFantome, currentTurn);
+                    if (spawned)
+                    {
+                        Log.Info($"[Spell] Réplique Fantôme : P{caster->PlayerIndex} pose un leurre RepliqueFantome en ({cmd.TargetX},{cmd.TargetY}) (Bible V7.1)");
+                    }
+                    else
+                    {
+                        Log.Warn($"[Spell] Réplique Fantôme : pose echouee en ({cmd.TargetX},{cmd.TargetY}) — PA deja consomme (cap atteint / case invalide)");
+                    }
+                    break;
+                }
+
+                // Pas dans l'Ombre (3.7.b.ii) — Bible V7.1 ligne 1134 :
+                //   "Teleporte la Ghostra jusqu'a 5 cases. Si une case adjacente a l'arrivee
+                //    contient une cible ennemie : la cible PIVOTE pour faire face a la Ghostra.
+                //    Cout optionnel : laisser un leurre sur la case quittee (compte dans le cap 3)."
+                //
+                // Note ordre : on pose le leurre AVANT de bouger (depuis l'ancienne case caster),
+                // puis on teleporte. Si on faisait l'inverse, la case quittee serait deja libere
+                // pour le leurre mais ce serait equivalent — choisi l'ordre "pose avant move"
+                // pour traiter le cap 3 de maniere coherente (si cap deja a 3, refuse pose mais
+                // teleport quand meme). Caster Ghostra elle-meme bloque la case, donc TrySpawn
+                // refuse avec un check ghostra->GridX==posX (cf DecoyHelpers.TrySpawn). On utilise
+                // donc le pattern : memorize (oldX, oldY) AVANT move, move via MoveNonPM, puis
+                // tente TrySpawn sur (oldX, oldY) maintenant que la case est libre.
+                case SpellId.GhostraPasDansLOmbre:
+                {
+                    int oldPDOX = caster->GridX;
+                    int oldPDOY = caster->GridY;
+
+                    // Teleport via MoveNonPM : valide case vide, pas obstacle, pas leurre.
+                    // Update Facing depuis dx/dy automatiquement.
+                    bool tpOk = MovementHelpers.MoveNonPM(f, casterEntity, caster, cmd.TargetX, cmd.TargetY);
+                    if (!tpOk)
+                    {
+                        Log.Warn($"[Spell] Pas dans l'Ombre : teleport echec sur ({cmd.TargetX},{cmd.TargetY}) — PA deja consomme");
+                        break;
+                    }
+                    // Cap 1x/tour : mark used (CombatantRenderer lit ce field pour l'anim teleport).
+                    caster->LastPasDansLOmbreOnTurn = currentTurn;
+                    Log.Info($"[Spell] Pas dans l'Ombre : P{caster->PlayerIndex} ({oldPDOX},{oldPDOY}) -> ({cmd.TargetX},{cmd.TargetY}) facing={caster->Facing}");
+
+                    // Pivot enemies adj Manhattan <=1 a l'arrivee : Facing target = direction Ghostra (= -direction target->Ghostra).
+                    // Itere les 4 cases cardinales (Bible-strict "adjacente" = Manhattan 1).
+                    int* adjDx = stackalloc int[4] { 1, -1, 0, 0 };
+                    int* adjDy = stackalloc int[4] { 0, 0, 1, -1 };
+                    int pivoted = 0;
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int ax = cmd.TargetX + adjDx[i];
+                        int ay = cmd.TargetY + adjDy[i];
+                        if (!GridHelpers.InBounds(ax, ay)) continue;
+                        EntityRef adjOcc = GridHelpers.GetOccupant(f, ax, ay);
+                        if (adjOcc == EntityRef.None) continue;
+                        if (!f.Unsafe.TryGetPointer<Combatant>(adjOcc, out Combatant* adjC)) continue;
+                        if (adjC->PlayerIndex == caster->PlayerIndex) continue; // skip allies/self
+                        if (adjC->HP <= 0) continue;
+                        // Facing target = direction qui pointe vers Ghostra (caster).
+                        IsoFacing newFacing = FacingHelpers.FacingFromGridDelta(cmd.TargetX - ax, cmd.TargetY - ay);
+                        adjC->Facing = newFacing;
+                        Log.Info($"[Spell] Pas dans l'Ombre : P{adjC->PlayerIndex} pivot -> {newFacing} (face Ghostra en {cmd.TargetX},{cmd.TargetY})");
+                        pivoted++;
+                    }
+                    if (pivoted == 0)
+                    {
+                        Log.Info($"[Spell] Pas dans l'Ombre : aucune cible adjacente a pivoter");
+                    }
+
+                    // Option Shift+H (HGSpend >= 1) : pose DecoyKind.Standard sur case quittee.
+                    // Refus silencieux si cap 3 atteint (Bible : le slot est la "ressource", pas une jauge).
+                    if (hgSpend >= 1)
+                    {
+                        bool spawnedPDO = DecoyHelpers.TrySpawn(f, caster, oldPDOX, oldPDOY, DecoyKind.Standard, currentTurn);
+                        if (spawnedPDO)
+                        {
+                            Log.Info($"[Spell] Pas dans l'Ombre : leurre Standard pose sur case quittee ({oldPDOX},{oldPDOY})");
+                        }
+                        else
+                        {
+                            Log.Info($"[Spell] Pas dans l'Ombre : pose leurre case quittee ({oldPDOX},{oldPDOY}) refusee silencieusement (cap 3 atteint?)");
+                        }
+                    }
+                    break;
+                }
+
+                // Volte-Face (3.7.b.iii, amendement 16 mai 2026) :
+                //   Sort OFFENSIF : 50 dmg deja applique par pipeline generique (+ bonus dorsal
+                //   Angle Mort si la cible etait dos au moment du cast). Ici on FLIP Facing 180°
+                //   instantane (FacingHelpers.Opposite).
+                //   PAS DE VERROU DirectionLocked : le target peut se reorienter normalement a son
+                //   prochain tour (walk/cast/push pivots standard). Si la cible ne trigger aucun
+                //   pivot, elle reste dos jusqu'au prochain tour Ghostra (dorsal potentiel sur
+                //   Lame Spec / Saigne-Ame suivant). Bible-original (verrou 1 round) abandonne.
+                case SpellId.GhostraVolteFace:
+                {
+                    EntityRef vfTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (vfTarget == EntityRef.None
+                        || !f.Unsafe.TryGetPointer<Combatant>(vfTarget, out Combatant* vfTargetC)
+                        || vfTargetC->PlayerIndex == caster->PlayerIndex
+                        || vfTargetC->HP <= 0)
+                    {
+                        Log.Warn($"[Spell] Volte-Face : pas de cible ennemie vivante en ({cmd.TargetX},{cmd.TargetY}), dmg+PA deja consomme");
+                        break;
+                    }
+
+                    IsoFacing beforeFacing = vfTargetC->Facing;
+                    IsoFacing afterFacing = FacingHelpers.Opposite(beforeFacing);
+                    vfTargetC->Facing = afterFacing;
+
+                    // 3.7.a.iii — flag direction forcee ce tour (lu par Frappe Fantome pour
+                    // appliquer PlaieOuverte si combo Volte-Face -> Frappe Fantome).
+                    vfTargetC->LastFacingForcedOnTurn = currentTurn;
+
+                    Log.Info($"[Spell] Volte-Face : P{vfTargetC->PlayerIndex} flip {beforeFacing} -> {afterFacing} (50 dmg deja applique, direction forcee tour {currentTurn})");
+                    break;
+                }
+
+                // Marque de l'Ombre (3.7.b.v) — Bible V7.1 ligne 1155 :
+                //   "Pendant 2 tours, tous les sorts de la Ghostra sur la cible gagnent +20 degats.
+                //    Si la cible est touchee en dorsal pendant ces 2 tours : applique automatiquement
+                //    PLAIE OUVERTE."
+                //
+                // Aucun damage direct. Apply status MarqueDeLOmbre 2 rounds magnitude=20. Les 2 hooks
+                // (bonus +20 dmg + PlaieOuverte auto dorsal) sont gerees ailleurs :
+                //   - Bonus +20 dmg : dans le pipeline damage Ghostra (bloc Ghostra ci-dessus).
+                //   - PlaieOuverte auto dorsal : dans GhostraPassif.ApplyPlaieOuverteIfAngle2Plus
+                //     (etendu pour bypass requirement Angle 2+ si target marquee).
+                case SpellId.GhostraMarqueDeLOmbre:
+                {
+                    EntityRef moTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (moTarget != EntityRef.None
+                        && f.Unsafe.TryGetPointer<Combatant>(moTarget, out Combatant* moTargetC)
+                        && moTargetC->HP > 0
+                        && moTargetC->PlayerIndex != caster->PlayerIndex)
+                    {
+                        StatusHelper.Apply(moTargetC, StatusKind.MarqueDeLOmbre,
+                            magnitude: SpellRegistry.MarqueDeLOmbreDmgBonus,
+                            turnsLeft: SpellRegistry.MarqueDeLOmbreDurationRounds,
+                            currentTurn);
+                        Log.Info($"[Spell] Marque de l'Ombre : pose sur P{moTargetC->PlayerIndex} ({SpellRegistry.MarqueDeLOmbreDmgBonus} dmg buff x {SpellRegistry.MarqueDeLOmbreDurationRounds} rounds, PlaieOuverte auto dorsal Ghostra)");
+                    }
+                    else
+                    {
+                        Log.Warn($"[Spell] Marque de l'Ombre : pas de cible ennemie vivante en ({cmd.TargetX},{cmd.TargetY}), PA deja consomme");
+                    }
+                    break;
+                }
+
+                // Dague Lancee (3.7.b.iv, amendement Lorenzo 16 mai) — Bible V7.1 ligne 1148 :
+                //   Bible originale : "force la cible a faire face a la Ghostra (pivot vers
+                //     lanceur)". Mais en pratique la cible etait deja face-au-caster post-cast
+                //     (cast facing update naturel) -> sort sans valeur pivot.
+                //   AMENDEMENT : pivot 90° HORAIRE iso (NE -> SE -> SW -> NW -> NE) au lieu
+                //     du pivot face-caster. Deterministe et utile : casse le facing target
+                //     pour permettre dorsal indirect / preparer Frappe Fantome / etc.
+                //   + cap 2x/tour (LastDagueLanceeOnTurn + DagueLanceeCountThisTurn).
+                //
+                // Damage 80 deja applique par pipeline generique. Ici on :
+                //   1. Pivot target.Facing via FacingHelpers.RotateClockwise (90° horaire).
+                //   2. Set target.LastFacingForcedOnTurn = currentTurn -> combo Dague -> Frappe
+                //      Fantome dans le meme tour applique PlaieOuverte.
+                //   3. Increment compteur cap 2/tour (reset si nouveau round).
+                //   4. Cas degenere : target morte par les 80 dmg -> no-op (cadavre).
+                case SpellId.GhostraDagueLancee:
+                {
+                    EntityRef dlTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (dlTarget != EntityRef.None
+                        && f.Unsafe.TryGetPointer<Combatant>(dlTarget, out Combatant* dlTargetC)
+                        && dlTargetC->HP > 0
+                        && dlTargetC->PlayerIndex != caster->PlayerIndex)
+                    {
+                        IsoFacing beforeFacing = dlTargetC->Facing;
+                        IsoFacing newFacing = FacingHelpers.RotateClockwise(beforeFacing);
+                        dlTargetC->Facing = newFacing;
+                        dlTargetC->LastFacingForcedOnTurn = currentTurn;
+                        Log.Info($"[Spell] Dague Lancee : P{dlTargetC->PlayerIndex} pivot 90° horaire {beforeFacing} -> {newFacing} (direction forcee tour {currentTurn})");
+                    }
+
+                    // Increment compteur cap 2/tour (reset implicite si nouveau round).
+                    if (caster->LastDagueLanceeOnTurn != currentTurn)
+                    {
+                        caster->DagueLanceeCountThisTurn = 1;
+                    }
+                    else
+                    {
+                        caster->DagueLanceeCountThisTurn += 1;
+                    }
+                    caster->LastDagueLanceeOnTurn = currentTurn;
+                    Log.Info($"[Spell] Dague Lancee : usage {caster->DagueLanceeCountThisTurn}/{SpellRegistry.DagueLanceeMaxUsagesPerTurn} ce tour (round {currentTurn})");
+                    break;
+                }
+
+                // Frappe Fantome (3.7.a.iii) — Bible V7.1 ligne 1095 :
+                //   "Si la cible avait ete VOLTE-FACE ou que sa direction a ete modifiee ce tour :
+                //    APPLIQUE PLAIE OUVERTE (40/tour x 2t)."
+                //
+                // Le teleport + damage 200 (+dorsal) sont deja appliques en amont. Ici on regarde
+                // le flag target.LastFacingForcedOnTurn : si == currentTurn (set par Volte-Face dans
+                // ce meme tour), on applique PlaieOuverte. La cible doit etre vivante (HP > 0) pour
+                // recevoir le status (sinon no-op sur cadavre).
+                case SpellId.GhostraFrappeFantome:
+                {
+                    EntityRef ffPostTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (ffPostTarget != EntityRef.None
+                        && f.Unsafe.TryGetPointer<Combatant>(ffPostTarget, out Combatant* ffPostTargetC)
+                        && ffPostTargetC->HP > 0
+                        && ffPostTargetC->LastFacingForcedOnTurn == currentTurn)
+                    {
+                        StatusHelper.Apply(ffPostTargetC, StatusKind.PlaieOuverte,
+                            magnitude: GhostraPassif.PlaieOuverteDmgPerTurn,
+                            turnsLeft: GhostraPassif.PlaieOuverteDurationRounds,
+                            currentTurn);
+                        Log.Info($"[Spell] Frappe Fantome : PLAIE OUVERTE applique sur P{ffPostTargetC->PlayerIndex} (direction forcee ce tour, {GhostraPassif.PlaieOuverteDmgPerTurn}/tour x {GhostraPassif.PlaieOuverteDurationRounds}t)");
+                    }
+                    break;
+                }
+
+                // Saigne-Ame (3.7.a.ii) — Bible V7.1 ligne 1109 :
+                //   "Finisher conditionnel. 4 PA, range 2. 200 dgts + 70 si la cible a PLAIE
+                //    OUVERTE (consomme la plaie). Si la cible meurt : la Ghostra regagne 60 HP."
+                //
+                // Damage 200 (+70 PlaieOuverte +dorsal) deja applique par pipeline generique.
+                // Ici on gere :
+                //   1. Si target SURVIT et avait PlaieOuverte -> consume (Bible : "consomme la plaie").
+                //   2. Si target MEURT (wasKill) -> caster heal +60 HP (cap MaxHP, bloque par
+                //      AntiHealShield comme tous les heals).
+                // Note : si target meurt, la plaie disparait avec elle, pas besoin de consume.
+                case SpellId.GhostraSaigneAme:
+                {
+                    if (wasKill)
+                    {
+                        int hpBeforeSaigne = caster->HP;
+                        if (StatusHelper.Has(caster, StatusKind.AntiHealShield))
+                        {
+                            Log.Info($"[Spell] Saigne-Ame KILL : heal {SpellRegistry.SaigneAmeHealOnKill} BLOQUE par AntiHealShield sur P{caster->PlayerIndex}");
+                        }
+                        else
+                        {
+                            caster->HP += SpellRegistry.SaigneAmeHealOnKill;
+                            if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
+                            Log.Info($"[Spell] Saigne-Ame KILL : heal +{SpellRegistry.SaigneAmeHealOnKill} HP sur P{caster->PlayerIndex} {hpBeforeSaigne} -> {caster->HP}");
+                        }
+                    }
+                    else
+                    {
+                        // Cible survit : consume PlaieOuverte (Bible).
+                        EntityRef saTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                        if (saTarget != EntityRef.None
+                            && f.Unsafe.TryGetPointer<Combatant>(saTarget, out Combatant* saTargetC)
+                            && saTargetC->HP > 0
+                            && StatusHelper.Has(saTargetC, StatusKind.PlaieOuverte))
+                        {
+                            StatusHelper.Consume(saTargetC, StatusKind.PlaieOuverte);
+                            Log.Info($"[Spell] Saigne-Ame : PlaieOuverte CONSOMMEE sur P{saTargetC->PlayerIndex} (Bible finisher)");
+                        }
+                    }
                     break;
                 }
 
@@ -2807,6 +3211,13 @@ namespace Quantum
                 case SpellId.NecramInoculation:            // range 5, apply marque
                 case SpellId.NecramMarqueSacrificielle:    // range 5, apply status
                 case SpellId.NecramContagion:              // range 5, propagation marques
+                // Ghostra tactiques (3.7.b.iii / 3.7.b.v)
+                case SpellId.GhostraVolteFace:             // range 4, ENEMY, flip facing
+                case SpellId.GhostraMarqueDeLOmbre:        // range 4, ENEMY, buff pression 2 rounds
+                // Ghostra offensifs distance (3.7.a.ii / 3.7.a.iii / 3.7.b.iv)
+                case SpellId.GhostraSaigneAme:             // range 2, ENEMY, finisher PlaieOuverte
+                case SpellId.GhostraFrappeFantome:         // range 4, ENEMY, teleport + 200 dmg
+                case SpellId.GhostraDagueLancee:           // range 5, ENEMY, 40 dmg + pivot 90°
                     return true;
                 default:
                     return false;
@@ -2965,7 +3376,8 @@ namespace Quantum
             GridHelpers.SetOccupant(f, targetC->GridX, targetC->GridY, EntityRef.None);
             targetC->GridX = curX;
             targetC->GridY = curY;
-            targetC->Facing = FacingHelpers.FacingFromGridDelta(curX - pushFromX, curY - pushFromY); // 3.7.a.i.0
+            // 3.7.a.i.0 — Update Facing depuis le delta du push.
+            targetC->Facing = FacingHelpers.FacingFromGridDelta(curX - pushFromX, curY - pushFromY);
             GridHelpers.SetOccupant(f, curX, curY, targetEntity);
             Log.Info($"[Spell] Push : P{targetC->PlayerIndex} pousse de {steps} case(s) -> ({curX},{curY})");
 
@@ -3059,7 +3471,8 @@ namespace Quantum
             GridHelpers.SetOccupant(f, tx, ty, EntityRef.None);
             targetC->GridX = newX;
             targetC->GridY = newY;
-            targetC->Facing = FacingHelpers.FacingFromGridDelta(newX - tx, newY - ty); // 3.7.a.i.0
+            // 3.7.a.i.0 — Update Facing depuis delta du pull.
+            targetC->Facing = FacingHelpers.FacingFromGridDelta(newX - tx, newY - ty);
             GridHelpers.SetOccupant(f, newX, newY, targetEntity);
             return true;
         }
@@ -3070,6 +3483,52 @@ namespace Quantum
             if (!GridHelpers.IsWalkable(f, x, y)) return false;
             if (GridHelpers.GetOccupant(f, x, y) != EntityRef.None) return false;
             return true;
+        }
+
+        /// <summary>
+        /// 3.7.a.iii — Frappe Fantome : trouve une case libre adjacente Manhattan=1 a la target.
+        /// AMENDEMENT 16 mai (Lorenzo) : priorise la case DORSALE (derriere target.Facing) pour
+        /// GARANTIR le dorsal sur la Frappe Fantome -> combo Dague Lancee 90° -> Frappe Fantome
+        /// dans le dos en teleport.
+        ///
+        /// Ordre de priorite (en partant de la direction Opposite(target.Facing) puis rotate cw) :
+        ///   1. back   = Opposite(target.Facing)   -> dorsal GARANTI
+        ///   2. side1  = RotateClockwise(back)     -> perpendiculaire (90°)
+        ///   3. side2  = RotateClockwise(front)    -> perpendiculaire (-90°)
+        ///   4. front  = target.Facing             -> face target (PIRE cas, pas dorsal)
+        ///
+        /// Retourne false si les 4 cardinaux sont hors grille / non walkable / occupes.
+        /// </summary>
+        private static bool TryFindFreeCellAdjacentToTarget(Frame f, int targetX, int targetY,
+            IsoFacing targetFacing, out int outX, out int outY)
+        {
+            // Ordre dorsal -> side1 -> side2 -> front.
+            IsoFacing back = FacingHelpers.Opposite(targetFacing);
+            IsoFacing side1 = FacingHelpers.RotateClockwise(back);
+            IsoFacing front = FacingHelpers.RotateClockwise(side1);
+            IsoFacing side2 = FacingHelpers.RotateClockwise(front);
+
+            // Test back en premier (dorsal garanti).
+            if (TryCellFromFacing(f, targetX, targetY, back, out outX, out outY)) return true;
+            if (TryCellFromFacing(f, targetX, targetY, side1, out outX, out outY)) return true;
+            if (TryCellFromFacing(f, targetX, targetY, side2, out outX, out outY)) return true;
+            if (TryCellFromFacing(f, targetX, targetY, front, out outX, out outY)) return true;
+
+            outX = -1; outY = -1; return false;
+        }
+
+        /// <summary>
+        /// Helper : convertit une IsoFacing en delta grille et teste si la case correspondante
+        /// adjacente a (targetX, targetY) est libre. Utilise par TryFindFreeCellAdjacentToTarget.
+        /// </summary>
+        private static bool TryCellFromFacing(Frame f, int targetX, int targetY, IsoFacing facing,
+            out int outX, out int outY)
+        {
+            FacingHelpers.IsoFacingToGridDelta(facing, out int dx, out int dy);
+            int cx = targetX + dx;
+            int cy = targetY + dy;
+            if (IsCellFreeForPull(f, cx, cy)) { outX = cx; outY = cy; return true; }
+            outX = -1; outY = -1; return false;
         }
     }
 }

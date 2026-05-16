@@ -94,6 +94,10 @@ namespace Quantum.Prototypes.Unity {
     [ArrayLengthAttribute(3)]
     public Quantum.Prototypes.DecoySlotPrototype[] Decoys = new Quantum.Prototypes.DecoySlotPrototype[3];
     public Int32 LastPermutationOnTurn;
+    public Int32 LastPasDansLOmbreOnTurn;
+    public Int32 LastFacingForcedOnTurn;
+    public Int32 LastDagueLanceeOnTurn;
+    public Int32 DagueLanceeCountThisTurn;
     public Int32 LastExecutionSpectraleUsedOnTurn;
     public Quantum.QEnum8<IsoFacing> Facing;
     partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.CombatantPrototype prototype);
@@ -140,6 +144,10 @@ namespace Quantum.Prototypes.Unity {
       converter.Convert(this.LastVirusFatalUsedOnTurn, out result.LastVirusFatalUsedOnTurn);
       converter.Convert(this.Decoys, out result.Decoys);
       converter.Convert(this.LastPermutationOnTurn, out result.LastPermutationOnTurn);
+      converter.Convert(this.LastPasDansLOmbreOnTurn, out result.LastPasDansLOmbreOnTurn);
+      converter.Convert(this.LastFacingForcedOnTurn, out result.LastFacingForcedOnTurn);
+      converter.Convert(this.LastDagueLanceeOnTurn, out result.LastDagueLanceeOnTurn);
+      converter.Convert(this.DagueLanceeCountThisTurn, out result.DagueLanceeCountThisTurn);
       converter.Convert(this.LastExecutionSpectraleUsedOnTurn, out result.LastExecutionSpectraleUsedOnTurn);
       converter.Convert(this.Facing, out result.Facing);
       ConvertUser(converter, ref result);

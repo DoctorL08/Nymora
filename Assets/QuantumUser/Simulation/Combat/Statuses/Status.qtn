@@ -115,6 +115,25 @@ enum StatusKind : Byte
                                        //   Consomme par Saigne-Âme (+70 dmg si actif, retire le status).
                                        //   Refresh-only : recast meme tour remet turnsLeft=2 et magnitude=40.
 
+    // Ghostra
+    DirectionLocked              = 24, // RESERVED (amendement 16 mai 2026) : initialement utilise par
+                                       //   Volte-Face en version Bible-stricte (verrou Facing 1 round).
+                                       //   Volte-Face refondu en sort offensif sans verrou (50 dmg + flip
+                                       //   instantane). Status conserve dans l'enum pour ne pas reordonner
+                                       //   les IDs (regen Quantum CodeGen). Plus jamais applique en
+                                       //   gameplay. Reutilisable si besoin futur (ex : Frappe Fantôme,
+                                       //   nouveau sort verrou direction).
+
+    MarqueDeLOmbre               = 25, // Bible V7.1 Ghostra (3.7.b.v) : buff de pression pose par Marque
+                                       //   de l'Ombre. Magnitude = bonus dmg (20). Duree 2 rounds.
+                                       //   Hook 1 (SpellSystem pipeline damage) : si caster Ghostra ET
+                                       //     target porte MarqueDeLOmbre -> dmg += Magnitude.
+                                       //   Hook 2 (GhostraPassif.ApplyPlaieOuverteIfAngle2Plus) : si target
+                                       //     porte MarqueDeLOmbre ET hit Ghostra dorsal -> apply PlaieOuverte
+                                       //     AUTO (bypass requirement Angle 2+ via leurres). Permet PlaieOuverte
+                                       //     a Angle 1 (sans leurre). Anti-tank par contournement Bible.
+                                       //   Refresh-only : recast meme tour remet turnsLeft=2 et magnitude=20.
+
     CarapaceVisqueuse            = 22, // Bible V7.1 : flag bouclier piege. Magnitude inutilisee (0).
                                        //   Duree 2 rounds, applique en parallele de ShieldActive (110 HP).
                                        //   Hook (SpellSystem damage loop, apres bloc d'absorption shield) :

@@ -7,7 +7,10 @@ namespace Quantum
     /// Cap 3 garanti par taille tableau. Slot libre = Kind == DecoyKind.None.
     ///
     /// Conventions :
-    ///   - Lifetime 2 ROUNDS (Bible "2 tours" = 2 rounds depuis 2.14, cf project_turn_semantics).
+    ///   - Lifetime 4 ROUNDS (AMENDEMENT 16 mai 2026 Lorenzo : Bible originale disait 2 tours,
+    ///     mais le combo Ghostra (Réplique → setup Angle → combo dorsal) n'avait pas le temps
+    ///     de se mettre en place. Étendu à 4 rounds pour permettre le gameplay strategique.
+    ///     Cf [[project-decoy-lifetime-amended-4-rounds]] memory).
     ///   - Skip-decrement au tour de spawn (decoy.SpawnedOnTurn == currentTurn).
     ///   - Expiration = currentTurn &gt; SpawnedOnTurn + LifetimeRounds.
     ///   - Standard : HP=0, 1-hit destroy par sort cible/AoE.
@@ -19,17 +22,17 @@ namespace Quantum
     public static unsafe class DecoyHelpers
     {
         public const int MaxDecoys = 3;            // verrouille — taille array Decoys
-        public const int LifetimeRounds = 2;       // Bible V7.1 "dure 2 tours"
+        public const int LifetimeRounds = 4;       // AMENDEMENT 16 mai 2026 (Bible orig "2 tours" -> 4 pour permettre combos)
         public const int ProtectiveDecoyMaxHP = 200; // Bible Réplique Protectrice
 
         // Heal Ghostra owner sur destruction d'un leurre (Bible V7.1 par sort) :
-        //   - Réplique Fantôme  : +40 HP si detruit, +80 HP si survit 2 tours
+        //   - Réplique Fantôme  : +40 HP si detruit, +80 HP si survit la duree complete
         //   - Réplique Protectr : +60 HP si detruit
-        // Le helper retourne juste les constantes ; les sorts (3.7) feront le heal explicite
-        // selon leur regle (consume vs expire vs destroy).
-        public const int ReplyiqueFantomeHealOnDestroy = 40;
-        public const int ReplyiqueFantomeHealOnExpire  = 80;
-        public const int ReplyiqueProtectriceHealOnDestroy = 60;
+        // 3.7.b.i : ces heals sont appliques inline dans DecoyHelpers (TickLifetime + DestroyByEnemyAction)
+        // pour discriminer Kind.RepliqueFantome vs Standard (pas de heal) vs Protective.
+        public const int RepliqueFantomeHealOnDestroy   = 40;  // detruit prematurement par action adverse
+        public const int RepliqueFantomeHealOnExpire    = 80;  // survit naturellement LifetimeRounds
+        public const int RepliqueProtectriceHealOnDestroy = 60;
 
         /// <summary>
         /// Compte les leurres actifs (Kind != None) du Ghostra. Cache aussi le resultat
@@ -120,8 +123,10 @@ namespace Quantum
         }
 
         /// <summary>
-        /// Destroy un slot specifique (mise a default). Pas de heal automatique — les sorts
-        /// qui callent ce helper appliquent le heal selon leur regle Bible (cf constantes).
+        /// Destroy un slot specifique SANS heal. Utilise pour consommation INTERNE par la Ghostra
+        /// elle-meme (Exécution Spectrale qui consomme 3/3 leurres, Permutation qui ne detruit pas
+        /// mais swap, etc.). Pour destruction PAR ACTION ADVERSE (sort/AoE qui touche le leurre)
+        /// utiliser <see cref="DestroyByEnemyAction"/> qui applique le heal Bible-conforme.
         /// </summary>
         public static void DestroyAtSlot(Combatant* ghostra, int slotIndex)
         {
@@ -130,6 +135,44 @@ namespace Quantum
             if (ghostra->Decoys[slotIndex].Kind == DecoyKind.None) return;
             Log.Info($"[Decoy] Destroy P{ghostra->PlayerIndex} slot {slotIndex} kind={ghostra->Decoys[slotIndex].Kind} pos=({ghostra->Decoys[slotIndex].PosX},{ghostra->Decoys[slotIndex].PosY})");
             ghostra->Decoys[slotIndex] = default;
+        }
+
+        /// <summary>
+        /// 3.7.b.i — Destroy un slot detruit par ACTION ADVERSE (sort ennemi qui touche le leurre,
+        /// Charge Brutale qui traverse, AoE qui frappe la case, etc.). Applique le heal Bible-conforme
+        /// AVANT clear :
+        ///   - <see cref="DecoyKind.RepliqueFantome"/>   : +40 HP owner (Bible "Si le Leurre est detruit par un sort adverse")
+        ///   - <see cref="DecoyKind.Protective"/>        : +60 HP owner (Bible Réplique Protectrice)
+        ///   - <see cref="DecoyKind.Standard"/>          : pas de heal (F12/Pas dans l'Ombre/Dernier Pas — Bible : pas de heal explicite)
+        /// </summary>
+        public static void DestroyByEnemyAction(Combatant* ghostra, int slotIndex)
+        {
+            if (ghostra == null) return;
+            if (slotIndex < 0 || slotIndex >= MaxDecoys) return;
+            DecoyKind k = ghostra->Decoys[slotIndex].Kind;
+            if (k == DecoyKind.None) return;
+
+            int healAmount = 0;
+            if (k == DecoyKind.RepliqueFantome) healAmount = RepliqueFantomeHealOnDestroy;
+            else if (k == DecoyKind.Protective) healAmount = RepliqueProtectriceHealOnDestroy;
+
+            int dx = ghostra->Decoys[slotIndex].PosX;
+            int dy = ghostra->Decoys[slotIndex].PosY;
+            ghostra->Decoys[slotIndex] = default;
+
+            if (healAmount > 0 && ghostra->HP > 0)
+            {
+                int hpBefore = ghostra->HP;
+                int hpAfter = hpBefore + healAmount;
+                if (hpAfter > ghostra->MaxHP) hpAfter = ghostra->MaxHP;
+                ghostra->HP = hpAfter;
+                int realHeal = hpAfter - hpBefore;
+                Log.Info($"[Decoy] DestroyByEnemyAction P{ghostra->PlayerIndex} slot {slotIndex} kind={k} pos=({dx},{dy}) -> heal +{realHeal} HP (Bible {k}, {hpBefore}->{hpAfter})");
+            }
+            else
+            {
+                Log.Info($"[Decoy] DestroyByEnemyAction P{ghostra->PlayerIndex} slot {slotIndex} kind={k} pos=({dx},{dy}) (pas de heal pour ce Kind)");
+            }
         }
 
         /// <summary>
@@ -258,9 +301,12 @@ namespace Quantum
 
         /// <summary>
         /// Tick lifetime des leurres du Ghostra au DEBUT de son sub-turn. Decremente
-        /// la duree (skip-decrement si SpawnedOnTurn == currentTurn). Les leurres
-        /// expires sont detruits silencieusement (heal owner sera gere par 3.7.b
-        /// Réplique Fantôme via Status auto-fire pendant que le slot est actif).
+        /// la duree (skip-decrement si SpawnedOnTurn == currentTurn).
+        ///
+        /// 3.7.b.i — Heal owner sur EXPIRATION naturelle (Bible V7.1 "Si le Leurre survit la duree complete...") :
+        ///   - <see cref="DecoyKind.RepliqueFantome"/> : +80 HP owner.
+        ///   - Standard / Protective                   : pas de heal sur expire (Protective heal uniquement
+        ///                                               sur destruction adverse, Bible).
         /// </summary>
         public static void TickLifetimeAtSubTurnStart(Combatant* ghostra, int currentTurn)
         {
@@ -271,10 +317,27 @@ namespace Quantum
                 int spawnedOn = ghostra->Decoys[i].SpawnedOnTurn;
                 if (spawnedOn == currentTurn) continue; // skip au round de spawn
                 int age = currentTurn - spawnedOn;
-                if (age >= LifetimeRounds)
+                if (age < LifetimeRounds) continue;
+
+                DecoyKind expiredKind = ghostra->Decoys[i].Kind;
+                int dx = ghostra->Decoys[i].PosX;
+                int dy = ghostra->Decoys[i].PosY;
+
+                // Heal Bible "Si le Leurre survit la duree complete" (Réplique Fantôme uniquement, +80 HP).
+                int healAmount = 0;
+                if (expiredKind == DecoyKind.RepliqueFantome) healAmount = RepliqueFantomeHealOnExpire;
+
+                ghostra->Decoys[i] = default;
+                Log.Info($"[Decoy] Expire P{ghostra->PlayerIndex} slot {i} kind={expiredKind} (age {age}>={LifetimeRounds}) pos=({dx},{dy})");
+
+                if (healAmount > 0 && ghostra->HP > 0)
                 {
-                    Log.Info($"[Decoy] Expire P{ghostra->PlayerIndex} slot {i} (age {age} rounds >= {LifetimeRounds}) pos=({ghostra->Decoys[i].PosX},{ghostra->Decoys[i].PosY})");
-                    ghostra->Decoys[i] = default;
+                    int hpBefore = ghostra->HP;
+                    int hpAfter = hpBefore + healAmount;
+                    if (hpAfter > ghostra->MaxHP) hpAfter = ghostra->MaxHP;
+                    ghostra->HP = hpAfter;
+                    int realHeal = hpAfter - hpBefore;
+                    Log.Info($"[Decoy] Réplique Fantôme survit -> heal P{ghostra->PlayerIndex} +{realHeal} HP ({hpBefore}->{hpAfter}, Bible V7.1)");
                 }
             }
         }

@@ -90,9 +90,15 @@ namespace Quantum
             if (caster->Class != NymoraClass.Ghostra) return;
             if (!FacingHelpers.IsDorsalHit(caster, target)) return;
 
+            // 3.7.b.v — Marque de l'Ombre bypass requirement Angle 2+ : si target marquee ET
+            //   dorsal Ghostra -> applique PlaieOuverte meme a Angle 1 (sans leurre). Bible
+            //   "Si la cible est touchee en dorsal pendant ces 2 tours : applique automatiquement
+            //   PLAIE OUVERTE" -> anti-tank par contournement Bible explicite.
+            bool hasMarque = StatusHelper.Has(target, StatusKind.MarqueDeLOmbre);
+
             int active = DecoyHelpers.CountActive(caster);
             int angle = ComputeAngleLevel(active);
-            if (angle < 2) return;
+            if (angle < 2 && !hasMarque) return;
 
             // StatusHelper.Apply ecrase (refresh) si meme Kind deja present (turnsLeft + magnitude
             // reset). Pattern standard Bible Status. Recast meme tour -> reset a 2 rounds.
@@ -100,7 +106,8 @@ namespace Quantum
                 magnitude: PlaieOuverteDmgPerTurn,
                 turnsLeft: PlaieOuverteDurationRounds,
                 currentTurn: currentTurn);
-            Log.Info($"[Angle Mort] Angle {angle} DORSAL sur P{target->PlayerIndex} -> PLAIE OUVERTE applique ({PlaieOuverteDmgPerTurn}/tour x {PlaieOuverteDurationRounds}t)");
+            string source = (angle >= 2) ? $"Angle {angle}" : "MARQUE";
+            Log.Info($"[Angle Mort] {source} DORSAL sur P{target->PlayerIndex} -> PLAIE OUVERTE applique ({PlaieOuverteDmgPerTurn}/tour x {PlaieOuverteDurationRounds}t)");
         }
 
         /// <summary>

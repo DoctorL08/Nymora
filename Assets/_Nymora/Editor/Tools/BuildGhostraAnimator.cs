@@ -106,8 +106,20 @@ namespace Nymora.Editor.Tools
                 }
                 var ctrl = AnimatorController.CreateAnimatorControllerAtPath(CtrlPaths[i]);
                 BuildStateMachine(ctrl, clipSets[i]);
+                // Hotfix : forcer la persistance des params + states. Sans ça, Unity peut
+                // perdre les parameters AddParameter au save (bug rencontre 16 mai 2026
+                // sur reimport .aseprite, hash MoveSpeed inexistant a runtime).
+                EditorUtility.SetDirty(ctrl);
+                AssetDatabase.SaveAssetIfDirty(ctrl);
                 controllers[i] = ctrl;
-                Debug.Log($"[BuildGhostraAnimator] Cree {CtrlPaths[i]} (state machine complete)");
+                // Log de verif des parameters effectivement persistés.
+                int paramCount = ctrl.parameters != null ? ctrl.parameters.Length : 0;
+                string paramList = paramCount == 0 ? "(aucun)" : string.Join(", ", System.Array.ConvertAll(ctrl.parameters, p => p.name));
+                Debug.Log($"[BuildGhostraAnimator] Cree {CtrlPaths[i]} (state machine complete, {paramCount} params : {paramList})");
+                if (paramCount < 6)
+                {
+                    Debug.LogError($"[BuildGhostraAnimator] {CtrlPaths[i]} : seulement {paramCount} parameters persisted (attendu 6 : MoveSpeed/CastSpeed/Cast/Attack/Hurt/Death). Re-run le tool ou debug AddParameter.");
+                }
             }
 
             if (!File.Exists(PrefabPath))

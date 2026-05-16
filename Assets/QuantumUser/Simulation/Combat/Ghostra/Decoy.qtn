@@ -5,22 +5,24 @@
 //   - Dure 2 tours OU jusqu'a destruction par interaction.
 //   - Compte dans le cap 3 simultanes (CombatantStats.GhostraMaxRemanence).
 //
-// 2 types Bible :
-//   - Standard (Réplique Fantôme / Pas dans l'Ombre / Dernier Pas) : pas de HP, 1-hit destroy.
-//   - Protective (Réplique Protectrice) : 200 HP qui absorbent + redirige 40% dmg subis par Ghostra.
+// 3 types Bible :
+//   - Standard       (F12 debug / Pas dans l'Ombre / Dernier Pas) : 1-hit destroy, pas de HP, pas de heal sur lifecycle.
+//   - Protective     (Réplique Protectrice)                       : 200 HP qui absorbent + redirige 40% dmg, +60 HP si detruit.
+//   - RepliqueFantome (3.7.b.i Réplique Fantôme)                  : 1-hit destroy, heal owner +80 HP si SURVIT 2 tours, +40 HP si detruit prematurement.
 //
 // Modelisation : inline array<DecoySlot>[3] sur Combatant Ghostra (pas d'entite Quantum
 // separee). Avantages : cap 3 garanti par taille tableau, pas de cycle de vie entity,
-// lookup direct via ghostra->Decoys, suffit pour les 2 types Bible. Si plus tard on a
+// lookup direct via ghostra->Decoys, suffit pour les 3 types Bible. Si plus tard on a
 // besoin d'entites separees pour ciblage avance, refacto trivial.
 //
-// Verrouille : ne PAS reorganiser DecoyKind (CombatRulesVersion).
+// Verrouille : ne PAS reorganiser DecoyKind (CombatRulesVersion). Append-only.
 
 enum DecoyKind : Byte
 {
-    None       = 0, // slot libre
-    Standard   = 1, // leurre classique (1-hit destroy, pas de HP)
-    Protective = 2, // leurre Réplique Protectrice (200 HP, redirige 40% dmg)
+    None            = 0, // slot libre
+    Standard        = 1, // leurre classique (1-hit destroy, pas de HP, pas de heal lifecycle)
+    Protective      = 2, // leurre Réplique Protectrice (200 HP, redirige 40% dmg, +60 HP si detruit)
+    RepliqueFantome = 3, // 3.7.b.i — leurre Réplique Fantôme (1-hit destroy, +80 HP si survit 2t / +40 HP si detruit, Bible V7.1)
 }
 
 struct DecoySlot

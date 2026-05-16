@@ -8,7 +8,11 @@ namespace Quantum
     /// Lu par <see cref="GhostraPassif.IsDorsalHit"/> pour le bonus dorsal Bible V7.1.
     ///
     /// Mirror cote View : <c>Nymora.Combat.View.IsoFacing</c> + <c>FacingFromGridDelta</c>
-    /// dans CombatantRenderer. Les valeurs sont identiques pour conversion triviale.
+    /// dans CombatantRenderer.
+    /// ⚠️ ATTENTION : les VALEURS d'enum DIFFÈRENT entre Quantum (SE=0/NE=1/NW=2/SW=3)
+    /// et View (NE=0/SE=1/NW=2/SW=3). Cast par valeur entière (int)q → IsoFacing(int) fausse
+    /// le mapping SE↔NE. Toujours passer par CombatantRenderer.QuantumToViewFacing pour
+    /// convertir.
     /// </summary>
     public static unsafe class FacingHelpers
     {
@@ -44,6 +48,46 @@ namespace Quantum
                 case IsoFacing.NW: return IsoFacing.SE;
                 case IsoFacing.SW: return IsoFacing.NE;
                 default:           return IsoFacing.NW;
+            }
+        }
+
+        /// <summary>
+        /// 3.7.b.iv — Rotation 90° HORAIRE iso (sens des aiguilles d'une montre du PoV ecran).
+        /// Ordre des cardinaux iso (depuis vue de dessus) : NE -> SE -> SW -> NW -> NE.
+        /// Utilisee par Dague Lancee (amendement 16 mai) : target pivote 90° au lieu de
+        /// regarder le caster. Deterministe et simple — pas de besoin de "sens malin".
+        /// </summary>
+        public static IsoFacing RotateClockwise(IsoFacing f)
+        {
+            switch (f)
+            {
+                case IsoFacing.NE: return IsoFacing.SE;
+                case IsoFacing.SE: return IsoFacing.SW;
+                case IsoFacing.SW: return IsoFacing.NW;
+                case IsoFacing.NW: return IsoFacing.NE;
+                default:           return IsoFacing.SE;
+            }
+        }
+
+        /// <summary>
+        /// Conversion IsoFacing -> delta grille cardinal (4 cases adjacentes Manhattan=1).
+        /// Mapping inverse de FacingFromGridDelta sur les 4 cardinaux purs :
+        ///   NE -> (+1,  0)   |   NW -> ( 0, +1)
+        ///   SW -> (-1,  0)   |   SE -> ( 0, -1)
+        ///
+        /// Utilise par Frappe Fantome (3.7.a.iii amendement 16 mai) pour calculer la case
+        /// "derriere target" via Opposite(target.Facing) + IsoFacingToGridDelta : permet de
+        /// prioriser le teleport cote DORS pour garantir le dorsal (combo Dague Lancee 90° -> T).
+        /// </summary>
+        public static void IsoFacingToGridDelta(IsoFacing f, out int dx, out int dy)
+        {
+            switch (f)
+            {
+                case IsoFacing.NE: dx = +1; dy =  0; return;
+                case IsoFacing.NW: dx =  0; dy = +1; return;
+                case IsoFacing.SW: dx = -1; dy =  0; return;
+                case IsoFacing.SE: dx =  0; dy = -1; return;
+                default:           dx =  0; dy = -1; return;
             }
         }
 

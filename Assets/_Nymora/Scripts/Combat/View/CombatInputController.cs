@@ -436,13 +436,22 @@ namespace Nymora.Combat.View
                 return;
             }
 
-            // 2.14 — touche T : DEBUG pose Voile Nightseer 2 tours sur case sous souris.
-            // Le FogSystem cote sim accepte uniquement si senderPlayer == joueur actif.
+            // 2.14 / 3.7.a.iii — touche T AZERTY contextuelle :
+            //   Ghostra -> Frappe Fantome (4 PA, range 4, teleport adj + 200 dmg + PlaieOuverte si direction forcee).
+            //   Autres  -> DEBUG pose Voile Nightseer 2 tours (compat 2.14, FogSystem accepte si joueur actif).
             if (keyT)
             {
-                var veilCmd = new DebugApplyVeilCommand { TargetX = gx, TargetY = gy };
-                game.SendCommand(senderPlayer, veilCmd);
-                Debug.Log($"[Nymora.CombatInput] Sent DEBUG ApplyVeil player={senderPlayer} target=({gx},{gy})");
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsT)
+                    && casterClsT == Quantum.NymoraClass.Ghostra)
+                {
+                    SendSpellAt(game, senderPlayer, SpellId.GhostraFrappeFantome, gx, gy, 0);
+                }
+                else
+                {
+                    var veilCmd = new DebugApplyVeilCommand { TargetX = gx, TargetY = gy };
+                    game.SendCommand(senderPlayer, veilCmd);
+                    Debug.Log($"[Nymora.CombatInput] Sent DEBUG ApplyVeil player={senderPlayer} target=({gx},{gy})");
+                }
                 return;
             }
 
@@ -523,10 +532,22 @@ namespace Nymora.Combat.View
                 return;
             }
 
-            // 3.3.a.i — Colossar offensifs (target = case sous souris, doit etre adjacente).
+            // 3.3.a.i / 3.7.b.ii — Touche H context-aware :
+            //   Colossar -> Frappe Lourde (3 PA, melee 1, 180 dgts +100 si epingle)
+            //   Ghostra  -> Pas dans l'Ombre (2 PA, range 5 case vide teleport + pivot adj enemies vers Ghostra)
+            //               Shift+H = HGSpend 1 -> pose leurre Standard sur case quittee (compte dans cap 3).
             if (keyH)
             {
-                SendSpellAt(game, senderPlayer, SpellId.ColossarFrappeLourde, gx, gy, 0);
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsH)
+                    && casterClsH == Quantum.NymoraClass.Ghostra)
+                {
+                    byte hgPDO = (byte)(shiftHeld ? 1 : 0);
+                    SendSpellAt(game, senderPlayer, SpellId.GhostraPasDansLOmbre, gx, gy, hgPDO);
+                }
+                else
+                {
+                    SendSpellAt(game, senderPlayer, SpellId.ColossarFrappeLourde, gx, gy, 0);
+                }
                 return;
             }
             if (keyJ)
@@ -604,17 +625,28 @@ namespace Nymora.Combat.View
                 }
                 return;
             }
-            // 2.15.a / 3.5.a.ii — Touche R AZERTY contextuelle :
+            // 2.15.a / 3.5.a.ii / 3.7.a.ii — Touche R AZERTY contextuelle :
             //   Nightseer -> Frappe de l'Ombre (4 PA, range 3, 200 dgts +100 si target deplacee)
             //   Necram    -> Faux Decharnee (4 PA, AoE Square3x3 autour caster, 130/cible + heal/marque)
             //                Faux Decharnee est self-target : on redirige la case ciblee vers caster.
+            //   Ghostra   -> Saigne-Ame (4 PA, range 2 ENEMY, 200 + 70 PlaieOuverte consume + heal 60 kill)
             if (keyR)
             {
-                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsR)
-                    && casterClsR == Quantum.NymoraClass.Necram)
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsR))
                 {
-                    if (TryGetCasterCell(game, senderPlayer, out int fxC, out int fyC))
-                        SendSpellAt(game, senderPlayer, SpellId.NecramFauxDecharnee, fxC, fyC, 0);
+                    if (casterClsR == Quantum.NymoraClass.Necram)
+                    {
+                        if (TryGetCasterCell(game, senderPlayer, out int fxC, out int fyC))
+                            SendSpellAt(game, senderPlayer, SpellId.NecramFauxDecharnee, fxC, fyC, 0);
+                    }
+                    else if (casterClsR == Quantum.NymoraClass.Ghostra)
+                    {
+                        SendSpellAt(game, senderPlayer, SpellId.GhostraSaigneAme, gx, gy, 0);
+                    }
+                    else
+                    {
+                        SendSpellAt(game, senderPlayer, SpellId.NightseerFrappeDeLOmbre, gx, gy, 0);
+                    }
                 }
                 else
                 {
@@ -639,14 +671,27 @@ namespace Nymora.Combat.View
                 return;
             }
 
-            // 2.15.b / 3.5.b.i — sorts tactiques (lettres AZERTY Q/S/D/F/G).
-            // Touche Q context-aware : Nightseer -> Marque du Chasseur (range 5, Traque) / Necram -> Inoculation (1 PA, range 5, 2 marques venin).
+            // 2.15.b / 3.5.b.i / 3.7.b.iii — sorts tactiques apply-status sur cible distance (lettres AZERTY Q/S/D/F/G).
+            // Touche Q context-aware :
+            //   Nightseer -> Marque du Chasseur (range 5, Traque 3 tours)
+            //   Necram    -> Inoculation (1 PA, range 5, 2 marques venin)
+            //   Ghostra   -> Volte-Face (2 PA, range 4, flip Facing 180° + DirectionLocked 1 round)
             if (keyAzQ)
             {
-                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsQ)
-                    && casterClsQ == Quantum.NymoraClass.Necram)
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsQ))
                 {
-                    SendSpellAt(game, senderPlayer, SpellId.NecramInoculation, gx, gy, 0);
+                    if (casterClsQ == Quantum.NymoraClass.Necram)
+                    {
+                        SendSpellAt(game, senderPlayer, SpellId.NecramInoculation, gx, gy, 0);
+                    }
+                    else if (casterClsQ == Quantum.NymoraClass.Ghostra)
+                    {
+                        SendSpellAt(game, senderPlayer, SpellId.GhostraVolteFace, gx, gy, 0);
+                    }
+                    else
+                    {
+                        SendSpellAt(game, senderPlayer, SpellId.NightseerMarqueDuChasseur, gx, gy, 0);
+                    }
                 }
                 else
                 {
@@ -690,17 +735,29 @@ namespace Nymora.Combat.View
             // Touche F context-aware :
             //   Nightseer -> Bourrasque (push 3, shift = 1 PR -> push 5)
             //   Necram    -> Contagion (3 PA, range 5, propagation marques rayon 3 ; shift = 2 PT optionnel -> cap copie 3->4)
+            //   Ghostra   -> Dague Lancee (3.7.b.iv — 1 PA, range 5, 80 dmg + force pivot target vers caster + flag direction forcee)
             if (keyF)
             {
-                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsF)
-                    && casterClsF == Quantum.NymoraClass.Necram)
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsF))
                 {
-                    byte ptSpend = (byte)(shiftHeld ? 2 : 0); // 2 PT pour cap boost 3->4
-                    SendSpellAt(game, senderPlayer, SpellId.NecramContagion, gx, gy, ptSpend);
+                    if (casterClsF == Quantum.NymoraClass.Necram)
+                    {
+                        byte ptSpend = (byte)(shiftHeld ? 2 : 0); // 2 PT pour cap boost 3->4
+                        SendSpellAt(game, senderPlayer, SpellId.NecramContagion, gx, gy, ptSpend);
+                    }
+                    else if (casterClsF == Quantum.NymoraClass.Ghostra)
+                    {
+                        SendSpellAt(game, senderPlayer, SpellId.GhostraDagueLancee, gx, gy, 0);
+                    }
+                    else
+                    {
+                        // Shift+F = 1 PR depense -> push 5 cases (au lieu de 3).
+                        byte pr = (byte)(shiftHeld ? 1 : 0);
+                        SendSpellAt(game, senderPlayer, SpellId.NightseerBourrasque, gx, gy, pr);
+                    }
                 }
                 else
                 {
-                    // Shift+F = 1 PR depense -> push 5 cases (au lieu de 3).
                     byte pr = (byte)(shiftHeld ? 1 : 0);
                     SendSpellAt(game, senderPlayer, SpellId.NightseerBourrasque, gx, gy, pr);
                 }
@@ -709,13 +766,20 @@ namespace Nymora.Combat.View
             // Touche G context-aware :
             //   Nightseer -> Souffle Glacial (AoE croix 3 autour caster, 70 dgts + push 1 + -1 PM)
             //   Necram    -> Pas Spectral (3.5.b.iii — 2 PA self, +2 PM ce tour, traverse ennemis +1 marque par traverse)
+            //   Ghostra   -> Réplique Fantôme (3.7.b.i — 3 PA, range 4 case vide sous souris, pose leurre +80 HP si survit 2t / +40 HP si detruit)
             if (keyG)
             {
-                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsG)
-                    && casterClsG == Quantum.NymoraClass.Necram)
+                bool gHasClass = TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsG);
+                if (gHasClass && casterClsG == Quantum.NymoraClass.Necram)
                 {
                     if (TryGetCasterCell(game, senderPlayer, out int psX, out int psY))
                         SendSpellAt(game, senderPlayer, SpellId.NecramPasSpectral, psX, psY, 0);
+                }
+                else if (gHasClass && casterClsG == Quantum.NymoraClass.Ghostra)
+                {
+                    // Réplique Fantôme cible la case sous la souris (gx, gy). Validation (case vide,
+                    // dans range 4, pas obstacle/leurre) faite cote Quantum par SpellSystem + DecoyHelpers.
+                    SendSpellAt(game, senderPlayer, SpellId.GhostraRepliqueFantome, gx, gy, 0);
                 }
                 else
                 {
@@ -803,13 +867,24 @@ namespace Nymora.Combat.View
             // Touche M (AZERTY) context-aware :
             //   Nightseer -> Evanescence (teleport invisible jusqu'a 4 cases)
             //   Necram    -> Cocon Putride (panic signature : heal 220 + marques venin AoE Manhattan<=4, gate HP<30%, 1x/match)
+            //   Ghostra   -> Marque de l'Ombre (3.7.b.v — 2 PA, range 4 ENEMY, buff pression 2 rounds +20 dmg + PlaieOuverte auto dorsal)
             if (keyAzM)
             {
-                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsM)
-                    && casterClsM == Quantum.NymoraClass.Necram)
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsM))
                 {
-                    if (TryGetCasterCell(game, senderPlayer, out int cmX, out int cmY))
-                        SendSpellAt(game, senderPlayer, SpellId.NecramCoconPutride, cmX, cmY, 0);
+                    if (casterClsM == Quantum.NymoraClass.Necram)
+                    {
+                        if (TryGetCasterCell(game, senderPlayer, out int cmX, out int cmY))
+                            SendSpellAt(game, senderPlayer, SpellId.NecramCoconPutride, cmX, cmY, 0);
+                    }
+                    else if (casterClsM == Quantum.NymoraClass.Ghostra)
+                    {
+                        SendSpellAt(game, senderPlayer, SpellId.GhostraMarqueDeLOmbre, gx, gy, 0);
+                    }
+                    else
+                    {
+                        SendSpellAt(game, senderPlayer, SpellId.NightseerEvanescence, gx, gy, 0);
+                    }
                 }
                 else
                 {

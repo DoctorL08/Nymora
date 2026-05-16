@@ -233,6 +233,30 @@ component Combatant
     //   au spawn). Reject si currentTurn == LastPermutationOnTurn (deja utilisee ce tour).
     Int32 LastPermutationOnTurn;
 
+    // 3.7.b.ii — Ghostra : tour du dernier usage Pas dans l'Ombre. Cap 1 par tour (decision
+    //   Lorenzo Bible-ouverte). Default -1000. Reject si currentTurn == LastPasDansLOmbreOnTurn.
+    //   Sert aussi cote View (CombatantRenderer detecte l'increment pour declencher l'anim
+    //   teleport au lieu du walk classique, pattern Permutation).
+    Int32 LastPasDansLOmbreOnTurn;
+
+    // 3.7.a.iii — Ghostra : tour ou ce combattant a vu sa direction FORCEE par un sort
+    //   adverse (Volte-Face flip, future Dague Lancee force pivot, etc.). Default -1000.
+    //   Lu par Frappe Fantome : si target.LastFacingForcedOnTurn == currentTurn, le sort
+    //   applique PlaieOuverte (40/tour x 2t) en plus du damage. Bible V7.1 ligne 1099 :
+    //   "Si la cible avait ete VOLTE-FACE ou que sa direction a ete modifiee ce tour".
+    //   Set uniquement par les sorts qui FORCENT le pivot, pas par les mouvements naturels
+    //   (walk/cast pivot = ce n'est pas une "modification" Bible, c'est un comportement standard).
+    Int32 LastFacingForcedOnTurn;
+
+    // 3.7.b.iv — Ghostra : tour du dernier cast de Dague Lancee. Default -1000.
+    //   Couple avec DagueLanceeCountThisTurn pour cap 2x par tour (amendement Lorenzo 16 mai).
+    //   Si LastDagueLanceeOnTurn != currentTurn -> compteur reset implicitement (nouveau round).
+    Int32 LastDagueLanceeOnTurn;
+
+    // 3.7.b.iv — Ghostra : compteur de Dague Lancee castees ce tour. Reset implicite si
+    //   LastDagueLanceeOnTurn != currentTurn (nouveau round = nouveau compteur). Cap 2/tour.
+    Int32 DagueLanceeCountThisTurn;
+
     // 3.6 — Ghostra : tour du dernier usage Exécution Spectrale (signature). Default
     //   -1000. Cooldown 4 tours Bible V7.1 : currentTurn - LastExecutionSpectraleUsedOnTurn < 4 -> reject.
     //   Reserve pour 3.7.d (livraison signature) — declare ici dans le framework pour eviter

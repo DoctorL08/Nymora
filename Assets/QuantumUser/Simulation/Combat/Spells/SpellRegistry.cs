@@ -447,6 +447,86 @@ namespace Quantum
         public const int LameVoraceDmgBase          = 130;
         public const int LameVoracePlaieBonus       = 60;
 
+        // 3.7.b.i — Réplique Fantôme (Bible V7.1 ligne 1127) :
+        //   3 PA, range 4, case vide. Pose un leurre DecoyKind.RepliqueFantome (clone visuel
+        //   identique a la Ghostra cote adversaire). Dure 2 tours OU jusqu'a destruction par
+        //   interaction adverse. Compte dans le cap 3 leurres (DecoyHelpers.MaxDecoys).
+        //   Heal owner branche dans DecoyHelpers (cf RepliqueFantomeHealOnDestroy / OnExpire) :
+        //     - Survit 2 tours      -> +80 HP (Bible)
+        //     - Detruit prematurement -> +40 HP (Bible)
+        public const int RepliqueFantomePACost      = 3;
+        public const int RepliqueFantomeRangeMax    = 4;
+
+        // 3.7.b.ii — Pas dans l'Ombre (Bible V7.1 ligne 1134) :
+        //   2 PA, range 5, case vide (teleport). Toute cible ennemie adjacente Manhattan <=1 a
+        //   l'arrivee PIVOTE pour faire face a la Ghostra (Facing = direction Ghostra->target).
+        //   Option HGSpend >= 1 (Shift+H) : pose un DecoyKind.Standard sur la case quittee.
+        //   Pas de cout PT/PR/HG reel — la "ressource" est le slot leurre lui-meme (compte dans
+        //   cap 3). Refus silencieux si cap atteint (teleport reussit quand meme).
+        public const int PasDansLOmbrePACost        = 2;
+        public const int PasDansLOmbreRangeMax      = 5;
+
+        // 3.7.b.iii — Volte-Face (AMENDEMENT 16 mai 2026, Bible V7.1 originale modifiee) :
+        //   2 PA, range 4 ENEMY. Decision Lorenzo : Volte-Face devient OFFENSIF.
+        //   Effet : 80 dgts (+ bonus dorsal Angle Mort generique si applicable) + flip Facing
+        //   180° instantane (FacingHelpers.Opposite). PAS DE VERROU DirectionLocked.
+        //   Le target peut se reorienter normalement a son prochain tour (walk/cast/push pivots
+        //   standard). Le sort sert a "frapper + tourner" la cible : si elle ne rejoue pas avant
+        //   le prochain tour Ghostra (Soulrender qui passe son tour, etc.), elle reste dos.
+        //   Original Bible-strict (verrou 1 round) abandonne 16 mai car perception "bug" (cible
+        //   reste dos meme apres cast/walk de sa part).
+        //   AMENDEMENT 16 mai (suite balance) : passe de 50 -> 80 dmg pour coherence ratio PA :
+        //   Volte-Face (2 PA, 80 dmg, flip 180°) vs Dague Lancee (1 PA, 40 dmg, pivot 90°).
+        //   2 PA = 2x 1 PA -> 80 = 2x 40 OK, et flip 180° ~ 2x utile que pivot 90°.
+        public const int VolteFacePACost            = 2;
+        public const int VolteFaceRangeMax          = 4;
+        public const int VolteFaceDmg               = 80;
+
+        // 3.7.b.iv — Dague Lancee (Bible V7.1 ligne 1148, amendee 16 mai sur damage + pivot + cap) :
+        //   1 PA, range 5 ENEMY. 40 dgts (+ bonus dorsal Angle Mort) + pivot target 90° HORAIRE
+        //   iso. Set target.LastFacingForcedOnTurn = currentTurn pour interaction Frappe Fantome
+        //   (PlaieOuverte si combo Dague->Frappe Fantome).
+        //   Bible "Le caillou dans la vitre" : sort spam-friendly 1 PA, harcelement / repositionnement.
+        //   AMENDEMENT 16 mai (suite balance) : passe de 80 -> 40 dmg pour coherence ratio PA :
+        //   Volte-Face (2 PA, 80 dmg, flip 180°) vs Dague Lancee (1 PA, 40 dmg, pivot 90°).
+        //   Volte-Face = 2x Dague Lancee en damage et en utilite tactique.
+        public const int DagueLanceePACost          = 1;
+        public const int DagueLanceeRangeMax        = 5;
+        public const int DagueLanceeDmgBase         = 40;
+        public const int DagueLanceeMaxUsagesPerTurn = 2; // amendement 16 mai (cap 2x/tour)
+
+        // 3.7.b.v — Marque de l'Ombre (Bible V7.1 ligne 1155) :
+        //   2 PA, range 4 ENEMY. Aucun damage direct (buff pur).
+        //   Applique status MarqueDeLOmbre 2 rounds magnitude=20.
+        //   Hook 1 (pipeline damage Ghostra) : si caster Ghostra ET target marquee -> dmg += 20.
+        //   Hook 2 (GhostraPassif.ApplyPlaieOuverteIfAngle2Plus) : tout dorsal Ghostra sur cible
+        //     marquee -> PlaieOuverte AUTO (bypass requirement Angle 2+ leurres). Bible-cohérent.
+        public const int MarqueDeLOmbrePACost       = 2;
+        public const int MarqueDeLOmbreRangeMax     = 4;
+        public const int MarqueDeLOmbreDmgBonus     = 20; // magnitude du status (bonus dmg sur sorts Ghostra)
+        public const int MarqueDeLOmbreDurationRounds = 2;
+
+        // 3.7.a.iii — Frappe Fantome (Bible V7.1 ligne 1095) :
+        //   4 PA, range 4 ENEMY. Teleport Ghostra sur case libre adjacente Manhattan=1 a la
+        //   target (priorite cote caster d'origine, fallback 4 cardinaux). Si aucune case libre,
+        //   rejet propre (PA non consomme). 200 dgts base + bonus dorsal Angle Mort generique.
+        //   Si target.LastFacingForcedOnTurn == currentTurn -> applique PlaieOuverte (40/tour x 2t).
+        //   Combo Bible "Volte-Face -> Frappe Fantome : 350+ HP shred en 1 tour".
+        public const int FrappeFantomePACost        = 4;
+        public const int FrappeFantomeRangeMax      = 4;
+        public const int FrappeFantomeDmgBase       = 200;
+
+        // 3.7.a.ii — Saigne-Ame (Bible V7.1 ligne 1109) :
+        //   4 PA, range 2 ENEMY. 200 dgts base + 70 si target a PlaieOuverte (consomme la plaie
+        //   sur cible vivante post-damage). Bonus dorsal Angle Mort applique generiquement.
+        //   Si kill : Ghostra heal +60 HP (cap MaxHP, bloque par AntiHealShield).
+        //   Aboutissement combo Bible "Plaie Ouverte -> Lame Vorace xN -> Saigne-Ame".
+        public const int SaigneAmePACost            = 4;
+        public const int SaigneAmeRangeMax          = 2;
+        public const int SaigneAmeDmgBase           = 200;
+        public const int SaigneAmePlaieBonus        = 70;
+        public const int SaigneAmeHealOnKill        = 60;
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -1732,6 +1812,133 @@ namespace Quantum
                         RangeMin = 1,
                         RangeMax = LameVoraceRangeMax,
                         DamageAmount = LameVoraceDmgBase, // bonus modifs en handler
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Réplique Fantôme (3.7.b.i) : 3 PA, range 4 case vide, pose un leurre DecoyKind.RepliqueFantome
+                // (clone visuel identique). Bible "Pose un Leurre sur une case vide a 4 cases".
+                // Le filter EmptyTile filtre les cases occupees par combatant ; le handler ajoute des
+                // checks supplementaires (pas de leurre deja la, pas d'obstacle) via DecoyHelpers.TrySpawn.
+                case SpellId.GhostraRepliqueFantome:
+                    def = new SpellDef
+                    {
+                        PACost = RepliqueFantomePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.EmptyTile,
+                        RangeMin = 1,
+                        RangeMax = RepliqueFantomeRangeMax,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Pas dans l'Ombre (3.7.b.ii) : 2 PA, range 5 case vide, teleport self + pivot adj
+                // enemies vers Ghostra + optionnel pose leurre Standard case quittee (HGSpend>=1).
+                case SpellId.GhostraPasDansLOmbre:
+                    def = new SpellDef
+                    {
+                        PACost = PasDansLOmbrePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.EmptyTile,
+                        RangeMin = 1,
+                        RangeMax = PasDansLOmbreRangeMax,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 1, // 1 = trigger pose leurre case quittee (Shift+H)
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // Volte-Face (3.7.b.iii, amendement 16 mai) : 2 PA, range 4 ENEMY. 50 dmg + flip Facing 180° instantane.
+                case SpellId.GhostraVolteFace:
+                    def = new SpellDef
+                    {
+                        PACost = VolteFacePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = VolteFaceRangeMax,
+                        DamageAmount = VolteFaceDmg, // bonus dorsal Angle Mort applique en pipeline
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Marque de l'Ombre (3.7.b.v) : 2 PA, range 4 ENEMY. Aucun damage. Apply status 2 rounds.
+                // Hook bonus +20 dmg sorts Ghostra + Hook PlaieOuverte auto dorsal (bypass Angle 2+).
+                case SpellId.GhostraMarqueDeLOmbre:
+                    def = new SpellDef
+                    {
+                        PACost = MarqueDeLOmbrePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = MarqueDeLOmbreRangeMax,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0, // pas de damage direct
+                    };
+                    return true;
+
+                // Dague Lancee (3.7.b.iv) : 1 PA, range 5 ENEMY. 80 dmg + force target.Facing vers caster
+                // + flag LastFacingForcedOnTurn (combo Dague -> Frappe Fantome = PlaieOuverte).
+                case SpellId.GhostraDagueLancee:
+                    def = new SpellDef
+                    {
+                        PACost = DagueLanceePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = DagueLanceeRangeMax,
+                        DamageAmount = DagueLanceeDmgBase, // bonus dorsal en pipeline
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Frappe Fantome (3.7.a.iii) : 4 PA, range 4 ENEMY. Teleport adj + 200 dmg + dorsal.
+                // PlaieOuverte si target.LastFacingForcedOnTurn == currentTurn.
+                case SpellId.GhostraFrappeFantome:
+                    def = new SpellDef
+                    {
+                        PACost = FrappeFantomePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = FrappeFantomeRangeMax,
+                        DamageAmount = FrappeFantomeDmgBase, // bonus dorsal en pipeline
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Saigne-Ame (3.7.a.ii) : 4 PA, range 2 ENEMY. 200 base + 70 si PlaieOuverte
+                // (consume sur survivant) + bonus dorsal generique. Heal +60 si kill.
+                case SpellId.GhostraSaigneAme:
+                    def = new SpellDef
+                    {
+                        PACost = SaigneAmePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = SaigneAmeRangeMax,
+                        DamageAmount = SaigneAmeDmgBase, // +70 PlaieOuverte + dorsal modifs en handler
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
