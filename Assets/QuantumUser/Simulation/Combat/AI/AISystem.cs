@@ -181,6 +181,9 @@ namespace Quantum
             bot->GridX = bestX;
             bot->GridY = bestY;
             bot->PM -= bestCost;
+            // 3.7.a.i.0 — Update Facing du bot apres son deplacement IA (sinon target.Facing
+            // du bot reste sur sa valeur initiale, et le check dorsal Ghostra est faussé).
+            bot->Facing = FacingHelpers.FacingFromGridDelta(bestX - startX, bestY - startY);
             GridHelpers.SetOccupant(f, bestX, bestY, botEntity);
 
             int currentTurn = f.TryGetSingleton<CombatState>(out var st) ? st.TurnNumber : 0;

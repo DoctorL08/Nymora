@@ -77,24 +77,46 @@ namespace Quantum
 
         /// <summary>
         /// Bible Angle 2+ : si la Ghostra touche une cible en DORSAL, applique
-        /// automatiquement PLAIE OUVERTE (40 dmg/tour x 2 rounds). Stub log-only en 3.6
-        /// (le StatusKind.PlaieOuverte sera ajoute en 3.7.a avec Frappe Fantôme).
+        /// automatiquement PLAIE OUVERTE (40 dmg/tour x 2 rounds). Branche en 3.7.a.i.1.
         ///
         /// Appel par les sorts 3.7.a/b/c apres le dmg loop si la touche etait dorsale.
         /// Si angle == 1 (0 leurre) : no-op (Bible : passif neutre Angle 1).
+        /// Si dorsal == false : no-op (effet conditionnel Bible explicite).
         /// </summary>
         public static void ApplyPlaieOuverteIfAngle2Plus(Frame f, Combatant* caster, Combatant* target, int currentTurn)
         {
             if (caster == null || target == null) return;
             if (target->HP <= 0) return;
             if (caster->Class != NymoraClass.Ghostra) return;
+            if (!FacingHelpers.IsDorsalHit(caster, target)) return;
+
             int active = DecoyHelpers.CountActive(caster);
             int angle = ComputeAngleLevel(active);
             if (angle < 2) return;
 
-            // STUB 3.6 : StatusKind.PlaieOuverte sera ajoute en 3.7.a. Pour l'instant
-            // on log l'intention pour pouvoir valider l'enchainement passif Angle 2+ -> dorsal.
-            Log.Info($"[Angle Mort] Angle {angle} dorsal sur P{target->PlayerIndex} -> PLAIE OUVERTE ({PlaieOuverteDmgPerTurn}/tour x {PlaieOuverteDurationRounds}t) — stub 3.6, branche reelle en 3.7.a");
+            // StatusHelper.Apply ecrase (refresh) si meme Kind deja present (turnsLeft + magnitude
+            // reset). Pattern standard Bible Status. Recast meme tour -> reset a 2 rounds.
+            StatusHelper.Apply(target, StatusKind.PlaieOuverte,
+                magnitude: PlaieOuverteDmgPerTurn,
+                turnsLeft: PlaieOuverteDurationRounds,
+                currentTurn: currentTurn);
+            Log.Info($"[Angle Mort] Angle {angle} DORSAL sur P{target->PlayerIndex} -> PLAIE OUVERTE applique ({PlaieOuverteDmgPerTurn}/tour x {PlaieOuverteDurationRounds}t)");
+        }
+
+        /// <summary>
+        /// 3.7.a — Bonus dorsal Ghostra applique aux sorts offensifs (Lame Spectrale,
+        /// Frappe Fantome, Lame Vorace, Saigne-Âme, Danse des Lames).
+        /// Compute : check dorsal + lookup Angle Mort -> retourne 0/+50/+80.
+        ///
+        /// A appeler depuis SpellSystem dans le damage loop AVANT compute du dmg final.
+        /// Si caster pas Ghostra ou hit non dorsal -> retourne 0 (no-op).
+        /// </summary>
+        public static int GetDorsalBonusIfApplicable(Combatant* caster, Combatant* target)
+        {
+            if (caster == null || target == null) return 0;
+            if (caster->Class != NymoraClass.Ghostra) return 0;
+            if (!FacingHelpers.IsDorsalHit(caster, target)) return 0;
+            return GetDorsalBonusForGhostra(caster);
         }
 
         /// <summary>

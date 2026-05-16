@@ -78,6 +78,20 @@ namespace Quantum
                     return false;
                 }
             }
+            // Refuse case occupee par un combattant (allie ou ennemi). Bible-strict :
+            // un leurre est un clone visuel sur une case ; il ne peut pas se superposer
+            // a une unite. La grille tracks seulement les vrais combattants (pas les leurres).
+            if (GridHelpers.GetOccupant(f, posX, posY) != EntityRef.None)
+            {
+                Log.Warn($"[Decoy] TrySpawn rejete : case ({posX},{posY}) occupee par un combattant");
+                return false;
+            }
+            // Refuse case occupee par un obstacle (Pilier / Mur Colossar).
+            if (ObstacleHelpers.HasObstacleAt(f, posX, posY))
+            {
+                Log.Warn($"[Decoy] TrySpawn rejete : case ({posX},{posY}) occupee par un obstacle");
+                return false;
+            }
 
             // Trouve un slot libre.
             int freeSlot = -1;

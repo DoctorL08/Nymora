@@ -61,6 +61,12 @@ namespace Quantum {
     Standard = 1,
     Protective = 2,
   }
+  public enum IsoFacing : byte {
+    SE = 0,
+    NE = 1,
+    NW = 2,
+    SW = 3,
+  }
   public enum MarkKind : byte {
     None = 0,
     Traque = 1,
@@ -156,6 +162,8 @@ namespace Quantum {
     NecramPulseSanguinVert = 83,
     NecramCoconPutride = 84,
     NecramVirusFatal = 85,
+    GhostraLameSpectrale = 86,
+    GhostraLameVoraceSpectrale = 87,
   }
   public enum StatusKind : byte {
     None = 0,
@@ -180,6 +188,7 @@ namespace Quantum {
     SymbioseMorbide = 19,
     PestilenceAura = 21,
     PasSpectralReady = 20,
+    PlaieOuverte = 23,
     CarapaceVisqueuse = 22,
   }
   public enum TargetingFilter : byte {
@@ -977,7 +986,7 @@ namespace Quantum {
     private fixed Byte _alignment_padding_[4];
     [FieldOffset(124)]
     public Int32 PlayerIndex;
-    [FieldOffset(1)]
+    [FieldOffset(2)]
     public NymoraClass Class;
     [FieldOffset(24)]
     public Int32 HP;
@@ -1010,7 +1019,7 @@ namespace Quantum {
     public Int32 LastAmeLaceeUsedOnTurn;
     [FieldOffset(40)]
     public Int32 LastCastOnTurn;
-    [FieldOffset(2)]
+    [FieldOffset(3)]
     public SpellId LastCastSpellId;
     [FieldOffset(48)]
     public Int32 LastCastTargetX;
@@ -1018,7 +1027,7 @@ namespace Quantum {
     public Int32 LastCastTargetY;
     [FieldOffset(44)]
     public Int32 LastCastSequence;
-    [FieldOffset(0)]
+    [FieldOffset(1)]
     public MarkKind CurrentMark;
     [FieldOffset(96)]
     public Int32 MarkTurnsLeft;
@@ -1061,6 +1070,8 @@ namespace Quantum {
     public Int32 LastPermutationOnTurn;
     [FieldOffset(60)]
     public Int32 LastExecutionSpectraleUsedOnTurn;
+    [FieldOffset(0)]
+    public IsoFacing Facing;
     public readonly FixedArray<Status> Statuses {
       get {
         fixed (byte* p = _Statuses_) { return new FixedArray<Status>(p, 16, 8); }
@@ -1116,11 +1127,13 @@ namespace Quantum {
         hash = hash * 31 + HashCodeUtils.GetArrayHashCode(Decoys);
         hash = hash * 31 + LastPermutationOnTurn.GetHashCode();
         hash = hash * 31 + LastExecutionSpectraleUsedOnTurn.GetHashCode();
+        hash = hash * 31 + (Byte)Facing;
         return hash;
       }
     }
     public static void Serialize(void* ptr, FrameSerializer serializer) {
         var p = (Combatant*)ptr;
+        serializer.Stream.Serialize((Byte*)&p->Facing);
         serializer.Stream.Serialize((Byte*)&p->CurrentMark);
         serializer.Stream.Serialize((Byte*)&p->Class);
         serializer.Stream.Serialize((Byte*)&p->LastCastSpellId);
@@ -1442,6 +1455,7 @@ namespace Quantum {
       typeRegistry.Register(typeof(InputPitchYaw), InputPitchYaw.SIZE);
       typeRegistry.Register(typeof(IntVector2), IntVector2.SIZE);
       typeRegistry.Register(typeof(IntVector3), IntVector3.SIZE);
+      typeRegistry.Register(typeof(Quantum.IsoFacing), 1);
       typeRegistry.Register(typeof(Joint), Joint.SIZE);
       typeRegistry.Register(typeof(Joint3D), Joint3D.SIZE);
       typeRegistry.Register(typeof(LayerMask), LayerMask.SIZE);
@@ -1516,6 +1530,7 @@ namespace Quantum {
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.CombatPhase>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.DecoyKind>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.InputButtons>();
+      FramePrinter.EnsurePrimitiveNotStripped<Quantum.IsoFacing>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.MarkKind>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.NymoraClass>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.ObstacleKind>();

@@ -34,6 +34,19 @@ enum MarkKind : Byte
     Empreinte  = 2,  // Empreinte : sillage visible 1 tour pour le Nightseer apres deplacement de la cible
 }
 
+// 3.7.a.i.0 — Direction de regard du combattant (isometric facing). Valeurs identiques
+//   a Nymora.Combat.View.IsoFacing (View) pour conversion triviale. Verrouille : ne PAS
+//   reorganiser (CombatRulesVersion).
+//   Set au spawn (CombatantSystem) puis update a chaque deplacement (MovementSystem.ApplyMove).
+//   Lu par GhostraPassif.IsDorsalHit pour le bonus dorsal Ghostra (+50/+80 Bible Angle 2/3).
+enum IsoFacing : Byte
+{
+    SE = 0, // Sud-Est (default au spawn P0)
+    NE = 1, // Nord-Est
+    NW = 2, // Nord-Ouest (default au spawn P1, face P0)
+    SW = 3, // Sud-Ouest
+}
+
 component Combatant
 {
     Int32 PlayerIndex;
@@ -225,4 +238,10 @@ component Combatant
     //   Reserve pour 3.7.d (livraison signature) — declare ici dans le framework pour eviter
     //   un re-regen Quantum CodeGen plus tard.
     Int32 LastExecutionSpectraleUsedOnTurn;
+
+    // 3.7.a.i.0 — Direction de regard du combattant. Set au spawn (CombatantSystem :
+    //   P0 = NE face P1, P1 = NW face P0) puis update au move (MovementSystem.ApplyMove
+    //   compute IsoFacing depuis dx/dy du dernier deplacement). Lu par GhostraPassif.IsDorsalHit
+    //   pour le bonus dorsal Ghostra Bible V7.1 (+50 Angle 2 / +80 Angle 3 + Plaie Ouverte auto).
+    IsoFacing Facing;
 }

@@ -150,13 +150,23 @@ namespace Quantum
         private static void ApplyMove(Frame f, Combatant* combatant, EntityRef entity, int targetX, int targetY, int cost,
                                       int* pathBuffer, int pathLength, bool applyPasSpectralCrossings)
         {
+            // 3.7.a.i.0 — Update Facing depuis la direction du dernier deplacement (dx,dy)
+            //   du from-cell vers la target. Lu par GhostraPassif.IsDorsalHit pour le bonus
+            //   dorsal Ghostra Bible V7.1. Compute AVANT la mutation GridX/Y pour avoir le delta.
+            int dxMove = targetX - combatant->GridX;
+            int dyMove = targetY - combatant->GridY;
+            if (dxMove != 0 || dyMove != 0)
+            {
+                combatant->Facing = FacingHelpers.FacingFromGridDelta(dxMove, dyMove);
+            }
+
             GridHelpers.SetOccupant(f, combatant->GridX, combatant->GridY, EntityRef.None);
             combatant->GridX = targetX;
             combatant->GridY = targetY;
             combatant->PM -= cost;
             GridHelpers.SetOccupant(f, targetX, targetY, entity);
 
-            Log.Info($"[Movement] P{combatant->PlayerIndex} -> ({targetX},{targetY}) cost={cost} PM restant={combatant->PM}");
+            Log.Info($"[Movement] P{combatant->PlayerIndex} -> ({targetX},{targetY}) cost={cost} PM restant={combatant->PM} facing={combatant->Facing}");
 
             int currentTurn = f.TryGetSingleton<CombatState>(out var st) ? st.TurnNumber : 0;
 

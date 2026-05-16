@@ -29,6 +29,12 @@ namespace Quantum
             int fromY = combatant->GridY;
             if (fromX == toX && fromY == toY) return false; // no-op
 
+            // 3.7.a.i.0 — Update Facing depuis le delta du move (cohérent avec MovementSystem.ApplyMove).
+            // Critique pour le dorsal hit Ghostra : tout sort qui deplace via MoveNonPM (Charge Brutale,
+            // recul Tranche-Ame, etc.) doit aussi mettre a jour le Facing, sinon target.Facing reste
+            // bloque sur sa valeur initiale.
+            combatant->Facing = FacingHelpers.FacingFromGridDelta(toX - fromX, toY - fromY);
+
             GridHelpers.SetOccupant(f, fromX, fromY, EntityRef.None);
             combatant->GridX = toX;
             combatant->GridY = toY;

@@ -108,6 +108,10 @@ enum SpellId : Byte
 
     // NECRAM SIGNATURE — VIRUS FATAL (Bible V7.1 lignes 855-866)
     NecramVirusFatal              = 85,  // 3.5.c.vi — SIGNATURE : 2 PA, range 5, 6/6 PT (consomme tout). Tick venin instantane * 3 sur cible (stacks * GetTickDmgPerMark(densityGlobal) * 3 + MarqueSac * 3). Bypass shield/reduction. Symbiose Morbide hook heal *3. Si cible survit : marques consommees. Si cible meurt : marques transferees sur ennemi vivant le plus proche (TryTransferVeninOnKill, 1v1 = perdues). Cooldown 4 tours apres usage. Re-castable si PT remonte a 6 ET cooldown expire.
+
+    // GHOSTRA (Bible V7.1 — 5 offensifs + 5 tactiques + 5 survie + signature) — Phase 3.7
+    GhostraLameSpectrale          = 86,  // 3.7.a.i.2 — Offensif base : 3 PA, melee 1, 170 dgts + bonus dorsal (0/+50/+80 selon Angle Mort) + 60 si target a Plaie Ouverte.
+    GhostraLameVoraceSpectrale    = 87,  // 3.7.a.i.2 — Offensif combo bleed : 3 PA, melee 1, 130 dgts + 60 si target a Plaie Ouverte (NON consommee) + bonus dorsal.
 }
 
 enum SpellEffectKind : Byte

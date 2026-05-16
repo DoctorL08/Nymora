@@ -121,6 +121,7 @@ namespace Quantum.Prototypes {
     public Quantum.Prototypes.DecoySlotPrototype[] Decoys = new Quantum.Prototypes.DecoySlotPrototype[3];
     public Int32 LastPermutationOnTurn;
     public Int32 LastExecutionSpectraleUsedOnTurn;
+    public Quantum.QEnum8<IsoFacing> Facing;
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.Combatant component = default;
         Materialize((Frame)f, ref component, in context);
@@ -173,6 +174,7 @@ namespace Quantum.Prototypes {
         }
         result.LastPermutationOnTurn = this.LastPermutationOnTurn;
         result.LastExecutionSpectraleUsedOnTurn = this.LastExecutionSpectraleUsedOnTurn;
+        result.Facing = this.Facing;
     }
   }
   [System.SerializableAttribute()]

@@ -626,6 +626,41 @@ namespace Quantum
                             Log.Info($"[Spell] Detonation Virulente : {SpellRegistry.DetonationVirulenteDmgBase} + {bonus} dgts ({marks} marques * {SpellRegistry.DetonationVirulenteDmgPerMark}) = {dmgThisTarget} sur P{targetC->PlayerIndex}");
                         }
                     }
+                    else if (cmd.Spell == SpellId.GhostraLameSpectrale)
+                    {
+                        // 3.7.a.i.2 — Bible Lame Spectrale : 170 base + 60 si target a PlaieOuverte (NON consommee).
+                        // Bonus dorsal applique generiquement plus bas (bloc Ghostra).
+                        if (StatusHelper.Has(targetC, StatusKind.PlaieOuverte))
+                        {
+                            dmgThisTarget += SpellRegistry.LameSpectralePlaieBonus;
+                            Log.Info($"[Spell] Lame Spectrale +{SpellRegistry.LameSpectralePlaieBonus} dgts (PlaieOuverte sur P{targetC->PlayerIndex})");
+                        }
+                    }
+                    else if (cmd.Spell == SpellId.GhostraLameVoraceSpectrale)
+                    {
+                        // 3.7.a.i.2 — Bible Lame Vorace : 130 base + 60 si PlaieOuverte (NON consommee).
+                        // Bible "La Plaie Ouverte n'est PAS consommee" : on garde le status actif. Bonus dorsal
+                        // applique generiquement plus bas.
+                        if (StatusHelper.Has(targetC, StatusKind.PlaieOuverte))
+                        {
+                            dmgThisTarget += SpellRegistry.LameVoracePlaieBonus;
+                            Log.Info($"[Spell] Lame Vorace Spectrale +{SpellRegistry.LameVoracePlaieBonus} dgts (PlaieOuverte sur P{targetC->PlayerIndex}, non consommee)");
+                        }
+                    }
+
+                    // 3.7.a — Bonus dorsal Ghostra (Bible Angle Mort) : applique a TOUS les sorts
+                    // offensifs Ghostra. +0 si Angle 1 (0 leurre) ou hit non dorsal, +50 si Angle 2
+                    // (1-2 leurres) dorsal, +80 si Angle 3 (3 leurres) dorsal. Helper no-op si
+                    // caster != Ghostra, donc safe pour tous les sorts.
+                    if (caster->Class == NymoraClass.Ghostra)
+                    {
+                        int dorsalBonus = GhostraPassif.GetDorsalBonusIfApplicable(caster, targetC);
+                        if (dorsalBonus > 0)
+                        {
+                            dmgThisTarget += dorsalBonus;
+                            Log.Info($"[Angle Mort] +{dorsalBonus} dmg DORSAL sur P{targetC->PlayerIndex} (sort {cmd.Spell}) -> total {dmgThisTarget}");
+                        }
+                    }
 
                     // 3.3.a.i — Passif Densite Inerte bonus adjacence : si caster Colossar
                     // adjacent a un de ses obstacles ET sort range max <= 2 -> +20 dmg.
@@ -915,6 +950,21 @@ namespace Quantum
                         int marksConsumed = targetC->VeninStacks;
                         VeninHelpers.RemoveAllMarks(targetC);
                         Log.Info($"[Spell] Detonation Virulente : {marksConsumed} marques consommees sur P{targetC->PlayerIndex}");
+                    }
+
+                    // 3.7.a — Passif Ghostra Angle Mort : si caster Ghostra ET hit dorsal ET Angle 2+
+                    // -> applique PlaieOuverte auto (40/tour x 2 rounds Bible). Helper no-op si:
+                    // - caster != Ghostra
+                    // - target mort
+                    // - hit non dorsal (FacingHelpers.IsDorsalHit false)
+                    // - Angle 1 (0 leurre actif)
+                    // S'applique aux 5 sorts offensifs Ghostra (Lame Spec / Frappe Fantome / Lame
+                    // Vorace / Saigne-Ame / Danse des Lames). Pas aux sorts tactiques/survie.
+                    if (caster->Class == NymoraClass.Ghostra
+                        && targetC->HP > 0
+                        && spellDef.IsOffensive == 1)
+                    {
+                        GhostraPassif.ApplyPlaieOuverteIfAngle2Plus(f, caster, targetC, currentTurn);
                     }
 
                     // 3.5.a.ii — Faux Decharnee : accumule les marques sur cibles touchees (snapshot
@@ -2062,6 +2112,7 @@ namespace Quantum
                     GridHelpers.SetOccupant(f, oldX, oldY, EntityRef.None);
                     caster->GridX = cmd.TargetX;
                     caster->GridY = cmd.TargetY;
+                    caster->Facing = FacingHelpers.FacingFromGridDelta(cmd.TargetX - oldX, cmd.TargetY - oldY); // 3.7.a.i.0
                     GridHelpers.SetOccupant(f, cmd.TargetX, cmd.TargetY, casterEntity);
                     Log.Info($"[Spell] Pas Furtif : P{caster->PlayerIndex} ({oldX},{oldY}) -> ({cmd.TargetX},{cmd.TargetY})");
 
@@ -2137,6 +2188,7 @@ namespace Quantum
                     GridHelpers.SetOccupant(f, oldX, oldY, EntityRef.None);
                     caster->GridX = cmd.TargetX;
                     caster->GridY = cmd.TargetY;
+                    caster->Facing = FacingHelpers.FacingFromGridDelta(cmd.TargetX - oldX, cmd.TargetY - oldY); // 3.7.a.i.0
                     GridHelpers.SetOccupant(f, cmd.TargetX, cmd.TargetY, casterEntity);
 
                     int hpBeforeEvan = caster->HP;
@@ -2168,6 +2220,7 @@ namespace Quantum
                         GridHelpers.SetOccupant(f, oldX, oldY, EntityRef.None);
                         caster->GridX = landX;
                         caster->GridY = landY;
+                        caster->Facing = FacingHelpers.FacingFromGridDelta(landX - oldX, landY - oldY); // 3.7.a.i.0
                         GridHelpers.SetOccupant(f, landX, landY, casterEntity);
                         Log.Info($"[Spell] Traquenard : P{caster->PlayerIndex} teleport ({oldX},{oldY}) -> ({landX},{landY}) adjacent cible ({cmd.TargetX},{cmd.TargetY})");
                     }
@@ -2896,9 +2949,11 @@ namespace Quantum
             if (steps == 0) return;
 
             // Update grid + combatant pos.
+            int pushFromX = targetC->GridX, pushFromY = targetC->GridY; // 3.7.a.i.0
             GridHelpers.SetOccupant(f, targetC->GridX, targetC->GridY, EntityRef.None);
             targetC->GridX = curX;
             targetC->GridY = curY;
+            targetC->Facing = FacingHelpers.FacingFromGridDelta(curX - pushFromX, curY - pushFromY); // 3.7.a.i.0
             GridHelpers.SetOccupant(f, curX, curY, targetEntity);
             Log.Info($"[Spell] Push : P{targetC->PlayerIndex} pousse de {steps} case(s) -> ({curX},{curY})");
 
@@ -2992,6 +3047,7 @@ namespace Quantum
             GridHelpers.SetOccupant(f, tx, ty, EntityRef.None);
             targetC->GridX = newX;
             targetC->GridY = newY;
+            targetC->Facing = FacingHelpers.FacingFromGridDelta(newX - tx, newY - ty); // 3.7.a.i.0
             GridHelpers.SetOccupant(f, newX, newY, targetEntity);
             return true;
         }

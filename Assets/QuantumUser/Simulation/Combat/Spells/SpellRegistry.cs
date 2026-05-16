@@ -427,6 +427,26 @@ namespace Quantum
         public const int VirusFatalMultiplier       = 3;   // "tick x 3" Bible
         public const int VirusFatalCooldownTurns    = 4;   // 4 tours = 4 rounds (convention TurnNumber)
 
+        // -------------------------------------------------------------
+        // GHOSTRA — Bible V7.1 (3.7.a — 5 sorts offensifs)
+        // -------------------------------------------------------------
+
+        // 3.7.a.i.2 — Lame Spectrale (Bible V7.1) :
+        //   3 PA, melee 1, 170 dgts base + bonus dorsal Angle Mort (0/+50/+80) + 60 si target
+        //   a PlaieOuverte (non consommee). Cf GhostraPassif.GetDorsalBonusIfApplicable.
+        public const int LameSpectralePACost        = 3;
+        public const int LameSpectraleRangeMax      = 1;
+        public const int LameSpectraleDmgBase       = 170;
+        public const int LameSpectralePlaieBonus    = 60;
+
+        // 3.7.a.i.2 — Lame Vorace Spectrale (Bible V7.1) :
+        //   3 PA, melee 1, 130 dgts base + 60 si PlaieOuverte (NON consommee) + bonus dorsal.
+        //   Coeur du combo Plaie Ouverte -> Lame Vorace x2 -> Saigne-Ame.
+        public const int LameVoracePACost           = 3;
+        public const int LameVoraceRangeMax         = 1;
+        public const int LameVoraceDmgBase          = 130;
+        public const int LameVoracePlaieBonus       = 60;
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -1680,6 +1700,45 @@ namespace Quantum
                 // Cooldown 4 tours verifie inline dans TryCastSpell AVANT consume PA (pattern
                 // Ame Laceree / Traquenard / Effondrement). Damage custom dans le handler
                 // (tick venin * 3, hooks Symbiose, transfert marques sur kill).
+                // -------------------------------------------------------------
+                // GHOSTRA — Bible V7.1 (3.7.a)
+                // -------------------------------------------------------------
+
+                // Lame Spectrale (3.7.a.i.2) : 3 PA melee 1, 170 dgts + bonus dorsal + 60 si PlaieOuverte.
+                case SpellId.GhostraLameSpectrale:
+                    def = new SpellDef
+                    {
+                        PACost = LameSpectralePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = LameSpectraleRangeMax,
+                        DamageAmount = LameSpectraleDmgBase, // bonus PlaieOuverte + dorsal modifs en handler
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Lame Vorace Spectrale (3.7.a.i.2) : 3 PA melee 1, 130 dgts + 60 si PlaieOuverte
+                // (NON consommee) + bonus dorsal.
+                case SpellId.GhostraLameVoraceSpectrale:
+                    def = new SpellDef
+                    {
+                        PACost = LameVoracePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = LameVoraceRangeMax,
+                        DamageAmount = LameVoraceDmgBase, // bonus modifs en handler
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
                 case SpellId.NecramVirusFatal:
                     def = new SpellDef
                     {

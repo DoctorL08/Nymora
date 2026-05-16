@@ -107,6 +107,14 @@ enum StatusKind : Byte
                                        //   intermediaires du path (skip destination).
 
     // Necram (3.5.c.ii — Survie bouclier piege)
+    // Ghostra (3.7.a.i.1) — passif Angle Mort + sorts offensifs
+    PlaieOuverte                 = 23, // Bible V7.1 : DoT Ghostra applique par bonus dorsal Angle 2+ ou
+                                       //   par Frappe Fantôme (target Volte-Face). Magnitude = dmg/tour
+                                       //   (40 Bible). TurnsLeft = duree rounds (2 Bible). Tick dans
+                                       //   TurnSystem.EnterTurnEnd : si Has(PlaieOuverte), -Magnitude HP.
+                                       //   Consomme par Saigne-Âme (+70 dmg si actif, retire le status).
+                                       //   Refresh-only : recast meme tour remet turnsLeft=2 et magnitude=40.
+
     CarapaceVisqueuse            = 22, // Bible V7.1 : flag bouclier piege. Magnitude inutilisee (0).
                                        //   Duree 2 rounds, applique en parallele de ShieldActive (110 HP).
                                        //   Hook (SpellSystem damage loop, apres bloc d'absorption shield) :

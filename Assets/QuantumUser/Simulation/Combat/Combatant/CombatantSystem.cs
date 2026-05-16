@@ -64,6 +64,10 @@ namespace Quantum
                 LastVirusFatalUsedOnTurn = -1000, // 3.5.c.vi : signature jouable des PT=6 au spawn.
                 LastPermutationOnTurn = -1000,    // 3.6 : permutation jouable des Angle 3 au spawn.
                 LastExecutionSpectraleUsedOnTurn = -1000, // 3.6 : signature Ghostra jouable au spawn (reserve pour 3.7.d).
+                // 3.7.a.i.0 : facing initial face-a-face. P0 spawn a gauche (3,8) regarde NE (vers P1).
+                //   P1 spawn a droite (11,8) regarde NW (vers P0). Bible V7.1 attaque dorsale = direction
+                //   opposee au regard de la cible. Cf FacingHelpers.IsDorsalHit.
+                Facing = (playerIndex == 0) ? IsoFacing.NE : IsoFacing.NW,
             };
 
             var entity = f.Create();

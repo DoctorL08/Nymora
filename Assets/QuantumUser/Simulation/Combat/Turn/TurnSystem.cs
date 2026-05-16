@@ -347,6 +347,13 @@ namespace Quantum
                 // actif, et AVANT Prescience pour que les dgts d'aura comptent dans DamageTakenThisRound.
                 TickRoncesAura(f);
 
+                // 3.7.a.i.1 — PlaieOuverte tick (Ghostra DoT applique par bonus dorsal Angle 2+
+                // ou par Frappe Fantome target Volte-Face). Magnitude = dmg/tour (40 Bible). Tick
+                // AVANT decrementation pour que le status reste actif au moment du tick. Pas de
+                // bypass shield/reduction (contrairement au venin Necram) — Bible silencieuse,
+                // on aligne sur RoncesAura (pierce shields via dmg direct sur HP).
+                TickPlaieOuverte(f);
+
                 // 3.3.c — Stoicisme tick fin de round. Si StoicismeExpiresOnTurn == currentTurn ET
                 // ShieldActive.Magnitude > 0 (= shield a survecu 2 tours sans etre brise) -> heal 80.
                 // Reset StoicismeExpiresOnTurn a -1 dans tous les cas (consume tracker).
@@ -484,6 +491,28 @@ namespace Quantum
         /// Appel AVANT DecrementAllOnTurnEnd pour que le ShieldActive soit encore lisible
         /// (sinon il aurait expire ce tour-ci et Magnitude serait nettoyee).
         /// </summary>
+        /// <summary>
+        /// 3.7.a.i.1 — PlaieOuverte tick fin de round (Bible V7.1 Ghostra Angle Mort).
+        /// Pour chaque combatant vivant porteur du status, applique Magnitude HP de dmg.
+        /// Pas de bypass shield/reduction (alignement RoncesAura). Compte dans
+        /// DamageTakenThisRound pour Prescience tracking.
+        /// </summary>
+        private static void TickPlaieOuverte(Frame f)
+        {
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->HP <= 0) continue;
+                int dmg = StatusHelper.GetMagnitude(c, StatusKind.PlaieOuverte, 0);
+                if (dmg <= 0) continue;
+                int hpBefore = c->HP;
+                c->HP -= dmg;
+                if (c->HP < 0) c->HP = 0;
+                c->DamageTakenThisRound += dmg;
+                Log.Info($"[PlaieOuverte] Tick -{dmg} HP sur P{c->PlayerIndex} : {hpBefore} -> {c->HP}");
+            }
+        }
+
         private static void TickStoicismeHeal(Frame f, int currentTurn)
         {
             var filter = f.Filter<Combatant>();
@@ -601,6 +630,10 @@ namespace Quantum
                 target->GridY = casterStartY;
                 caster->GridX = ejectX;
                 caster->GridY = ejectY;
+                // 3.7.a.i.0 — Update Facing pour les 2 entites swappees (sinon target.Facing
+                // reste sur sa valeur pre-swap, pertinent pour le dorsal hit Ghostra).
+                target->Facing = FacingHelpers.FacingFromGridDelta(casterStartX - targetStartX, casterStartY - targetStartY);
+                caster->Facing = FacingHelpers.FacingFromGridDelta(ejectX - casterStartX, ejectY - casterStartY);
 
                 EntityRef casterEntityRef = ResolveEntityFromPlayerIndex(f, caster->PlayerIndex);
                 GridHelpers.SetOccupant(f, casterStartX, casterStartY, targetEntity);

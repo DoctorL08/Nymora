@@ -553,30 +553,32 @@ namespace Nymora.Combat.View
             }
 
             // 2.15.a — sorts Nightseer offensifs (lettres AZERTY A/Z/E/R/V).
-            // 2.15.a / 3.5.a.i — Touche A AZERTY contextuelle :
+            // 2.15.a / 3.5.a.i / 3.7.a.i — Touche A AZERTY contextuelle :
             //   Nightseer -> Tir Precis (3 PA, range 6, 200 dgts +80 Traque)
             //   Necram    -> Crachat Acide (3 PA, range 4, 90 dgts + 2 marques venin)
+            //   Ghostra   -> Lame Spectrale (3 PA, melee 1, 170 dgts + bonus dorsal + 60 PlaieOuverte)
             if (keyAzA)
             {
                 SpellId azaSpell = SpellId.NightseerTirPrecis;
-                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsA)
-                    && casterClsA == Quantum.NymoraClass.Necram)
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsA))
                 {
-                    azaSpell = SpellId.NecramCrachatAcide;
+                    if (casterClsA == Quantum.NymoraClass.Necram) azaSpell = SpellId.NecramCrachatAcide;
+                    else if (casterClsA == Quantum.NymoraClass.Ghostra) azaSpell = SpellId.GhostraLameSpectrale;
                 }
                 SendSpellAt(game, senderPlayer, azaSpell, gx, gy, 0);
                 return;
             }
-            // 2.15.a / 3.5.a.i — Touche Z AZERTY contextuelle :
+            // 2.15.a / 3.5.a.i / 3.7.a.i — Touche Z AZERTY contextuelle :
             //   Nightseer -> Volee d'Epines (ligne 5, 130 dgts + Filet derniere case)
             //   Necram    -> Morsure Putride (4 PA, melee 1, 110 + 22/marque, transfert marques au kill)
+            //   Ghostra   -> Lame Vorace Spectrale (3 PA, melee 1, 130 dgts + 60 PlaieOuverte non consommee)
             if (keyAzZ)
             {
                 SpellId azzSpell = SpellId.NightseerVoleeDEpines;
-                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsZ)
-                    && casterClsZ == Quantum.NymoraClass.Necram)
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsZ))
                 {
-                    azzSpell = SpellId.NecramMorsurePutride;
+                    if (casterClsZ == Quantum.NymoraClass.Necram) azzSpell = SpellId.NecramMorsurePutride;
+                    else if (casterClsZ == Quantum.NymoraClass.Ghostra) azzSpell = SpellId.GhostraLameVoraceSpectrale;
                 }
                 SendSpellAt(game, senderPlayer, azzSpell, gx, gy, 0);
                 return;

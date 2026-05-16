@@ -95,6 +95,7 @@ namespace Quantum.Prototypes.Unity {
     public Quantum.Prototypes.DecoySlotPrototype[] Decoys = new Quantum.Prototypes.DecoySlotPrototype[3];
     public Int32 LastPermutationOnTurn;
     public Int32 LastExecutionSpectraleUsedOnTurn;
+    public Quantum.QEnum8<IsoFacing> Facing;
     partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.CombatantPrototype prototype);
     public override Quantum.Prototypes.CombatantPrototype Convert(Quantum.QuantumEntityPrototypeConverter converter) {
       var result = new Quantum.Prototypes.CombatantPrototype();
@@ -140,6 +141,7 @@ namespace Quantum.Prototypes.Unity {
       converter.Convert(this.Decoys, out result.Decoys);
       converter.Convert(this.LastPermutationOnTurn, out result.LastPermutationOnTurn);
       converter.Convert(this.LastExecutionSpectraleUsedOnTurn, out result.LastExecutionSpectraleUsedOnTurn);
+      converter.Convert(this.Facing, out result.Facing);
       ConvertUser(converter, ref result);
       return result;
     }
