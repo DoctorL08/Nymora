@@ -129,6 +129,25 @@ namespace Nymora.Combat.View.HUD
                     sb.AppendFormat("    Venin: {0}/{1} marques (lastTick={2})\n",
                         c.VeninStacks, Quantum.VeninHelpers.MaxStacksPerTarget, c.LastVeninTickOnTurn);
                 }
+                // 3.6 — Ghostra : affiche le nombre de leurres actifs + l'Angle Mort + cooldown Permutation.
+                if (c.Class == NymoraClass.Ghostra)
+                {
+                    int activeDecoys = 0;
+                    for (int d = 0; d < 3; d++)
+                    {
+                        if (c.Decoys[d].Kind != DecoyKind.None) activeDecoys++;
+                    }
+                    int angle = activeDecoys >= 3 ? 3 : (activeDecoys >= 1 ? 2 : 1);
+                    sb.AppendFormat("    Decoys: {0}/3  Angle {1}  lastPermut={2}\n",
+                        activeDecoys, angle, c.LastPermutationOnTurn);
+                    for (int d = 0; d < 3; d++)
+                    {
+                        if (c.Decoys[d].Kind == DecoyKind.None) continue;
+                        sb.AppendFormat("      [{0}] {1} pos=({2},{3}) spawned@{4} hp={5}\n",
+                            d, c.Decoys[d].Kind, c.Decoys[d].PosX, c.Decoys[d].PosY,
+                            c.Decoys[d].SpawnedOnTurn, c.Decoys[d].HP);
+                    }
+                }
                 sb.AppendLine();
             }
             if (count == 0) sb.AppendLine("  (none)");

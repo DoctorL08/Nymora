@@ -206,4 +206,23 @@ component Combatant
     //   (pas de cooldown au spawn). Cooldown 4 tours Bible V7.1 :
     //   currentTurn - LastVirusFatalUsedOnTurn < 4 -> reject.
     Int32 LastVirusFatalUsedOnTurn;
+
+    // 3.6 — Ghostra : 3 slots de leurres (Bible V7.1 ressource RÉMANENCE). Cap 3
+    //   garanti par taille tableau. Slot libre = Kind == DecoyKind.None. Lifetime
+    //   2 tours decrementee dans GhostraSystem.OnSubTurnStart (skip-decrement au tour
+    //   de spawn via SpawnedOnTurn). Cf DecoyHelpers pour spawn / destroy / lookup.
+    //   Visuellement les 3 slots + la vraie Ghostra sont indiscernables cote adversaire
+    //   (DecoyView spawn de fausses Ghostra a Decoys[i].PosX/PosY).
+    array<DecoySlot>[3] Decoys;
+
+    // 3.6 — Ghostra : tour de la derniere Permutation (Angle 3 — swap Ghostra <-> leurre
+    //   0 PA invisible cote adversaire). Cap 1 par tour. Default -1000 (pas de cooldown
+    //   au spawn). Reject si currentTurn == LastPermutationOnTurn (deja utilisee ce tour).
+    Int32 LastPermutationOnTurn;
+
+    // 3.6 — Ghostra : tour du dernier usage Exécution Spectrale (signature). Default
+    //   -1000. Cooldown 4 tours Bible V7.1 : currentTurn - LastExecutionSpectraleUsedOnTurn < 4 -> reject.
+    //   Reserve pour 3.7.d (livraison signature) — declare ici dans le framework pour eviter
+    //   un re-regen Quantum CodeGen plus tard.
+    Int32 LastExecutionSpectraleUsedOnTurn;
 }

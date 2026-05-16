@@ -43,6 +43,10 @@ namespace Nymora.Editor.Tools
             "Assets/_Nymora/Art/Sprites/Necram/Marques",
             "Assets/_Nymora/Art/Sprites/Necram/Tiles",
             "Assets/_Nymora/Art/Sprites/Necram/VFX",
+            // 3.6 : dossiers Ghostra livres par designer (marque ciblage / tile case voilee / VFX signature 8frames).
+            "Assets/_Nymora/Art/Sprites/Ghostra/Marques",
+            "Assets/_Nymora/Art/Sprites/Ghostra/Tiles",
+            "Assets/_Nymora/Art/Sprites/Ghostra/VFX",
         };
 
         // Match .png ET .gif (designer Nightseer/Colossar livre des GIFs aplats horizontaux).

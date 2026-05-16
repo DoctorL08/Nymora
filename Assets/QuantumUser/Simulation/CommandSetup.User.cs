@@ -20,6 +20,12 @@
             // 3.4 — debug marque venin (touche F11). Sera retire en 3.5.a quand
             // Crachat Acide / Inoculation livres.
             factories.Add(new DebugApplyVeninCommand());
+            // 3.6 — debug spawn leurre Ghostra (touche F12) + Permutation (touche P,
+            // Angle 3 only). Le DebugSpawnDecoyCommand sera retire en 3.7.a quand
+            // Réplique Fantôme / Pas dans l'Ombre livres ; la PermutationCommand reste
+            // (mecanique Bible V7.1 permanente).
+            factories.Add(new DebugSpawnDecoyCommand());
+            factories.Add(new PermutationCommand());
         }
     }
 }

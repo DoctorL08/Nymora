@@ -91,6 +91,10 @@ namespace Quantum.Prototypes.Unity {
     public Int32 LastVeninTickOnTurn;
     public Int32 PutrefactionMarksGainedThisTurn;
     public Int32 LastVirusFatalUsedOnTurn;
+    [ArrayLengthAttribute(3)]
+    public Quantum.Prototypes.DecoySlotPrototype[] Decoys = new Quantum.Prototypes.DecoySlotPrototype[3];
+    public Int32 LastPermutationOnTurn;
+    public Int32 LastExecutionSpectraleUsedOnTurn;
     partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.CombatantPrototype prototype);
     public override Quantum.Prototypes.CombatantPrototype Convert(Quantum.QuantumEntityPrototypeConverter converter) {
       var result = new Quantum.Prototypes.CombatantPrototype();
@@ -133,6 +137,9 @@ namespace Quantum.Prototypes.Unity {
       converter.Convert(this.LastVeninTickOnTurn, out result.LastVeninTickOnTurn);
       converter.Convert(this.PutrefactionMarksGainedThisTurn, out result.PutrefactionMarksGainedThisTurn);
       converter.Convert(this.LastVirusFatalUsedOnTurn, out result.LastVirusFatalUsedOnTurn);
+      converter.Convert(this.Decoys, out result.Decoys);
+      converter.Convert(this.LastPermutationOnTurn, out result.LastPermutationOnTurn);
+      converter.Convert(this.LastExecutionSpectraleUsedOnTurn, out result.LastExecutionSpectraleUsedOnTurn);
       ConvertUser(converter, ref result);
       return result;
     }

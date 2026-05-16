@@ -117,6 +117,10 @@ namespace Quantum.Prototypes {
     public Int32 LastVeninTickOnTurn;
     public Int32 PutrefactionMarksGainedThisTurn;
     public Int32 LastVirusFatalUsedOnTurn;
+    [ArrayLengthAttribute(3)]
+    public Quantum.Prototypes.DecoySlotPrototype[] Decoys = new Quantum.Prototypes.DecoySlotPrototype[3];
+    public Int32 LastPermutationOnTurn;
+    public Int32 LastExecutionSpectraleUsedOnTurn;
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.Combatant component = default;
         Materialize((Frame)f, ref component, in context);
@@ -164,6 +168,29 @@ namespace Quantum.Prototypes {
         result.LastVeninTickOnTurn = this.LastVeninTickOnTurn;
         result.PutrefactionMarksGainedThisTurn = this.PutrefactionMarksGainedThisTurn;
         result.LastVirusFatalUsedOnTurn = this.LastVirusFatalUsedOnTurn;
+        for (int i = 0, count = PrototypeValidator.CheckLength(Decoys, 3, in context); i < count; ++i) {
+          this.Decoys[i].Materialize(frame, ref *result.Decoys.GetPointer(i), in context);
+        }
+        result.LastPermutationOnTurn = this.LastPermutationOnTurn;
+        result.LastExecutionSpectraleUsedOnTurn = this.LastExecutionSpectraleUsedOnTurn;
+    }
+  }
+  [System.SerializableAttribute()]
+  [Quantum.Prototypes.Prototype(typeof(Quantum.DecoySlot))]
+  public unsafe partial class DecoySlotPrototype : StructPrototype {
+    public Quantum.QEnum8<DecoyKind> Kind;
+    public Int32 PosX;
+    public Int32 PosY;
+    public Int32 SpawnedOnTurn;
+    public Int32 HP;
+    partial void MaterializeUser(Frame frame, ref Quantum.DecoySlot result, in PrototypeMaterializationContext context);
+    public void Materialize(Frame frame, ref Quantum.DecoySlot result, in PrototypeMaterializationContext context = default) {
+        result.Kind = this.Kind;
+        result.PosX = this.PosX;
+        result.PosY = this.PosY;
+        result.SpawnedOnTurn = this.SpawnedOnTurn;
+        result.HP = this.HP;
+        MaterializeUser(frame, ref result, in context);
     }
   }
   [System.SerializableAttribute()]

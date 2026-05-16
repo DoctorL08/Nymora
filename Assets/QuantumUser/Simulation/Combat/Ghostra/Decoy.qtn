@@ -1,0 +1,33 @@
+// Systeme de leurres Ghostra — Bible V7.1 ressource RÉMANENCE (3 LEURRES MAXIMUM).
+//
+// La Ghostra n'a pas une jauge — elle a des LEURRES sur la grille. Chaque leurre :
+//   - Est visuellement IDENTIQUE a la vraie Ghostra cote adversaire.
+//   - Dure 2 tours OU jusqu'a destruction par interaction.
+//   - Compte dans le cap 3 simultanes (CombatantStats.GhostraMaxRemanence).
+//
+// 2 types Bible :
+//   - Standard (Réplique Fantôme / Pas dans l'Ombre / Dernier Pas) : pas de HP, 1-hit destroy.
+//   - Protective (Réplique Protectrice) : 200 HP qui absorbent + redirige 40% dmg subis par Ghostra.
+//
+// Modelisation : inline array<DecoySlot>[3] sur Combatant Ghostra (pas d'entite Quantum
+// separee). Avantages : cap 3 garanti par taille tableau, pas de cycle de vie entity,
+// lookup direct via ghostra->Decoys, suffit pour les 2 types Bible. Si plus tard on a
+// besoin d'entites separees pour ciblage avance, refacto trivial.
+//
+// Verrouille : ne PAS reorganiser DecoyKind (CombatRulesVersion).
+
+enum DecoyKind : Byte
+{
+    None       = 0, // slot libre
+    Standard   = 1, // leurre classique (1-hit destroy, pas de HP)
+    Protective = 2, // leurre Réplique Protectrice (200 HP, redirige 40% dmg)
+}
+
+struct DecoySlot
+{
+    DecoyKind Kind;
+    Int32 PosX;
+    Int32 PosY;
+    Int32 SpawnedOnTurn; // tour de spawn (skip-decrement convention comme Status)
+    Int32 HP;            // 0 pour Standard (1-hit), 200 pour Protective (absorbe avant destroy)
+}

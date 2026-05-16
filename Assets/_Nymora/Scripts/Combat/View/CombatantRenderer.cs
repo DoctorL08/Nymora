@@ -471,6 +471,23 @@ namespace Nymora.Combat.View
         /// </summary>
         private static int ComputeStage(Combatant combatant)
         {
+            // 3.6 — Ghostra : stage mappe sur l'Angle Mort (decoys actifs au lieu de Resource).
+            //   Angle 1 (0 leurre)   -> stage 0
+            //   Angle 2 (1-2 leurres) -> stage 1
+            //   Angle 3 (3 leurres)  -> stage 2
+            // Cohenrent visuellement : plus la Ghostra a de leurres, plus elle est "spectrale".
+            if (combatant.Class == NymoraClass.Ghostra)
+            {
+                int active = 0;
+                for (int i = 0; i < 3; i++)
+                {
+                    if (combatant.Decoys[i].Kind != DecoyKind.None) active++;
+                }
+                if (active >= 3) return 2;
+                if (active >= 1) return 1;
+                return 0;
+            }
+
             int max = Quantum.CombatantStats.GetMaxResource(combatant.Class);
             if (max <= 0) return 0;
             if (combatant.Resource >= max) return 2;

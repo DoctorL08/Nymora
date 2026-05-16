@@ -165,6 +165,9 @@ namespace Nymora.Combat.View
             // ennemie sous la souris. Sera retiree en 3.5.a quand Crachat Acide /
             // Inoculation feront ca proprement via SpellSystem.
             bool keyF11 = UnityEngine.Input.GetKeyDown(KeyCode.F11);
+            // 3.6 — touche F12 : DEBUG, spawn un leurre Standard Ghostra sur la case sous la souris.
+            //                    Sert a tester l'Angle Mort + Permutation avant 3.7.a (Réplique Fantôme).
+            bool keyF12 = UnityEngine.Input.GetKeyDown(KeyCode.F12);
             bool keyB  = UnityEngine.Input.GetKeyDown(KeyCode.B); // 2.11 signature Ame Laceree
             // 2.14 — touche T : DEBUG, pose un Voile Nightseer 2 tours sur la case sous la souris.
             // Sera retiree en 2.15 quand les sorts Nightseer (Pas Furtif, Voile d'Ombre, Champ
@@ -238,6 +241,7 @@ namespace Nymora.Combat.View
                             || keyF1 || keyF2 || keyF3 || keyF4
                             || keyF5 || keyF6 || keyF7 || keyF8 || keyF9 // 3.3.c Colossar Survie
                             || keyF11 // 3.4 debug Necram apply venin
+                            || keyF12 // 3.6 debug Ghostra spawn decoy
                             || keyB || keyT
                             || keyAzA || keyAzZ || keyE || keyR || keyV
                             || keyAzQ || keyS || keyD || keyF || keyG
@@ -453,11 +457,33 @@ namespace Nymora.Combat.View
                 return;
             }
 
-            // 3.3.b.i — touche P : Pilier (sort tactique Colossar, remplace ancien debug spawn 3.1).
-            //           touche O : Mur de Pierre (3 cases perpendiculaires axe caster->cible).
-            //           touche U : DEBUG damage 50 sur obstacle (gardee pour test destruction Densite Inerte +30 HP).
+            // 3.6 — touche F12 : DEBUG spawn un leurre Standard Ghostra sur la case sous
+            // la souris. GhostraSystem cote sim accepte uniquement si senderPlayer == joueur
+            // actif ET caster.Class == Ghostra. Retire en 3.7.a (Réplique Fantôme / Pas dans l'Ombre).
+            if (keyF12)
+            {
+                var decoyCmd = new DebugSpawnDecoyCommand { TargetX = gx, TargetY = gy };
+                game.SendCommand(senderPlayer, decoyCmd);
+                Debug.Log($"[Nymora.CombatInput] Sent DEBUG SpawnDecoy player={senderPlayer} target=({gx},{gy})");
+                return;
+            }
+
+            // 3.3.b.i / 3.6 — touche P AZERTY contextuelle :
+            //   Colossar -> Pilier (sort tactique Colossar, remplace ancien debug spawn 3.1).
+            //   Ghostra  -> Permutation (Angle 3 only, 0 PA, 1x/tour — swap Ghostra<->leurre).
+            //   Autres   -> fallback Pilier (compat).
+            // touche O : Mur de Pierre (3 cases perpendiculaires axe caster->cible).
+            // touche U : DEBUG damage 50 sur obstacle (gardee pour test destruction Densite Inerte +30 HP).
             if (keyP)
             {
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsP)
+                    && casterClsP == Quantum.NymoraClass.Ghostra)
+                {
+                    var permCmd = new PermutationCommand { SlotIndex = -1 }; // -1 = auto-pick 1er slot
+                    game.SendCommand(senderPlayer, permCmd);
+                    Debug.Log($"[Nymora.CombatInput] Sent Permutation player={senderPlayer} (Ghostra)");
+                    return;
+                }
                 SendSpellAt(game, senderPlayer, SpellId.ColossarPilier, gx, gy, 0);
                 return;
             }

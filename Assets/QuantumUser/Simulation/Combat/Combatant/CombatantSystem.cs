@@ -17,12 +17,13 @@ namespace Quantum
 
         public override void OnInit(Frame f)
         {
-            // P0 = Necram (tester visuellement les anims Necram livrees par le designer).
-            // Necram n'a pas encore de logique gameplay propre (passif La Floraison + 16 sorts
-            // a venir Phase 3 Bloc C). SpellBar vide, frappe-au-corps via clic adjacent uniquement.
-            // P1 reste Soulrender comme adversaire. Pour switch en local : remplace NymoraClass.Necram
-            // ci-dessous par .Soulrender / .Nightseer / .Colossar / .Ghostra.
-            SpawnCombatant(f, playerIndex: 0, nymoraClass: NymoraClass.Necram, x: P1SpawnX, y: P1SpawnY);
+            // 3.6 — P0 = Ghostra (test visuel anims + framework Angle Mort + Permutation).
+            // Ghostra demarre avec 0 leurre = Angle 1 (passif neutre). Pour tester l'Angle :
+            //   - Touche F12 : pose un leurre Standard sur la case clic (DebugSpawnDecoyCommand)
+            //   - Touche P  : Permutation (requiert 3 leurres actifs = Angle 3)
+            // SpellBar vide, frappe-au-corps via clic adjacent uniquement (les 16 sorts arrivent en 3.7.a-d).
+            // Pour switch local : remplace NymoraClass.Ghostra ci-dessous par .Soulrender / .Nightseer / .Colossar / .Necram.
+            SpawnCombatant(f, playerIndex: 0, nymoraClass: NymoraClass.Ghostra, x: P1SpawnX, y: P1SpawnY);
             SpawnCombatant(f, playerIndex: 1, nymoraClass: NymoraClass.Soulrender, x: P2SpawnX, y: P2SpawnY);
         }
 
@@ -61,6 +62,8 @@ namespace Quantum
                 LastEffondrementUsedOnTurn = -1000, // 3.3.d : signature jouable des FD=3 au spawn.
                 EffondrementTargetEntity = EntityRef.None, // 3.3.d : pas de cible snapshot au spawn.
                 LastVirusFatalUsedOnTurn = -1000, // 3.5.c.vi : signature jouable des PT=6 au spawn.
+                LastPermutationOnTurn = -1000,    // 3.6 : permutation jouable des Angle 3 au spawn.
+                LastExecutionSpectraleUsedOnTurn = -1000, // 3.6 : signature Ghostra jouable au spawn (reserve pour 3.7.d).
             };
 
             var entity = f.Create();

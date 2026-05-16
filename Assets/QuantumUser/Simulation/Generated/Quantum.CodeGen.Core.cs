@@ -56,6 +56,11 @@ namespace Quantum {
     TurnEnd = 3,
     MatchEnd = 4,
   }
+  public enum DecoyKind : byte {
+    None = 0,
+    Standard = 1,
+    Protective = 2,
+  }
   public enum MarkKind : byte {
     None = 0,
     Traque = 1,
@@ -676,6 +681,40 @@ namespace Quantum {
     }
   }
   [StructLayout(LayoutKind.Explicit)]
+  public unsafe partial struct DecoySlot {
+    public const Int32 SIZE = 20;
+    public const Int32 ALIGNMENT = 4;
+    [FieldOffset(0)]
+    public DecoyKind Kind;
+    [FieldOffset(8)]
+    public Int32 PosX;
+    [FieldOffset(12)]
+    public Int32 PosY;
+    [FieldOffset(16)]
+    public Int32 SpawnedOnTurn;
+    [FieldOffset(4)]
+    public Int32 HP;
+    public override readonly Int32 GetHashCode() {
+      unchecked { 
+        var hash = 13933;
+        hash = hash * 31 + (Byte)Kind;
+        hash = hash * 31 + PosX.GetHashCode();
+        hash = hash * 31 + PosY.GetHashCode();
+        hash = hash * 31 + SpawnedOnTurn.GetHashCode();
+        hash = hash * 31 + HP.GetHashCode();
+        return hash;
+      }
+    }
+    public static void Serialize(void* ptr, FrameSerializer serializer) {
+        var p = (DecoySlot*)ptr;
+        serializer.Stream.Serialize((Byte*)&p->Kind);
+        serializer.Stream.Serialize(&p->HP);
+        serializer.Stream.Serialize(&p->PosX);
+        serializer.Stream.Serialize(&p->PosY);
+        serializer.Stream.Serialize(&p->SpawnedOnTurn);
+    }
+  }
+  [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct FogTile {
     public const Int32 SIZE = 20;
     public const Int32 ALIGNMENT = 4;
@@ -932,36 +971,38 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct Combatant : Quantum.IComponent {
-    public const Int32 SIZE = 280;
+    public const Int32 SIZE = 352;
     public const Int32 ALIGNMENT = 8;
-    [FieldOffset(116)]
+    [FieldOffset(348)]
+    private fixed Byte _alignment_padding_[4];
+    [FieldOffset(124)]
     public Int32 PlayerIndex;
     [FieldOffset(1)]
     public NymoraClass Class;
     [FieldOffset(24)]
     public Int32 HP;
-    [FieldOffset(92)]
-    public Int32 MaxHP;
-    [FieldOffset(108)]
-    public Int32 PA;
-    [FieldOffset(96)]
-    public Int32 MaxPA;
-    [FieldOffset(112)]
-    public Int32 PM;
     [FieldOffset(100)]
+    public Int32 MaxHP;
+    [FieldOffset(116)]
+    public Int32 PA;
+    [FieldOffset(104)]
+    public Int32 MaxPA;
+    [FieldOffset(120)]
+    public Int32 PM;
+    [FieldOffset(108)]
     public Int32 MaxPM;
     [FieldOffset(16)]
     public Int32 GridX;
     [FieldOffset(20)]
     public Int32 GridY;
-    [FieldOffset(128)]
+    [FieldOffset(136)]
     public Int32 Resource;
-    [FieldOffset(60)]
+    [FieldOffset(68)]
     public Int32 LastResourceGainOnHitTurn;
-    [FieldOffset(152)]
+    [FieldOffset(160)]
     [FramePrinter.FixedArrayAttribute(typeof(Status), 8)]
     private fixed Byte _Statuses_[128];
-    [FieldOffset(104)]
+    [FieldOffset(112)]
     public Int32 OncePerMatchUsedFlags;
     [FieldOffset(4)]
     public Int32 BonusPANextTurn;
@@ -979,21 +1020,21 @@ namespace Quantum {
     public Int32 LastCastSequence;
     [FieldOffset(0)]
     public MarkKind CurrentMark;
-    [FieldOffset(88)]
+    [FieldOffset(96)]
     public Int32 MarkTurnsLeft;
-    [FieldOffset(80)]
+    [FieldOffset(88)]
     public Int32 MarkAppliedOnTurn;
-    [FieldOffset(84)]
+    [FieldOffset(92)]
     public Int32 MarkOwnerPlayer;
     [FieldOffset(8)]
     public Int32 DamageTakenThisRound;
-    [FieldOffset(64)]
+    [FieldOffset(72)]
     public Int32 LastTrapTriggeredOnTurn;
-    [FieldOffset(68)]
+    [FieldOffset(76)]
     public Int32 LastTraquenardUsedOnTurn;
-    [FieldOffset(124)]
-    public Int32 RepresaillesReflectsLeft;
     [FieldOffset(132)]
+    public Int32 RepresaillesReflectsLeft;
+    [FieldOffset(140)]
     public Int32 StoicismeExpiresOnTurn;
     [FieldOffset(32)]
     public Int32 HitsTakenThisRound;
@@ -1003,19 +1044,31 @@ namespace Quantum {
     public Int32 EffondrementAnnouncedOnTurn;
     [FieldOffset(56)]
     public Int32 LastEffondrementUsedOnTurn;
-    [FieldOffset(144)]
+    [FieldOffset(152)]
     public EntityRef EffondrementTargetEntity;
-    [FieldOffset(136)]
+    [FieldOffset(144)]
     public Int32 VeninStacks;
-    [FieldOffset(72)]
+    [FieldOffset(80)]
     public Int32 LastVeninTickOnTurn;
-    [FieldOffset(120)]
+    [FieldOffset(128)]
     public Int32 PutrefactionMarksGainedThisTurn;
-    [FieldOffset(76)]
+    [FieldOffset(84)]
     public Int32 LastVirusFatalUsedOnTurn;
+    [FieldOffset(288)]
+    [FramePrinter.FixedArrayAttribute(typeof(DecoySlot), 3)]
+    private fixed Byte _Decoys_[60];
+    [FieldOffset(64)]
+    public Int32 LastPermutationOnTurn;
+    [FieldOffset(60)]
+    public Int32 LastExecutionSpectraleUsedOnTurn;
     public readonly FixedArray<Status> Statuses {
       get {
         fixed (byte* p = _Statuses_) { return new FixedArray<Status>(p, 16, 8); }
+      }
+    }
+    public readonly FixedArray<DecoySlot> Decoys {
+      get {
+        fixed (byte* p = _Decoys_) { return new FixedArray<DecoySlot>(p, 20, 3); }
       }
     }
     public override readonly Int32 GetHashCode() {
@@ -1060,6 +1113,9 @@ namespace Quantum {
         hash = hash * 31 + LastVeninTickOnTurn.GetHashCode();
         hash = hash * 31 + PutrefactionMarksGainedThisTurn.GetHashCode();
         hash = hash * 31 + LastVirusFatalUsedOnTurn.GetHashCode();
+        hash = hash * 31 + HashCodeUtils.GetArrayHashCode(Decoys);
+        hash = hash * 31 + LastPermutationOnTurn.GetHashCode();
+        hash = hash * 31 + LastExecutionSpectraleUsedOnTurn.GetHashCode();
         return hash;
       }
     }
@@ -1082,6 +1138,8 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->LastCastTargetX);
         serializer.Stream.Serialize(&p->LastCastTargetY);
         serializer.Stream.Serialize(&p->LastEffondrementUsedOnTurn);
+        serializer.Stream.Serialize(&p->LastExecutionSpectraleUsedOnTurn);
+        serializer.Stream.Serialize(&p->LastPermutationOnTurn);
         serializer.Stream.Serialize(&p->LastResourceGainOnHitTurn);
         serializer.Stream.Serialize(&p->LastTrapTriggeredOnTurn);
         serializer.Stream.Serialize(&p->LastTraquenardUsedOnTurn);
@@ -1104,6 +1162,7 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->VeninStacks);
         EntityRef.Serialize(&p->EffondrementTargetEntity, serializer);
         FixedArray.Serialize(p->Statuses, serializer, Statics.SerializeStatus);
+        FixedArray.Serialize(p->Decoys, serializer, Statics.SerializeDecoySlot);
     }
   }
   [StructLayout(LayoutKind.Explicit)]
@@ -1318,12 +1377,14 @@ namespace Quantum {
     }
   }
   public unsafe partial class Statics {
+    public static FrameSerializer.Delegate SerializeDecoySlot;
     public static FrameSerializer.Delegate SerializeStatus;
     public static FrameSerializer.Delegate SerializeFogTile;
     public static FrameSerializer.Delegate SerializeTile;
     public static FrameSerializer.Delegate SerializeObstacleTile;
     public static FrameSerializer.Delegate SerializeInput;
     static partial void InitStaticDelegatesGen() {
+      SerializeDecoySlot = Quantum.DecoySlot.Serialize;
       SerializeStatus = Quantum.Status.Serialize;
       SerializeFogTile = Quantum.FogTile.Serialize;
       SerializeTile = Quantum.Tile.Serialize;
@@ -1350,6 +1411,8 @@ namespace Quantum {
       typeRegistry.Register(typeof(Quantum.Combatant), Quantum.Combatant.SIZE);
       typeRegistry.Register(typeof(ComponentPrototypeRef), ComponentPrototypeRef.SIZE);
       typeRegistry.Register(typeof(ComponentTypeRef), ComponentTypeRef.SIZE);
+      typeRegistry.Register(typeof(Quantum.DecoyKind), 1);
+      typeRegistry.Register(typeof(Quantum.DecoySlot), Quantum.DecoySlot.SIZE);
       typeRegistry.Register(typeof(DistanceJoint), DistanceJoint.SIZE);
       typeRegistry.Register(typeof(DistanceJoint3D), DistanceJoint3D.SIZE);
       typeRegistry.Register(typeof(EntityPrototypeRef), EntityPrototypeRef.SIZE);
@@ -1451,6 +1514,7 @@ namespace Quantum {
       FramePrinter.EnsureNotStripped();
       FramePrinter.EnsurePrimitiveNotStripped<CallbackFlags>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.CombatPhase>();
+      FramePrinter.EnsurePrimitiveNotStripped<Quantum.DecoyKind>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.InputButtons>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.MarkKind>();
       FramePrinter.EnsurePrimitiveNotStripped<Quantum.NymoraClass>();

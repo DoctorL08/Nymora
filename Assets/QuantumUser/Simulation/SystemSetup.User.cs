@@ -30,6 +30,11 @@
             // 3.4 — process DebugApplyVeninCommand (cheat F11) en attendant Crachat Acide /
             // Inoculation en 3.5.a qui feront ca via SpellSystem.
             systems.Add(new NecramSystem());
+            // 3.6 — process DebugSpawnDecoyCommand (cheat F12) + PermutationCommand (touche P
+            // Angle 3 only) en attendant la livraison des sorts Ghostra (3.7.a/b/c/d). Tick
+            // lifetime des leurres passe par GhostraPassif (hook TurnSystem.EnterTurnStart),
+            // pas par ce systeme.
+            systems.Add(new GhostraSystem());
         }
     }
 }
