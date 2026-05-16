@@ -172,6 +172,7 @@ namespace Quantum {
     GhostraFrappeFantome = 92,
     GhostraDagueLancee = 93,
     GhostraMarqueDeLOmbre = 94,
+    GhostraDanseDesLames = 95,
   }
   public enum StatusKind : byte {
     None = 0,

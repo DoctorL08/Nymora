@@ -654,15 +654,28 @@ namespace Nymora.Combat.View
                 }
                 return;
             }
-            // 3.5.a.iii — Touche V context-aware (AZERTY) :
-            //   Nightseer -> Salve Mortelle (5 PA, range 6, AoE croix 5)
-            //   Necram    -> Brume Toxique (4 PA, range 4, AoE 3x3 / 2 rounds)
+            // 3.5.a.iii / 3.7.a.iv — Touche V context-aware (AZERTY) :
+            //   Nightseer -> Salve Mortelle  (5 PA, range 6, AoE croix 5)
+            //   Necram    -> Brume Toxique   (4 PA, range 4, AoE 3x3 / 2 rounds)
+            //   Ghostra   -> Danse des Lames (5 PA, Self AoE Square3x3, 180 dgts par cible + dorsal + Marque + PlaieOuverte auto)
             if (keyV)
             {
-                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsV)
-                    && casterClsV == Quantum.NymoraClass.Necram)
+                if (TryGetCasterClass(game, senderPlayer, out Quantum.NymoraClass casterClsV))
                 {
-                    SendSpellAt(game, senderPlayer, SpellId.NecramBrumeToxique, gx, gy, 0);
+                    if (casterClsV == Quantum.NymoraClass.Necram)
+                    {
+                        SendSpellAt(game, senderPlayer, SpellId.NecramBrumeToxique, gx, gy, 0);
+                    }
+                    else if (casterClsV == Quantum.NymoraClass.Ghostra)
+                    {
+                        // Self target : envoyer (casterX, casterY) explicitement (pattern Faux Decharnee).
+                        if (TryGetCasterCell(game, senderPlayer, out int dlX, out int dlY))
+                            SendSpellAt(game, senderPlayer, SpellId.GhostraDanseDesLames, dlX, dlY, 0);
+                    }
+                    else
+                    {
+                        SendSpellAt(game, senderPlayer, SpellId.NightseerSalveMortelle, gx, gy, 0);
+                    }
                 }
                 else
                 {

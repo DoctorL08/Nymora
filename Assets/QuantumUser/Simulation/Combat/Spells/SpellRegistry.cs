@@ -527,6 +527,18 @@ namespace Quantum
         public const int SaigneAmePlaieBonus        = 70;
         public const int SaigneAmeHealOnKill        = 60;
 
+        // 3.7.a.iv — Danse des Lames (Bible V7.1 ligne 1116) :
+        //   5 PA, range 0 (Self target via Filter), AoE Square3x3 = 8 cases adjacentes (le caster
+        //   est exclu par le check `target == casterEntity` dans le damage loop standard).
+        //   180 dgts flat par cible ennemie touchee. Bonus dorsal Angle Mort + Marque de l'Ombre
+        //   + PlaieOuverte auto Angle 2+ : tout est applique generiquement par le pipeline.
+        //   Bible-ORIG mentionne aussi "consommation optionnelle : -1 leurre adjacent a la cible
+        //   -> bonus dorsal automatique". Decision Lorenzo 16 mai : on zappe l'option (redondante
+        //   avec la condition naturelle "leurre adjacent" deja appliquee via le bonus passif).
+        //   Le bonus dorsal s'applique donc UNIQUEMENT si dorsal physique (Bible-textuel partiel).
+        public const int DanseDesLamesPACost        = 5;
+        public const int DanseDesLamesDmg           = 180;
+
         public static bool TryGet(SpellId id, out SpellDef def)
         {
             switch (id)
@@ -1939,6 +1951,25 @@ namespace Quantum
                         RangeMin = 1,
                         RangeMax = SaigneAmeRangeMax,
                         DamageAmount = SaigneAmeDmgBase, // +70 PlaieOuverte + dorsal modifs en handler
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // Danse des Lames (3.7.a.iv) : 5 PA, Self AoE Square3x3 = 8 cases autour caster
+                // (caster auto-exclu via casterEntity check). 180 dgts par cible. Bonus dorsal
+                // + Marque + PlaieOuverte auto Angle 2+ : tout en pipeline generique, ZERO handler custom.
+                case SpellId.GhostraDanseDesLames:
+                    def = new SpellDef
+                    {
+                        PACost = DanseDesLamesPACost,
+                        Shape = TargetingShape.Square3x3,        // 9 cases (centre + 8 voisines)
+                        Filter = TargetingFilter.Self,           // target redirigee vers caster cell par CombatInputController
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = DanseDesLamesDmg,         // 180 par cible ennemie touchee
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
