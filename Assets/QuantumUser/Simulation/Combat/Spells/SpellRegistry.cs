@@ -51,6 +51,8 @@ namespace Quantum
         public const byte OncePerMatchBitDernierSouffle = 1;
         public const byte OncePerMatchBitNightseerEvanescence = 2;
         public const byte OncePerMatchBitNecramCoconPutride = 3;
+        public const byte OncePerMatchBitGhostraVoileSpectral = 4;
+        public const byte OncePerMatchBitGhostraDernierPas    = 5;
 
         // Constantes Bible V7.1 partagees par plusieurs sorts / systemes.
         public const int PeauDeFerShieldHP            = 200;
@@ -538,6 +540,134 @@ namespace Quantum
         //   Le bonus dorsal s'applique donc UNIQUEMENT si dorsal physique (Bible-textuel partiel).
         public const int DanseDesLamesPACost        = 5;
         public const int DanseDesLamesDmg           = 180;
+
+        // 3.7.c.i — Linceul d'Ombres (Bible V7.1 ligne 1173) :
+        //   3 PA self. ShieldActive 130 HP / 2 rounds + LinceulDOmbres flag (Magnitude=40
+        //   dgts riposte) 2 rounds. Hook damage loop standard (apres Carapace, avant
+        //   bloc HP loss) + path custom Charge Brutale : si target porte LinceulDOmbres
+        //   ET attaque MELEE (Chebyshev caster-target <= 1) -> renvoie 40 dgts sur
+        //   l'attaquant. PIPELINE STANDARD : reduction% (Densite Inerte + Garde
+        //   Protectrice cap 50%) puis shield attaquant. Trigger meme si shield Linceul
+        //   absorbe tout le dmg incoming (Bible "toute attaque melee subie").
+        //   Refresh-only (recast meme tour reset shield 130 HP + duree 2 rounds).
+        //   Bible "Anti-Soulrender qui charge".
+        //   Pas de -1 PM sur attaquant (cf Riposte Carmin) : Bible Linceul muet sur ce
+        //   point, juste "renvoie 40 dgts".
+        public const int LinceulDOmbresPACost           = 3;
+        public const int LinceulDOmbresShieldHP         = 130;
+        public const int LinceulDOmbresTurns            = 2;
+        public const int LinceulDOmbresRipostMeleeDmg   = 40;
+
+        // 3.7.c.ii — Voile Spectral (Bible V7.1 ligne 1166) :
+        //   2 PA self, 1x/match (OncePerMatchBitGhostraVoileSpectral=4). Effet en 2 temps :
+        //   (1) RETRAIT instantane de tous les DoT actifs sur la Ghostra :
+        //       - Consume StatusKind.BleedDoT
+        //       - Consume StatusKind.PlaieOuverte
+        //       - VeninHelpers.RemoveAllMarks (caster.VeninStacks = 0)
+        //   (2) APPLY StatusKind.DotImmune duree VoileSpectralImmuneTurns rounds. Hooks
+        //       d'interception (VeninHelpers.ApplyMark / GhostraPassif.ApplyPlaieOuverteIfAngle2Plus
+        //       / SpellSystem case Frappe Fantome) skip si target Has(DotImmune).
+        //   Bible-strict perimetre : status DoT explicites uniquement. Le tick fin de round
+        //   terrain (Sang Coagule, etc.) N'EST PAS bloque (continue d'agir normalement).
+        //   Bible "Seul anti-DoT du kit Ghostra. Anti-Soulrender + Necram."
+        public const int VoileSpectralPACost            = 2;
+        public const int VoileSpectralImmuneTurns       = 1;
+
+        // 3.7.c.iii — Réplique Protectrice (Bible V7.1 ligne 1187, AMENDEMENT 16 mai 2026) :
+        //   Bible orig : 3 PA, 40% redirection, +60 HP heal destroy, 2 rounds.
+        //   AMENDEMENT Lorenzo (cap balance) :
+        //     - PA : 3 -> 4
+        //     - Redirection : 40% -> 30%
+        //     - Heal destroy : +60 -> +80 HP (compense le nerf PA + %)
+        //     - Lifetime : 4 rounds (amendement leurres) -> 3 rounds (override per-Kind dans
+        //       DecoyHelpers.TickLifetimeAtSubTurnStart via DecoyHelpers.ProtectiveLifetimeRounds)
+        //     - Stack : si plusieurs Protective vivants, UN SEUL absorbe par hit (pas de cumul
+        //       30%+30% = 60%). Le code itere slot 0->1->2 et prend le PREMIER vivant trouve,
+        //       comportement deja en place (cf hook redirection). Sur hits successifs, decoys
+        //       meurent les uns apres les autres (multiplie la duree de protection, pas le %).
+        //
+        //   3 PA->4 PA, range 3 case vide. Pose un DecoyKind.Protective (HP=200 via
+        //   DecoyHelpers.ProtectiveDecoyMaxHP, lifetime ProtectiveLifetimeRounds=3 override).
+        //   Compte dans cap 3 leurres (DecoyHelpers.MaxDecoys). Bible "Leurre tank, sustain cache".
+        //
+        //   HOOK REDIRECTION 30% (Bible "redirige X% des dgts subis pendant N tours") :
+        //     - Dans SpellSystem damage loop SUR la Ghostra (target=Ghostra), APRES reduction%
+        //       (Densite Inerte + Garde Prot + Ancrage), AVANT shield Ghostra. Pipeline
+        //       Bible-strict : "dgts subis" = incoming post-mitigation, avant shield. Le shield
+        //       Ghostra absorbe ensuite ce qui passe (70% restant + overflow si decoy ne peut
+        //       pas tout absorber).
+        //     - Decoy absorbe min(30%, decoyHP). Si decoy meurt suite a la redirection
+        //       (decoyHP -> 0) -> DecoyHelpers.DestroyByEnemyAction (heal +80 HP Ghostra,
+        //       Bible amendee). La portion 30% qui depasse l'HP du decoy s'evapore (le decoy
+        //       a absorbe ce qu'il pouvait, le surplus est "dans le vide"). dmgThisTarget
+        //       est reduit du 30% complet (Bible-strict : on retire toujours 30% du dmg
+        //       Ghostra, peu importe si le decoy avait assez d'HP).
+        //     - Rebranche dans path custom Charge Brutale (avant le shield absorb CB).
+        //   Fenetre de redirection : tant que un decoy Protective vivant existe (max 3 rounds
+        //   amendement Protective override). Si decoy detruit -> redirection se ferme automatiquement.
+        public const int RepliqueProtectricePACost            = 4;
+        public const int RepliqueProtectriceRangeMax          = 3;
+        public const int RepliqueProtectriceRedirectPercent   = 30;
+
+        // 3.7.c.iv — Dernier Pas (Bible V7.1 ligne 1194) :
+        //   4 PA self, range 5 case vide (teleport), 1x/match (OncePerMatchBitGhostraDernierPas=5).
+        //   Gate HP < DernierPasHpThresholdPct (30%) : pre-check pre-PA (style Cocon Putride
+        //   / Dernier Souffle / Evanescence) -> rejet propre si HP plein, PA NON consume.
+        //   Effet en 3 temps (handler) :
+        //     (1) Heal caster +200 HP (DernierPasHealAmount, cap MaxHP).
+        //     (2) Teleport sur case vide range 5 (MovementHelpers.MoveNonPM).
+        //     (3) Pose un DecoyKind.Standard sur la case quittee. Si cap 3 leurres atteint
+        //         (DecoyHelpers.MaxDecoys), DESTROY le leurre LE PLUS ANCIEN (min SpawnedOnTurn)
+        //         via DestroyAtSlot (internal, sans heal) puis TrySpawn nouveau Standard.
+        //         Decision Lorenzo : le panic-button doit toujours poser son leurre, on
+        //         sacrifie le plus vieux. Cohérent avec gameplay panic-button "remix les leurres".
+        //   Bible "Panic button mobile : se soigne + s'echappe + laisse leurre derriere."
+        public const int DernierPasPACost            = 4;
+        public const int DernierPasRangeMax          = 5;
+        public const int DernierPasHealAmount        = 200;
+        public const int DernierPasHpThresholdPct    = 30;
+
+        // 3.7.c.v — Pas de l'Au-Dela (Bible V7.1 ligne 1180) :
+        //   2 PA self. Pas de range (Filter=Self). Pas de gate HP, pas de 1x/match.
+        //   Cast pose flag NextMoveIgnoresUnits=1 + CurrentPM += PasAuDelaPMBonus (cap MaxPM
+        //   ignore, addition pure au pool courant pour respecter "+2 PM ce tour" Bible).
+        //   Le prochain Move ce tour traverse ennemis ET leurres (A* ignoreEnemyOccupants=true).
+        //   Chaque ennemi traverse pendant le path -> PasAuDelaDorsalDamage HP loss direct
+        //   (frappe gratuite "dorsale" sans pipeline shield/reflect/redirect - Bible-stricte).
+        //   Decision Lorenzo : multi-targets, TOUS les ennemis traverses prennent 60 dgts.
+        //   Flag consume au premier Move applique (clear dans MovementSystem.ApplyMove).
+        //   Si pas utilise avant fin tour Ghostra : cleanup defensif au EnterTurnStart
+        //   suivant du combattant actif (le flag ne sert qu'au combattant pendant son tour).
+        public const int PasAuDelaPACost          = 2;
+        public const int PasAuDelaPMBonus         = 2;
+        public const int PasAuDelaDorsalDamage    = 60;
+
+        // 3.7.d — Execution Spectrale (Bible V7.1 ligne 1071) SIGNATURE Ghostra :
+        //   3 PA, range 1 (melee dorsal requis), Filter=Enemy. Coute 3/3 LEURRES (ExecutionSpectraleRequiredDecoys).
+        //   Pre-PA gate : count(decoys) == 3 ET cooldown expire (currentTurn - LastExecutionSpectraleUsedOnTurn >= ExecutionSpectraleCooldownTurns).
+        //   Handler :
+        //     (1) Capture positions des leurres slots 0 et 1 (re-spawn potentiel sur kill).
+        //     (2) DestroyAtSlot(0/1/2) - consume 3 leurres inconditionnellement.
+        //     (3) caster->LastExecutionSpectraleUsedOnTurn = currentTurn (cooldown set).
+        //     (4) Check FacingHelpers.IsDorsalHit(caster, target) :
+        //         - false : log RATE, break. PA + 3 leurres + cooldown deja consumes.
+        //         - true  : (a) target->HP -= ExecutionSpectraleDamage (350) direct, bypass
+        //                       shield/reduction (decision Lorenzo Bible-stricte "350 dmg" net signature).
+        //                       target->DamageTakenThisRound += dmgApplique.
+        //                   (b) StatusHelper.Apply(target, PlaieOuverte, mag=ExecutionSpectralePlaieDmgPerTurn (50),
+        //                       turnsLeft=ExecutionSpectralePlaieTurns (3), currentTurn) -> ecrase plaie standard.
+        //                   (c) Si target->HP <= 0 (kill) : caster->HP += ExecutionSpectraleKillHeal (100,
+        //                       cap MaxHP, respect AntiHealShield) ET TrySpawn 2 leurres Standard aux positions
+        //                       captees (decoy0/1) si toujours libres.
+        //   Pas de OncePerMatchBit : signature standard reusable si 3 leurres reposes + cooldown expire.
+        public const int ExecutionSpectralePACost              = 3;
+        public const int ExecutionSpectraleRequiredDecoys      = 3;
+        public const int ExecutionSpectraleCooldownTurns       = 4;
+        public const int ExecutionSpectraleDamage              = 350;
+        public const int ExecutionSpectralePlaieDmgPerTurn     = 50;
+        public const int ExecutionSpectralePlaieTurns          = 3;
+        public const int ExecutionSpectraleKillHeal            = 100;
+        public const int ExecutionSpectraleKillRespawnDecoys   = 2;
 
         public static bool TryGet(SpellId id, out SpellDef def)
         {
@@ -1970,6 +2100,132 @@ namespace Quantum
                         RangeMin = 0,
                         RangeMax = 0,
                         DamageAmount = DanseDesLamesDmg,         // 180 par cible ennemie touchee
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 1,
+                    };
+                    return true;
+
+                // 3.7.c.i — Linceul d'Ombres : bouclier epineux 2 rounds, 3 PA self.
+                // Pas de damage direct (IsOffensive=0). Effet pose dans le handler SpellSystem
+                // (ShieldActive 130 HP + LinceulDOmbres flag Magnitude=40). Hook riposte 40 dgts
+                // direct sur attaquant melee dans damage loop standard + path custom Charge
+                // Brutale (Bible-conforme pipeline reduction% + shield attaquant).
+                case SpellId.GhostraLinceulDOmbres:
+                    def = new SpellDef
+                    {
+                        PACost = LinceulDOmbresPACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.7.c.ii — Voile Spectral : reset DoT 2 PA self, 1x/match. Pas de damage direct
+                // (IsOffensive=0). Effet pose dans le handler SpellSystem (consume BleedDoT +
+                // PlaieOuverte + VeninStacks=0, puis Apply DotImmune 1 round). Hooks d'interception
+                // dans VeninHelpers.ApplyMark + GhostraPassif.ApplyPlaieOuverteIfAngle2Plus + case
+                // Frappe Fantome (skip si Has(DotImmune)).
+                case SpellId.GhostraVoileSpectral:
+                    def = new SpellDef
+                    {
+                        PACost = VoileSpectralPACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitGhostraVoileSpectral,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.7.c.iii — Réplique Protectrice : leurre tank 3 PA range 3 case vide. Pas de
+                // damage direct (IsOffensive=0). Effet pose dans le handler SpellSystem
+                // (DecoyHelpers.TrySpawn DecoyKind.Protective). Hook redirection 40% dans damage
+                // loop standard SUR la Ghostra (apres reduction%, avant shield) + path custom
+                // Charge Brutale. Heal +60 HP Ghostra a destruction du decoy via
+                // DecoyHelpers.DestroyByEnemyAction.
+                case SpellId.GhostraRepliqueProtectrice:
+                    def = new SpellDef
+                    {
+                        PACost = RepliqueProtectricePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.EmptyTile,
+                        RangeMin = 1,
+                        RangeMax = RepliqueProtectriceRangeMax,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.7.c.iv — Dernier Pas : panic-button mobile 4 PA self, gate HP<30%, 1x/match.
+                // EmptyTile filter range 5 (teleport sur case vide). Pas de damage direct
+                // (IsOffensive=0). Effet pose dans le handler SpellSystem (heal +200 + teleport +
+                // pose leurre Standard case quittee). Cap 3 gere par destroy oldest + spawn nouveau.
+                case SpellId.GhostraDernierPas:
+                    def = new SpellDef
+                    {
+                        PACost = DernierPasPACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.EmptyTile,
+                        RangeMin = 1,
+                        RangeMax = DernierPasRangeMax,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitGhostraDernierPas,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.7.c.v — Pas de l'Au-Dela : 2 PA Self. Pas de damage direct (IsOffensive=0).
+                // Effet pose dans le handler SpellSystem (CurrentPM += PasAuDelaPMBonus +
+                // NextMoveIgnoresUnits=1). Les dgts dorsaux 60 par ennemi traverse sont applies
+                // dans MovementSystem.ApplyMove (pas ici - le sort ne fait que poser le flag).
+                case SpellId.GhostraPasDeLAuDela:
+                    def = new SpellDef
+                    {
+                        PACost = PasAuDelaPACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
+                        HGCostMandatory = 0,
+                        HGCostMaxOptional = 0,
+                        OncePerMatchBit = OncePerMatchBitNone,
+                        IsOffensive = 0,
+                    };
+                    return true;
+
+                // 3.7.d — Execution Spectrale (Bible V7.1 ligne 1071) SIGNATURE Ghostra :
+                //   3 PA, range 1 melee, Filter=Enemy. DamageAmount=0 (custom path : tout dans
+                //   le handler pour gerer dorsal/non-dorsal + consume leurres + cooldown +
+                //   plaie + kill bonus). IsOffensive=1 pour trigger les hooks offensifs standards
+                //   (Pacte de Sang multiplier, etc. - bien que le custom path n'utilise pas le
+                //   pipeline damage, on garde le flag IsOffensive pour la category Bible).
+                case SpellId.GhostraExecutionSpectrale:
+                    def = new SpellDef
+                    {
+                        PACost = ExecutionSpectralePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 1,
+                        DamageAmount = 0,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,

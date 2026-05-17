@@ -23,6 +23,7 @@ namespace Quantum
     {
         public const int MaxDecoys = 3;            // verrouille — taille array Decoys
         public const int LifetimeRounds = 4;       // AMENDEMENT 16 mai 2026 (Bible orig "2 tours" -> 4 pour permettre combos)
+        public const int ProtectiveLifetimeRounds = 3; // AMENDEMENT 16 mai 2026 (cap Réplique Protectrice : 3 rounds au lieu de 4 pour balance)
         public const int ProtectiveDecoyMaxHP = 200; // Bible Réplique Protectrice
 
         // Heal Ghostra owner sur destruction d'un leurre (Bible V7.1 par sort) :
@@ -32,7 +33,7 @@ namespace Quantum
         // pour discriminer Kind.RepliqueFantome vs Standard (pas de heal) vs Protective.
         public const int RepliqueFantomeHealOnDestroy   = 40;  // detruit prematurement par action adverse
         public const int RepliqueFantomeHealOnExpire    = 80;  // survit naturellement LifetimeRounds
-        public const int RepliqueProtectriceHealOnDestroy = 60;
+        public const int RepliqueProtectriceHealOnDestroy = 80; // AMENDEMENT 16 mai 2026 (cap Bible orig 60 -> 80 pour compenser nerf 40%->30% + 3 PA -> 4 PA)
 
         /// <summary>
         /// Compte les leurres actifs (Kind != None) du Ghostra. Cache aussi le resultat
@@ -118,7 +119,12 @@ namespace Quantum
                 HP = hp,
             };
 
-            Log.Info($"[Decoy] Spawn P{ghostra->PlayerIndex} slot {freeSlot} kind={kind} pos=({posX},{posY}) hp={hp} turn={currentTurn} (actifs {CountActive(ghostra)}/{MaxDecoys})");
+            // 3.6 RÉMANENCE sync : la ressource Ghostra Resource = compteur de leurres actifs
+            // (Bible V7.1 "RÉMANENCE | 3 LEURRES MAXIMUM"). Lu par CombatDebugOverlay/HUD pour
+            // afficher X/3. Sync ici (et a chaque mutation : DestroyAtSlot, DestroyByEnemyAction,
+            // TickLifetimeAtSubTurnStart) pour rester coherent avec CountActive.
+            ghostra->Resource = CountActive(ghostra);
+            Log.Info($"[Decoy] Spawn P{ghostra->PlayerIndex} slot {freeSlot} kind={kind} pos=({posX},{posY}) hp={hp} turn={currentTurn} (actifs {ghostra->Resource}/{MaxDecoys}, Resource sync)");
             return true;
         }
 
@@ -135,6 +141,8 @@ namespace Quantum
             if (ghostra->Decoys[slotIndex].Kind == DecoyKind.None) return;
             Log.Info($"[Decoy] Destroy P{ghostra->PlayerIndex} slot {slotIndex} kind={ghostra->Decoys[slotIndex].Kind} pos=({ghostra->Decoys[slotIndex].PosX},{ghostra->Decoys[slotIndex].PosY})");
             ghostra->Decoys[slotIndex] = default;
+            // 3.6 RÉMANENCE sync (cf TrySpawn).
+            ghostra->Resource = CountActive(ghostra);
         }
 
         /// <summary>
@@ -159,6 +167,8 @@ namespace Quantum
             int dx = ghostra->Decoys[slotIndex].PosX;
             int dy = ghostra->Decoys[slotIndex].PosY;
             ghostra->Decoys[slotIndex] = default;
+            // 3.6 RÉMANENCE sync (cf TrySpawn).
+            ghostra->Resource = CountActive(ghostra);
 
             if (healAmount > 0 && ghostra->HP > 0)
             {
@@ -311,15 +321,23 @@ namespace Quantum
         public static void TickLifetimeAtSubTurnStart(Combatant* ghostra, int currentTurn)
         {
             if (ghostra == null) return;
+            bool anyExpiredThisTick = false;
             for (int i = 0; i < MaxDecoys; i++)
             {
                 if (ghostra->Decoys[i].Kind == DecoyKind.None) continue;
                 int spawnedOn = ghostra->Decoys[i].SpawnedOnTurn;
                 if (spawnedOn == currentTurn) continue; // skip au round de spawn
                 int age = currentTurn - spawnedOn;
-                if (age < LifetimeRounds) continue;
 
-                DecoyKind expiredKind = ghostra->Decoys[i].Kind;
+                // AMENDEMENT 16 mai 2026 : lifetime varie par Kind. Default = LifetimeRounds (4),
+                // Protective override = ProtectiveLifetimeRounds (3) pour cap balance Réplique Protectrice.
+                DecoyKind kindHere = ghostra->Decoys[i].Kind;
+                int lifetimeForKind = (kindHere == DecoyKind.Protective)
+                    ? ProtectiveLifetimeRounds
+                    : LifetimeRounds;
+                if (age < lifetimeForKind) continue;
+
+                DecoyKind expiredKind = kindHere;
                 int dx = ghostra->Decoys[i].PosX;
                 int dy = ghostra->Decoys[i].PosY;
 
@@ -328,7 +346,8 @@ namespace Quantum
                 if (expiredKind == DecoyKind.RepliqueFantome) healAmount = RepliqueFantomeHealOnExpire;
 
                 ghostra->Decoys[i] = default;
-                Log.Info($"[Decoy] Expire P{ghostra->PlayerIndex} slot {i} kind={expiredKind} (age {age}>={LifetimeRounds}) pos=({dx},{dy})");
+                anyExpiredThisTick = true;
+                Log.Info($"[Decoy] Expire P{ghostra->PlayerIndex} slot {i} kind={expiredKind} (age {age}>={lifetimeForKind}) pos=({dx},{dy})");
 
                 if (healAmount > 0 && ghostra->HP > 0)
                 {
@@ -339,6 +358,12 @@ namespace Quantum
                     int realHeal = hpAfter - hpBefore;
                     Log.Info($"[Decoy] Réplique Fantôme survit -> heal P{ghostra->PlayerIndex} +{realHeal} HP ({hpBefore}->{hpAfter}, Bible V7.1)");
                 }
+            }
+            // 3.6 RÉMANENCE sync (cf TrySpawn) : si au moins un leurre a expire ce tick, on
+            // resynchronise Resource pour refleter le nouveau CountActive.
+            if (anyExpiredThisTick)
+            {
+                ghostra->Resource = CountActive(ghostra);
             }
         }
 

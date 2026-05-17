@@ -163,15 +163,19 @@ namespace Nymora.Combat.View
                 // Skip si pas encore de position posee (cas spawn 1er frame, prevGx/Gy = 0).
                 if (totalSteps > 1 && (prevGx != 0 || prevGy != 0))
                 {
-                    // 3.5.b.iii Pas Spectral : si le combatant est un Necram porteur de
-                    // PasSpectralReady, le path d'anim peut traverser les ennemis (cohérent
-                    // avec la sim qui passe ignoreEnemyOccupants=true a A*).
+                    // 3.5.b.iii Pas Spectral (Necram) / 3.7.c.v Pas de l'Au-Dela (Ghostra) :
+                    // si le combatant porte le status correspondant (PasSpectralReady ou
+                    // PasAuDelaReady), le path d'anim peut traverser les ennemis (cohérent avec
+                    // la sim qui passe ignoreEnemyOccupants=true a A* dans les memes conditions).
                     bool animIgnoreEnemyOccupants = false;
-                    if (combatant.Class == NymoraClass.Necram)
+                    if (combatant.Class == NymoraClass.Necram || combatant.Class == NymoraClass.Ghostra)
                     {
+                        StatusKind expectedKind = combatant.Class == NymoraClass.Necram
+                            ? StatusKind.PasSpectralReady
+                            : StatusKind.PasAuDelaReady;
                         for (int s = 0; s < StatusHelper.SlotCount; s++)
                         {
-                            if (combatant.Statuses[s].Kind == StatusKind.PasSpectralReady
+                            if (combatant.Statuses[s].Kind == expectedKind
                                 && combatant.Statuses[s].TurnsLeft > 0)
                             {
                                 animIgnoreEnemyOccupants = true;

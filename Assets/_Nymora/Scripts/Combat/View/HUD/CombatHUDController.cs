@@ -271,6 +271,36 @@ namespace Nymora.Combat.View.HUD
             }
         }
 
+        /// <summary>
+        /// POLISH-4 (deckbuilder polish) : arme un sort via son index de slot, equivalent
+        /// au clic souris sur SpellSlotView. Appele par CombatInputController quand le joueur
+        /// presse les touches 1-7 (Alpha1..Alpha7) : 0..5 = deck slots (sorts equipes du deck
+        /// de 6 sorts Bible V7.1), 6 = signature slot.
+        ///
+        /// Renvoie true si un sort valide a ete arme (ou desarme si re-clic). False si index
+        /// invalide ou slot vide (SpellId.None).
+        /// </summary>
+        public bool TryArmSlotByIndex(int slotIndex)
+        {
+            SpellId spell = SpellId.None;
+            if (slotIndex >= 0 && slotIndex < _testDeck.Length)
+            {
+                spell = _testDeck[slotIndex];
+            }
+            else if (slotIndex == _testDeck.Length)
+            {
+                // slot signature (touche Alpha7 si deck=6)
+                spell = _signatureSpell;
+            }
+            else
+            {
+                return false;
+            }
+            if (spell == SpellId.None) return false;
+            OnSlotClicked(spell);
+            return true;
+        }
+
         // -- Tooltip API (2.13.c) --
 
         public void ShowTooltip(SpellId spell, RectTransform anchor)
@@ -290,6 +320,18 @@ namespace Nymora.Combat.View.HUD
             var frame = game.Frames.Verified;
             if (frame == null) return;
             if (!frame.TryGetSingleton<CombatState>(out var state)) return;
+
+            // POLISH-2 : si c'est le tour du bot IA (P1 hardcoded Phase 2-5), ignore le clic.
+            // Le bot finit son propre tour via AISystem.EndBotTurn. Spam Espace / clic End Turn
+            // pendant le tour bot cassait son pacing ActionIntervalTicks et faisait sauter ses
+            // casts/move (le tour passait avant que l'AI ait fini ses actions). Mode prod
+            // 1-humain : le bouton ne devrait pas etre cliquable pendant tour IA, mais ce
+            // garde-fou ferme aussi le cas spam-clic preventif.
+            if (state.ActivePlayerIndex == AIConstants.BotPlayerIndex)
+            {
+                Debug.Log($"[Nymora.HUD] EndTurnCommand IGNORE : tour du bot P{state.ActivePlayerIndex} en cours (le bot finit seul via AISystem)");
+                return;
+            }
 
             int senderPlayer = ResolveControlPlayer(state.ActivePlayerIndex);
             game.SendCommand(senderPlayer, new EndTurnCommand());

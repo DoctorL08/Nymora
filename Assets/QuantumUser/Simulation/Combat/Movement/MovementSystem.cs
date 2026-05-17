@@ -123,10 +123,23 @@ namespace Quantum
             bool pasSpectralActive = combatant->Class == NymoraClass.Necram
                                   && StatusHelper.Has(combatant, StatusKind.PasSpectralReady);
 
+            // 3.7.c.v — Pas de l'Au-Dela : si la Ghostra porte le status PasAuDelaReady
+            // (apply par cast Pas de l'Au-Dela ce tour, expire en fin de SON sub-turn via
+            // TurnSystem.EnterTurnEnd), A* traverse ennemis ET leurres et chaque ennemi traverse
+            // pendant les cases intermediaires encaisse PasAuDelaDorsalDamage HP loss direct
+            // (frappe gratuite dorsale Bible). Status non consume au Move : tous les Moves du
+            // tour Ghostra beneficient du bypass (coherent avec "+2 PM ce tour" Bible).
+            bool pasAuDelaActive = combatant->Class == NymoraClass.Ghostra
+                                && StatusHelper.Has(combatant, StatusKind.PasAuDelaReady);
+
+            // OR combine : A* ignoreEnemyOccupants pour Pas Spectral OU Pas de l'Au-Dela.
+            // (Les deux sont mutuellement exclusifs par classe en pratique 1v1 / 2v2 mono-classe.)
+            bool ignoreUnitsForPath = pasSpectralActive || pasAuDelaActive;
+
             // Cas adjacent (1 case) : skip A* pour optimiser
             if (manhattan == 1)
             {
-                ApplyMove(f, combatant, combatantEntity, targetX, targetY, 1 + extraCostVapeur, null, 0, false);
+                ApplyMove(f, combatant, combatantEntity, targetX, targetY, 1 + extraCostVapeur, null, 0, false, false);
                 return;
             }
 
@@ -139,7 +152,7 @@ namespace Quantum
                     combatant->PM,
                     pathBuffer,
                     out int pathLength,
-                    ignoreEnemyOccupants: pasSpectralActive,
+                    ignoreEnemyOccupants: ignoreUnitsForPath,
                     casterPlayerIndex: combatant->PlayerIndex))
             {
                 Log.Warn($"[Movement] rejet : pas de chemin <= PM={combatant->PM} vers ({targetX},{targetY})");
@@ -153,11 +166,11 @@ namespace Quantum
                 return;
             }
 
-            ApplyMove(f, combatant, combatantEntity, targetX, targetY, totalCost, pathBuffer, pathLength, pasSpectralActive);
+            ApplyMove(f, combatant, combatantEntity, targetX, targetY, totalCost, pathBuffer, pathLength, pasSpectralActive, pasAuDelaActive);
         }
 
         private static void ApplyMove(Frame f, Combatant* combatant, EntityRef entity, int targetX, int targetY, int cost,
-                                      int* pathBuffer, int pathLength, bool applyPasSpectralCrossings)
+                                      int* pathBuffer, int pathLength, bool applyPasSpectralCrossings, bool applyPasAuDelaCrossings)
         {
             // 3.7.a.i.0 — Update Facing depuis la direction du dernier deplacement (dx,dy)
             //   du from-cell vers la target. Lu par GhostraPassif.IsDorsalHit pour le bonus
@@ -199,6 +212,34 @@ namespace Quantum
                     Log.Info($"[Pas Spectral] Necram P{combatant->PlayerIndex} traverse P{crossed->PlayerIndex} en ({cx},{cy}) : +{SpellRegistry.PasSpectralMarksPerCrossing} marque venin");
                 }
             }
+
+            // 3.7.c.v — Pas de l'Au-Dela : pour chaque ennemi present sur les cases intermediaires
+            // du path -> PasAuDelaDorsalDamage HP loss direct (frappe dorsale gratuite Bible).
+            // Pas de pipeline shield/reflect/redirect (decision Bible-stricte "frappe gratuite").
+            // Multi-targets : TOUS les ennemis traverses prennent les dgts (decision Lorenzo).
+            // Les leurres ennemis sur le path sont ignores (pas de dgts sur leurres : on les
+            // traverse comme fantome physique sans interaction). DamageTakenThisRound increment
+            // sur la victime pour preserver le passif Prescience Nightseer.
+            if (applyPasAuDelaCrossings && pathBuffer != null && pathLength > 1)
+            {
+                for (int i = 0; i < pathLength - 1; i++)
+                {
+                    int crossingIdx = pathBuffer[i];
+                    int cx = crossingIdx % GridConstants.Width;
+                    int cy = crossingIdx / GridConstants.Width;
+                    EntityRef occ = GridHelpers.GetOccupant(f, cx, cy);
+                    if (occ == EntityRef.None) continue;
+                    if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* crossedEnemy)) continue;
+                    if (crossedEnemy->PlayerIndex == combatant->PlayerIndex) continue; // skip allie/self
+                    if (crossedEnemy->HP <= 0) continue;
+                    int hpBeforePAD = crossedEnemy->HP;
+                    crossedEnemy->HP -= SpellRegistry.PasAuDelaDorsalDamage;
+                    if (crossedEnemy->HP < 0) crossedEnemy->HP = 0;
+                    crossedEnemy->DamageTakenThisRound += SpellRegistry.PasAuDelaDorsalDamage;
+                    Log.Info($"[Pas de l'Au-Dela] Ghostra P{combatant->PlayerIndex} traverse P{crossedEnemy->PlayerIndex} en ({cx},{cy}) : -{SpellRegistry.PasAuDelaDorsalDamage} HP dorsal gratuit (HP {hpBeforePAD} -> {crossedEnemy->HP})");
+                }
+            }
+
 
             // 2.15.b — Trigger trap eventuel sur la case d'arrivee (Filet de Ronces, Mine).
             // L'helper gere damage + Empreinte + MovementMalus + Clear trap + +1 PR au owner.

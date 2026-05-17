@@ -26,6 +26,15 @@
             // (mecanique Bible V7.1 permanente).
             factories.Add(new DebugSpawnDecoyCommand());
             factories.Add(new PermutationCommand());
+            // POLISH-4.5 — debug F1-F10 : applique Status / pose Terrain / pose Trap
+            // arbitrairement pour tester visuellement marques/tiles/VFX. A retirer
+            // en alpha/beta clean-up.
+            factories.Add(new DebugApplyStatusCommand());
+            factories.Add(new DebugSpawnTerrainCommand());
+            factories.Add(new DebugSpawnTrapCommand());
+            // POLISH-4.5b — debug Shift+F2/F3 : applique MarkKind Nightseer (Traque /
+            // Empreinte) qui vit dans Combatant.CurrentMark (distinct de StatusKind).
+            factories.Add(new DebugApplyMarkCommand());
         }
     }
 }

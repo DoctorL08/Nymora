@@ -122,6 +122,8 @@ namespace Nymora.Combat.View.HUD
             bool hasCaster = false;
             // 3.5.b.iii : detection PasSpectralReady inline pour autoriser BFS a traverser ennemis.
             bool casterHasPasSpectral = false;
+            // 3.7.c.v : detection NextMoveIgnoresUnits (Pas de l'Au-Dela Ghostra) — meme effet.
+            bool casterHasPasAuDela = false;
             NymoraClass casterClass = NymoraClass.None;
             var filter = frame.Filter<Combatant>();
             while (filter.Next(out EntityRef _, out Combatant c))
@@ -137,7 +139,10 @@ namespace Nymora.Combat.View.HUD
                         if (c.Statuses[s].Kind == StatusKind.PasSpectralReady && c.Statuses[s].TurnsLeft > 0)
                         {
                             casterHasPasSpectral = true;
-                            break;
+                        }
+                        else if (c.Statuses[s].Kind == StatusKind.PasAuDelaReady && c.Statuses[s].TurnsLeft > 0)
+                        {
+                            casterHasPasAuDela = true;
                         }
                     }
                     hasCaster = true;
@@ -151,9 +156,11 @@ namespace Nymora.Combat.View.HUD
             _activeCasterPM = casterPM;
             _hasActiveCaster = true;
 
-            // 3.5.b.iii : Pas Spectral autorise BFS a traverser cases occupees par ennemis
-            // (cohérent avec MovementSystem qui passe ignoreEnemyOccupants=true a A*).
-            bool ignoreEnemyOccupants = casterHasPasSpectral && casterClass == NymoraClass.Necram;
+            // 3.5.b.iii / 3.7.c.v : Pas Spectral (Necram) OU Pas de l'Au-Dela (Ghostra) autorisent
+            // le BFS a traverser cases occupees par ennemis (cohérent avec MovementSystem qui passe
+            // ignoreEnemyOccupants=true a A* dans les memes conditions).
+            bool ignoreEnemyOccupants = (casterHasPasSpectral && casterClass == NymoraClass.Necram)
+                                     || (casterHasPasAuDela && casterClass == NymoraClass.Ghostra);
 
             // BFS / SPFA avec relaxation. Met a jour _bestCost (utilise dans Update Unity pour highlight).
             for (int i = 0; i < _bestCost.Length; i++) _bestCost[i] = int.MaxValue;

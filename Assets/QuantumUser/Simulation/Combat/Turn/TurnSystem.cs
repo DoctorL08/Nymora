@@ -333,6 +333,23 @@ namespace Quantum
                 }
             }
 
+            // 3.7.c.v — Pas de l'Au-Dela : consume PasAuDelaReady a la fin du sub-turn du
+            // porteur. Pattern identique a Pas Spectral pour respecter Bible "+2 PM CE tour"
+            // et "le PROCHAIN deplacement" (= ce tour uniquement, decision Lorenzo "fin de tour
+            // Ghostra, PA gaches si pas utilise"). Retire manuellement car turnsLeft=1 +
+            // AppliedOnTurn=currentTurn -> DecrementAllOnTurnEnd skip au last sub-turn.
+            {
+                var pasAuDelaFilter = f.Filter<Combatant>();
+                while (pasAuDelaFilter.NextUnsafe(out EntityRef _, out Combatant* actPAD))
+                {
+                    if (actPAD->PlayerIndex != state->ActivePlayerIndex) continue;
+                    if (!StatusHelper.Has(actPAD, StatusKind.PasAuDelaReady)) break;
+                    StatusHelper.Consume(actPAD, StatusKind.PasAuDelaReady);
+                    Log.Info($"[TurnSystem] Pas de l'Au-Dela consume sur P{actPAD->PlayerIndex} (fin sub-turn)");
+                    break;
+                }
+            }
+
             // 2.14 — Decrementation UNIQUEMENT a la fin du dernier sous-tour du round
             // (semantique Dofus : "Bible 2 tours" = "2 rounds complets actifs"). Si on
             // decremente a chaque sous-tour, un status "1 tour" expire apres 1 swap de

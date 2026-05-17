@@ -89,6 +89,16 @@ namespace Quantum
         public static int ApplyMark(Frame f, Combatant* target, int amount, int currentTurn)
         {
             if (target == null || target->HP <= 0 || amount <= 0) return 0;
+
+            // 3.7.c.ii — Voile Spectral : si la cible porte DotImmune, skip l'apply de marque venin.
+            // Bible "immunisee a toute nouvelle application de DoT" : VeninStacks est un DoT.
+            // Log discret pour faciliter debug, pas de side-effect (pas de gain Putrefaction).
+            if (StatusHelper.Has(target, StatusKind.DotImmune))
+            {
+                Log.Info($"[Venin] Apply +{amount} marque(s) SKIP sur P{target->PlayerIndex} (DotImmune Voile Spectral actif)");
+                return 0;
+            }
+
             int before = target->VeninStacks;
             int after = before + amount;
             if (after > MaxStacksPerTarget) after = MaxStacksPerTarget;

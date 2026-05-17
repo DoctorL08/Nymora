@@ -149,6 +149,41 @@ namespace Quantum
                 }
             }
 
+            // 3.7.c.iv — Dernier Pas : conditionnel HP < 30% MaxHP (Bible V7.1 panic-button Ghostra).
+            // Check avant consommation PA (style Cocon Putride / Dernier Souffle / Evanescence).
+            // Rejet propre si HP >= 30% : PA NON consume, OncePerMatchBit NON consume.
+            if (cmd.Spell == SpellId.GhostraDernierPas)
+            {
+                if (caster->HP * 100 >= caster->MaxHP * SpellRegistry.DernierPasHpThresholdPct)
+                {
+                    Log.Warn($"[Spell] rejet : Dernier Pas requiert HP < {SpellRegistry.DernierPasHpThresholdPct}% (actuel {caster->HP}/{caster->MaxHP})");
+                    return;
+                }
+            }
+
+            // 3.7.d — Execution Spectrale : pre-PA gates SIGNATURE Ghostra.
+            //   (1) Requiert 3 leurres actifs (Bible 3/3 LEURRES requirement). Rejet propre
+            //       si CountActive != 3 (peut etre 0, 1 ou 2 - pas de leurres dispos).
+            //   (2) Requiert cooldown expire (4 tours). currentTurn - LastUsed >= 4.
+            //   Si gates OK -> cast accepte, PA consume + custom path handler (le check dorsal
+            //   est dans le handler, pas en pre-PA, car Bible "RATE consume leurres + PA + cooldown").
+            if (cmd.Spell == SpellId.GhostraExecutionSpectrale)
+            {
+                int activeDecoys = DecoyHelpers.CountActive(caster);
+                if (activeDecoys != SpellRegistry.ExecutionSpectraleRequiredDecoys)
+                {
+                    Log.Warn($"[Spell] rejet : Execution Spectrale requiert {SpellRegistry.ExecutionSpectraleRequiredDecoys} leurres actifs (actuel {activeDecoys})");
+                    return;
+                }
+                int currentTurnES = f.TryGetSingleton<CombatState>(out var stateES) ? stateES.TurnNumber : 0;
+                int cooldownDelta = currentTurnES - caster->LastExecutionSpectraleUsedOnTurn;
+                if (cooldownDelta < SpellRegistry.ExecutionSpectraleCooldownTurns)
+                {
+                    Log.Warn($"[Spell] rejet : Execution Spectrale en cooldown ({SpellRegistry.ExecutionSpectraleCooldownTurns - cooldownDelta} tours restants, dernier cast T{caster->LastExecutionSpectraleUsedOnTurn})");
+                    return;
+                }
+            }
+
             // 3.5.c.vi — Virus Fatal (SIGNATURE Necram) : cooldown 4 tours apres usage. Pattern
             // identique Ame Laceree / Traquenard / Effondrement. Check AVANT consume PA pour
             // eviter de "perdre" le cast. Gate Resource >= 6 (PT cap) gere par le pipeline
@@ -825,6 +860,49 @@ namespace Quantum
                         Log.Info($"[Ancrage] -{anchorMag}% dmg sur P{targetC->PlayerIndex} : {dmgBeforeAnchor} -> {dmgThisTarget}");
                     }
 
+                    // 3.7.c.iii — Réplique Protectrice : si target est Ghostra ET porte un decoy
+                    // Protective vivant -> redirige 40% du dmg incoming (post-reduction%, AVANT
+                    // shield Ghostra) sur le 1er decoy Protective trouve. Bible-strict : on retire
+                    // toujours 40% du dmg Ghostra, le decoy absorbe min(40%, decoyHP) — le surplus
+                    // s'evapore (le decoy a absorbe ce qu'il pouvait). Si decoy meurt suite a la
+                    // redirection -> DestroyByEnemyAction (heal +60 HP Ghostra, Bible-conforme).
+                    if (targetC->Class == NymoraClass.Ghostra && dmgThisTarget > 0)
+                    {
+                        int protSlotRP = -1;
+                        for (int sRP = 0; sRP < DecoyHelpers.MaxDecoys; sRP++)
+                        {
+                            if (targetC->Decoys[sRP].Kind == DecoyKind.Protective && targetC->Decoys[sRP].HP > 0)
+                            {
+                                protSlotRP = sRP;
+                                break;
+                            }
+                        }
+                        if (protSlotRP >= 0)
+                        {
+                            int redirectRP = dmgThisTarget * SpellRegistry.RepliqueProtectriceRedirectPercent / 100;
+                            if (redirectRP > 0)
+                            {
+                                int decoyHPBeforeRP = targetC->Decoys[protSlotRP].HP;
+                                int absorbedRP = redirectRP > decoyHPBeforeRP ? decoyHPBeforeRP : redirectRP;
+                                int decoyHPAfterRP = decoyHPBeforeRP - absorbedRP;
+                                var slotRP = targetC->Decoys[protSlotRP];
+                                slotRP.HP = decoyHPAfterRP;
+                                targetC->Decoys[protSlotRP] = slotRP;
+
+                                int dmgBeforeRP = dmgThisTarget;
+                                dmgThisTarget -= redirectRP;
+                                if (dmgThisTarget < 0) dmgThisTarget = 0;
+
+                                Log.Info($"[Réplique Protectrice] P{targetC->PlayerIndex} redirige {redirectRP} dmg ({SpellRegistry.RepliqueProtectriceRedirectPercent}%) -> decoy slot {protSlotRP} absorbe {absorbedRP} (HP {decoyHPBeforeRP}->{decoyHPAfterRP}, surplus {redirectRP - absorbedRP} evapore). dmg Ghostra {dmgBeforeRP} -> {dmgThisTarget}");
+
+                                if (decoyHPAfterRP <= 0)
+                                {
+                                    DecoyHelpers.DestroyByEnemyAction(targetC, protSlotRP);
+                                }
+                            }
+                        }
+                    }
+
                     // Shield absorption (2.10.b) : ShieldActive absorbe avant HP.
                     // 2.11 Passif RAGE OUVERTE : si target <40% HP pre-damage ET caster Soulrender ET
                     // sort melee -> 50% des dgts bypass shield direct au HP. L'autre 50% va shield -> HP overflow.
@@ -895,6 +973,49 @@ namespace Quantum
                         VeninHelpers.ApplyMark(f, caster,
                             SpellRegistry.CarapaceVisqueuseMarksOnMeleeAttacker, currentTurn);
                         Log.Info($"[Carapace Visqueuse] P{caster->PlayerIndex} frappe melee bouclier de P{targetC->PlayerIndex} (absorbe {shieldAbsorbedThisHit}) : +{SpellRegistry.CarapaceVisqueuseMarksOnMeleeAttacker} marque sur attaquant (stacks {attackerStacksBefore} -> {caster->VeninStacks})");
+                    }
+
+                    // 3.7.c.i — Linceul d'Ombres hook (Bible V7.1 ligne 1173) : si target
+                    // porte LinceulDOmbres ET attaque MELEE (Chebyshev caster-cible <= 1)
+                    // -> renvoie Magnitude dgts (40) sur l'attaquant. PIPELINE STANDARD :
+                    // applique reduction% (Densite Inerte + Garde Protectrice cap 50%)
+                    // puis shield attaquant si present. Trigger meme si le shield Linceul
+                    // a absorbe TOUT le dmg incoming (Bible "toute attaque melee subie" :
+                    // on est entre dans le damage loop avec dmgThisTarget > 0 donc l'attaque
+                    // touche). isMeleeAttackForCarapace reutilise (Chebyshev Bible-strict).
+                    // Guard `dmgThisTarget > 0` : evite double-trigger sur les sorts custom
+                    // path qui ont DamageAmount=0 dans SpellDef et appliquent le dmg eux-memes
+                    // (Charge Brutale, Empoignade...). Le hook standard ne doit trigger QUE
+                    // pour les sorts qui passent reellement par le damage loop standard. Le
+                    // custom path rebranche le hook manuellement (Charge Brutale ligne ~1690).
+                    if (isMeleeAttackForCarapace
+                        && dmgThisTarget > 0
+                        && StatusHelper.Has(targetC, StatusKind.LinceulDOmbres)
+                        && caster->PlayerIndex != targetC->PlayerIndex
+                        && caster->HP > 0)
+                    {
+                        int ripostDmgBase = StatusHelper.GetMagnitude(targetC, StatusKind.LinceulDOmbres,
+                            SpellRegistry.LinceulDOmbresRipostMeleeDmg);
+                        int reductionPctRiposte = ColossarPassif.GetCombinedDamageReductionPercent(f, caster);
+                        int ripostDmg = ColossarPassif.ApplyDamageReduction(f, caster, ripostDmgBase);
+                        int ripostShieldBefore = StatusHelper.GetMagnitude(caster, StatusKind.ShieldActive, 0);
+                        int ripostShieldAbsorbed = 0;
+                        if (ripostShieldBefore > 0 && ripostDmg > 0)
+                        {
+                            int absorbed = ripostDmg > ripostShieldBefore ? ripostShieldBefore : ripostDmg;
+                            ripostShieldAbsorbed = absorbed;
+                            int after = ripostShieldBefore - absorbed;
+                            if (after == 0) StatusHelper.Consume(caster, StatusKind.ShieldActive);
+                            else StatusHelper.SetMagnitude(caster, StatusKind.ShieldActive, after);
+                            ripostDmg -= absorbed;
+                        }
+                        int casterBeforeRiposte = caster->HP;
+                        if (ripostDmg > 0)
+                        {
+                            caster->HP -= ripostDmg;
+                            if (caster->HP < 0) caster->HP = 0;
+                        }
+                        Log.Info($"[Linceul d'Ombres] P{targetC->PlayerIndex} renvoie {ripostDmgBase} dgts melee a P{caster->PlayerIndex} (reduction {reductionPctRiposte}%, shield absorbe {ripostShieldAbsorbed} -> HP loss {ripostDmg}, HP {casterBeforeRiposte} -> {caster->HP})");
                     }
 
                     int totalHPLoss = dmgToShield + totalShieldBypass; // ce qui passe au HP
@@ -1577,6 +1698,48 @@ namespace Quantum
                             dmgLeft = dmgLeft * (100 - anchorMagCB) / 100;
                             Log.Info($"[Ancrage] -{anchorMagCB}% dmg sur P{hitC->PlayerIndex} (Charge Brutale) : {dmgBeforeAnchorCB} -> {dmgLeft}");
                         }
+                        // 3.7.c.iii — Réplique Protectrice hook (Charge Brutale custom path) :
+                        // si hitC est Ghostra ET porte un decoy Protective vivant, redirige 40%
+                        // du dmgLeft (post-reduction% deja appliquee dans le path CB) AVANT le
+                        // shield Ghostra. Charge Brutale bypass le pipeline standard donc on
+                        // rebranche le hook manuellement.
+                        if (hitC->Class == NymoraClass.Ghostra && dmgLeft > 0)
+                        {
+                            int protSlotCB = -1;
+                            for (int sCB = 0; sCB < DecoyHelpers.MaxDecoys; sCB++)
+                            {
+                                if (hitC->Decoys[sCB].Kind == DecoyKind.Protective && hitC->Decoys[sCB].HP > 0)
+                                {
+                                    protSlotCB = sCB;
+                                    break;
+                                }
+                            }
+                            if (protSlotCB >= 0)
+                            {
+                                int redirectCB = dmgLeft * SpellRegistry.RepliqueProtectriceRedirectPercent / 100;
+                                if (redirectCB > 0)
+                                {
+                                    int decoyHPBeforeCB = hitC->Decoys[protSlotCB].HP;
+                                    int absorbedCB = redirectCB > decoyHPBeforeCB ? decoyHPBeforeCB : redirectCB;
+                                    int decoyHPAfterCB = decoyHPBeforeCB - absorbedCB;
+                                    var slotCB = hitC->Decoys[protSlotCB];
+                                    slotCB.HP = decoyHPAfterCB;
+                                    hitC->Decoys[protSlotCB] = slotCB;
+
+                                    int dmgBeforeCB = dmgLeft;
+                                    dmgLeft -= redirectCB;
+                                    if (dmgLeft < 0) dmgLeft = 0;
+
+                                    Log.Info($"[Réplique Protectrice] P{hitC->PlayerIndex} Charge Brutale redirige {redirectCB} dmg ({SpellRegistry.RepliqueProtectriceRedirectPercent}%) -> decoy slot {protSlotCB} absorbe {absorbedCB} (HP {decoyHPBeforeCB}->{decoyHPAfterCB}). dmg Ghostra {dmgBeforeCB} -> {dmgLeft}");
+
+                                    if (decoyHPAfterCB <= 0)
+                                    {
+                                        DecoyHelpers.DestroyByEnemyAction(hitC, protSlotCB);
+                                    }
+                                }
+                            }
+                        }
+
                         int shieldBefore = StatusHelper.GetMagnitude(hitC, StatusKind.ShieldActive, 0);
                         int shieldAbsorbedByChargeBrutale = 0;
                         if (shieldBefore > 0)
@@ -1617,6 +1780,40 @@ namespace Quantum
                             VeninHelpers.ApplyMark(f, caster,
                                 SpellRegistry.CarapaceVisqueuseMarksOnMeleeAttacker, currentTurn);
                             Log.Info($"[Carapace Visqueuse] P{caster->PlayerIndex} Charge Brutale frappe bouclier P{hitC->PlayerIndex} (absorbe {shieldAbsorbedByChargeBrutale}) : +{SpellRegistry.CarapaceVisqueuseMarksOnMeleeAttacker} marque sur attaquant (stacks {attackerStacksBeforeC} -> {caster->VeninStacks})");
+                        }
+
+                        // 3.7.c.i — Linceul d'Ombres hook (Bible V7.1) : Charge Brutale est melee
+                        // (caster adjacent post-move = Chebyshev <= 1 implicite). Si la cible porte
+                        // LinceulDOmbres -> renvoie 40 dgts sur attaquant (PIPELINE STANDARD reduction%
+                        // + shield attaquant). Charge Brutale bypass le pipeline standard donc on
+                        // rebranche le hook ici manuellement. Trigger meme si shield Linceul absorbe
+                        // tout (l'attaque a touche : on est entre dans ce bloc avec dmg>=0 incoming).
+                        if (StatusHelper.Has(hitC, StatusKind.LinceulDOmbres)
+                            && caster->PlayerIndex != hitC->PlayerIndex
+                            && caster->HP > 0)
+                        {
+                            int ripostDmgBaseCB = StatusHelper.GetMagnitude(hitC, StatusKind.LinceulDOmbres,
+                                SpellRegistry.LinceulDOmbresRipostMeleeDmg);
+                            int reductionPctRiposteCB = ColossarPassif.GetCombinedDamageReductionPercent(f, caster);
+                            int ripostDmgCB = ColossarPassif.ApplyDamageReduction(f, caster, ripostDmgBaseCB);
+                            int ripostShieldBeforeCB = StatusHelper.GetMagnitude(caster, StatusKind.ShieldActive, 0);
+                            int ripostShieldAbsorbedCB = 0;
+                            if (ripostShieldBeforeCB > 0 && ripostDmgCB > 0)
+                            {
+                                int absorbed = ripostDmgCB > ripostShieldBeforeCB ? ripostShieldBeforeCB : ripostDmgCB;
+                                ripostShieldAbsorbedCB = absorbed;
+                                int after = ripostShieldBeforeCB - absorbed;
+                                if (after == 0) StatusHelper.Consume(caster, StatusKind.ShieldActive);
+                                else StatusHelper.SetMagnitude(caster, StatusKind.ShieldActive, after);
+                                ripostDmgCB -= absorbed;
+                            }
+                            int casterBeforeRiposteCB = caster->HP;
+                            if (ripostDmgCB > 0)
+                            {
+                                caster->HP -= ripostDmgCB;
+                                if (caster->HP < 0) caster->HP = 0;
+                            }
+                            Log.Info($"[Linceul d'Ombres] P{hitC->PlayerIndex} Charge Brutale renvoie {ripostDmgBaseCB} dgts melee a P{caster->PlayerIndex} (reduction {reductionPctRiposteCB}%, shield absorbe {ripostShieldAbsorbedCB} -> HP loss {ripostDmgCB}, HP {casterBeforeRiposteCB} -> {caster->HP})");
                         }
 
                         if (dmgLeft > 0)
@@ -1916,6 +2113,260 @@ namespace Quantum
                         turnsLeft: SpellRegistry.CarapaceVisqueuseTurns,
                         currentTurn);
                     Log.Info($"[Spell] Carapace Visqueuse active sur P{caster->PlayerIndex} : Shield {SpellRegistry.CarapaceVisqueuseShieldHP} HP / {SpellRegistry.CarapaceVisqueuseTurns} rounds + flag riposte +{SpellRegistry.CarapaceVisqueuseMarksOnMeleeAttacker} marque attaquant melee qui frappe le bouclier");
+                    break;
+                }
+
+                // 3.7.c.i — Linceul d'Ombres (Bible V7.1 ligne 1173) : 3 PA self. Apply
+                // ShieldActive 130 HP / 2 rounds + LinceulDOmbres flag (Magnitude=40
+                // dgts riposte) / 2 rounds. Hook damage loop standard + Charge Brutale
+                // custom : si target porte LinceulDOmbres ET attaque melee -> renvoie
+                // 40 dgts sur attaquant (pipeline reduction% + shield attaquant).
+                // Refresh-only (recast meme tour reset shield + duree). Bible
+                // "Anti-Soulrender qui charge".
+                case SpellId.GhostraLinceulDOmbres:
+                {
+                    StatusHelper.Apply(caster, StatusKind.ShieldActive,
+                        magnitude: SpellRegistry.LinceulDOmbresShieldHP,
+                        turnsLeft: SpellRegistry.LinceulDOmbresTurns,
+                        currentTurn);
+                    StatusHelper.Apply(caster, StatusKind.LinceulDOmbres,
+                        magnitude: SpellRegistry.LinceulDOmbresRipostMeleeDmg,
+                        turnsLeft: SpellRegistry.LinceulDOmbresTurns,
+                        currentTurn);
+                    Log.Info($"[Spell] Linceul d'Ombres active sur P{caster->PlayerIndex} : Shield {SpellRegistry.LinceulDOmbresShieldHP} HP / {SpellRegistry.LinceulDOmbresTurns} rounds + flag riposte {SpellRegistry.LinceulDOmbresRipostMeleeDmg} dgts melee (pipeline reduction+shield)");
+                    break;
+                }
+
+                // 3.7.c.ii — Voile Spectral (Bible V7.1 ligne 1166) : 2 PA self, 1x/match.
+                // Effet en 2 temps : (1) RETRAIT des DoT actifs sur la Ghostra (BleedDoT +
+                // PlaieOuverte + VeninStacks=0), (2) APPLY DotImmune 1 round (hooks ApplyMark
+                // venin / ApplyPlaieOuverteIfAngle2Plus / Frappe Fantome conditional skip).
+                // 1x/match enforce par OncePerMatchBitGhostraVoileSpectral (consume bit avant
+                // PA dans le pipeline standard, cf flow OncePerMatch).
+                case SpellId.GhostraVoileSpectral:
+                {
+                    int veninCleared = caster->VeninStacks;
+                    caster->VeninStacks = 0;
+                    bool plaieCleared = StatusHelper.Has(caster, StatusKind.PlaieOuverte);
+                    if (plaieCleared) StatusHelper.Consume(caster, StatusKind.PlaieOuverte);
+                    bool bleedCleared = StatusHelper.Has(caster, StatusKind.BleedDoT);
+                    if (bleedCleared) StatusHelper.Consume(caster, StatusKind.BleedDoT);
+
+                    StatusHelper.Apply(caster, StatusKind.DotImmune,
+                        magnitude: 0,
+                        turnsLeft: SpellRegistry.VoileSpectralImmuneTurns,
+                        currentTurn);
+
+                    Log.Info($"[Spell] Voile Spectral active sur P{caster->PlayerIndex} : retire venin={veninCleared}, plaie={plaieCleared}, bleed={bleedCleared} + DotImmune {SpellRegistry.VoileSpectralImmuneTurns} round (1x/match)");
+                    break;
+                }
+
+                // 3.7.c.iii — Réplique Protectrice (Bible V7.1 ligne 1187) : 3 PA range 3
+                // case vide. Pose un DecoyKind.Protective (HP=200) qui redirige 40% des dgts
+                // subis par la Ghostra (hook dans damage loop apres reduction%, avant shield).
+                // Si decoy meurt -> heal +60 HP Ghostra (DestroyByEnemyAction).
+                // Validation cap 3 leurres + case vide gere par DecoyHelpers.TrySpawn (rejet
+                // silencieux si cap atteint ou case occupee, PA deja consume - choix MVP).
+                case SpellId.GhostraRepliqueProtectrice:
+                {
+                    bool spawned = DecoyHelpers.TrySpawn(f, caster, cmd.TargetX, cmd.TargetY,
+                        DecoyKind.Protective, currentTurn);
+                    if (spawned)
+                    {
+                        Log.Info($"[Spell] Réplique Protectrice : P{caster->PlayerIndex} pose decoy PROTECTIVE en ({cmd.TargetX},{cmd.TargetY}) HP={DecoyHelpers.ProtectiveDecoyMaxHP} (redirection {SpellRegistry.RepliqueProtectriceRedirectPercent}% dmg subis, heal +{DecoyHelpers.RepliqueProtectriceHealOnDestroy} HP si detruit)");
+                    }
+                    else
+                    {
+                        Log.Warn($"[Spell] Réplique Protectrice rejete : DecoyHelpers.TrySpawn refuse (cap atteint, case occupee, ou hors grille) — PA deja consume");
+                    }
+                    break;
+                }
+
+                // 3.7.c.iv — Dernier Pas (Bible V7.1 ligne 1194) : 4 PA self panic-button.
+                // Gate HP<30% deja verifie en pre-PA. Effet en 3 temps :
+                //   (1) Heal +200 HP cap MaxHP.
+                //   (2) Teleport sur case vide (cmd.TargetX, cmd.TargetY) via MoveNonPM.
+                //   (3) Pose DecoyKind.Standard sur case quittee. Cap 3 : si atteint, destroy
+                //       le leurre LE PLUS ANCIEN (min SpawnedOnTurn) puis spawn nouveau.
+                //       Bloque PAS l'effet (panic-button doit toujours laisser un leurre).
+                case SpellId.GhostraDernierPas:
+                {
+                    // (1) Heal
+                    int hpBeforeDP = caster->HP;
+                    int hpAfterDP = hpBeforeDP + SpellRegistry.DernierPasHealAmount;
+                    if (hpAfterDP > caster->MaxHP) hpAfterDP = caster->MaxHP;
+                    caster->HP = hpAfterDP;
+                    int realHealDP = hpAfterDP - hpBeforeDP;
+                    Log.Info($"[Spell] Dernier Pas : heal P{caster->PlayerIndex} +{realHealDP} HP ({hpBeforeDP} -> {hpAfterDP})");
+
+                    // (2) Teleport : capture position d'origine avant move pour pose leurre apres.
+                    int dpOldX = caster->GridX;
+                    int dpOldY = caster->GridY;
+                    bool dpMoved = MovementHelpers.MoveNonPM(f, casterEntity, caster, cmd.TargetX, cmd.TargetY);
+                    if (!dpMoved)
+                    {
+                        // Edge case : teleport rejete (case occupee surprise post-validation). On laisse
+                        // le heal applique mais skip pose leurre (case d'origine = case actuelle Ghostra).
+                        Log.Warn($"[Spell] Dernier Pas : teleport ({cmd.TargetX},{cmd.TargetY}) refuse par MoveNonPM. Heal applique mais pas de pose leurre.");
+                        break;
+                    }
+                    Log.Info($"[Spell] Dernier Pas : P{caster->PlayerIndex} teleport ({dpOldX},{dpOldY}) -> ({cmd.TargetX},{cmd.TargetY})");
+
+                    // (3) Pose leurre Standard sur case quittee. Si cap 3 atteint -> destroy oldest.
+                    if (DecoyHelpers.CountActive(caster) >= DecoyHelpers.MaxDecoys)
+                    {
+                        int oldestSlotDP = -1;
+                        int oldestTurnDP = int.MaxValue;
+                        for (int sDP = 0; sDP < DecoyHelpers.MaxDecoys; sDP++)
+                        {
+                            if (caster->Decoys[sDP].Kind != DecoyKind.None
+                                && caster->Decoys[sDP].SpawnedOnTurn < oldestTurnDP)
+                            {
+                                oldestTurnDP = caster->Decoys[sDP].SpawnedOnTurn;
+                                oldestSlotDP = sDP;
+                            }
+                        }
+                        if (oldestSlotDP >= 0)
+                        {
+                            Log.Info($"[Spell] Dernier Pas : cap 3 atteint, destroy oldest slot {oldestSlotDP} (spawned turn {oldestTurnDP}) pour faire place");
+                            DecoyHelpers.DestroyAtSlot(caster, oldestSlotDP);
+                        }
+                    }
+                    bool dpDecoySpawned = DecoyHelpers.TrySpawn(f, caster, dpOldX, dpOldY,
+                        DecoyKind.Standard, currentTurn);
+                    if (dpDecoySpawned)
+                    {
+                        Log.Info($"[Spell] Dernier Pas : pose leurre Standard en ({dpOldX},{dpOldY}) (case quittee)");
+                    }
+                    else
+                    {
+                        Log.Warn($"[Spell] Dernier Pas : pose leurre Standard rejetee en ({dpOldX},{dpOldY}) (edge case TrySpawn)");
+                    }
+                    break;
+                }
+
+                // 3.7.c.v — Pas de l'Au-Dela (Bible V7.1 ligne 1180) : 2 PA self. Pattern identique
+                //   a NecramPasSpectral (parite Bible "mobilite traversee") :
+                //   (1) Si pas deja actif : +PasAuDelaPMBonus PM ce tour (cap anti-stack si refresh).
+                //   (2) Apply Status PasAuDelaReady turnsLeft=1 magnitude=0. Le status est consume
+                //       dans TurnSystem.EnterTurnEnd quand ActivePlayerIndex == porteur. Tant que
+                //       actif : MovementSystem passe ignoreEnemyOccupants=true a A* + pose
+                //       PasAuDelaDorsalDamage HP loss direct sur chaque ennemi traverse.
+                //   Pas de 1x/match. Cast illimite PA-only.
+                case SpellId.GhostraPasDeLAuDela:
+                {
+                    bool padAlreadyActive = StatusHelper.Has(caster, StatusKind.PasAuDelaReady);
+                    if (!padAlreadyActive)
+                    {
+                        caster->PM += SpellRegistry.PasAuDelaPMBonus;
+                        Log.Info($"[Spell] Pas de l'Au-Dela : P{caster->PlayerIndex} +{SpellRegistry.PasAuDelaPMBonus} PM (-> {caster->PM}) + PasAuDelaReady applique (prochains Moves ce tour traversent unites et infligent {SpellRegistry.PasAuDelaDorsalDamage} dgts dorsal par ennemi traverse)");
+                    }
+                    else
+                    {
+                        Log.Info($"[Spell] Pas de l'Au-Dela re-cast sur P{caster->PlayerIndex} : refresh traversee (PM inchange, cap +{SpellRegistry.PasAuDelaPMBonus} deja accorde)");
+                    }
+                    StatusHelper.Apply(caster, StatusKind.PasAuDelaReady,
+                        magnitude: 0,
+                        turnsLeft: 1,
+                        currentTurn);
+                    break;
+                }
+
+                // 3.7.d — Execution Spectrale (Bible V7.1 ligne 1071) SIGNATURE Ghostra.
+                //   Pre-PA gates (3 leurres + cooldown) deja valides. PA deja consume (pipeline).
+                //   Pipeline custom (DamageAmount=0 dans SpellDef) :
+                //     (1) Capture positions des leurres slots 0 et 1 (re-spawn potentiel sur kill).
+                //     (2) Destroy 3 leurres inconditionnellement (Bible "consomme TOUS les leurres actifs").
+                //     (3) Set cooldown (LastExecutionSpectraleUsedOnTurn = currentTurn).
+                //     (4) Check FacingHelpers.IsDorsalHit :
+                //         - false : log RATE, break (PA + 3 leurres + cooldown deja consommes).
+                //         - true  : apply 350 dmg direct HP (bypass shield/reduction, decision Lorenzo
+                //                   Bible-stricte "350 dmg" net signature) + apply PlaieOuverte refresh
+                //                   mag=50 turnsLeft=3 (override plaie standard 40/2). Si kill :
+                //                   heal +100 caster (respect AntiHealShield) + TrySpawn 2 Standard
+                //                   aux positions slots 0/1 capturees.
+                case SpellId.GhostraExecutionSpectrale:
+                {
+                    // Resolve target ennemi adjacent (Filter=Enemy range 1 - validation pipeline standard).
+                    EntityRef esTargetEntity = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (esTargetEntity == EntityRef.None
+                        || !f.Unsafe.TryGetPointer<Combatant>(esTargetEntity, out Combatant* esTarget)
+                        || esTarget->HP <= 0)
+                    {
+                        Log.Warn($"[Spell] Execution Spectrale : aucune cible vivante en ({cmd.TargetX},{cmd.TargetY}) - PA consume mais effet skip");
+                        // Pas de consume leurres / cooldown si target invalide (edge case post-validation).
+                        break;
+                    }
+
+                    // (1) Capture positions des leurres slots 0 et 1 pour re-spawn potentiel.
+                    int esCapturedDecoy0X = caster->Decoys[0].PosX;
+                    int esCapturedDecoy0Y = caster->Decoys[0].PosY;
+                    int esCapturedDecoy1X = caster->Decoys[1].PosX;
+                    int esCapturedDecoy1Y = caster->Decoys[1].PosY;
+
+                    // (2) Destroy les 3 leurres inconditionnellement.
+                    DecoyHelpers.DestroyAtSlot(caster, 0);
+                    DecoyHelpers.DestroyAtSlot(caster, 1);
+                    DecoyHelpers.DestroyAtSlot(caster, 2);
+                    Log.Info($"[Spell] Execution Spectrale : P{caster->PlayerIndex} consomme 3 leurres (positions capturees pour kill bonus : ({esCapturedDecoy0X},{esCapturedDecoy0Y}) + ({esCapturedDecoy1X},{esCapturedDecoy1Y}))");
+
+                    // (3) Set cooldown inconditionnellement.
+                    caster->LastExecutionSpectraleUsedOnTurn = currentTurn;
+                    Log.Info($"[Spell] Execution Spectrale : cooldown {SpellRegistry.ExecutionSpectraleCooldownTurns} tours depuis T{currentTurn} sur P{caster->PlayerIndex}");
+
+                    // (4) Check dorsal.
+                    bool esIsDorsal = FacingHelpers.IsDorsalHit(caster, esTarget);
+                    if (!esIsDorsal)
+                    {
+                        Log.Warn($"[Spell] Execution Spectrale RATE : cible P{esTarget->PlayerIndex} pas dorsale (facing {esTarget->Facing}). PA + 3 leurres + cooldown consommes, 0 dmg, 0 plaie (Bible-stricte 'le coup le plus risque du jeu').");
+                        break;
+                    }
+
+                    // (4a) Apply 350 dmg direct (bypass pipeline shield/reduction Bible-stricte signature).
+                    int esHpBefore = esTarget->HP;
+                    int esDmg = SpellRegistry.ExecutionSpectraleDamage;
+                    esTarget->HP -= esDmg;
+                    if (esTarget->HP < 0) esTarget->HP = 0;
+                    int esRealDmg = esHpBefore - esTarget->HP;
+                    esTarget->DamageTakenThisRound += esRealDmg;
+                    Log.Info($"[Spell] Execution Spectrale DORSAL HIT : -{esRealDmg} HP direct sur P{esTarget->PlayerIndex} ({cmd.TargetX},{cmd.TargetY}) HP {esHpBefore} -> {esTarget->HP}");
+
+                    // (4b) Apply PlaieOuverte refresh override (50/3) - ecrase plaie standard si presente.
+                    if (esTarget->HP > 0)
+                    {
+                        StatusHelper.Apply(esTarget, StatusKind.PlaieOuverte,
+                            magnitude: SpellRegistry.ExecutionSpectralePlaieDmgPerTurn,
+                            turnsLeft: SpellRegistry.ExecutionSpectralePlaieTurns,
+                            currentTurn);
+                        Log.Info($"[Spell] Execution Spectrale : PlaieOuverte refresh applique sur P{esTarget->PlayerIndex} ({SpellRegistry.ExecutionSpectralePlaieDmgPerTurn}/tour x {SpellRegistry.ExecutionSpectralePlaieTurns} rounds)");
+                    }
+
+                    // (4c) Check kill : heal +100 + re-spawn 2 leurres.
+                    if (esTarget->HP <= 0)
+                    {
+                        // Heal caster (respect AntiHealShield comme les autres signatures).
+                        if (StatusHelper.Has(caster, StatusKind.AntiHealShield))
+                        {
+                            Log.Info($"[Spell] Execution Spectrale KILL : heal {SpellRegistry.ExecutionSpectraleKillHeal} BLOQUE par AntiHealShield sur P{caster->PlayerIndex}");
+                        }
+                        else
+                        {
+                            int esCasterHpBefore = caster->HP;
+                            caster->HP += SpellRegistry.ExecutionSpectraleKillHeal;
+                            if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
+                            int esRealHeal = caster->HP - esCasterHpBefore;
+                            Log.Info($"[Spell] Execution Spectrale KILL : heal P{caster->PlayerIndex} +{esRealHeal} HP ({esCasterHpBefore} -> {caster->HP})");
+                        }
+
+                        // Re-spawn 2 leurres Standard aux positions slots 0/1 captees.
+                        // TrySpawn rejette silencieusement si la case n'est plus libre (edge case
+                        // post-consume : un ennemi a bouge sur la case entre temps - tres rare).
+                        bool esRespawn0 = DecoyHelpers.TrySpawn(f, caster, esCapturedDecoy0X, esCapturedDecoy0Y,
+                            DecoyKind.Standard, currentTurn);
+                        bool esRespawn1 = DecoyHelpers.TrySpawn(f, caster, esCapturedDecoy1X, esCapturedDecoy1Y,
+                            DecoyKind.Standard, currentTurn);
+                        Log.Info($"[Spell] Execution Spectrale KILL : re-spawn 2 leurres Standard (slot 0 @({esCapturedDecoy0X},{esCapturedDecoy0Y}) success={esRespawn0}, slot 1 @({esCapturedDecoy1X},{esCapturedDecoy1Y}) success={esRespawn1})");
+                    }
                     break;
                 }
 
@@ -2295,11 +2746,20 @@ namespace Quantum
                         && ffPostTargetC->HP > 0
                         && ffPostTargetC->LastFacingForcedOnTurn == currentTurn)
                     {
-                        StatusHelper.Apply(ffPostTargetC, StatusKind.PlaieOuverte,
-                            magnitude: GhostraPassif.PlaieOuverteDmgPerTurn,
-                            turnsLeft: GhostraPassif.PlaieOuverteDurationRounds,
-                            currentTurn);
-                        Log.Info($"[Spell] Frappe Fantome : PLAIE OUVERTE applique sur P{ffPostTargetC->PlayerIndex} (direction forcee ce tour, {GhostraPassif.PlaieOuverteDmgPerTurn}/tour x {GhostraPassif.PlaieOuverteDurationRounds}t)");
+                        // 3.7.c.ii — Voile Spectral : si la cible porte DotImmune, skip apply
+                        // PlaieOuverte. Bible "immunisee a toute nouvelle application de DoT".
+                        if (StatusHelper.Has(ffPostTargetC, StatusKind.DotImmune))
+                        {
+                            Log.Info($"[Spell] Frappe Fantome : SKIP PlaieOuverte sur P{ffPostTargetC->PlayerIndex} (DotImmune Voile Spectral actif)");
+                        }
+                        else
+                        {
+                            StatusHelper.Apply(ffPostTargetC, StatusKind.PlaieOuverte,
+                                magnitude: GhostraPassif.PlaieOuverteDmgPerTurn,
+                                turnsLeft: GhostraPassif.PlaieOuverteDurationRounds,
+                                currentTurn);
+                            Log.Info($"[Spell] Frappe Fantome : PLAIE OUVERTE applique sur P{ffPostTargetC->PlayerIndex} (direction forcee ce tour, {GhostraPassif.PlaieOuverteDmgPerTurn}/tour x {GhostraPassif.PlaieOuverteDurationRounds}t)");
+                        }
                     }
                     break;
                 }
@@ -3218,6 +3678,8 @@ namespace Quantum
                 case SpellId.GhostraSaigneAme:             // range 2, ENEMY, finisher PlaieOuverte
                 case SpellId.GhostraFrappeFantome:         // range 4, ENEMY, teleport + 200 dmg
                 case SpellId.GhostraDagueLancee:           // range 5, ENEMY, 40 dmg + pivot 90°
+                // Ghostra survie pose-leurre (3.7.c.iii)
+                case SpellId.GhostraRepliqueProtectrice:   // range 3, EmptyTile, pose decoy Protective
                     return true;
                 default:
                     return false;

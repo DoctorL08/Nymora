@@ -149,6 +149,58 @@ enum StatusKind : Byte
                                        //   n'est plus la, l'epine ne pique plus).
                                        //   Refresh-only : recast meme tour remet turnsLeft a 2 (ShieldActive
                                        //   reset a 110 HP, CarapaceVisqueuse reset a 2 rounds).
+
+    // Ghostra (3.7.c.ii — Survie reset DoT)
+    DotImmune                    = 27, // Bible V7.1 Ghostra ligne 1166 : flag d'immunite aux applications de DoT.
+                                       //   Magnitude inutilisee (0). Duree 1 round (set turnsLeft=1 + skip
+                                       //   decrement au sub-turn d'application via AppliedOnTurn).
+                                       //   Pose par Voile Spectral apres consume des DoT actifs (BleedDoT,
+                                       //   PlaieOuverte, VeninStacks=0).
+                                       //   Hooks d'interception (bloquent l'apply si porteur Has(DotImmune)) :
+                                       //     - VeninHelpers.ApplyMark : skip apply marque venin.
+                                       //     - GhostraPassif.ApplyPlaieOuverteIfAngle2Plus : skip apply PlaieOuverte.
+                                       //     - SpellSystem.cs case Frappe Fantome (apply PlaieOuverte conditional
+                                       //       Volte-Face) : skip apply.
+                                       //   Bible-strict perimetre : status DoT explicites uniquement (PlaieOuverte,
+                                       //   BleedDoT, VeninStacks). Le tick fin de round terrain (Sang Coagule, etc.)
+                                       //   N'EST PAS bloque (continue d'agir normalement).
+                                       //   Voile Spectral 1x/match (OncePerMatchBit=4) -> au plus une activation
+                                       //   par combat. Pas de stack possible.
+
+    // Ghostra (3.7.c.i — Survie bouclier epineux)
+    // Ghostra (3.7.c.v — Survie mobilite anti-control)
+    PasAuDelaReady               = 28, // Bible V7.1 Ghostra ligne 1180 : buff Pas de l'Au-Dela. Magnitude
+                                       //   inutilisee (0). Duree = sub-turn courant du porteur (consume dans
+                                       //   TurnSystem.EnterTurnEnd quand ActivePlayerIndex == porteur, pattern
+                                       //   identique a PasSpectralReady Necram). Tant que actif :
+                                       //   - AStarPathfinder recoit ignoreEnemyOccupants=true pour les MoveCommand
+                                       //     de la Ghostra (traverse ennemis ET leurres).
+                                       //   - MovementSystem.ApplyMove pose PasAuDelaDorsalDamage HP loss direct
+                                       //     (60 dmg frappe dorsale gratuite Bible) sur chaque ennemi present sur
+                                       //     les cases intermediaires du path (skip destination, multi-targets
+                                       //     Lorenzo : TOUS les ennemis traverses prennent 60 dgts).
+                                       //   - MovementRangePreview / CombatantRenderer detectent le status pour
+                                       //     activer le BFS preview / anim path traversant (parite Pas Spectral).
+                                       //   Pas de consume au move : le status reste actif pour tout le tour Ghostra
+                                       //   (multi-moves benefice du bypass, coherent avec "+2 PM ce tour" Bible).
+
+    LinceulDOmbres               = 26, // Bible V7.1 Ghostra ligne 1173 : flag bouclier epineux Ghostra.
+                                       //   Magnitude = dgts riposte (40). Duree 2 rounds, applique en
+                                       //   parallele de ShieldActive (130 HP).
+                                       //   Hook 1 (SpellSystem damage loop, apres hook Carapace, AVANT
+                                       //     bloc HP loss) : si target porte LinceulDOmbres ET attaque
+                                       //     MELEE (Chebyshev caster-cible <= 1) -> renvoie Magnitude
+                                       //     dgts a l'attaquant. PIPELINE STANDARD : applique reduction%
+                                       //     (Densite Inerte + Garde Protectrice cap 50%) puis shield
+                                       //     attaquant. Trigger meme si shield Linceul absorbe tout (Bible
+                                       //     "toute attaque melee subie").
+                                       //   Hook 2 (SpellSystem.cs path custom Charge Brutale) : Charge
+                                       //     Brutale bypass le pipeline standard, donc on rebranche le
+                                       //     hook manuellement (caster post-move adjacent = melee implicite).
+                                       //   Bible "Anti-Soulrender qui charge". Refresh-only : recast
+                                       //     meme tour reset shield 130 HP + duree 2 rounds.
+                                       //   Pas de -1 PM sur attaquant (cf Riposte Carmin Soulrender) :
+                                       //     Bible Linceul muet sur ce point, juste "renvoie 40 dgts".
 }
 
 struct Status

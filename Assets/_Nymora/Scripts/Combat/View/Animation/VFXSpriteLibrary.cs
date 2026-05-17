@@ -32,16 +32,26 @@ namespace Nymora.Combat.View.Animation
         [Tooltip("Effondrement — signature 3 FD, AoE rayon 2 + swap + Failles 2T + buff 2T.")]
         [SerializeField] private Sprite[] _effondrementFrames;
 
+        [Header("Necram (3.5.c.vi)")]
+        [Tooltip("Virus Fatal — signature 2 PA range 5, 6/6 PT consume, tick venin x3 sur cible + transfert marques si kill, cooldown 4 tours.")]
+        [SerializeField] private Sprite[] _virusFatalFrames;
+
+        [Header("Ghostra (3.7.d)")]
+        [Tooltip("Execution Spectrale — signature 3 PA range 1 melee dorsal, 3/3 leurres consume, 350 dgts + plaie 50/3 + kill bonus +100 HP + 2 leurres respawn, cooldown 4 tours.")]
+        [SerializeField] private Sprite[] _executionSpectraleFrames;
+
         // Phase ulterieure : autres sorts Soulrender (Charge Brutale, Detonation Sanglante, ...)
-        // puis Nightseer/Necram/Ghostra. On peut soit etendre avec des champs nommes (comme ici),
-        // soit basculer sur un Entry[] generique si le nombre devient trop grand.
+        // puis Nightseer/Necram/Ghostra non-signatures. On peut soit etendre avec des champs nommes
+        // (comme ici), soit basculer sur un Entry[] generique si le nombre devient trop grand.
 
         public Sprite[] GetFrames(SpellId spell)
         {
             switch (spell)
             {
-                case SpellId.SoulrenderAmeLaceree:    return _ameLaceeFrames;
-                case SpellId.ColossarEffondrement:    return _effondrementFrames;
+                case SpellId.SoulrenderAmeLaceree:        return _ameLaceeFrames;
+                case SpellId.ColossarEffondrement:        return _effondrementFrames;
+                case SpellId.NecramVirusFatal:            return _virusFatalFrames;
+                case SpellId.GhostraExecutionSpectrale:   return _executionSpectraleFrames;
                 default: return null;
             }
         }

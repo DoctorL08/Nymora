@@ -206,8 +206,8 @@ namespace Quantum.Prototypes {
   [System.SerializableAttribute()]
   [Quantum.Prototypes.Prototype(typeof(Quantum.FogSingleton))]
   public unsafe partial class FogSingletonPrototype : ComponentPrototype<Quantum.FogSingleton> {
-    [ArrayLengthAttribute(255)]
-    public Quantum.Prototypes.FogTilePrototype[] Tiles = new Quantum.Prototypes.FogTilePrototype[255];
+    [ArrayLengthAttribute(100)]
+    public Quantum.Prototypes.FogTilePrototype[] Tiles = new Quantum.Prototypes.FogTilePrototype[100];
     partial void MaterializeUser(Frame frame, ref Quantum.FogSingleton result, in PrototypeMaterializationContext context);
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.FogSingleton component = default;
@@ -215,7 +215,7 @@ namespace Quantum.Prototypes {
         return f.Set(entity, component) == SetResult.ComponentAdded;
     }
     public void Materialize(Frame frame, ref Quantum.FogSingleton result, in PrototypeMaterializationContext context = default) {
-        for (int i = 0, count = PrototypeValidator.CheckLength(Tiles, 255, in context); i < count; ++i) {
+        for (int i = 0, count = PrototypeValidator.CheckLength(Tiles, 100, in context); i < count; ++i) {
           this.Tiles[i].Materialize(frame, ref *result.Tiles.GetPointer(i), in context);
         }
         MaterializeUser(frame, ref result, in context);
@@ -246,8 +246,8 @@ namespace Quantum.Prototypes {
   public unsafe class GridSingletonPrototype : ComponentPrototype<Quantum.GridSingleton> {
     public Int32 Width;
     public Int32 Height;
-    [ArrayLengthAttribute(255)]
-    public Quantum.Prototypes.TilePrototype[] Tiles = new Quantum.Prototypes.TilePrototype[255];
+    [ArrayLengthAttribute(100)]
+    public Quantum.Prototypes.TilePrototype[] Tiles = new Quantum.Prototypes.TilePrototype[100];
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.GridSingleton component = default;
         Materialize((Frame)f, ref component, in context);
@@ -256,7 +256,7 @@ namespace Quantum.Prototypes {
     public void Materialize(Frame frame, ref Quantum.GridSingleton result, in PrototypeMaterializationContext context = default) {
         result.Width = this.Width;
         result.Height = this.Height;
-        for (int i = 0, count = PrototypeValidator.CheckLength(Tiles, 255, in context); i < count; ++i) {
+        for (int i = 0, count = PrototypeValidator.CheckLength(Tiles, 100, in context); i < count; ++i) {
           this.Tiles[i].Materialize(frame, ref *result.Tiles.GetPointer(i), in context);
         }
     }
@@ -301,15 +301,15 @@ namespace Quantum.Prototypes {
   [System.SerializableAttribute()]
   [Quantum.Prototypes.Prototype(typeof(Quantum.ObstacleSingleton))]
   public unsafe class ObstacleSingletonPrototype : ComponentPrototype<Quantum.ObstacleSingleton> {
-    [ArrayLengthAttribute(255)]
-    public Quantum.Prototypes.ObstacleTilePrototype[] Tiles = new Quantum.Prototypes.ObstacleTilePrototype[255];
+    [ArrayLengthAttribute(100)]
+    public Quantum.Prototypes.ObstacleTilePrototype[] Tiles = new Quantum.Prototypes.ObstacleTilePrototype[100];
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.ObstacleSingleton component = default;
         Materialize((Frame)f, ref component, in context);
         return f.Set(entity, component) == SetResult.ComponentAdded;
     }
     public void Materialize(Frame frame, ref Quantum.ObstacleSingleton result, in PrototypeMaterializationContext context = default) {
-        for (int i = 0, count = PrototypeValidator.CheckLength(Tiles, 255, in context); i < count; ++i) {
+        for (int i = 0, count = PrototypeValidator.CheckLength(Tiles, 100, in context); i < count; ++i) {
           this.Tiles[i].Materialize(frame, ref *result.Tiles.GetPointer(i), in context);
         }
     }

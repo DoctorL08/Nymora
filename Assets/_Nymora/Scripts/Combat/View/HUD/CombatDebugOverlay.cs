@@ -6,9 +6,13 @@ using UnityEngine;
 namespace Nymora.Combat.View.HUD
 {
     /// <summary>
-    /// Brique 3.E.3 — Overlay debug textuel toggleable avec F12. Lit le frame
-    /// Quantum verifie en lecture seule et formate un dump compact des infos
-    /// non visibles dans le HUD normal :
+    /// Brique 3.E.3 — Overlay debug textuel. Lit le frame Quantum verifie en
+    /// lecture seule et formate un dump compact des infos non visibles dans
+    /// le HUD normal :
+    ///
+    /// Toggle clavier (F11) supprime a la cloture polish Phase 3 (17 mai 2026).
+    /// Visibilite controlee via `_showAtStart` au start, ou via Inspector
+    /// (toggle SetActive sur le panel) en Play Mode.
     ///   - Header : Tick / Round / Phase / ActivePlayer / Winner
     ///   - Combatants : PlayerIndex, Class, EntityRef, Pos, HP/PA/PM/Resource,
     ///                  statuses textuels (Kind + Magnitude + TurnsLeft), marque
@@ -25,9 +29,6 @@ namespace Nymora.Combat.View.HUD
         [Tooltip("TMP_Text monospace ou s'affiche le dump.")]
         [SerializeField] private TMP_Text _content;
 
-        [Tooltip("Touche de toggle. F11 par defaut (F1-F9 occupes par sorts CombatInputController, F12 par mode GM FogOfWarView).")]
-        [SerializeField] private KeyCode _toggleKey = KeyCode.F11;
-
         [Tooltip("Affichage initial au start de la scene.")]
         [SerializeField] private bool _showAtStart = false;
 
@@ -38,11 +39,6 @@ namespace Nymora.Combat.View.HUD
         {
             QuantumCallback.Subscribe(this, (CallbackUpdateView c) => OnUpdateView(c.Game));
             SetVisible(_showAtStart);
-        }
-
-        private void Update()
-        {
-            if (UnityEngine.Input.GetKeyDown(_toggleKey)) SetVisible(!_visible);
         }
 
         private void SetVisible(bool on)

@@ -14,7 +14,8 @@ namespace Nymora.Combat.View
     /// Le "viewer" = ActivePlayerIndex par defaut (mode 1v1 local Phase 2). En Phase 6+ avec
     /// vrai matchmaking, on switchera sur le LocalPlayerIndex pour avoir une perspective fixe.
     ///
-    /// Touche F12 : toggle "GM mode" qui revele toutes les cases voilees (sanity check + tests).
+    /// Mode GM "reveal all" : toggle via le checkbox `_revealAll` dans l'Inspector. Le raccourci
+    /// clavier F12 a ete supprime a la cloture polish Phase 3 (17 mai 2026).
     ///
     /// Architecture similaire a TerrainView : spawn un overlay GO enfant de chaque TileView a
     /// l'init, puis poll en LateUpdate pour activer/desactiver selon l'etat sim.
@@ -55,11 +56,8 @@ namespace Nymora.Combat.View
 
         [Header("Debug")]
         [Tooltip("Mode GM : revele toutes les cases voilees (utile pour tester le framework). " +
-                 "Toggle aussi via la touche F12 en runtime.")]
+                 "Toggle via ce checkbox Inspector uniquement (raccourci F12 supprime polish Phase 3).")]
         [SerializeField] private bool _revealAll = false;
-
-        [Tooltip("Touche de toggle du mode GM (default F12).")]
-        [SerializeField] private KeyCode _revealAllToggleKey = KeyCode.F12;
 
         // Runtime state.
         private bool _ready;
@@ -135,16 +133,6 @@ namespace Nymora.Combat.View
             }
 
             _overlaysSpawned = true;
-        }
-
-        private void Update()
-        {
-            // F12 toggle GM mode — Update() OK pour les inputs Unity (non-deterministe, View).
-            if (UnityEngine.Input.GetKeyDown(_revealAllToggleKey))
-            {
-                _revealAll = !_revealAll;
-                Debug.Log($"[Nymora.FogView] Debug GM mode : {(_revealAll ? "REVEAL ALL" : "respect fog")}");
-            }
         }
 
         private void LateUpdate()

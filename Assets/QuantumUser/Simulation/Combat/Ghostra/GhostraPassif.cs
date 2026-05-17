@@ -90,6 +90,14 @@ namespace Quantum
             if (caster->Class != NymoraClass.Ghostra) return;
             if (!FacingHelpers.IsDorsalHit(caster, target)) return;
 
+            // 3.7.c.ii — Voile Spectral : si la cible porte DotImmune, skip l'apply de PlaieOuverte.
+            // Bible "immunisee a toute nouvelle application de DoT" : PlaieOuverte est un DoT.
+            if (StatusHelper.Has(target, StatusKind.DotImmune))
+            {
+                Log.Info($"[Angle Mort] SKIP PlaieOuverte sur P{target->PlayerIndex} (DotImmune Voile Spectral actif)");
+                return;
+            }
+
             // 3.7.b.v — Marque de l'Ombre bypass requirement Angle 2+ : si target marquee ET
             //   dorsal Ghostra -> applique PlaieOuverte meme a Angle 1 (sans leurre). Bible
             //   "Si la cible est touchee en dorsal pendant ces 2 tours : applique automatiquement

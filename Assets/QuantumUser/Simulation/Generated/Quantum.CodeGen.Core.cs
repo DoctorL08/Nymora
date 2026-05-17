@@ -173,6 +173,12 @@ namespace Quantum {
     GhostraDagueLancee = 93,
     GhostraMarqueDeLOmbre = 94,
     GhostraDanseDesLames = 95,
+    GhostraLinceulDOmbres = 96,
+    GhostraVoileSpectral = 97,
+    GhostraRepliqueProtectrice = 98,
+    GhostraDernierPas = 99,
+    GhostraPasDeLAuDela = 100,
+    GhostraExecutionSpectrale = 101,
   }
   public enum StatusKind : byte {
     None = 0,
@@ -201,6 +207,9 @@ namespace Quantum {
     DirectionLocked = 24,
     MarqueDeLOmbre = 25,
     CarapaceVisqueuse = 22,
+    DotImmune = 27,
+    PasAuDelaReady = 28,
+    LinceulDOmbres = 26,
   }
   public enum TargetingFilter : byte {
     None = 0,
@@ -1207,14 +1216,14 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct FogSingleton : Quantum.IComponentSingleton {
-    public const Int32 SIZE = 5100;
+    public const Int32 SIZE = 2000;
     public const Int32 ALIGNMENT = 4;
     [FieldOffset(0)]
-    [FramePrinter.FixedArrayAttribute(typeof(FogTile), 255)]
-    private fixed Byte _Tiles_[5100];
+    [FramePrinter.FixedArrayAttribute(typeof(FogTile), 100)]
+    private fixed Byte _Tiles_[2000];
     public readonly FixedArray<FogTile> Tiles {
       get {
-        fixed (byte* p = _Tiles_) { return new FixedArray<FogTile>(p, 20, 255); }
+        fixed (byte* p = _Tiles_) { return new FixedArray<FogTile>(p, 20, 100); }
       }
     }
     public override readonly Int32 GetHashCode() {
@@ -1231,18 +1240,18 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct GridSingleton : Quantum.IComponentSingleton {
-    public const Int32 SIZE = 6128;
+    public const Int32 SIZE = 2408;
     public const Int32 ALIGNMENT = 8;
     [FieldOffset(4)]
     public Int32 Width;
     [FieldOffset(0)]
     public Int32 Height;
     [FieldOffset(8)]
-    [FramePrinter.FixedArrayAttribute(typeof(Tile), 255)]
-    private fixed Byte _Tiles_[6120];
+    [FramePrinter.FixedArrayAttribute(typeof(Tile), 100)]
+    private fixed Byte _Tiles_[2400];
     public readonly FixedArray<Tile> Tiles {
       get {
-        fixed (byte* p = _Tiles_) { return new FixedArray<Tile>(p, 24, 255); }
+        fixed (byte* p = _Tiles_) { return new FixedArray<Tile>(p, 24, 100); }
       }
     }
     public override readonly Int32 GetHashCode() {
@@ -1309,14 +1318,14 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct ObstacleSingleton : Quantum.IComponentSingleton {
-    public const Int32 SIZE = 2040;
+    public const Int32 SIZE = 800;
     public const Int32 ALIGNMENT = 8;
     [FieldOffset(0)]
-    [FramePrinter.FixedArrayAttribute(typeof(ObstacleTile), 255)]
-    private fixed Byte _Tiles_[2040];
+    [FramePrinter.FixedArrayAttribute(typeof(ObstacleTile), 100)]
+    private fixed Byte _Tiles_[800];
     public readonly FixedArray<ObstacleTile> Tiles {
       get {
-        fixed (byte* p = _Tiles_) { return new FixedArray<ObstacleTile>(p, 8, 255); }
+        fixed (byte* p = _Tiles_) { return new FixedArray<ObstacleTile>(p, 8, 100); }
       }
     }
     public override readonly Int32 GetHashCode() {

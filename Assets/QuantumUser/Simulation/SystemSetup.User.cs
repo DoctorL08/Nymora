@@ -35,6 +35,11 @@
             // lifetime des leurres passe par GhostraPassif (hook TurnSystem.EnterTurnStart),
             // pas par ce systeme.
             systems.Add(new GhostraSystem());
+            // POLISH-4.5 — F-keys debug (F1-F10) : applique Status / pose Terrain / pose Trap
+            // arbitrairement pour tester visuellement marques/tiles/VFX sans dependre des
+            // sorts qui les posent. Parse 3 commands : DebugApplyStatusCommand,
+            // DebugSpawnTerrainCommand, DebugSpawnTrapCommand. A retirer en alpha/beta clean-up.
+            systems.Add(new DebugSystem());
         }
     }
 }
