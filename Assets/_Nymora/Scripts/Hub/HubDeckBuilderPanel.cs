@@ -189,6 +189,23 @@ namespace Nymora.Hub
             FetchDecksAsync().Forget();
         }
 
+        /// <summary>
+        /// 4.14.e hotfix — Sync `_currentClassId` sur `classId` ET await le fetch backend
+        /// avant que l'appelant lise `MyDecks`. Utilise par HubMatchTransition pour
+        /// recuperer les decks de la CLASSE SELECTIONNEE (SelectedClassPreferences) au
+        /// moment de l'accept du defi, sinon `MyDecks[0]` pioche le premier deck de la
+        /// classe qui se trouve etre ouverte dans le DeckBuilder (souvent Soulrender default).
+        /// </summary>
+        public async UniTask EnsureClassLoadedAsync(string classId)
+        {
+            if (string.IsNullOrEmpty(classId)) return;
+            // Si deja la bonne classe ET deja fetchee, no-op.
+            if (_currentClassId == classId && _hasFetchedOnce) return;
+            _currentClassId = classId;
+            ClearComposition();
+            await FetchDecksAsync();
+        }
+
         // ====== Fetch decks ======
 
         private async UniTask FetchDecksAsync()

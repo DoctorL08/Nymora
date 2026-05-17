@@ -37,4 +37,12 @@ singleton component CombatState
     //   Mis a jour par TurnSystem.EnterTurnEnd quand un combattant atteint HP=0.
     //   La View pole ce champ + CombatPhase == MatchEnd pour afficher Victory/Defeat.
     Int32 WinnerPlayerIndex;
+
+    // 4.14.b (Phase 4 PvP casu) — Flag mode IA vs PvP.
+    //   1 = 30_CombatIA (entrainement vs bot) -> AISystem.Update agit
+    //   0 = 33_CombatCasual / futurs ranked PvP -> AISystem early-out
+    // Int32 (pas Bool, primitive non-supportee par Quantum .qtn — cf pattern
+    // OncePerMatchUsedFlags Combatant.qtn ligne 87). Set dans TurnSystem.OnInit
+    // depuis f.RuntimeConfig.IsBotMatch. Default 0 = pvp (safe pour Phase 6).
+    Int32 IsBotMatch;
 }

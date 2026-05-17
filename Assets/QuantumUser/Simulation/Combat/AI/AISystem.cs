@@ -29,6 +29,12 @@ namespace Quantum
         {
             var state = f.Unsafe.GetPointerSingleton<CombatState>();
 
+            // 4.14.b — Early-out si mode PvP (33_CombatCasual / ranked). En PvP les
+            // 2 slots sont des humains, AISystem ne doit jamais agir sinon il prend
+            // le controle du slot P1 en plein match. Int32 0/1 cote sim (Quantum .qtn
+            // ne supporte pas Bool primitive).
+            if (state->IsBotMatch == 0) return;
+
             // L'IA n'agit que quand son joueur est actif ET le tour est en cours.
             if (state->CurrentPhase != CombatPhase.TurnActive) return;
             if (state->ActivePlayerIndex != AIConstants.BotPlayerIndex) return;

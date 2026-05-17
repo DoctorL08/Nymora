@@ -98,6 +98,74 @@ namespace Nymora.Editor.Tools
             // Signature
             { "icon_traquenard",           SpellId.NightseerTraquenard },
             // Passif "icon_passif_oeil_qui_nest_pas" est gere a part.
+
+            // === COLOSSAR === (4.14.f hotfix — completer le dict pour faire afficher les icones en PvP)
+            // Offensifs
+            { "icon_frappe_lourde",        SpellId.ColossarFrappeLourde },
+            { "icon_onde_de_choc",         SpellId.ColossarOndeDeChoc },
+            { "icon_marteau_punisseur",    SpellId.ColossarMarteauPunisseur },
+            { "icon_choc_sismique",        SpellId.ColossarChocSismique },
+            { "icon_represailles",         SpellId.ColossarRepresailles },
+            // Tactiques
+            { "icon_pilier",               SpellId.ColossarPilier },
+            { "icon_mur_de_pierre",        SpellId.ColossarMurDePierre },
+            { "icon_ancrage",              SpellId.ColossarAncrage },
+            { "icon_provocation",          SpellId.ColossarProvocation },
+            { "icon_brisure",              SpellId.ColossarBrisure },
+            // Survie
+            { "icon_stoicisme",            SpellId.ColossarStoicisme },
+            { "icon_garde_protectrice",    SpellId.ColossarGardeProtectrice },
+            { "icon_ressac_vital",         SpellId.ColossarRessacVital },
+            { "icon_renvoi_du_bouclier",   SpellId.ColossarRenvoiDuBouclier },
+            { "icon_soin_lourd",           SpellId.ColossarSoinLourd },
+            // Signature
+            { "icon_effondrement",         SpellId.ColossarEffondrement },
+
+            // === NECRAM ===
+            // Offensifs
+            { "icon_crachat_acide",        SpellId.NecramCrachatAcide },
+            { "icon_morsure_putride",      SpellId.NecramMorsurePutride },
+            { "icon_detonation_virulente", SpellId.NecramDetonationVirulente },
+            { "icon_faux_decharnee",       SpellId.NecramFauxDecharnee },
+            { "icon_brume_toxique",        SpellId.NecramBrumeToxique },
+            // Tactiques
+            { "icon_inoculation",          SpellId.NecramInoculation },
+            { "icon_marque_sacrificielle", SpellId.NecramMarqueSacrificielle },
+            { "icon_symbiose_morbide",     SpellId.NecramSymbioseMorbide },
+            { "icon_contagion",            SpellId.NecramContagion },
+            { "icon_pas_spectral",         SpellId.NecramPasSpectral },
+            // Survie
+            { "icon_voile_de_pestilence",  SpellId.NecramVoilePestilence },
+            { "icon_carapace_visqueuse",   SpellId.NecramCarapaceVisqueuse },
+            { "icon_drain_vital",          SpellId.NecramDrainVital },
+            // Bible "Régénération Nécrotique" => asset "icon_regeneration_necrotique" mais enum
+            // code = "PulseSanguinVert" (artefact historique, cf memory feedback-dont-invent-spell-names).
+            { "icon_regeneration_necrotique", SpellId.NecramPulseSanguinVert },
+            { "icon_cocon_putride",        SpellId.NecramCoconPutride },
+            // Signature
+            { "icon_virus_fatal",          SpellId.NecramVirusFatal },
+
+            // === GHOSTRA ===
+            // Offensifs (5 Bible — Volte-Face classe Tactique amendement 16 mai mais asset reste icon_volte_face)
+            { "icon_lame_spectrale",       SpellId.GhostraLameSpectrale },
+            { "icon_lame_vorace_spectrale",SpellId.GhostraLameVoraceSpectrale },
+            { "icon_saigne_ame",           SpellId.GhostraSaigneAme },
+            { "icon_frappe_fantome",       SpellId.GhostraFrappeFantome },
+            { "icon_danse_des_lames",      SpellId.GhostraDanseDesLames },
+            // Tactiques (5)
+            { "icon_replique_fantome",     SpellId.GhostraRepliqueFantome },
+            { "icon_pas_dans_lombre",      SpellId.GhostraPasDansLOmbre },
+            { "icon_volte_face",           SpellId.GhostraVolteFace },
+            { "icon_dague_lancee",         SpellId.GhostraDagueLancee },
+            { "icon_marque_de_lombre",     SpellId.GhostraMarqueDeLOmbre },
+            // Survie (5)
+            { "icon_linceul_dombres",      SpellId.GhostraLinceulDOmbres },
+            { "icon_voile_spectral",       SpellId.GhostraVoileSpectral },
+            { "icon_replique_protectrice", SpellId.GhostraRepliqueProtectrice },
+            { "icon_dernier_pas",          SpellId.GhostraDernierPas },
+            { "icon_pas_de_lau_dela",      SpellId.GhostraPasDeLAuDela },
+            // Signature
+            { "icon_execution_spectrale",  SpellId.GhostraExecutionSpectrale },
         };
 
         [MenuItem("Nymora/Setup/Populate Spell Icon Registry")]

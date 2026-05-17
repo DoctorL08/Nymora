@@ -23018,7 +23018,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _backendUrl: ws://localhost:3000
-  _devToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI0OGFlNjQxMy1lM2NhLTRjYmItODAxYy00YjkyNjViZjAyMmEiLCJlbWFpbCI6ImRldi0yQG55bW9yYS5sb2NhbCIsImlhdCI6MTc3OTA0NTgxMiwiZXhwIjoxNzc5MTMyMjEyfQ.8R8kpSHyijCVZPfmf0xs5rDJyv2YvozKqB8olyNnfzk
+  _devToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3YmZkYWY0OS01MWRlLTQwYWItYTUwMy1kYjM3YWZkMmRjMWIiLCJlbWFpbCI6ImRldi0xQG55bW9yYS5sb2NhbCIsImlhdCI6MTc3OTAxMDMzNiwiZXhwIjoxNzc5MDk2NzM2fQ.0zbgl9MLnBn9s98zfpdUT_QGMJVv5DpPpmQoc8Nm5Gc
   _autoConnect: 1
   _autoJoinChannel: global
   _logVerbose: 1

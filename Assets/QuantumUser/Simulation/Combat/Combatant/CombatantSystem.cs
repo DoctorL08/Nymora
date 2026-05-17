@@ -3,11 +3,19 @@ namespace Quantum
     using Photon.Deterministic;
 
     /// <summary>
-    /// Spawn les 2 combattants initiaux au demarrage du combat (brique 2.2).
-    /// Positions de spawn hardcodees en 2.2 (P1 a gauche, P2 a droite, symetrique).
-    /// Sera remplace par un RuntimePlayer + SpawnConfig en Phase 6 (matchmaking).
+    /// Spawn les 2 combattants au demarrage du combat.
+    ///
+    /// 2.2 — spawn hardcoded P0=Ghostra/P1=Soulrender en OnInit (test 1 seul client).
+    /// 4.14.d — mode dual :
+    ///   IsBotMatch=1 (30_CombatIA) : spawn hardcoded comme avant (P0=Ghostra, P1=Soulrender,
+    ///     testing rapide). Cohabite avec AISystem qui drive P1=bot.
+    ///   IsBotMatch=0 (33_CombatCasual / futurs ranked) : spawn via ISignalOnPlayerAdded
+    ///     quand chaque RuntimePlayer rejoint la simulation. Classe = RuntimePlayer.ClassId
+    ///     set par CombatBootstrapCasual depuis DeckBridge.
+    ///
+    /// Positions hardcodees : slot 0 = (2,7) face SE, slot 1 = (7,2) face NW (cf POLISH-5e).
     /// </summary>
-    public unsafe class CombatantSystem : SystemSignalsOnly
+    public unsafe class CombatantSystem : SystemSignalsOnly, ISignalOnPlayerAdded
     {
         // POLISH-5e (17 mai) : grille 10x10, spawn sur la diagonale horizontale mediane du
         // losange iso (gx+gy=9). P0 a gauche-bas visuel = (2, 7), P1 a droite-haut visuel =
@@ -21,14 +29,53 @@ namespace Quantum
 
         public override void OnInit(Frame f)
         {
+            // 4.14.d — Mode IA (offline 30_CombatIA) : spawn hardcoded au tick 0.
+            //   IsBotMatch != 1 (PvP online) : ne fait rien ici, attends ISignalOnPlayerAdded.
+            if (f.RuntimeConfig.IsBotMatch == false) return;
+
             // 3.6 — P0 = Ghostra (test visuel anims + framework Angle Mort + Permutation).
-            // Ghostra demarre avec 0 leurre = Angle 1 (passif neutre). Pour tester l'Angle :
-            //   - Touche F12 : pose un leurre Standard sur la case clic (DebugSpawnDecoyCommand)
-            //   - Touche P  : Permutation (requiert 3 leurres actifs = Angle 3)
-            // SpellBar vide, frappe-au-corps via clic adjacent uniquement (les 16 sorts arrivent en 3.7.a-d).
-            // Pour switch local : remplace NymoraClass.Ghostra ci-dessous par .Soulrender / .Nightseer / .Colossar / .Necram.
+            // Pour switch local IA : remplace NymoraClass.Ghostra par .Soulrender / .Nightseer / .Colossar / .Necram.
             SpawnCombatant(f, playerIndex: 0, nymoraClass: NymoraClass.Ghostra, x: P1SpawnX, y: P1SpawnY);
             SpawnCombatant(f, playerIndex: 1, nymoraClass: NymoraClass.Soulrender, x: P2SpawnX, y: P2SpawnY);
+        }
+
+        /// <summary>
+        /// 4.14.d — En mode PvP (IsBotMatch=0), spawn le Combatant pour ce player en utilisant
+        /// le ClassId du RuntimePlayer (set par CombatBootstrapCasual depuis DeckBridge).
+        /// firstTime=true uniquement au tout 1er AddPlayer du slot ; les reconnections
+        /// (firstTime=false) ne re-spawnent pas (le Combatant existe deja).
+        /// </summary>
+        public void OnPlayerAdded(Frame f, PlayerRef player, bool firstTime)
+        {
+            // Mode IA : spawn deja fait en OnInit, rien a faire ici.
+            if (f.RuntimeConfig.IsBotMatch) return;
+
+            // Reconnection : Combatant deja existant, ne pas re-spawn.
+            if (!firstTime) return;
+
+            int slot = player;
+            // 1v1 cap : ignorer les slots > 1 (defensive, MaxPlayers Photon room = 2 deja).
+            if (slot < 0 || slot > 1)
+            {
+                Log.Warn($"[CombatantSystem] OnPlayerAdded slot {slot} hors range 1v1 — ignore.");
+                return;
+            }
+
+            var runtimePlayer = f.GetPlayerData(player);
+            if (runtimePlayer == null)
+            {
+                Log.Warn($"[CombatantSystem] OnPlayerAdded slot {slot} : RuntimePlayer null — fallback Soulrender.");
+            }
+
+            var nymoraClass = runtimePlayer != null && runtimePlayer.ClassId != NymoraClass.None
+                ? runtimePlayer.ClassId
+                : NymoraClass.Soulrender; // fallback safe si DeckBridge vide
+
+            int x = slot == 0 ? P1SpawnX : P2SpawnX;
+            int y = slot == 0 ? P1SpawnY : P2SpawnY;
+
+            SpawnCombatant(f, playerIndex: slot, nymoraClass: nymoraClass, x: x, y: y);
+            Log.Info($"[CombatantSystem] PvP spawn slot {slot} class {nymoraClass} at ({x},{y})");
         }
 
         private static EntityRef SpawnCombatant(Frame f, int playerIndex, NymoraClass nymoraClass, int x, int y)

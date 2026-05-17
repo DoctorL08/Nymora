@@ -80,18 +80,46 @@ namespace Nymora.Combat.View
                 return;
             }
 
-            // Ajoute les players locaux pour sortir du mode spectator (sinon SendCommand rejete).
-            // Sera remplace par le flow menu/matchmaking en Phase 6 — on retirera ce code a ce moment-la.
-            if (_autoAddLocalPlayers)
+            var frame = game.Frames.Verified;
+
+            // 4.14.b — En mode PvP (RuntimeConfig.IsBotMatch=false), CombatBootstrapCasual a deja
+            // fait Game.AddPlayer(localSlot) avec un RuntimePlayer porteur du deck. L'auto-add
+            // local de 2 slots ici provoquerait "Failed to add player 0/1" (slots deja occupes
+            // par les 2 clients PvP). Skip dans ce cas — keep auto-add UNIQUEMENT pour 30_CombatIA
+            // (IsBotMatch=true) ou pour les scenes scenes-direct-play en dev.
+            bool isPvp = frame.RuntimeConfig != null && !frame.RuntimeConfig.IsBotMatch;
+            if (_autoAddLocalPlayers && !isPvp)
             {
                 for (int i = 0; i < _autoAddPlayerCount; i++)
                 {
                     game.AddPlayer(i, new RuntimePlayer());
                 }
-                Debug.Log($"[Nymora.CombatInput] Ajout de {_autoAddPlayerCount} player(s) local(aux) (mode debug).");
+                Debug.Log($"[Nymora.CombatInput] Ajout de {_autoAddPlayerCount} player(s) local(aux) (mode debug IA/local).");
+            }
+            else if (isPvp)
+            {
+                Debug.Log("[Nymora.CombatInput] Mode PvP detecte (RuntimeConfig.IsBotMatch=false) — auto-add local skip (CombatBootstrapCasual a la charge des AddPlayer).");
+
+                // 4.14.f hotfix — En PvP, le SendCommand DOIT etre envoye par le slot LOCAL
+                // (celui sur lequel ce client a l'autorite). Sans ca, Quantum reject le command
+                // avec "Player not found" (Error #19) et disconnect. CombatBootstrapCasual.Instance
+                // expose LocalPlayerSlot (0 = MasterClient/host, 1 = guest, depuis Photon ActorNumber).
+                var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
+                if (bootstrap != null && bootstrap.LocalPlayerSlot >= 0)
+                {
+                    _localPlayerIndex = bootstrap.LocalPlayerSlot;
+                    // _debugAllPlayersMovable force false en PvP : sinon le sender devient
+                    // state.ActivePlayerIndex (slot actif du tour), et les 2 clients enverraient
+                    // leurs commands au meme slot = un sur deux est rejete "Player not found".
+                    _debugAllPlayersMovable = false;
+                    Debug.Log($"[Nymora.CombatInput] PvP: _localPlayerIndex={_localPlayerIndex} (depuis CombatBootstrapCasual.LocalPlayerSlot), _debugAllPlayersMovable=false.");
+                }
+                else
+                {
+                    Debug.LogError("[Nymora.CombatInput] PvP mais CombatBootstrapCasual.Instance null OU LocalPlayerSlot<0 — input combat va casser. Verifier l'ordre Awake/Start.");
+                }
             }
 
-            var frame = game.Frames.Verified;
             if (!frame.TryGetSingleton<GridSingleton>(out var grid))
             {
                 Debug.LogError("[Nymora.CombatInput] GridSingleton introuvable.", this);

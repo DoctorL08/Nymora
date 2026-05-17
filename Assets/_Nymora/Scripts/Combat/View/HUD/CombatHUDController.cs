@@ -64,6 +64,11 @@ namespace Nymora.Combat.View.HUD
             // et _signatureSpell avant BindSlots() pour que le HUD affiche les bons sorts.
             ApplyDeckBridgeIfPending();
 
+            // 4.14.f hotfix — En PvP, _localPlayerIndex doit pointer le slot LOCAL (depuis
+            // CombatBootstrapCasual.LocalPlayerSlot). Sans ca, le HUD affiche Victory/Defeat
+            // inverse et resolve_local_player_for_sender retourne le mauvais slot.
+            QuantumCallback.Subscribe(this, (CallbackGameStarted c) => OnGameStartedResolveLocalSlot(c.Game));
+
             BindSlots();
             if (_endTurnButton != null)
             {
@@ -129,9 +134,36 @@ namespace Nymora.Combat.View.HUD
             Debug.Log($"[CombatHUDController] DeckBridge applique : class={DeckBridge.PendingClassId} " +
                       $"deck=[{string.Join(",", _testDeck)}] signature={_signatureSpell} (deckName='{DeckBridge.PendingDeckName}')");
 
-            // Clear pour eviter re-application si le combat est relance (la scene combat
-            // peut etre rejouee plusieurs fois en dev). Le hub re-set au prochain go.
-            DeckBridge.Clear();
+            // 4.14.e — NE PAS clear DeckBridge ici. CombatHUDController.Awake() s'execute AVANT
+            // CombatBootstrapCasual.Start(), donc clear ici causerait DeckBridge vide quand
+            // le bootstrap PvP tente de set le RuntimePlayer.ClassId + SpellIdValues.
+            // Le hub re-set DeckBridge au prochain match (HubMatchTransition / HubArenaPanel),
+            // l'absence de Clear ici n'est pas critique.
+        }
+
+        /// <summary>
+        /// 4.14.f hotfix — En PvP, resolve _localPlayerIndex depuis CombatBootstrapCasual.LocalPlayerSlot.
+        /// Sinon le HUD est en mode IA (slot 0 hardcoded) et affiche Victory/Defeat inverse cote slot 1.
+        /// </summary>
+        private void OnGameStartedResolveLocalSlot(Quantum.QuantumGame game)
+        {
+            var frame = game?.Frames?.Verified;
+            if (frame == null || frame.RuntimeConfig == null) return;
+            bool isPvp = !frame.RuntimeConfig.IsBotMatch;
+            if (!isPvp) return;
+
+            var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
+            if (bootstrap == null || bootstrap.LocalPlayerSlot < 0)
+            {
+                Debug.LogError("[CombatHUDController] PvP detecte mais CombatBootstrapCasual.Instance null OU LocalPlayerSlot<0 — HUD slot wrong.");
+                return;
+            }
+            _localPlayerIndex = bootstrap.LocalPlayerSlot;
+            // _debugAllPlayersControllable force false en PvP : sinon GetCurrentSenderPlayer
+            // retourne state.ActivePlayerIndex meme sur les tours du local, et le HUD peut
+            // se trouver desync entre slot affiche et slot reel.
+            _debugAllPlayersControllable = false;
+            Debug.Log($"[CombatHUDController] PvP: _localPlayerIndex={_localPlayerIndex} (depuis CombatBootstrapCasual.LocalPlayerSlot), _debugAllPlayersControllable=false.");
         }
 
         private void BindSlots()
@@ -214,7 +246,8 @@ namespace Nymora.Combat.View.HUD
             // mais Refresh() est idempotent (no-op tant qu'on est deja dans le bon etat).
             if (_matchEndOverlay != null)
             {
-                _matchEndOverlay.Refresh(state.CurrentPhase, state.WinnerPlayerIndex, _localPlayerIndex, state.TurnNumber);
+                bool isPvpMatch = frame.RuntimeConfig != null && !frame.RuntimeConfig.IsBotMatch;
+                _matchEndOverlay.Refresh(state.CurrentPhase, state.WinnerPlayerIndex, _localPlayerIndex, state.TurnNumber, isPvpMatch);
             }
         }
 
@@ -390,7 +423,10 @@ namespace Nymora.Combat.View.HUD
             // casts/move (le tour passait avant que l'AI ait fini ses actions). Mode prod
             // 1-humain : le bouton ne devrait pas etre cliquable pendant tour IA, mais ce
             // garde-fou ferme aussi le cas spam-clic preventif.
-            if (state.ActivePlayerIndex == AIConstants.BotPlayerIndex)
+            // 4.14.f hotfix — En PvP (IsBotMatch=false), le slot 1 EST un humain, pas un bot.
+            // Le guard doit etre skip sinon dev-2 (slot 1) ne peut JAMAIS passer son tour.
+            bool isBotMatch = frame.RuntimeConfig != null && frame.RuntimeConfig.IsBotMatch;
+            if (isBotMatch && state.ActivePlayerIndex == AIConstants.BotPlayerIndex)
             {
                 Debug.Log($"[Nymora.HUD] EndTurnCommand IGNORE : tour du bot P{state.ActivePlayerIndex} en cours (le bot finit seul via AISystem)");
                 return;

@@ -77,6 +77,102 @@ MonoBehaviour:
     Icon: {fileID: 21300000, guid: d85380713dca1354dad31a5613d767c3, type: 3}
   - Spell: 31
     Icon: {fileID: 21300000, guid: 75447d6a77840eb49a064e02fb2974d8, type: 3}
+  - Spell: 57
+    Icon: {fileID: 21300000, guid: 61902def475ee804297b993167f5e04e, type: 3}
+  - Spell: 59
+    Icon: {fileID: 21300000, guid: 571fa06ecda9342428adc947eb40a7fc, type: 3}
+  - Spell: 53
+    Icon: {fileID: 21300000, guid: 3ffef056d4ada7f449660b23442b2fb2, type: 3}
+  - Spell: 65
+    Icon: {fileID: 21300000, guid: 53cad097ad4919d419fcd6f9eecca45c, type: 3}
+  - Spell: 50
+    Icon: {fileID: 21300000, guid: a72dcbacde51b39479f5471d9113f9cc, type: 3}
+  - Spell: 61
+    Icon: {fileID: 21300000, guid: ca5169dc553ede149ab7a42026ed48ec, type: 3}
+  - Spell: 52
+    Icon: {fileID: 21300000, guid: aaa1a26a733b84e40ba07dff1ccff180, type: 3}
+  - Spell: 56
+    Icon: {fileID: 21300000, guid: 80958ac6ac5f1f648929977ce336e542, type: 3}
+  - Spell: 51
+    Icon: {fileID: 21300000, guid: 3ed276896efab05498e69c866b39ed49, type: 3}
+  - Spell: 55
+    Icon: {fileID: 21300000, guid: 63b042b619ca20c4f8c791e0c32b879e, type: 3}
+  - Spell: 58
+    Icon: {fileID: 21300000, guid: ecd698be4ed589940851f304198b0558, type: 3}
+  - Spell: 63
+    Icon: {fileID: 21300000, guid: 19aacf35aa4f0374aa6d5e2e99f596cf, type: 3}
+  - Spell: 54
+    Icon: {fileID: 21300000, guid: a9c240f6f9e5fea4795519f2bce4e2fc, type: 3}
+  - Spell: 62
+    Icon: {fileID: 21300000, guid: ffb37f0e307898b42b15ba24affac1fb, type: 3}
+  - Spell: 64
+    Icon: {fileID: 21300000, guid: ad8252ee3b07d374cb6eae2127073f74, type: 3}
+  - Spell: 60
+    Icon: {fileID: 21300000, guid: 0dc49312d616fb247bbbcc45bdba2f87, type: 3}
+  - Spell: 74
+    Icon: {fileID: 21300000, guid: fd77e1ec83029ce49831dfca748743e5, type: 3}
+  - Spell: 81
+    Icon: {fileID: 21300000, guid: ea232461e106fc3409c99acd58da69ac, type: 3}
+  - Spell: 84
+    Icon: {fileID: 21300000, guid: f33a619672c98f8468a1244d98d68543, type: 3}
+  - Spell: 78
+    Icon: {fileID: 21300000, guid: 9ee9816c92eb51b429c5da342e663fd8, type: 3}
+  - Spell: 70
+    Icon: {fileID: 21300000, guid: d1acf20c0573edd4d80d05c485ec54ea, type: 3}
+  - Spell: 72
+    Icon: {fileID: 21300000, guid: f1f91b3d0aee3274798e853631b1468c, type: 3}
+  - Spell: 82
+    Icon: {fileID: 21300000, guid: 7e207892c0c4d5d44af1ef399367c917, type: 3}
+  - Spell: 73
+    Icon: {fileID: 21300000, guid: 2d867e789ad08b8468de71078f18861e, type: 3}
+  - Spell: 75
+    Icon: {fileID: 21300000, guid: 00726a3e247eb8547aeb21f55affa46b, type: 3}
+  - Spell: 76
+    Icon: {fileID: 21300000, guid: d25e4bc623986ce4b9fb301a648b7fec, type: 3}
+  - Spell: 71
+    Icon: {fileID: 21300000, guid: 4dd49d5c57255bf42af7f2588397fd79, type: 3}
+  - Spell: 79
+    Icon: {fileID: 21300000, guid: 340ae5d8942f4394885f3cbdba99dfb0, type: 3}
+  - Spell: 83
+    Icon: {fileID: 21300000, guid: 67937bb42191e5e4a9a34ce4341a03ef, type: 3}
+  - Spell: 77
+    Icon: {fileID: 21300000, guid: 634d5a4af7b870443be2ed371ec8d30d, type: 3}
+  - Spell: 85
+    Icon: {fileID: 21300000, guid: ba3c5d40bdfcc374ab9ed645d6890bd1, type: 3}
+  - Spell: 80
+    Icon: {fileID: 21300000, guid: 1860b82e8188fdf4ca58084fde64716c, type: 3}
+  - Spell: 93
+    Icon: {fileID: 21300000, guid: 615737ab34a39f6418fc831367c4a40d, type: 3}
+  - Spell: 95
+    Icon: {fileID: 21300000, guid: 6fc58c88d0ecdab4e957c69c4c06285a, type: 3}
+  - Spell: 99
+    Icon: {fileID: 21300000, guid: fec2574cc36d5aa409338c7dfec15645, type: 3}
+  - Spell: 101
+    Icon: {fileID: 21300000, guid: 79531bdd5a8c27f48b9c96eded6ad0a4, type: 3}
+  - Spell: 92
+    Icon: {fileID: 21300000, guid: 0a27cfe47350a354b9d3b5679b41db43, type: 3}
+  - Spell: 86
+    Icon: {fileID: 21300000, guid: 4a115d5705988044ba0ca59b29e74911, type: 3}
+  - Spell: 87
+    Icon: {fileID: 21300000, guid: 91aa5719d8e6e1841bd399f7fdee04d9, type: 3}
+  - Spell: 96
+    Icon: {fileID: 21300000, guid: 35c8781ca685ec84a9f9241f2ec31eaa, type: 3}
+  - Spell: 94
+    Icon: {fileID: 21300000, guid: 4efa6067c8c32a84595fc4003c1a1685, type: 3}
+  - Spell: 89
+    Icon: {fileID: 21300000, guid: e31d96a2b513d3645ae1a9069fd822e7, type: 3}
+  - Spell: 100
+    Icon: {fileID: 21300000, guid: 769b1c1e835b671448e917bfbc5bfc9c, type: 3}
+  - Spell: 88
+    Icon: {fileID: 21300000, guid: ac17551545404464abf7d65dc5911c0c, type: 3}
+  - Spell: 98
+    Icon: {fileID: 21300000, guid: b861949ab5f010144b28347028eb5006, type: 3}
+  - Spell: 91
+    Icon: {fileID: 21300000, guid: d990d913134aea442b41f9fe8a5db02a, type: 3}
+  - Spell: 97
+    Icon: {fileID: 21300000, guid: 48a475de5c715604ca77b8af28a41ab4, type: 3}
+  - Spell: 90
+    Icon: {fileID: 21300000, guid: 54a70bda8531bb44389a7ffaca9a9ca1, type: 3}
   _passifSoulrenderIcon: {fileID: 21300000, guid: 7eed818221811164da380957901fb2b0, type: 3}
   _passifNightseerIcon: {fileID: 21300000, guid: 78b6a6f1bb567b74cbe1bf104d4bff05, type: 3}
   _passifColossarIcon: {fileID: 21300000, guid: abc2a6a311ccbf0449b3ecd320e32078, type: 3}

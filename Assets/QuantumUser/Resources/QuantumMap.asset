@@ -19,9 +19,9 @@ MonoBehaviour:
   UserAsset:
     Id:
       Value: 0
-  Scene: 30_CombatIA
-  ScenePath: Assets/_Nymora/Scenes/30_CombatIA.unity
-  SceneGuid: bfe3a7e252b32c4409043711ff6e0e60
+  Scene: 33_CombatCasual
+  ScenePath: Assets/_Nymora/Scenes/33_CombatCasual.unity
+  SceneGuid: f4c67066bdcd66f49a947694ab0aaaac
   WorldSize: 256
   BucketsCount: 16
   BucketsSubdivisions: 8

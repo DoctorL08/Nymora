@@ -4216,6 +4216,7 @@ MonoBehaviour:
     SystemsConfig:
       Id:
         Value: 1785059092662275871
+    IsBotMatch: 1
   UseRandomSeed: 0
   SessionConfig: {fileID: 0}
   LocalPlayers: []

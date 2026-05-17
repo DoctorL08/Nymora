@@ -1,4 +1,5 @@
 using Nymora.Combat.Replay;
+using Nymora.Core.Data;
 using Quantum;
 using TMPro;
 using UnityEngine;
@@ -37,6 +38,12 @@ namespace Nymora.Combat.View.HUD
         [Tooltip("Click = AIConstants.CurrentDifficulty=Medium + reload scene.")]
         [SerializeField] private Button _restartMediumButton;
 
+        [Header("Retour Hub (4.14.g — PvP casual)")]
+        [Tooltip("Click = set MatchBridge.LastMatchResult + LoadScene 10_CommunityHub. " +
+                 "Visible UNIQUEMENT en mode PvP (IsBotMatch=false). Cache en mode IA " +
+                 "ou Lorenzo utilise Rejouer pour relancer un combat IA.")]
+        [SerializeField] private Button _returnToHubButton;
+
         [Header("Replay (Brique 3.E.1)")]
         [Tooltip("ReplayRecorder de la scene. Si laisse vide, le bouton 'Sauvegarder le replay' est masque.")]
         [SerializeField] private ReplayRecorder _replayRecorder;
@@ -54,6 +61,11 @@ namespace Nymora.Combat.View.HUD
 
         private bool _shown;
         private bool _replaySavedThisMatch;
+        // 4.14.g — Snapshot des params Refresh pour les recuperer dans OnReturnToHubClicked
+        // (le bouton n'a pas acces a la frame Quantum a la callback).
+        private int _localPlayerIndex;
+        private int _winnerPlayerIndex;
+        private bool _isPvpMatch;
 
         private void Awake()
         {
@@ -72,6 +84,11 @@ namespace Nymora.Combat.View.HUD
                 _saveReplayButton.onClick.RemoveAllListeners();
                 _saveReplayButton.onClick.AddListener(OnSaveReplayClicked);
             }
+            if (_returnToHubButton != null)
+            {
+                _returnToHubButton.onClick.RemoveAllListeners();
+                _returnToHubButton.onClick.AddListener(OnReturnToHubClicked);
+            }
             Hide();
         }
 
@@ -79,7 +96,7 @@ namespace Nymora.Combat.View.HUD
         /// Appele par CombatHUDController chaque tick de view update. Si la sim est en
         /// MatchEnd, on affiche l'overlay avec le verdict. Sinon on le cache.
         /// </summary>
-        public void Refresh(Quantum.CombatPhase phase, int winnerPlayerIndex, int localPlayerIndex, int turnNumber)
+        public void Refresh(Quantum.CombatPhase phase, int winnerPlayerIndex, int localPlayerIndex, int turnNumber, bool isPvpMatch = false)
         {
             if (phase != Quantum.CombatPhase.MatchEnd)
             {
@@ -88,6 +105,11 @@ namespace Nymora.Combat.View.HUD
             }
 
             if (_shown) return; // deja affiche, no-op pour eviter de re-rafraichir chaque frame
+
+            // 4.14.g — Snapshot pour OnReturnToHubClicked.
+            _localPlayerIndex = localPlayerIndex;
+            _winnerPlayerIndex = winnerPlayerIndex;
+            _isPvpMatch = isPvpMatch;
 
             string title;
             Color titleColor;
@@ -128,9 +150,15 @@ namespace Nymora.Combat.View.HUD
             // boutons "Rejouer" (qui relanceraient un match normal en quittant le replay)
             // et "Sauvegarder le replay" (replay deja existant, recorder force-disabled).
             // Le user reste libre de quitter via le bouton du ReplayControlsPanel.
+            // 4.14.g : en mode PvP, cache les boutons Restart IA (pas pertinent online)
+            // et affiche le bouton Retour Hub a la place. En mode IA legacy, comportement
+            // inchange (Restart visible, Retour Hub cache).
             bool replayMode = IsInReplayMode();
-            if (_restartEasyButton != null) _restartEasyButton.gameObject.SetActive(!replayMode);
-            if (_restartMediumButton != null) _restartMediumButton.gameObject.SetActive(!replayMode);
+            bool restartVisible = !replayMode && !_isPvpMatch;
+            bool returnHubVisible = !replayMode && _isPvpMatch;
+            if (_restartEasyButton != null) _restartEasyButton.gameObject.SetActive(restartVisible);
+            if (_restartMediumButton != null) _restartMediumButton.gameObject.SetActive(restartVisible);
+            if (_returnToHubButton != null) _returnToHubButton.gameObject.SetActive(returnHubVisible);
             RefreshSaveReplayButton();
         }
 
@@ -204,6 +232,31 @@ namespace Nymora.Combat.View.HUD
             QuantumRunner.ShutdownAll();
             var scene = SceneManager.GetActiveScene();
             SceneManager.LoadScene(scene.name);
+        }
+
+        /// <summary>
+        /// 4.14.g — Bouton Retour Hub (visible uniquement en PvP). Set le resultat dans
+        /// MatchBridge.LastMatchResult (consume cote hub par HubMatchResultDisplay au
+        /// Start), shutdown Quantum runner, LoadScene 10_CommunityHub.
+        ///
+        /// Win/Loss/Draw deduit du snapshot Refresh : winner == local -> VICTOIRE,
+        /// winner != local && winner >= 0 -> DEFAITE, winner < 0 -> DRAW (double KO).
+        /// </summary>
+        private void OnReturnToHubClicked()
+        {
+            MatchResult result;
+            if (_winnerPlayerIndex < 0) result = MatchResult.Draw;
+            else if (_winnerPlayerIndex == _localPlayerIndex) result = MatchResult.Victory;
+            else result = MatchResult.Defeat;
+
+            // Capture matchId + opponentEmail AVANT que SetMatchResult clear pending.
+            string matchId = MatchBridge.PendingMatchId;
+            string opponentEmail = MatchBridge.OpponentEmail;
+            MatchBridge.SetMatchResult(result, matchId, opponentEmail);
+            Debug.Log($"[Nymora.HUD] Retour Hub clique — result={result} matchId={matchId} opponent={opponentEmail}");
+
+            QuantumRunner.ShutdownAll();
+            SceneManager.LoadScene("10_CommunityHub");
         }
     }
 }

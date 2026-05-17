@@ -118,6 +118,23 @@ namespace Nymora.Combat.View.HUD
             if (!frame.TryGetSingleton<CombatState>(out var state)) return;
             if (state.CurrentPhase != CombatPhase.TurnActive) return;
 
+            // 4.14.f hotfix — En PvP : caster preview = LOCAL player (pas ActivePlayer).
+            // Comme ca : P0 voit toujours autour de P0. P1 voit autour de P1.
+            // En IA (IsBotMatch=1) : legacy ActivePlayer (Lorenzo drive P0+P1 alternativement).
+            int casterPlayerIndex = state.ActivePlayerIndex;
+            bool isPvp = frame.RuntimeConfig != null && !frame.RuntimeConfig.IsBotMatch;
+            if (isPvp)
+            {
+                var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
+                if (bootstrap != null && bootstrap.LocalPlayerSlot >= 0)
+                {
+                    casterPlayerIndex = bootstrap.LocalPlayerSlot;
+                    // Polish Lorenzo : tour adverse -> hide preview (pas de move possible
+                    // de toute facon, eviter confusion visuelle).
+                    if (state.ActivePlayerIndex != casterPlayerIndex) return;
+                }
+            }
+
             int casterX = -1, casterY = -1, casterPM = 0;
             bool hasCaster = false;
             // 3.5.b.iii : detection PasSpectralReady inline pour autoriser BFS a traverser ennemis.
@@ -128,7 +145,7 @@ namespace Nymora.Combat.View.HUD
             var filter = frame.Filter<Combatant>();
             while (filter.Next(out EntityRef _, out Combatant c))
             {
-                if (c.PlayerIndex == state.ActivePlayerIndex)
+                if (c.PlayerIndex == casterPlayerIndex)
                 {
                     casterX = c.GridX;
                     casterY = c.GridY;

@@ -962,20 +962,22 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct CombatState : Quantum.IComponentSingleton {
-    public const Int32 SIZE = 24;
+    public const Int32 SIZE = 28;
     public const Int32 ALIGNMENT = 4;
     [FieldOffset(0)]
     public CombatPhase CurrentPhase;
     [FieldOffset(4)]
     public Int32 ActivePlayerIndex;
-    [FieldOffset(12)]
-    public Int32 TurnNumber;
     [FieldOffset(16)]
-    public Int32 TurnTimerTicks;
-    [FieldOffset(8)]
-    public Int32 SubTurnInRound;
+    public Int32 TurnNumber;
     [FieldOffset(20)]
+    public Int32 TurnTimerTicks;
+    [FieldOffset(12)]
+    public Int32 SubTurnInRound;
+    [FieldOffset(24)]
     public Int32 WinnerPlayerIndex;
+    [FieldOffset(8)]
+    public Int32 IsBotMatch;
     public override readonly Int32 GetHashCode() {
       unchecked { 
         var hash = 6577;
@@ -985,6 +987,7 @@ namespace Quantum {
         hash = hash * 31 + TurnTimerTicks.GetHashCode();
         hash = hash * 31 + SubTurnInRound.GetHashCode();
         hash = hash * 31 + WinnerPlayerIndex.GetHashCode();
+        hash = hash * 31 + IsBotMatch.GetHashCode();
         return hash;
       }
     }
@@ -992,6 +995,7 @@ namespace Quantum {
         var p = (CombatState*)ptr;
         serializer.Stream.Serialize((Byte*)&p->CurrentPhase);
         serializer.Stream.Serialize(&p->ActivePlayerIndex);
+        serializer.Stream.Serialize(&p->IsBotMatch);
         serializer.Stream.Serialize(&p->SubTurnInRound);
         serializer.Stream.Serialize(&p->TurnNumber);
         serializer.Stream.Serialize(&p->TurnTimerTicks);

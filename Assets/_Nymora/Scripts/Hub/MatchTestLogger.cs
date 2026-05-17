@@ -1,3 +1,4 @@
+using Nymora.Core.Data;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;

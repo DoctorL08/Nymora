@@ -95,13 +95,28 @@ namespace Nymora.Combat.View
             var frame = game.Frames.Verified;
             if (!frame.TryGetSingleton<CombatState>(out var state)) return;
 
-            // Trouve le caster = combattant du joueur actif.
+            // 4.14.f hotfix — En PvP, la range castable doit etre AUTOUR DU LOCAL player
+            // (pas du joueur actif). Sinon P1 pendant le tour de P0 voit la range autour de
+            // P0 = confusion totale. Lorenzo : "pas la range sur P0 mais plutot la range sur P1".
+            // En IA (IsBotMatch=1), garder comportement legacy (ActivePlayer pour testing P0+P1).
+            int casterPlayerIndex = state.ActivePlayerIndex;
+            bool isPvp = frame.RuntimeConfig != null && !frame.RuntimeConfig.IsBotMatch;
+            if (isPvp)
+            {
+                var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
+                if (bootstrap != null && bootstrap.LocalPlayerSlot >= 0)
+                {
+                    casterPlayerIndex = bootstrap.LocalPlayerSlot;
+                }
+            }
+
+            // Trouve le caster = combattant du joueur (actif en IA, local en PvP).
             int casterX = -1, casterY = -1;
             bool hasCaster = false;
             var filter = frame.Filter<Combatant>();
             while (filter.Next(out EntityRef _, out Combatant combatant))
             {
-                if (combatant.PlayerIndex == state.ActivePlayerIndex)
+                if (combatant.PlayerIndex == casterPlayerIndex)
                 {
                     casterX = combatant.GridX;
                     casterY = combatant.GridY;

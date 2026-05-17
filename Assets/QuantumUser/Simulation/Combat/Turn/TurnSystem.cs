@@ -17,7 +17,7 @@ namespace Quantum
     /// En 2.3 le swap est purement automatique au timer. L'input "End Turn" volontaire
     /// arrivera en 2.4 avec le systeme de mouvement.
     /// </summary>
-    public unsafe class TurnSystem : SystemMainThread
+    public unsafe class TurnSystem : SystemMainThread, ISignalOnPlayerDisconnected
     {
         public override void OnInit(Frame f)
         {
@@ -32,6 +32,11 @@ namespace Quantum
             // f.RNG->Next(0, max) retourne un int dans [0, max) - donc [0, 2) = 0 ou 1.
             state->ActivePlayerIndex = f.RNG->Next(0, TurnConstants.PlayerCount);
 
+            // 4.14.b — Copie le flag mode IA/PvP depuis RuntimeConfig vers le CombatState.
+            // AISystem.Update lira state->IsBotMatch pour decider d'agir ou non.
+            // Int32 0/1 cote sim (Quantum .qtn ne supporte pas Bool), bool cote Unity.
+            state->IsBotMatch = f.RuntimeConfig.IsBotMatch ? 1 : 0;
+
             // Transition immediate vers le 1er TurnStart. La FSM termine son init au prochain Update.
             state->CurrentPhase = CombatPhase.TurnStart;
 
@@ -41,6 +46,16 @@ namespace Quantum
         public override void Update(Frame f)
         {
             var state = f.Unsafe.GetPointerSingleton<CombatState>();
+
+            // 4.14.g hotfix — Early MatchEnd check chaque tick. Bug PvP : si un joueur kill
+            // l'adversaire en plein milieu de son tour et n'appelle pas EndTurn (et n'attend
+            // pas les 15s timer), le MatchEnd n'etait jamais declenche car EnterTurnEnd seul
+            // faisait ce check. En IA le bot finit son tour rapidement -> MatchEnd OK.
+            // Idempotent : si deja MatchEnd, on entre direct dans le case default no-op.
+            if (state->CurrentPhase != CombatPhase.MatchEnd && state->CurrentPhase != CombatPhase.PreMatch)
+            {
+                CheckMatchEndOnDeath(f, state);
+            }
 
             switch (state->CurrentPhase)
             {
@@ -63,6 +78,75 @@ namespace Quantum
                 default:
                     break;
             }
+        }
+
+        /// <summary>
+        /// 4.14.f — Disconnect / forfait. En mode PvP (IsBotMatch=0), si un player quitte
+        /// la simulation (close Unity, crash, perte reseau >TTL), l'autre gagne par forfait
+        /// instantane. En mode IA (IsBotMatch=1), Quantum n'appelle pas ce signal pour le
+        /// slot bot (jamais connecte au Photon room) — no-op sur le slot humain.
+        /// Pas de discrimination "forfait" vs "victoire normale" cote UI pour MVP : Lorenzo
+        /// voit juste VICTOIRE/DEFAITE via MatchEndOverlay.WinnerPlayerIndex. Phase 5 polish
+        /// pourra ajouter un sous-titre "par forfait" si DisconnectedPlayerIndex >= 0.
+        /// </summary>
+        /// <summary>
+        /// 4.14.g hotfix — Helper reutilise par Update (early check) et EnterTurnEnd (legacy).
+        /// Scan tous les Combatants vivants. Si <=1 alive ET >=2 total spawnees, set MatchEnd
+        /// + Winner = dernier vivant (ou -1 si double KO = draw). Idempotent : skip si deja MatchEnd.
+        ///
+        /// Le check totalCount >= 2 est CRITIQUE en PvP : OnPlayerAdded spawn les Combatants
+        /// un par un (slot 0 d'abord, puis slot 1 quand l'autre client rejoint Quantum).
+        /// Sans ce guard, le 1er Update fire avec 0 ou 1 Combatant -> aliveCount<=1 -> faux
+        /// MatchEnd Draw au lancement. En IA, CombatantSystem.OnInit spawn les 2 direct au
+        /// tick 0 donc totalCount==2 des le 1er Update.
+        /// </summary>
+        private static void CheckMatchEndOnDeath(Frame f, CombatState* state)
+        {
+            if (state->CurrentPhase == CombatPhase.MatchEnd) return;
+
+            int aliveCount = 0;
+            int totalCount = 0;
+            int lastAlivePlayer = -1;
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                totalCount++;
+                if (c->HP > 0)
+                {
+                    aliveCount++;
+                    lastAlivePlayer = c->PlayerIndex;
+                }
+            }
+
+            // Skip tant que les 2 Combatants ne sont pas spawned (PvP OnPlayerAdded sequentiel).
+            if (totalCount < 2) return;
+
+            if (aliveCount <= 1)
+            {
+                state->WinnerPlayerIndex = aliveCount == 1 ? lastAlivePlayer : -1;
+                state->CurrentPhase = CombatPhase.MatchEnd;
+                string verdict = state->WinnerPlayerIndex >= 0
+                    ? $"Winner: P{state->WinnerPlayerIndex}"
+                    : "Draw (double KO)";
+                Log.Info($"[TurnSystem] MATCH END (early) — {verdict} (round {state->TurnNumber}, aliveCount={aliveCount})");
+            }
+        }
+
+        public void OnPlayerDisconnected(Frame f, PlayerRef player)
+        {
+            // Mode IA : pas pertinent (le bot n'est pas un Photon actor, AISystem drive seul).
+            if (f.RuntimeConfig == null || f.RuntimeConfig.IsBotMatch) return;
+
+            var state = f.Unsafe.GetPointerSingleton<CombatState>();
+            // Match deja termine (1 KO ou un autre disconnect anterieur) : no-op idempotent.
+            if (state->CurrentPhase == CombatPhase.MatchEnd) return;
+
+            int disconnectedSlot = player;
+            // En 1v1 : si slot 0 disconnect, slot 1 wins, et vice versa.
+            int otherSlot = (disconnectedSlot == 0) ? 1 : 0;
+            state->WinnerPlayerIndex = otherSlot;
+            state->CurrentPhase = CombatPhase.MatchEnd;
+            Log.Info($"[TurnSystem] Player P{disconnectedSlot} disconnected — P{otherSlot} wins by forfait.");
         }
 
         private static void EnterTurnStart(Frame f, CombatState* state)

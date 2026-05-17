@@ -1,5 +1,6 @@
 using System.Collections;
 using Cysharp.Threading.Tasks;
+using Nymora.Core.Data;
 using Nymora.Network.Backend;
 using UnityEngine;
 
