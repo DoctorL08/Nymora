@@ -336,4 +336,52 @@ namespace Nymora.Network.Backend
         public int totalCount;
         public UserAchievementDto[] items;
     }
+
+    // ====== Brique 5.3 — Deck Builder ======
+
+    [Serializable]
+    public class DeckDto
+    {
+        public string id;
+        public string classId;       // "Soulrender" | "Nightseer" | "Colossar" | "Necram" | "Ghostra"
+        public string name;
+        public string[] spellIds;    // exactement 6 SpellIdTech (snake_case, cf SpellCatalog Unity)
+        public string createdAt;     // ISO 8601
+        public string updatedAt;     // ISO 8601
+    }
+
+    [Serializable]
+    public class DecksListResponse
+    {
+        public DeckDto[] decks;
+    }
+
+    [Serializable]
+    public class CreateDeckBody
+    {
+        public string classId;
+        public string name;
+        public string[] spellIds;
+    }
+
+    [Serializable]
+    public class UpdateDeckBody
+    {
+        // Champs optionnels (au moins un requis cote backend). JsonUtility serialise
+        // toujours les 2, le backend accepte null/empty et update partiel.
+        public string name;
+        public string[] spellIds;
+    }
+
+    [Serializable]
+    public class DeckCreatedResponse
+    {
+        public DeckDto deck;
+    }
+
+    [Serializable]
+    public class DeckUpdatedResponse
+    {
+        public DeckDto deck;
+    }
 }

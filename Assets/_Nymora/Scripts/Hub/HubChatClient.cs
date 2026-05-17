@@ -92,6 +92,9 @@ namespace Nymora.Hub
         // 5.2 — Achievement events
         public event Action<string, int, int, int, bool> OnAchievementProgress;  // id, oldProgress, newProgress, target, justUnlocked
         public event Action<string, string, int> OnAchievementUnlocked;          // id, title, points
+        // 5.3 — Deck events. Signal generique : le panel doit refetch ses decks.
+        // Payload ignore pour simplicite (createdAt/updatedAt/spellIds parsing nested JsonUtility = chiant).
+        public event Action OnDeckChanged;
         public event Action OnConnected;
         public event Action<string> OnDisconnected;
 
@@ -101,7 +104,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged }
 
         private struct IncomingEvent
         {
@@ -496,6 +499,13 @@ namespace Nymora.Hub
                             Points = msg.payload?.points ?? 0,
                         });
                         break;
+                    case "DECK_CREATED":
+                    case "DECK_UPDATED":
+                    case "DECK_DELETED":
+                        // 5.3 — signal generique : le panel re-fetch la liste complete
+                        // (plus simple que parser le nested DeckDto via JsonUtility).
+                        _queue.Enqueue(new IncomingEvent { Kind = EventKind.DeckChanged });
+                        break;
                     case "ERROR":
                         Debug.LogWarning($"[ChatClient] Server ERROR: {msg.payload?.code}/{msg.payload?.message}");
                         break;
@@ -687,6 +697,9 @@ namespace Nymora.Hub
                         break;
                     case EventKind.AchievementUnlocked:
                         OnAchievementUnlocked?.Invoke(ev.AchievementId, ev.Title, ev.Points);
+                        break;
+                    case EventKind.DeckChanged:
+                        OnDeckChanged?.Invoke();
                         break;
                 }
             }

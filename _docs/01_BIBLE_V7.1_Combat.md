@@ -1128,7 +1128,7 @@ EXPLOSIF et SACCADÉ. Tour 1-2 : pose de leurres, premiers tests. Tour 3-4 : le 
 |---|---|---|
 | PA | 3 | PORTÉE  4 |
 | TYPE | Création de leurre | COÛT RESS.  — |
-| EFFET | Pose un Leurre sur une case vide à 4 cases. Le Leurre est visuellement identique à la Ghostra. Dure 2 tours ou jusqu'à interaction. Si le Leurre survit 2 tours, la Ghostra regagne 80 HP. Si le Leurre est détruit par un sort adverse, la Ghostra regagne 40 HP. | Pose un Leurre sur une case vide à 4 cases. Le Leurre est visuellement identique à la Ghostra. Dure 2 tours ou jusqu'à interaction. Si le Leurre survit 2 tours, la Ghostra regagne 80 HP. Si le Leurre est détruit par un sort adverse, la Ghostra regagne 40 HP. |
+| EFFET | Pose un Leurre sur une case vide à 4 cases. Le Leurre est visuellement identique à la Ghostra. Dure **4 rounds** (amendement 16 mai 2026) ou jusqu'à interaction. Si le Leurre survit la durée complète, la Ghostra regagne 80 HP. Si le Leurre est détruit par un sort adverse, la Ghostra regagne 40 HP. | Pose un Leurre sur une case vide à 4 cases. Le Leurre est visuellement identique à la Ghostra. Dure **4 rounds** (amendement 16 mai 2026) ou jusqu'à interaction. Si le Leurre survit la durée complète, la Ghostra regagne 80 HP. Si le Leurre est détruit par un sort adverse, la Ghostra regagne 40 HP. |
 | PRESSION | Le clone qui paye les frais. Réplique Fantôme FORCE l'adversaire à choisir : 'je frappe ce qui ressemble à la Ghostra ?' Toute lecture coûte. La Ghostra gagne quoi qu'il arrive. | Le clone qui paye les frais. Réplique Fantôme FORCE l'adversaire à choisir : 'je frappe ce qui ressemble à la Ghostra ?' Toute lecture coûte. La Ghostra gagne quoi qu'il arrive. |
 
 | PAS DANS L'OMBRE | PAS DANS L'OMBRE | PAS DANS L'OMBRE |
@@ -1141,16 +1141,16 @@ EXPLOSIF et SACCADÉ. Tour 1-2 : pose de leurres, premiers tests. Tour 3-4 : le 
 | VOLTE-FACE | VOLTE-FACE | VOLTE-FACE |
 |---|---|---|
 | PA | 2 | PORTÉE  4 |
-| TYPE | Mindgame / Setup dorsal | COÛT RESS.  — |
-| EFFET | Force la cible ennemie à faire DEMI-TOUR (180°). Sa direction de regard est inversée. Pendant 1 tour, sa direction est VERROUILLÉE — elle ne peut pas pivoter par déplacement. Toute attaque dorsale sur elle ce tour est garantie. | Force la cible ennemie à faire DEMI-TOUR (180°). Sa direction de regard est inversée. Pendant 1 tour, sa direction est VERROUILLÉE — elle ne peut pas pivoter par déplacement. Toute attaque dorsale sur elle ce tour est garantie. |
-| PRESSION | L'ouverture chirurgicale. Volte-Face est un sort PRÉPARATOIRE — il ouvre la cible pour le combo. À lui seul il ne fait rien. Combiné, il transforme une cible en lapin frappé dans le dos. | L'ouverture chirurgicale. Volte-Face est un sort PRÉPARATOIRE — il ouvre la cible pour le combo. À lui seul il ne fait rien. Combiné, il transforme une cible en lapin frappé dans le dos. |
+| TYPE | Mindgame / Setup dorsal **offensif** (amendement 16 mai 2026) | COÛT RESS.  — |
+| EFFET | Inflige **80 dégâts** (amendement 16 mai 2026) + bonus dorsal Angle Mort si applicable. Force la cible ennemie à faire DEMI-TOUR (180°). Sa direction de regard est inversée instantanément. **PAS DE VERROU** (amendement 16 mai 2026) : la cible se réoriente normalement à son prochain tour (walk / cast / push pivots standard). Si elle ne trigger aucun pivot, elle reste dos → dorsal potentiel sur Lame Spec/Saigne-Âme suivant. | Inflige **80 dégâts** (amendement 16 mai 2026) + bonus dorsal Angle Mort si applicable. Force la cible ennemie à faire DEMI-TOUR (180°). Sa direction de regard est inversée instantanément. **PAS DE VERROU** (amendement 16 mai 2026) : la cible se réoriente normalement à son prochain tour (walk / cast / push pivots standard). Si elle ne trigger aucun pivot, elle reste dos → dorsal potentiel sur Lame Spec/Saigne-Âme suivant. |
+| PRESSION | L'ouverture chirurgicale. Volte-Face est désormais un sort OFFENSIF de setup dorsal — il ouvre la cible pour le combo ET tape pour 80. Combiné, il transforme une cible en lapin frappé dans le dos. | L'ouverture chirurgicale. Volte-Face est désormais un sort OFFENSIF de setup dorsal — il ouvre la cible pour le combo ET tape pour 80. Combiné, il transforme une cible en lapin frappé dans le dos. |
 
 | DAGUE LANCÉE | DAGUE LANCÉE | DAGUE LANCÉE |
 |---|---|---|
 | PA | 1 | PORTÉE  5 |
 | TYPE | Harcèlement / Repositionnement | COÛT RESS.  — |
-| EFFET | Inflige 80 dégâts ET force la cible à faire face à la Ghostra (la cible pivote vers le lanceur). Si le lanceur est un LEURRE (Angle 3 + permutation) : la cible regarde le leurre, pas la vraie Ghostra. Idéal pour positionner un dorsal. | Inflige 80 dégâts ET force la cible à faire face à la Ghostra (la cible pivote vers le lanceur). Si le lanceur est un LEURRE (Angle 3 + permutation) : la cible regarde le leurre, pas la vraie Ghostra. Idéal pour positionner un dorsal. |
-| PRESSION | Le caillou dans la vitre. Dague Lancée est l'outil le plus subtile : 1 PA, 80 dégâts, ça paraît minuscule. Mais elle MANIPULE le regard de la cible. | Le caillou dans la vitre. Dague Lancée est l'outil le plus subtile : 1 PA, 80 dégâts, ça paraît minuscule. Mais elle MANIPULE le regard de la cible. |
+| EFFET | Inflige **40 dégâts** (amendement 16 mai 2026, nerf 80→40) + bonus dorsal Angle Mort si applicable. Pivot **90° HORAIRE iso** (amendement 16 mai 2026) de la cible (NE→SE→SW→NW→NE), pas face-caster. Flag `LastFacingForcedOnTurn` posé pour combo Dague→Frappe Fantôme = PlaieOuverte. **Cap 2×/tour** (amendement 16 mai 2026). | Inflige **40 dégâts** (amendement 16 mai 2026, nerf 80→40) + bonus dorsal Angle Mort si applicable. Pivot **90° HORAIRE iso** (amendement 16 mai 2026) de la cible (NE→SE→SW→NW→NE), pas face-caster. Flag `LastFacingForcedOnTurn` posé pour combo Dague→Frappe Fantôme = PlaieOuverte. **Cap 2×/tour** (amendement 16 mai 2026). |
+| PRESSION | Le caillou dans la vitre. Dague Lancée est l'outil le plus subtile : 1 PA, 40 dégâts, ça paraît minuscule. Mais elle MANIPULE le regard de la cible. | Le caillou dans la vitre. Dague Lancée est l'outil le plus subtile : 1 PA, 40 dégâts, ça paraît minuscule. Mais elle MANIPULE le regard de la cible. |
 
 | MARQUE DE L'OMBRE | MARQUE DE L'OMBRE | MARQUE DE L'OMBRE |
 |---|---|---|
@@ -1186,9 +1186,9 @@ EXPLOSIF et SACCADÉ. Tour 1-2 : pose de leurres, premiers tests. Tour 3-4 : le 
 
 | RÉPLIQUE PROTECTRICE | RÉPLIQUE PROTECTRICE | RÉPLIQUE PROTECTRICE |
 |---|---|---|
-| PA | 3 | PORTÉE  3 |
+| PA | **4** (amendement 16 mai 2026) | PORTÉE  3 |
 | TYPE | Leurre tank | COÛT RESS.  — |
-| EFFET | Pose un Leurre PROTECTEUR (200 HP, redirige 40% des dégâts subis par la Ghostra pendant 2 tours). Si le Leurre est détruit, la Ghostra regagne 60 HP. Compte dans le cap 3 leurres. | Pose un Leurre PROTECTEUR (200 HP, redirige 40% des dégâts subis par la Ghostra pendant 2 tours). Si le Leurre est détruit, la Ghostra regagne 60 HP. Compte dans le cap 3 leurres. |
+| EFFET | Pose un Leurre PROTECTEUR (200 HP, redirige **30%** (amendement 16 mai 2026) des dégâts subis par la Ghostra pendant **3 rounds** (amendement 16 mai 2026)). Si le Leurre est détruit, la Ghostra regagne **80 HP** (amendement 16 mai 2026). Pas de stack si plusieurs Protective vivants (un seul absorbe par hit). Compte dans le cap 3 leurres. | Pose un Leurre PROTECTEUR (200 HP, redirige **30%** (amendement 16 mai 2026) des dégâts subis par la Ghostra pendant **3 rounds** (amendement 16 mai 2026)). Si le Leurre est détruit, la Ghostra regagne **80 HP** (amendement 16 mai 2026). Pas de stack si plusieurs Protective vivants (un seul absorbe par hit). Compte dans le cap 3 leurres. |
 | PRESSION | Le clone-bouclier. Réplique Protectrice n'est pas un leurre offensif — c'est un sustain caché. Elle prolonge la vie de la Ghostra de 1-2 tours. | Le clone-bouclier. Réplique Protectrice n'est pas un leurre offensif — c'est un sustain caché. Elle prolonge la vie de la Ghostra de 1-2 tours. |
 
 | DERNIER PAS | DERNIER PAS | DERNIER PAS |

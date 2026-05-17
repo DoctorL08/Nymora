@@ -16,6 +16,11 @@ MonoBehaviour:
   DisplayName: Necram
   AccentColor: {r: 0.3529412, g: 0.54509807, b: 0.24313726, a: 1}
   Tagline: Mage poison. Densite toxique progressive. Le DoT ignore les reductions.
+  Lore: "Mort vivant en floraison. Marque, infecte, propage. Sa Putrefaction monte
+    alors que ses ennemis macerent dans le venin. La Floraison rend chaque marque
+    plus virulente \u2014 une mort lente devient un effondrement immediat. Sa signature
+    Virus Fatal consume toute sa ressource pour un triplement instantane des ticks
+    venin."
   BaseHP: 1500
   BaseActionPoints: 8
   BaseMovementPoints: 3
@@ -33,3 +38,45 @@ MonoBehaviour:
     4 tours.
   IconSprite: {fileID: 0}
   PortraitSprite: {fileID: 0}
+  IdleAnimator: {fileID: 9100000, guid: b0cddcb7385628140a4a658f15db5fb3, type: 2}
+  IdleFrames:
+  - {fileID: 8688105048043780050, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: 8391964987629237935, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: 5102011120509953714, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: -9053530777446340445, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: 3535089121496939410, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: 4432242761166045653, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: 4432242761166045653, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  IdleAnimatorNE: {fileID: 9100000, guid: b06704a6ec7b8b34f8db643a755a3825, type: 2}
+  IdleFramesNE:
+  - {fileID: 1771592541285126016, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: 7827430032643956568, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: -2260456592277317936, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: -3584162232821448684, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: -2346372951287989206, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: -8159171006317550492, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: -8159171006317550492, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  IdleFps: 8
+  WalkFrames:
+  - {fileID: 4341301761379391181, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: -6172382196488765976, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: 4886649683867216303, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: 8082645681799092258, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: 4462960183482987115, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: 2559730859916465198, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: -4223781363098678711, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: -2143355893913268051, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: -2143355893913268051, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  WalkFramesNE:
+  - {fileID: -6709055566896135284, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: 6718924021487578119, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: -6783327652619774365, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: -6587438602471893325, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: 3375556923155300082, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: 3222055176055669548, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: -6886271857918159362, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: 7472088192781586260, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: 7472088192781586260, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  WalkFps: 12
+  HubVisualScale: 1
+  HubVisualYOffset: -0.2

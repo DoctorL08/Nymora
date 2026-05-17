@@ -26,6 +26,11 @@ namespace Nymora.Core.ScriptableObjects
         [Tooltip("Description courte one-liner (fantasy de gameplay).")]
         public string Tagline;
 
+        [TextArea(4, 10)]
+        [Tooltip("Lore long affiche dans le Class Selector du Deck Builder (Phase 5.3.f). " +
+                 "3-5 phrases de fantasy / motivation du personnage. Distinct du Tagline (one-liner).")]
+        public string Lore;
+
         [Header("Base Stats (Bible V7.1)")]
         [Tooltip("HP de base — 1500 pour toutes les classes V7.1.")]
         public int BaseHP = 1500;
@@ -64,5 +69,44 @@ namespace Nymora.Core.ScriptableObjects
         [Header("Visual Assets (a brancher plus tard)")]
         public Sprite IconSprite;
         public Sprite PortraitSprite;
+
+        [Tooltip("AnimatorController du sprite Idle (Stage0_NE) pour le Class Selector Screen " +
+                 "(Phase 5.3.f). Ex : Assets/_Nymora/Animations/Soulrender/SoulrenderStage0_NE.controller.")]
+        public RuntimeAnimatorController IdleAnimator;
+
+        [Tooltip("Frames Sprite extraites de IdleAnimator (Stage0_SE.controller, facing SUD-EST) " +
+                 "pour animer l'UI Image dans le Class Selector + l'avatar hub direction SE.")]
+        public Sprite[] IdleFrames;
+
+        [Tooltip("AnimatorController Stage0_NE (facing NORD-EST). Reference seulement, " +
+                 "le populator en extrait IdleFramesNE.")]
+        public RuntimeAnimatorController IdleAnimatorNE;
+
+        [Tooltip("Frames Sprite extraites de IdleAnimatorNE (Stage0_NE.controller, facing NORD-EST). " +
+                 "Utilise par l'avatar hub direction NE. NW/SW = NE/SE mirror flipX.")]
+        public Sprite[] IdleFramesNE;
+
+        [Tooltip("FPS de l'animation Idle. 8 fps = pixel art smooth.")]
+        public float IdleFps = 8f;
+
+        [Tooltip("Frames Sprite extraites du clip Walk de l'AnimatorController Stage0_SE (facing SE). " +
+                 "Utilise par l'avatar hub quand il bouge direction SE/SW (SW = flipX).")]
+        public Sprite[] WalkFrames;
+
+        [Tooltip("Frames Sprite extraites du clip Walk de l'AnimatorController Stage0_NE (facing NE). " +
+                 "Utilise par l'avatar hub quand il bouge direction NE/NW (NW = flipX).")]
+        public Sprite[] WalkFramesNE;
+
+        [Tooltip("FPS de l'animation Walk. 12 fps = walk smooth pixel art (~33% plus rapide que Idle).")]
+        public float WalkFps = 12f;
+
+        [Header("Hub Visual Calibration (port depuis Combat prefab)")]
+        [Tooltip("Scale uniforme applique au child 'Visual' du HubAvatar pour cette classe. " +
+                 "Effectif (= scale combat racine x scale combat Visual child). 1.0 = pas de zoom.")]
+        public float HubVisualScale = 1f;
+
+        [Tooltip("Y offset local applique au child 'Visual' du HubAvatar pour cette classe " +
+                 "(monde = root.y + scale.y * yOffset si root scale != 1). Negatif = sprite descend vis-a-vis du centre de tile.")]
+        public float HubVisualYOffset = 0f;
     }
 }

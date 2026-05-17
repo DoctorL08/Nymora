@@ -1,4 +1,7 @@
 using Fusion;
+using Nymora.Core.Data;
+using Nymora.Core.Enums;
+using Nymora.Core.ScriptableObjects;
 using UnityEngine;
 
 namespace Nymora.Hub
@@ -11,13 +14,43 @@ namespace Nymora.Hub
     ///   Au end-of-step, SetGridPosition() pousse NetGridX/Y au reseau.
     /// - Non-State Authority : Render() interpole transform.position vers le world
     ///   calcule depuis NetGridX/Y (lerp smooth chaque frame).
+    ///
+    /// Brique 5.3.g.bis — Visual classe :
+    /// - State Authority : init NetClassId depuis SelectedClassPreferences (PlayerPrefs)
+    ///   au Spawn, et expose RefreshClassVisual() pour update live (Class Selector confirm)
+    /// - Tous : ApplyClassVisual via NetClassId Changed callback (sync sprite + Animator
+    ///   IdleAnimator de NymoraClassDefinition).
     /// </summary>
-    [RequireComponent(typeof(SpriteRenderer))]
     public sealed class HubAvatar : NetworkBehaviour
     {
         [Header("Visual")]
         [SerializeField] private Sprite _avatarSprite;
         [SerializeField] private int _baseSortingOrder = 100;
+
+        [Header("Class visuals (5.3.g.bis — drag les 5 NymoraClassDefinition.asset)")]
+        [SerializeField] private NymoraClassDefinition[] _classDefinitions;
+
+        // 5.3.g.bis — SceneSpriteAnimator auto-add pour anim Idle pixel art (frames Sprite[]
+        // extraites de l'AnimatorController Stage0_SE et stockees dans NymoraClassDefinition.IdleFrames).
+        private SceneSpriteAnimator _spriteAnimator;
+
+        // 5.3.g.bis — Facing 4 directions iso. Switch entre IdleFrames (SE) et IdleFramesNE (NE) +
+        // flipX selon delta de mouvement. NW = NE mirror, SW = SE mirror.
+        private enum HubFacing { SE, NE, SW, NW }
+        private HubFacing _currentFacing = HubFacing.SE;
+        private NymoraClassDefinition _currentClassDef;
+        private int _prevGridXForFacing = int.MinValue;
+        private int _prevGridYForFacing = int.MinValue;
+
+        // Walk anim — detection mouvement via delta transform.position. Uniforme pour local
+        // (lerp HubMovementController) et remote (interp NetWorldPos). _isWalking flippe quand
+        // la position n'a pas bouge depuis _idleThresholdSec → ApplyFacingVisual re-Play
+        // les frames Walk ou Idle.
+        private const float _idleThresholdSec = 0.08f;
+        private const float _moveSqrEpsilon = 0.0001f;
+        private Vector3 _lastTrackedWorldPos;
+        private float _lastMoveTime;
+        private bool _isWalking;
 
         [Header("Spawn (State Authority only)")]
         [SerializeField] private int _spawnGridX = 10;
@@ -38,8 +71,15 @@ namespace Nymora.Hub
         // 4.11 hotfix — passe en _64 car les UUID (36 chars) etaient tronques a 16 par _16,
         // ce qui faisait echouer SEND_FRIEND_REQUEST et POST /clans/invite par UUID.
         [Networked] public NetworkString<_64> NetSub { get; set; }
+        // 5.3.g.bis — Classe selectionnee (sync entre clients pour que les remotes voient
+        // le bon sprite). _16 suffit pour "Soulrender"/"Nightseer"/"Colossar"/"Necram"/"Ghostra".
+        [Networked, OnChangedRender(nameof(OnClassIdChanged))] public NetworkString<_16> NetClassId { get; set; }
 
         private SpriteRenderer _sr;
+        // Transform du child "Visual" (cree par RestructureHubAvatarPrefabTool). Recoit le
+        // Scale + Y offset per-class via ApplyClassVisual. Fallback sur transform root si
+        // le prefab n'a pas encore ete restructure (ancien prefab mono-GO).
+        private Transform _visualTransform;
         private HubGridRenderer _grid;
         private int _gridX;
         private int _gridY;
@@ -61,9 +101,21 @@ namespace Nymora.Hub
 
         public override void Spawned()
         {
-            _sr = GetComponent<SpriteRenderer>();
-            if (_avatarSprite != null) _sr.sprite = _avatarSprite;
-            _sr.color = ColorForPlayer(Object.InputAuthority);
+            // SpriteRenderer peut etre sur le root (prefab legacy) OU sur le child "Visual"
+            // (prefab restructure via RestructureHubAvatarPrefabTool pour pouvoir appliquer
+            // Y offset + Scale per-class sans toucher au transform root tile-anchor).
+            _sr = GetComponentInChildren<SpriteRenderer>(true);
+            _visualTransform = _sr != null ? _sr.transform : transform;
+            if (_sr != null && _avatarSprite != null) _sr.sprite = _avatarSprite;
+            // 5.3.g.bis — reset color blanche pour pas teinter le sprite classe (Color tint
+            // par player rendait tout rouge/HSV-flashy quand on cherche a voir le vrai
+            // sprite de classe).
+            if (_sr != null) _sr.color = Color.white;
+
+            // 5.3.g.bis — SceneSpriteAnimator pour anim live des frames Idle de la classe
+            // (les Animators combat ciblent un child path "Visual", pas le root).
+            _spriteAnimator = GetComponent<SceneSpriteAnimator>();
+            if (_spriteAnimator == null) _spriteAnimator = gameObject.AddComponent<SceneSpriteAnimator>();
 
             _grid = FindFirstObjectByType<HubGridRenderer>();
             if (_grid == null)
@@ -83,7 +135,9 @@ namespace Nymora.Hub
                 SetGridPosition(_spawnGridX, _spawnGridY);
                 // 4.10.polish v3 — init NetWorldPos pour que les remotes se positionnent direct au bon endroit.
                 NetWorldPos = transform.position;
-                Debug.Log($"[HubAvatar] Local spawned at ({_spawnGridX},{_spawnGridY}) sub='{NetSub}'");
+                // 5.3.g.bis — push la classe choisie via PlayerPrefs (sync vers remotes pour leur sprite)
+                NetClassId = SelectedClassPreferences.Get();
+                Debug.Log($"[HubAvatar] Local spawned at ({_spawnGridX},{_spawnGridY}) sub='{NetSub}' class='{NetClassId}'");
             }
             else
             {
@@ -103,7 +157,191 @@ namespace Nymora.Hub
                 _currentNetWorldPos = transform.position;
                 _lastSnapshotTime = Time.time;
                 if (_sr != null) _sr.sortingOrder = IsoProjection.SortingOrderFor(_gridX, _gridY, _baseSortingOrder);
-                Debug.Log($"[HubAvatar] Remote avatar spawned (player {Object.InputAuthority}) at ({NetGridX},{NetGridY}) sub='{NetSub}'");
+                Debug.Log($"[HubAvatar] Remote avatar spawned (player {Object.InputAuthority}) at ({NetGridX},{NetGridY}) sub='{NetSub}' class='{NetClassId}'");
+            }
+
+            // Init walk-detection : marque la position de spawn comme "deja vue" et fait
+            // remonter _lastMoveTime loin dans le passe pour eviter un flicker walk -> idle
+            // dans les ~80ms qui suivent le Spawn.
+            _lastTrackedWorldPos = transform.position;
+            _lastMoveTime = -1000f;
+            _isWalking = false;
+
+            // 5.3.g.bis — Apply class visual (local + remote) maintenant que NetClassId est sync
+            ApplyClassVisual();
+        }
+
+        /// <summary>
+        /// 5.3.g.bis — Refresh visuel de la classe : lookup NymoraClassDefinition + apply
+        /// facing courant (frames SE/NE + flipX selon direction). Reset color blanche pour
+        /// pas teinter. Called from Spawned + OnChangedRender(NetClassId).
+        /// </summary>
+        private void ApplyClassVisual()
+        {
+            if (_sr == null)
+            {
+                _sr = GetComponentInChildren<SpriteRenderer>(true);
+                if (_sr != null && _visualTransform == null) _visualTransform = _sr.transform;
+            }
+            if (_sr != null) _sr.color = Color.white;
+            if (_classDefinitions == null || _classDefinitions.Length == 0) return;
+
+            string classIdStr = NetClassId.ToString();
+            if (string.IsNullOrEmpty(classIdStr)) return;
+            if (!System.Enum.TryParse(classIdStr, out NymoraClass cls)) return;
+
+            NymoraClassDefinition def = null;
+            foreach (var d in _classDefinitions)
+            {
+                if (d != null && d.ClassId == cls) { def = d; break; }
+            }
+            if (def == null) return;
+            _currentClassDef = def;
+
+            // Port calibration combat -> hub : Y offset + Scale appliques au child Visual
+            // (jamais au transform root, qui est l'ancre tile pilotee par HubMovementController).
+            // Fallback no-op si on tourne sur l'ancien prefab mono-GO (Visual == root) pour
+            // eviter de bouger l'avatar entier hors de sa tile.
+            if (_visualTransform != null && _visualTransform != transform)
+            {
+                float scale = def.HubVisualScale > 0f ? def.HubVisualScale : 1f;
+                Vector3 lp = _visualTransform.localPosition;
+                _visualTransform.localPosition = new Vector3(lp.x, def.HubVisualYOffset, lp.z);
+                _visualTransform.localScale = new Vector3(scale, scale, 1f);
+            }
+
+            ApplyFacingVisual();
+        }
+
+        /// <summary>
+        /// 5.3.g.bis — Lance l'anim selon _currentFacing : frames SE (face) ou NE (dos),
+        /// + flipX si direction-mirror (NW = NE mirror, SW = SE mirror).
+        /// Selection Walk vs Idle frames selon _isWalking (detection mouvement via delta
+        /// transform.position dans Update). Fallback Idle si WalkFrames pas peuples.
+        /// </summary>
+        private void ApplyFacingVisual()
+        {
+            if (_currentClassDef == null) return;
+            if (_sr == null) _sr = GetComponentInChildren<SpriteRenderer>(true);
+            if (_sr == null) return;
+
+            // Mapping iso classique :
+            //   SE = frames SE no flip   |  NE = frames NE no flip
+            //   SW = frames SE flipX     |  NW = frames NE flipX
+            bool useNE = (_currentFacing == HubFacing.NE || _currentFacing == HubFacing.NW);
+            bool flipX = (_currentFacing == HubFacing.SW || _currentFacing == HubFacing.NW);
+
+            Sprite[] frames;
+            float fps;
+            if (_isWalking)
+            {
+                frames = useNE ? _currentClassDef.WalkFramesNE : _currentClassDef.WalkFrames;
+                fps = _currentClassDef.WalkFps;
+                // Fallback Idle si Walk pas peuple (asset designer pas encore livre).
+                if (frames == null || frames.Length == 0)
+                {
+                    frames = useNE ? _currentClassDef.IdleFramesNE : _currentClassDef.IdleFrames;
+                    fps = _currentClassDef.IdleFps;
+                }
+            }
+            else
+            {
+                frames = useNE ? _currentClassDef.IdleFramesNE : _currentClassDef.IdleFrames;
+                fps = _currentClassDef.IdleFps;
+            }
+
+            if (frames != null && frames.Length > 0 && _spriteAnimator != null)
+            {
+                _spriteAnimator.Play(_sr, frames, fps);
+            }
+            else if (_currentClassDef.PortraitSprite != null)
+            {
+                if (_spriteAnimator != null) _spriteAnimator.Stop();
+                _sr.sprite = _currentClassDef.PortraitSprite;
+            }
+            _sr.flipX = flipX;
+        }
+
+        /// <summary>
+        /// 5.3.g.bis — Compute facing depuis le delta grid (gx, gy). Iso 4 directions,
+        /// convention IDENTIQUE a Quantum.FacingHelpers.FacingFromGridDelta (combat) :
+        /// projection world (dxWorld = gx-gy, dyWorld = gx+gy) -> classement quadrant.
+        ///   (+1, 0) -> NE   (-1, 0) -> SW   (0, +1) -> NW   (0, -1) -> SE.
+        /// Le pathfinder hub est 4-connexite donc pas de diagonales en pratique, mais
+        /// la formule gere les diagonales proprement aussi (axe dominant via signe).
+        /// </summary>
+        private void TrackGridPositionForFacing()
+        {
+            if (_prevGridXForFacing == int.MinValue)
+            {
+                _prevGridXForFacing = _gridX;
+                _prevGridYForFacing = _gridY;
+                return;
+            }
+            int dx = _gridX - _prevGridXForFacing;
+            int dy = _gridY - _prevGridYForFacing;
+            if (dx == 0 && dy == 0) return;
+            _prevGridXForFacing = _gridX;
+            _prevGridYForFacing = _gridY;
+
+            int dxWorld = dx - dy;
+            int dyWorld = dx + dy;
+            bool east = dxWorld >= 0;
+            bool north = dyWorld >= 0;
+            HubFacing newFacing;
+            if (east && north) newFacing = HubFacing.NE;
+            else if (east && !north) newFacing = HubFacing.SE;
+            else if (!east && north) newFacing = HubFacing.NW;
+            else newFacing = HubFacing.SW;
+            if (newFacing != _currentFacing)
+            {
+                _currentFacing = newFacing;
+                ApplyFacingVisual();
+            }
+        }
+
+        /// <summary>
+        /// Detection mouvement via delta transform.position chaque frame. Uniforme local
+        /// (lerp HubMovementController.Update) + remote (interp NetWorldPos dans Render).
+        /// Quand l'avatar n'a pas bouge depuis _idleThresholdSec, on flippe _isWalking
+        /// vers false → ApplyFacingVisual swap vers IdleFrames.
+        /// </summary>
+        private void Update()
+        {
+            if (_currentClassDef == null) return;
+            Vector3 curPos = transform.position;
+            if (Vector3.SqrMagnitude(curPos - _lastTrackedWorldPos) > _moveSqrEpsilon)
+            {
+                _lastMoveTime = Time.time;
+                _lastTrackedWorldPos = curPos;
+            }
+            bool walking = (Time.time - _lastMoveTime) < _idleThresholdSec;
+            if (walking != _isWalking)
+            {
+                _isWalking = walking;
+                ApplyFacingVisual();
+            }
+        }
+
+        /// <summary>OnChanged callback Networked NetClassId : re-apply visual sur tous les clients.</summary>
+        private void OnClassIdChanged()
+        {
+            ApplyClassVisual();
+        }
+
+        /// <summary>
+        /// 5.3.g.bis — API publique pour changer la classe locale (appele depuis le
+        /// HubClassSelectorPanel.ConfirmSelection). Save PlayerPrefs + push NetClassId
+        /// (qui re-sync les remotes via OnChangedRender).
+        /// </summary>
+        public void SetClassFromLocalChoice(string classId)
+        {
+            if (string.IsNullOrEmpty(classId)) return;
+            SelectedClassPreferences.Set(classId);
+            if (Object != null && Object.HasStateAuthority)
+            {
+                NetClassId = classId;
+                ApplyClassVisual(); // local immediate (au cas où OnChangedRender n'est pas déclenchée pour soi)
             }
         }
 
@@ -194,6 +432,7 @@ namespace Nymora.Hub
             _gridX = NetGridX;
             _gridY = NetGridY;
             if (_sr != null) _sr.sortingOrder = IsoProjection.SortingOrderFor(_gridX, _gridY, _baseSortingOrder);
+            TrackGridPositionForFacing();
         }
 
         public void SetGridPosition(int gx, int gy)
@@ -206,6 +445,7 @@ namespace Nymora.Hub
                 NetGridY = gy;
             }
             ApplyTransform();
+            TrackGridPositionForFacing();
         }
 
         public void SetWorldPositionInterpolated(int gx, int gy, Vector3 worldPos)
@@ -216,6 +456,7 @@ namespace Nymora.Hub
             _gridY = gy;
             transform.position = worldPos;
             if (_sr != null) _sr.sortingOrder = IsoProjection.SortingOrderFor(_gridX, _gridY, _baseSortingOrder);
+            TrackGridPositionForFacing();
         }
 
         private void ApplyTransform()

@@ -16,6 +16,12 @@ MonoBehaviour:
   DisplayName: Ghostra
   AccentColor: {r: 0.43529412, g: 0.56078434, b: 0.65882355, a: 1}
   Tagline: Assassin dorsal. Leurres et desynchronisation. Frappe dans le dos.
+  Lore: "Assassin spectral qui frappe l'angle mort. Sa Remanence est faite de leurres
+    \u2014 clones visuels qui ne servent qu'a fragmenter l'attention adverse. Plus
+    elle pose de leurres, plus son Angle Mort s'elargit, plus ses coups dorsaux deviennent
+    letaux. Frappe Fantome, Saigne-Ame, Danse des Lames : ses combos exigent une
+    lecture parfaite du regard adverse. Sa signature Execution Spectrale, dorsale
+    obligatoire, peut finir un match en un seul tour."
   BaseHP: 1500
   BaseActionPoints: 8
   BaseMovementPoints: 3
@@ -33,3 +39,45 @@ MonoBehaviour:
     usage.
   IconSprite: {fileID: 0}
   PortraitSprite: {fileID: 0}
+  IdleAnimator: {fileID: 9100000, guid: 80363a828a60c284895a43b6eaa5f026, type: 2}
+  IdleFrames:
+  - {fileID: -4618120519007728642, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: 7590581846383294094, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: 7405062099575093956, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: -6190650806881920884, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: -2480387221054395089, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: 7313849318001718693, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: 7313849318001718693, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  IdleAnimatorNE: {fileID: 9100000, guid: 822b053c4cc67834f8f21e469fa85e8e, type: 2}
+  IdleFramesNE:
+  - {fileID: 8014479197036858950, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: -1898565140256233682, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: 7004422416447406432, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: -422000843720316271, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: -4638609134284244082, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: -1824581809711146712, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: -1824581809711146712, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  IdleFps: 8
+  WalkFrames:
+  - {fileID: -7293440204484757291, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: -1545156311593711458, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: 5144517862435492714, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: 6042092117095339492, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: -246574831037316566, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: -1862721927280561178, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: 2368467692250211617, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: -8388834652955972962, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  - {fileID: -8388834652955972962, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
+  WalkFramesNE:
+  - {fileID: 6221645240826327177, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: -8301071077207908894, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: -8087430669393052894, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: 1864488873910870517, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: -6219173902621832092, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: -5670137932541083973, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: 998644095372160468, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: 4598672262635181778, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  - {fileID: 4598672262635181778, guid: 326a5049041a4ce4e8fa3d9ba20082ae, type: 3}
+  WalkFps: 12
+  HubVisualScale: 1.2075
+  HubVisualYOffset: -0.207

@@ -173,6 +173,51 @@ namespace Nymora.Network.Backend
         public UniTask<ApiResult<AchievementsMeResponse>> GetAchievementsMeAsync(CancellationToken ct = default)
             => GetJsonAsync<AchievementsMeResponse>("/achievements/me", requireAuth: true, ct);
 
+        // ====== Brique 5.3 — Deck Builder ======
+
+        /// <summary>GET /decks ou /decks?classId=Soulrender. Si classId null, retourne tous decks user.</summary>
+        public UniTask<ApiResult<DecksListResponse>> GetDecksAsync(string classId = null, CancellationToken ct = default)
+        {
+            string path = string.IsNullOrEmpty(classId) ? "/decks" : $"/decks?classId={UnityWebRequest.EscapeURL(classId)}";
+            return GetJsonAsync<DecksListResponse>(path, requireAuth: true, ct);
+        }
+
+        public UniTask<ApiResult<DeckCreatedResponse>> CreateDeckAsync(string classId, string name, string[] spellIds, CancellationToken ct = default)
+            => PostJsonAsync<DeckCreatedResponse>("/decks",
+                new CreateDeckBody { classId = classId, name = name, spellIds = spellIds },
+                requireAuth: true, ct);
+
+        public UniTask<ApiResult<DeckUpdatedResponse>> UpdateDeckAsync(string deckId, string name, string[] spellIds, CancellationToken ct = default)
+            => PutJsonAsync<DeckUpdatedResponse>($"/decks/{deckId}",
+                new UpdateDeckBody { name = name, spellIds = spellIds },
+                requireAuth: true, ct);
+
+        /// <summary>DELETE /decks/:id. Retourne ApiResult avec status code 204 si OK.</summary>
+        public async UniTask<ApiResult<EmptyResponse>> DeleteDeckAsync(string deckId, CancellationToken ct = default)
+        {
+            using var req = UnityWebRequest.Delete($"{_settings.BaseUrl}/decks/{deckId}");
+            req.downloadHandler = new DownloadHandlerBuffer();
+            req.timeout = _settings.TimeoutSeconds;
+            ApplyAuth(req, requireAuth: true);
+            ApplyClientVersion(req);
+
+            try
+            {
+                await req.SendWebRequest().WithCancellation(ct);
+            }
+            catch (OperationCanceledException)
+            {
+                return ApiResult<EmptyResponse>.Failure(0, "request cancelled");
+            }
+            catch (UnityWebRequestException e)
+            {
+                return ApiResult<EmptyResponse>.Failure((int)e.ResponseCode, e.Message);
+            }
+
+            int code = (int)req.responseCode;
+            return ApiResult<EmptyResponse>.Success(new EmptyResponse(), code);
+        }
+
         /// <summary>DELETE /clans/me — chef seul. Retourne ApiResult avec body { status:'DISBANDED', clanId }.</summary>
         public async UniTask<ApiResult<ClanDisbandResponse>> DisbandClanAsync(CancellationToken ct = default)
         {
@@ -240,6 +285,25 @@ namespace Nymora.Network.Backend
         {
             using var req = UnityWebRequest.Get($"{_settings.BaseUrl}{path}");
             req.timeout = _settings.TimeoutSeconds;
+            ApplyAuth(req, requireAuth);
+            if (sendVersionHeader) ApplyClientVersion(req);
+
+            return await SendAsync<TResponse>(req, ct);
+        }
+
+        private async UniTask<ApiResult<TResponse>> PutJsonAsync<TResponse>(
+            string path, object body, bool requireAuth, CancellationToken ct, bool sendVersionHeader = true)
+        {
+            string json = JsonUtility.ToJson(body);
+            byte[] payload = Encoding.UTF8.GetBytes(json);
+
+            using var req = new UnityWebRequest($"{_settings.BaseUrl}{path}", UnityWebRequest.kHttpVerbPUT)
+            {
+                uploadHandler = new UploadHandlerRaw(payload),
+                downloadHandler = new DownloadHandlerBuffer(),
+                timeout = _settings.TimeoutSeconds,
+            };
+            req.SetRequestHeader("Content-Type", "application/json");
             ApplyAuth(req, requireAuth);
             if (sendVersionHeader) ApplyClientVersion(req);
 

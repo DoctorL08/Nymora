@@ -16,6 +16,10 @@ MonoBehaviour:
   DisplayName: Soulrender
   AccentColor: {r: 0.69803923, g: 0.13333334, b: 0.13333334, a: 1}
   Tagline: Berserker melee. Subir = generer. Plus on le frappe, plus il s'arme.
+  Lore: "Berserker melee assoiffe de combat. Plus on le frappe, plus il s'arme. Sa
+    ressource Hemoglyphe se nourrit de la douleur \u2014 la sienne, celle qu'il inflige.
+    Au seuil de la mort, il devient une lame qu'aucun bouclier n'arrete. Sa signature
+    Ame Laceree consume tout son sang pour un coup definitif."
   BaseHP: 1500
   BaseActionPoints: 8
   BaseMovementPoints: 3
@@ -33,3 +37,43 @@ MonoBehaviour:
   SignatureDescription: Sort signature debloque a 5 HG. Cooldown 4 tours apres usage.
   IconSprite: {fileID: 0}
   PortraitSprite: {fileID: 0}
+  IdleAnimator: {fileID: 9100000, guid: d13a403b88b93914582d12afd7a827d7, type: 2}
+  IdleFrames:
+  - {fileID: -1836617762641228016, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: 4950185013067284215, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: -5503897814630568135, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: -1668925371913241222, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: 1983950279599904838, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: -2151200829823093638, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: -2151200829823093638, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  IdleAnimatorNE: {fileID: 9100000, guid: 3ef06f216e43c3c48b9e7b407099ef19, type: 2}
+  IdleFramesNE:
+  - {fileID: 2951489015826447441, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: -8314261729028714520, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: -5136492992612832560, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: 7749788942978969236, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: 7363768535229500085, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: 8818303328780586550, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: 8818303328780586550, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  IdleFps: 8
+  WalkFrames:
+  - {fileID: -5459114769792008005, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: -8222626774790121932, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: 8292690189185122050, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: 2547020682927661195, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: -316837753679656009, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: -1281968532950062179, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: 5255071752627350974, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: -4440972989502367379, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: -4440972989502367379, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  WalkFramesNE:
+  - {fileID: -5637981500498266662, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: -5076385693533558349, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: 7790823846323372168, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: -757929190570929572, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: -844642248774021940, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: 1968300200330333153, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: 8277269445064771619, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: -1146898620260036135, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: -1146898620260036135, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  WalkFps: 12

@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Nymora.Core.Data;
 using Nymora.Core.Enums;
@@ -7,12 +8,17 @@ namespace Nymora.Core.ScriptableObjects
 {
     /// <summary>
     /// Definition d'un sort de Nymora (Bible V7.1).
-    /// 75 sorts au final : 5 classes x 15 sorts (5 Off / 5 Tac / 5 Sur) + 5 signatures.
+    /// 80 sorts au final : 5 classes x (15 sorts + 1 signature). Stocke INLINE dans
+    /// SpellCatalog.asset (single source of truth) — pas de .asset par sort.
+    ///
+    /// Refactor 5.3.b (17 mai 2026) : etait ScriptableObject par sort, devenu
+    /// [Serializable] class inline dans SpellCatalog. Choix Lorenzo : 1 fichier
+    /// editable d'un coup vs 80 .asset granulaires.
     ///
     /// IMPORTANT : modifier une valeur ici = incrementer GameVersion.CombatRulesVersion.
     /// </summary>
-    [CreateAssetMenu(menuName = "Nymora/Spell Definition", fileName = "NewSpell", order = 110)]
-    public class SpellDefinition : ScriptableObject
+    [Serializable]
+    public class SpellDefinition
     {
         // ---------------------------------------------------------------------
         // Identity
@@ -83,6 +89,15 @@ namespace Nymora.Core.ScriptableObjects
                  "Plusieurs effets se chainent dans l'ordre. " +
                  "Exemple : [Damage 90 Physical] + [ApplyMark Bleed x2].")]
         public List<SpellEffect> Effects = new List<SpellEffect>();
+
+        // ---------------------------------------------------------------------
+        // Mapping Quantum (5.3.g — wiring combat)
+        // ---------------------------------------------------------------------
+        [Header("Quantum mapping (5.3.g)")]
+        [Tooltip("Valeur numerique correspondant a Quantum.SpellId enum (ex : 10 = SoulrenderTrancheAme). " +
+                 "Permet la conversion SpellIdTech (snake_case) -> Quantum.SpellId (byte enum) sans dupliquer " +
+                 "le mapping cote Runtime. Auto-populee par Nymora > Setup > Populate Spell Catalog.")]
+        public int QuantumSpellIdValue;
 
         // ---------------------------------------------------------------------
         // Versioning

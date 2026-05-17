@@ -16,6 +16,11 @@ MonoBehaviour:
   DisplayName: Colossar
   AccentColor: {r: 0.47843137, g: 0.41960785, b: 0.36078432, a: 1}
   Tagline: Tank punisseur. Pose des obstacles, encaisse, contre-attaque.
+  Lore: "Forge geante qui marche. Pose des piliers, leve des murs, ancre la grille
+    a sa volonte. Sa Fondation accumule alors qu'il modifie le terrain \u2014 chaque
+    obstacle est une promesse de retour de coup. Quand le poids du monde l'entoure,
+    il declenche Effondrement et tout cede en cascade. Densite Inerte le rend plus
+    immuable a chaque pas."
   BaseHP: 1500
   BaseActionPoints: 8
   BaseMovementPoints: 2
@@ -32,3 +37,43 @@ MonoBehaviour:
   SignatureDescription: Sort signature debloque a 3 FD. Cooldown 4 tours apres usage.
   IconSprite: {fileID: 21300000, guid: 9c27e5e111293fe4d9874f2b0d9958b0, type: 3}
   PortraitSprite: {fileID: 21300000, guid: 9c27e5e111293fe4d9874f2b0d9958b0, type: 3}
+  IdleAnimator: {fileID: 9100000, guid: 5124ac4f69a6c4148a392ccc3964664f, type: 2}
+  IdleFrames:
+  - {fileID: 7347929772872648432, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: -8190525640349472814, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: -1356729285918051415, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: 2845209267389243281, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: -1667145522122723573, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: 4708492006456526896, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: 4708492006456526896, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  IdleAnimatorNE: {fileID: 9100000, guid: a23528b7bf33fbb4dac1d427a5024109, type: 2}
+  IdleFramesNE:
+  - {fileID: -7780307514339039532, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: -4724015817853201542, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: 5047295692765253566, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: 398822818759530634, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: -5032517600170639335, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: 5777849162785187302, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: 5777849162785187302, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  IdleFps: 8
+  WalkFrames:
+  - {fileID: -5355303165757578543, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: -4618671513237270693, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: 8776760306138819711, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: -2491929000881419548, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: -4951073364421180567, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: 6761520370080106932, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: 7595395477087895122, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: 5771900879224903039, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  - {fileID: 5771900879224903039, guid: 591a051b643850b40920cc09cb0cb092, type: 3}
+  WalkFramesNE:
+  - {fileID: -4350928302571372381, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: 8692917908312665989, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: -2809790137496276520, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: -8730998808942155307, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: -4356890191496174325, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: -1419599926298349350, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: 2767287821108170949, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: 6761072648780674240, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  - {fileID: 6761072648780674240, guid: c794d6ecc59fd2f459bac00466ac99d9, type: 3}
+  WalkFps: 12

@@ -1,4 +1,6 @@
 using System;
+using Nymora.Core.Data;
+using Nymora.Core.ScriptableObjects;
 using Quantum;
 using UnityEngine;
 using UnityEngine.UI;
@@ -21,6 +23,9 @@ namespace Nymora.Combat.View.HUD
     {
         [Header("Catalog")]
         [SerializeField] private SpellIconRegistry _iconRegistry;
+        [Tooltip("SpellCatalog.asset (Nymora.Core) — utilise pour mapper SpellIdTech (string) -> " +
+                 "Quantum.SpellId (enum) quand DeckBridge a un deck pending depuis le Hub.")]
+        [SerializeField] private SpellCatalog _spellCatalog;
 
         [Header("Local player")]
         [SerializeField] private int _localPlayerIndex = 0;
@@ -55,6 +60,10 @@ namespace Nymora.Combat.View.HUD
 
         private void Awake()
         {
+            // 5.3.g — Si on vient du Hub avec un deck equipe via DeckBridge, override _testDeck
+            // et _signatureSpell avant BindSlots() pour que le HUD affiche les bons sorts.
+            ApplyDeckBridgeIfPending();
+
             BindSlots();
             if (_endTurnButton != null)
             {
@@ -69,6 +78,60 @@ namespace Nymora.Combat.View.HUD
             if (_p0Panel != null) _p0Panel.Init(_iconRegistry);
             if (_p1Panel != null) _p1Panel.Init(_iconRegistry);
             QuantumCallback.Subscribe(this, (CallbackUpdateView c) => OnUpdateView(c.Game));
+        }
+
+        /// <summary>
+        /// 5.3.g — Si DeckBridge.HasPending, mappe les 6 SpellIdTech (snake_case) vers
+        /// Quantum.SpellId via SpellCatalog.QuantumSpellIdValue, et set le signature
+        /// depuis le catalog (premier sort SpellCategory.Signature de la classe pending).
+        /// Si aucun deck pending OU pas de SpellCatalog wire : conserve _testDeck Inspector
+        /// + _signatureSpell hardcoded (fallback dev / scene Play direct).
+        /// </summary>
+        private void ApplyDeckBridgeIfPending()
+        {
+            if (!DeckBridge.HasPending) return;
+            if (_spellCatalog == null)
+            {
+                Debug.LogWarning("[CombatHUDController] DeckBridge a un deck pending mais _spellCatalog non assigne — fallback _testDeck Inspector.");
+                return;
+            }
+
+            // Mappe les 6 spellIds du deck
+            for (int i = 0; i < 6 && i < DeckBridge.PendingSpellIds.Length; i++)
+            {
+                string spellIdTech = DeckBridge.PendingSpellIds[i];
+                var def = _spellCatalog.FindBySpellId(spellIdTech);
+                if (def == null)
+                {
+                    Debug.LogWarning($"[CombatHUDController] SpellCatalog.FindBySpellId('{spellIdTech}') = null, slot {i} reste fallback.");
+                    continue;
+                }
+                if (i >= _testDeck.Length)
+                {
+                    Array.Resize(ref _testDeck, 6);
+                }
+                _testDeck[i] = (SpellId)def.QuantumSpellIdValue;
+            }
+
+            // Signature : premier sort Signature de la classe pending dans le catalog
+            if (Enum.TryParse(DeckBridge.PendingClassId, ignoreCase: false, out Nymora.Core.Enums.NymoraClass cls))
+            {
+                foreach (var s in _spellCatalog.Spells)
+                {
+                    if (s == null) continue;
+                    if (s.ClassId != cls) continue;
+                    if (s.Category != Nymora.Core.Enums.SpellCategory.Signature) continue;
+                    _signatureSpell = (SpellId)s.QuantumSpellIdValue;
+                    break;
+                }
+            }
+
+            Debug.Log($"[CombatHUDController] DeckBridge applique : class={DeckBridge.PendingClassId} " +
+                      $"deck=[{string.Join(",", _testDeck)}] signature={_signatureSpell} (deckName='{DeckBridge.PendingDeckName}')");
+
+            // Clear pour eviter re-application si le combat est relance (la scene combat
+            // peut etre rejouee plusieurs fois en dev). Le hub re-set au prochain go.
+            DeckBridge.Clear();
         }
 
         private void BindSlots()

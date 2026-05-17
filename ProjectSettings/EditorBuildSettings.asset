@@ -11,7 +11,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Nymora/Scenes/10_CommunityHub.unity
     guid: 459ccf1d803a3dc4ab812b6b18783bea
-  - enabled: 0
+  - enabled: 1
     path: Assets/_Nymora/Scenes/30_CombatIA.unity
     guid: bfe3a7e252b32c4409043711ff6e0e60
   - enabled: 0

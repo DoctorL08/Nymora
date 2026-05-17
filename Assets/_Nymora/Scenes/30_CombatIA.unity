@@ -2329,6 +2329,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _iconRegistry: {fileID: 11400000, guid: 4e36fb9871b28214498ae02d3a2914fb, type: 2}
+  _spellCatalog: {fileID: 11400000, guid: c42fe7c9f9037c040bc3b27f45edb65f, type: 2}
   _localPlayerIndex: 0
   _debugAllPlayersControllable: 1
   _testDeck: 0a0b12161710
