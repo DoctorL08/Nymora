@@ -13,13 +13,17 @@ MonoBehaviour:
   m_Name: TerrainSpriteLibrary
   m_EditorClassIdentifier: 
   _vapeurCarminFrames:
-  - {fileID: -1532633938, guid: 0da3c780d348f844aa94437887d14afe, type: 3}
-  - {fileID: -1780564914, guid: 0da3c780d348f844aa94437887d14afe, type: 3}
-  - {fileID: 2125555968, guid: 0da3c780d348f844aa94437887d14afe, type: 3}
-  - {fileID: -355583835, guid: 0da3c780d348f844aa94437887d14afe, type: 3}
+  - {fileID: 21300000, guid: 8dd6b9a11e11a5246878037ab9cc155d, type: 3}
+  - {fileID: 21300000, guid: b6c878247323c6f479f305a1a4b27420, type: 3}
+  - {fileID: 21300000, guid: cbe4c9facdf78264288fab7d92dc3740, type: 3}
+  - {fileID: 21300000, guid: 5df014074a13a7847bdac2ed4c1ab137, type: 3}
   _sangCoaguleFrames:
-  - {fileID: -1349203221, guid: d16fc1cc650c14448bd3a78382ebb7a3, type: 3}
-  - {fileID: -1138651674, guid: d16fc1cc650c14448bd3a78382ebb7a3, type: 3}
-  - {fileID: 805259442, guid: d16fc1cc650c14448bd3a78382ebb7a3, type: 3}
-  - {fileID: -1879211569, guid: d16fc1cc650c14448bd3a78382ebb7a3, type: 3}
-  _brumeToxiqueFrames: []
+  - {fileID: 21300000, guid: be6dbc6d5c87b4e4299f0111a65fcc4a, type: 3}
+  - {fileID: 21300000, guid: 06427937a042ae14baf93b6551adf14e, type: 3}
+  - {fileID: 21300000, guid: 3653408ce0865b44e943d935704bc884, type: 3}
+  - {fileID: 21300000, guid: 6c24543acd7d390479fb80d403196a8e, type: 3}
+  _brumeToxiqueFrames:
+  - {fileID: 21300000, guid: 56003f9902cfa7f47b329b9a67c4a13b, type: 3}
+  - {fileID: 21300000, guid: f74ffed40cb1a944296ccb7a9036e9b0, type: 3}
+  - {fileID: 21300000, guid: b11ef44164c07d64cbc51095384b30e4, type: 3}
+  - {fileID: 21300000, guid: 3a4b16db3e1b527488c4ca46cc4dddcb, type: 3}

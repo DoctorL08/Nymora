@@ -76,7 +76,13 @@ namespace Nymora.Editor.Tools
             // Le reste passe par TextureImporterSettings (API correcte pour spriteMeshType etc).
             var settings = new TextureImporterSettings();
             tex.ReadTextureSettings(settings);
-            settings.spritePixelsPerUnit = PixelsPerUnit;
+            // POLISH-5c (17 mai) — PPU NON force ici : CombatAssetsNormalizer applique un
+            // PPU dynamique = max(W,H)/targetUnits pour que chaque sprite mesure pile la
+            // meme taille en monde Unity peu importe sa resolution. Forcer 128 ici sabotait
+            // le normalize pour les sheets Soulrender (PNG 64x64 -> 1 unite OK avec PPU=64,
+            // 0.5 unite avec PPU=128 hardcode = trop petit). Pour les sprites character/icon
+            // hors scope du normalizer, le PPU par defaut Unity (100) suffit ou Lorenzo le
+            // configure via Inspector au cas par cas.
             settings.filterMode = FilterMode.Point;
             settings.mipmapEnabled = false;
             settings.spriteMeshType = SpriteMeshType.FullRect;
@@ -103,13 +109,14 @@ namespace Nymora.Editor.Tools
                 settings.spriteAlignment = (int)SpriteAlignment.Center;
             }
 
-            // 2.13.e — pour les sprite sheets, on passe en mode Multiple ici pour que
-            // AutoSliceFrameSheetsTool puisse generer les rects via TextureImporter.spritesheet.
-            // Si on laisse Single, le tool doit reimporter, ce qui declenche un cycle.
-            if (isSheet)
-            {
-                settings.spriteMode = (int)SpriteImportMode.Multiple;
-            }
+            // POLISH-5c (17 mai) — l'override Multiple historique pour les sheets est
+            // RETIRE. Raison : le designer livre maintenant des frames individuelles
+            // ({nom}-export[1..N].png), plus de spritesheets a slicer. Le maintien forcait
+            // marque_de_carnage et plaie_ouverte (Soulrender/Marks) en Multiple, ce qui
+            // empechait LoadAssetAtPath&lt;Sprite&gt; de retourner un sprite principal et
+            // sabotait CombatAssetsNormalizer.Apply. Si Lorenzo recoit un jour de vraies
+            // spritesheets, reactiver localement via AutoSliceFrameSheetsTool plutot que
+            // via un postprocessor global.
 
             tex.SetTextureSettings(settings);
         }

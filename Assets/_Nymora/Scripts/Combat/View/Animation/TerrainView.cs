@@ -32,14 +32,22 @@ namespace Nymora.Combat.View.Animation
         [SerializeField, Min(0.5f)] private float _framesPerSecond = 4f;
 
         [Tooltip("Scale uniforme applique au GameObject de l'overlay. Sert a compenser la " +
-                 "taille des sheets terrain par rapport aux tiles : sheets 64x64 @ PPU 128 " +
-                 "= 0.5 unit, alors qu'une case = 1.0 unit -> scale 2.0.")]
-        [SerializeField, Min(0.1f)] private float _overlayScale = 2f;
+                 "taille des sheets terrain par rapport aux tiles. POLISH-5b (17 mai) : default " +
+                 "passe de 2.0 -> 1.0 car les nouveaux PNG '-export[1-4]' du designer ont une " +
+                 "resolution plus haute (~128-256px) @ PPU=192, rendant deja ~0.7-1.3 unit. Avec " +
+                 "scale=2 ils devenaient enormes (commentaire historique 'sheets 64x64 @ PPU 128 " +
+                 "= 0.5 unit -> scale 2.0' n'est plus valide). A re-tweak Inspector si tiles trop " +
+                 "petites (0.75-1.5 testable selon la resolution exacte des nouveaux assets).")]
+        [SerializeField, Min(0.1f)] private float _overlayScale = 1f;
 
         [Tooltip("Si vrai (recommande), cache le sprite du sol echiquier sous la case " +
                  "quand un terrain est pose, pour que le terrain remplace visuellement la " +
                  "case au lieu de se superposer.")]
         [SerializeField] private bool _hideFloorWhenTerrainActive = true;
+
+        [Tooltip("POLISH-5c (17 mai) : log verbeux a chaque changement de terrain sur une " +
+                 "tile. A desactiver une fois le bug 'tiles invisibles' resolu.")]
+        [SerializeField] private bool _verboseLog = true;
 
         private bool _ready;          // Grid singleton lue (dimensions connues)
         private bool _overlaysSpawned; // TileViews disponibles ET overlays cree
@@ -181,10 +189,24 @@ namespace Nymora.Combat.View.Animation
             Sprite[] frames = _library.GetFrames(kind);
             if (frames == null || frames.Length == 0)
             {
+                if (_verboseLog) Debug.LogWarning($"[Nymora.Terrain] SKIP tile ({x},{y}) kind={kind} : frames=null/empty (SO field non rempli — relance CombatAssetsNormalizer).");
                 anim.Clear();
                 go.SetActive(false);
                 if (_hideFloorWhenTerrainActive && tile != null) tile.SetFloorVisible(true);
                 return;
+            }
+
+            // POLISH-5c diag : detecte les frames avec sprite null (asset fantome).
+            int nullCount = 0;
+            for (int i = 0; i < frames.Length; i++) if (frames[i] == null) nullCount++;
+            if (_verboseLog)
+            {
+                string firstName = frames[0] != null ? frames[0].name : "<null>";
+                Debug.Log($"[Nymora.Terrain] Apply tile ({x},{y}) kind={kind} : {frames.Length} frame(s), nullCount={nullCount}, first='{firstName}', scale={_overlayScale}, sortingOffset={_sortingOrderOffset}");
+                if (nullCount > 0)
+                {
+                    Debug.LogError($"[Nymora.Terrain] /!\\ Terrain {kind} a {nullCount}/{frames.Length} sprite null (asset fantome). Relance Nymora > Validation > Normalize Combat Assets > Do All.");
+                }
             }
 
             go.SetActive(true);

@@ -13,22 +13,42 @@ MonoBehaviour:
   m_Name: MarkSpriteLibrary
   m_EditorClassIdentifier: 
   _antiHealShieldFrames:
-  - {fileID: 1932484924, guid: 25d27e270bdea3a4ab56c3925fcf7155, type: 3}
-  - {fileID: -1763661133, guid: 25d27e270bdea3a4ab56c3925fcf7155, type: 3}
-  - {fileID: 614763276, guid: 25d27e270bdea3a4ab56c3925fcf7155, type: 3}
-  - {fileID: 496166701, guid: 25d27e270bdea3a4ab56c3925fcf7155, type: 3}
+  - {fileID: 21300000, guid: 4979a2d74ebc80243bc6ab6a4ed73150, type: 3}
+  - {fileID: 21300000, guid: 25f7081f7e4293f43aa541b11b2be7ff, type: 3}
+  - {fileID: 21300000, guid: 4284dffd6fe793240abd06ed87249062, type: 3}
+  - {fileID: 21300000, guid: 5db9b5fd3e2f55a4baf6089a31905a6d, type: 3}
   _markedByCarnageFrames:
-  - {fileID: -989601583, guid: 668840576ddb0fc4a8ac0e6c4df79e56, type: 3}
-  - {fileID: -268237682, guid: 668840576ddb0fc4a8ac0e6c4df79e56, type: 3}
-  - {fileID: -948145449, guid: 668840576ddb0fc4a8ac0e6c4df79e56, type: 3}
-  - {fileID: -230167674, guid: 668840576ddb0fc4a8ac0e6c4df79e56, type: 3}
+  - {fileID: 21300000, guid: bd993aab4fa4dc04fb3ade90e74c3bc9, type: 3}
+  - {fileID: 21300000, guid: b6b5c43e9d7781140998c0c2b12bec4c, type: 3}
+  - {fileID: 21300000, guid: c1ae09547085cea4f85ef7f346969923, type: 3}
+  - {fileID: 21300000, guid: d0d186f1cb3ac0644898905382f490a7, type: 3}
   _traqueFrames:
-  - {fileID: -1342913078, guid: 85c4f5a446bbfc94cb45ecd80c05fae7, type: 3}
-  - {fileID: 706327670, guid: 85c4f5a446bbfc94cb45ecd80c05fae7, type: 3}
-  - {fileID: 1990949946, guid: 85c4f5a446bbfc94cb45ecd80c05fae7, type: 3}
-  - {fileID: -27697245, guid: 85c4f5a446bbfc94cb45ecd80c05fae7, type: 3}
+  - {fileID: 21300000, guid: 2fba047e851368f4cae1d9b6cee0401e, type: 3}
+  - {fileID: 21300000, guid: 470f73a37c8dcb44681ae425cbe5e1c2, type: 3}
+  - {fileID: 21300000, guid: cb2cb0f91f3b9a644a8305e93dec9601, type: 3}
+  - {fileID: 21300000, guid: e1a918d5c36e6ef4d841ebf82964df8f, type: 3}
   _empreinteFrames:
-  - {fileID: -130535193, guid: b60db7e17de3e5146a0dc7d5e99614e1, type: 3}
-  - {fileID: 1133298963, guid: b60db7e17de3e5146a0dc7d5e99614e1, type: 3}
-  - {fileID: -1541285395, guid: b60db7e17de3e5146a0dc7d5e99614e1, type: 3}
-  - {fileID: -1685350867, guid: b60db7e17de3e5146a0dc7d5e99614e1, type: 3}
+  - {fileID: 21300000, guid: f1275b517c9588c48a42f89a08fa8a5a, type: 3}
+  - {fileID: 21300000, guid: 783cadfbad2f7ba408eabbb9f6a9a361, type: 3}
+  - {fileID: 21300000, guid: 240cf7075eab4ff4581315f0ca4be3aa, type: 3}
+  - {fileID: 21300000, guid: 16d84adf16ae0344f9eadb25ff0425ce, type: 3}
+  _untargetableFrames:
+  - {fileID: 21300000, guid: ddcfc1050e05d6e4381734ea0ead0f92, type: 3}
+  - {fileID: 21300000, guid: 89260405a5373764ebb01ab342f5b88a, type: 3}
+  - {fileID: 21300000, guid: 180c4aa21a182574b9f187cd52b11029, type: 3}
+  - {fileID: 21300000, guid: e67ea0231c4c7c64d9401348e6f17c42, type: 3}
+  _veninStacksFrames:
+  - {fileID: 21300000, guid: 50399784554497d42893cf8ddb7d1b25, type: 3}
+  - {fileID: 21300000, guid: 970b5c3b749581641b6ce5e642e039f3, type: 3}
+  - {fileID: 21300000, guid: 1c05c6d22753b6d489ea6959a98be51a, type: 3}
+  - {fileID: 21300000, guid: d7456375aa016524ab45ee6731f53f2e, type: 3}
+  _plaieOuverteFrames:
+  - {fileID: 21300000, guid: 4979a2d74ebc80243bc6ab6a4ed73150, type: 3}
+  - {fileID: 21300000, guid: 25f7081f7e4293f43aa541b11b2be7ff, type: 3}
+  - {fileID: 21300000, guid: 4284dffd6fe793240abd06ed87249062, type: 3}
+  - {fileID: 21300000, guid: 5db9b5fd3e2f55a4baf6089a31905a6d, type: 3}
+  _marqueDeLOmbreFrames:
+  - {fileID: 21300000, guid: c4da8ae68eb8a9a4ea36ef0995990df8, type: 3}
+  - {fileID: 21300000, guid: 7b7e99eedd0094843a23b977df643bf8, type: 3}
+  - {fileID: 21300000, guid: 3281113707f206942ba3eb246275c887, type: 3}
+  - {fileID: 21300000, guid: 6115e8964eea48d4d8cc736cbe461f74, type: 3}

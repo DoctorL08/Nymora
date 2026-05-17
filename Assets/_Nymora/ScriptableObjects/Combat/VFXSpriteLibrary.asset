@@ -13,15 +13,38 @@ MonoBehaviour:
   m_Name: VFXSpriteLibrary
   m_EditorClassIdentifier: 
   _ameLaceeFrames:
-  - {fileID: -1159460837, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
-  - {fileID: 200470168, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
-  - {fileID: -1960051454, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
-  - {fileID: -846303026, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
-  - {fileID: -907199884, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
-  - {fileID: 142528021, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
-  - {fileID: -554777204, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
-  - {fileID: 681591465, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
-  - {fileID: -2033514283, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
-  - {fileID: 476417908, guid: 757eeea6c1b37fc45a0726655a19ebe0, type: 3}
+  - {fileID: 21300000, guid: 6c55fa4e6e0c1da45980114ed5096a09, type: 3}
+  - {fileID: 21300000, guid: 46de6e574453e3e40be5bd3ab12a929e, type: 3}
+  - {fileID: 21300000, guid: 61008675e38e4794d9f5385c3a818330, type: 3}
+  - {fileID: 21300000, guid: 6ba6969ee0d689a49873bbeb4ea1c567, type: 3}
+  - {fileID: 21300000, guid: a8b57357b626c46409bb336f3bbdb092, type: 3}
+  - {fileID: 21300000, guid: 001dd0d876d0e2948ab93b3fcb4d7b6d, type: 3}
+  - {fileID: 21300000, guid: a07bdaffca61f074497535875428723d, type: 3}
+  - {fileID: 21300000, guid: bfb2970150d8de449a0065c63b0ae785, type: 3}
   _effondrementFrames:
-  - {fileID: 21300000, guid: 5581a9c79613cf243ba66aa5f0456e4c, type: 3}
+  - {fileID: 21300000, guid: 4f0c3d63ca45fd340a87938957a98e45, type: 3}
+  - {fileID: 21300000, guid: cff42711517e68a43a37f6dd6aaed321, type: 3}
+  - {fileID: 21300000, guid: e783c71b421c3cc429c5ef9a127bf641, type: 3}
+  - {fileID: 21300000, guid: 890ba48ba76b81f47ac0b3cddd843d79, type: 3}
+  - {fileID: 21300000, guid: 4fe78f65b756f034f8cacb15a7f05bdc, type: 3}
+  - {fileID: 21300000, guid: 930af45a10965474eb869bd1f237c47c, type: 3}
+  - {fileID: 21300000, guid: d5c4a599db4ee284c839bb4e721715ce, type: 3}
+  - {fileID: 21300000, guid: e83c7d308aa425e4381afd05d3c6e982, type: 3}
+  _virusFatalFrames:
+  - {fileID: 21300000, guid: 0e8d55ef3f5cc704fa495cb468d534fc, type: 3}
+  - {fileID: 21300000, guid: b0e7f8ad9dc5813478d0c59fb6199fb1, type: 3}
+  - {fileID: 21300000, guid: 62c07b5e6f210bf48b01dc559cbcbbdc, type: 3}
+  - {fileID: 21300000, guid: 7f14fe1ae49370145a7cd0323a003701, type: 3}
+  - {fileID: 21300000, guid: 8304ae681eed8dc4d97ed62eda6805d4, type: 3}
+  - {fileID: 21300000, guid: d42057965f77da948bc176a36c9d9b94, type: 3}
+  - {fileID: 21300000, guid: 98b894091ee0749428bb3999d8cc2b02, type: 3}
+  - {fileID: 21300000, guid: e3e4e9ed6cc1b3248b57845b577cb2e4, type: 3}
+  _executionSpectraleFrames:
+  - {fileID: 21300000, guid: ea3932655f15ec943a053c2d050bee1f, type: 3}
+  - {fileID: 21300000, guid: a1dd2c12e43273d41b1fb5f14e531ad3, type: 3}
+  - {fileID: 21300000, guid: e99a46694c3ae3347864714fccdbc7ca, type: 3}
+  - {fileID: 21300000, guid: ed50a4d399f16614db979812156e3ace, type: 3}
+  - {fileID: 21300000, guid: b3125c6989dfaad4eb563806bf9554e1, type: 3}
+  - {fileID: 21300000, guid: 306548fe0fb036745945531854ac4179, type: 3}
+  - {fileID: 21300000, guid: 1106eef9e23729f41aa980982c031f01, type: 3}
+  - {fileID: 21300000, guid: ea803dbaeded2b04988186b3982f1607, type: 3}

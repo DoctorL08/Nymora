@@ -31,14 +31,20 @@ namespace Nymora.Combat.View.Animation
         [SerializeField, Min(0.1f)] private float _markScale = 1.2f;
 
         [Tooltip("Offset local par rapport au combatant. Y positif = au-dessus de la tete. " +
-                 "Le combatant a son sprite centre en Y=0, sprite 1 unit donc top = 0.5.")]
-        [SerializeField] private Vector2 _baseOffset = new Vector2(0f, 0.7f);
+                 "POLISH-5b (17 mai) : bumped de 0.7 -> 1.4 car les sprites Phase 3 sont scales " +
+                 "1.16x avec child Visual Y -0.22 (cf RestructureGhostraPrefabTool), donc la tete " +
+                 "atteint maintenant ~0.9-1.0 unit. Marque a Y=1.4 = au-dessus de la tete, lisible.")]
+        [SerializeField] private Vector2 _baseOffset = new Vector2(0f, 1.4f);
 
         [Tooltip("Espacement horizontal quand plusieurs marques sont actives sur la meme cible.")]
         [SerializeField, Min(0f)] private float _markSpacingX = 0.4f;
 
         [Tooltip("SortingOrder des marques. 1500 = devant les combattants (~1000), derriere VFX one-shot (~2000).")]
         [SerializeField] private int _sortingOrder = 1500;
+
+        [Tooltip("POLISH-5c (17 mai) : log verbeux a chaque spawn/clear d'overlay de marque. " +
+                 "A desactiver une fois le bug 'marks invisibles' resolu.")]
+        [SerializeField] private bool _verboseLog = true;
 
         // Etat runtime. Key encoding : pour eviter de melanger StatusKind et MarkKind dans le meme
         // dict, on prefixe StatusKind avec 0x1000 (Status) et MarkKind avec 0x2000 (Mark). Resultat :
@@ -182,7 +188,25 @@ namespace Nymora.Combat.View.Animation
                 frames = _library.GetFrames(sk);
                 nameSuffix = $"Status_{sk}";
             }
-            if (frames == null || frames.Length == 0) return null;
+            if (frames == null || frames.Length == 0)
+            {
+                if (_verboseLog) Debug.LogWarning($"[Nymora.Marks] SKIP spawn {nameSuffix} on {view.name} : frames=null/empty (SO field non rempli — relance CombatAssetsNormalizer).");
+                return null;
+            }
+
+            // POLISH-5c diag : detecte les frames non-null mais avec sprite null (asset fantome,
+            // typique apres suppression des .gif si le SO n'a pas ete re-bind).
+            int nullCount = 0;
+            for (int i = 0; i < frames.Length; i++) if (frames[i] == null) nullCount++;
+            if (_verboseLog)
+            {
+                string firstName = frames[0] != null ? frames[0].name : "<null>";
+                Debug.Log($"[Nymora.Marks] Spawn {nameSuffix} on {view.name} : {frames.Length} frame(s), nullCount={nullCount}, first='{firstName}', pos={_baseOffset}, scale={_markScale}, sortingOrder={_sortingOrder}");
+                if (nullCount > 0)
+                {
+                    Debug.LogError($"[Nymora.Marks] /!\\ {nameSuffix} a {nullCount}/{frames.Length} sprite null (asset fantome). Relance Nymora > Validation > Normalize Combat Assets > Do All.");
+                }
+            }
 
             var go = new GameObject(nameSuffix);
             go.transform.SetParent(view.transform, false);
