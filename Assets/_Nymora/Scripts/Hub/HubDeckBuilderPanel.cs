@@ -604,13 +604,17 @@ namespace Nymora.Hub
             if (_tooltipPanel == null || _tooltipText == null || _spellCatalog == null) return;
             var def = _spellCatalog.FindBySpellId(spellId);
             if (def == null) return;
+            string desc = string.IsNullOrEmpty(def.Description)
+                ? "<i><color=#888>(Description Bible V7.1 a remplir — lancer Nymora &gt; Setup &gt; Populate Spell Catalog)</color></i>"
+                : def.Description;
+            string lore = string.IsNullOrEmpty(def.LoreFlavor)
+                ? string.Empty
+                : $"\n\n<size=14><i><color=#9988aa>{def.LoreFlavor}</color></i></size>";
             _tooltipText.text =
                 $"<size=26><b>{def.DisplayName}</b></size>\n" +
                 $"<size=14><color=#9aa>{def.Category}  ·  {def.ClassId}</color></size>\n\n" +
                 $"<color=#ffdd55><b>{def.ActionPointCost} PA</b>  ·  range {def.MinRange}-{def.MaxRange}  ·  {def.Filter}  ·  {def.Shape}</color>\n\n" +
-                (string.IsNullOrEmpty(def.Description)
-                    ? "<i><color=#888>(Description Bible V7.1 a remplir)</color></i>"
-                    : def.Description);
+                desc + lore;
             _tooltipPanel.SetActive(true);
         }
 

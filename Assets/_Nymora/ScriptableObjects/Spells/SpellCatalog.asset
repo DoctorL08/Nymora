@@ -18,8 +18,12 @@ MonoBehaviour:
     ClassId: 1
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 220 d\xE9g\xE2ts. Si le coup tue, le Soulrender RECULE
+      de 2 cases gratuitement (mouvement non-PM). Effet purement de mise en sc\xE8ne,
+      mais bloque les contre-attaques zone post-kill."
+    LoreFlavor: "Le sort signature de base. Lent (3 PA), pr\xE9visible \u2014 et
+      c'est ce qui le rend terrifiant. L'adversaire SAIT qu'il arrive. Il ne peut
+      pas l'arr\xEAter."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -37,8 +41,11 @@ MonoBehaviour:
     ClassId: 1
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 110 d\xE9g\xE2ts. SI 1 HG d\xE9pens\xE9 : 230 d\xE9g\xE2ts
+      ET la cible ne peut pas se soigner ni recevoir de bouclier pendant 2 tours."
+    LoreFlavor: "L'anti-sustain. La simple existence de ce sort dans le deck Soulrender
+      suffit \xE0 interdire \xE0 l'adversaire de poser un Carapace ou Soin Lourd
+      sans pr\xE9paration."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -56,8 +63,11 @@ MonoBehaviour:
     ClassId: 1
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Le Soulrender fonce en ligne droite jusqu'\xE0 la premi\xE8re unit\xE9
+      ou case bloquante. Inflige 180 d\xE9g\xE2ts \xE0 la cible touch\xE9e. Toute
+      case foul\xE9e pendant la charge devient Vapeur Carmin pendant 1 tour."
+    LoreFlavor: "Le b\xE9lier. Charge Brutale ne fait pas seulement entrer le Soulrender
+      \u2014 elle CR\xC9E un couloir de pression qui restera apr\xE8s son passage."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -75,8 +85,12 @@ MonoBehaviour:
     ClassId: 1
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Centre AoE croix 3. Inflige 60 d\xE9g\xE2ts de base \xE0 toutes
+      les cibles dans la zone, +40 par HG consomm\xE9. Avec 5 HG : 260 d\xE9g\xE2ts.
+      Sang Coagul\xE9 cr\xE9\xE9 sous le centre pendant 2 tours. ATTENTION : consommer
+      5 HG ici interdit \xC2me Lac\xE9r\xE9e et reset son cooldown."
+    LoreFlavor: "Le payoff total. D\xE9toner 5 HG est un acte de FOI \u2014 le Soulrender
+      renonce \xE0 son finisher pour un coup massif."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 2
@@ -94,8 +108,12 @@ MonoBehaviour:
     ClassId: 1
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 150 d\xE9g\xE2ts. SI la cible meurt sur ce sort : le Soulrender
+      heal 50% de ses HP max manquants ET r\xE9cup\xE8re 4 PA pour le tour suivant.
+      Si la cible NE MEURT PAS : le Soulrender perd 60 HP."
+    LoreFlavor: "Le tout ou rien. Cur\xE9e est une lecture pure : si tu calcules
+      juste, le match s'encha\xEEne. Si tu calcules mal, tu donnes un tempo entier
+      \xE0 l'adversaire."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 2
@@ -113,8 +131,12 @@ MonoBehaviour:
     ClassId: 1
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Le Soulrender s'inflige 80 d\xE9g\xE2ts \xE0 lui-m\xEAme et gagne
+      +3 HG imm\xE9diatement. Son prochain sort offensif ce tour gagne +50% de d\xE9g\xE2ts.
+      UTILISABLE 1 FOIS PAR MATCH."
+    LoreFlavor: "Le bouton clutch. Quand l'adversaire pense \xEAtre safe, le Soulrender
+      saigne lui-m\xEAme pour ouvrir une fen\xEAtre de burst. D\xE9cision \xE0 tr\xE8s
+      haut risque."
     ActionPointCost: 1
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -132,8 +154,12 @@ MonoBehaviour:
     ClassId: 1
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Marque la cible 3 tours. Pendant ce temps, tous les sorts du Soulrender
+      sur cette cible g\xE9n\xE8rent +1 HG bonus. La marque est visible sur le sprite
+      ennemi (croix de sang)."
+    LoreFlavor: "Le sceau. Marque de Carnage transforme une cible en machine \xE0
+      fabriquer de la ressource. Plus l'adversaire re\xE7oit de coups, plus le Soulrender
+      acc\xE9l\xE8re."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -151,8 +177,12 @@ MonoBehaviour:
     ClassId: 1
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Tire la cible jusqu'\xE0 1 case du Soulrender. La cible ne peut
+      pas \xEAtre t\xE9l\xE9port\xE9e par un de ses propres sorts au tour suivant.
+      Pas de d\xE9g\xE2ts."
+    LoreFlavor: "L'arrachement. Empoignade d\xE9fait la map des classes-kite. Une
+      Nightseer qui pensait son setup safe se retrouve au corps \xE0 corps, son \xC9vanescence
+      verrouill\xE9e."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -170,8 +200,12 @@ MonoBehaviour:
     ClassId: 1
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "AoE rayon 3 autour du Soulrender. Toutes les cibles ennemies subissent
+      -1 PM ET ne peuvent pas t\xE9l\xE9porter au tour suivant. Si une cible est
+      sous 50% HP : -2 PM au lieu de -1. Pas de d\xE9g\xE2ts."
+    LoreFlavor: "Le cri primal. Rugissement ne tue pas \u2014 il fige. Combin\xE9
+      \xE0 Charge Brutale derri\xE8re, c'est un pi\xE8ge g\xE9om\xE9trique. Anti-Ghostra
+      par excellence."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -189,8 +223,12 @@ MonoBehaviour:
     ClassId: 1
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pendant 2 tours, chaque sort offensif lanc\xE9 par le Soulrender
+      regen\xE8re 1 PA (max 1 par tour). Les sorts co\xFBtent 1 PA de plus pendant
+      ces 2 tours."
+    LoreFlavor: "Le cycle ouvert. Rage Insatiable est un investissement : on accepte
+      de payer plus cher chaque sort, en \xE9change d'un tempo qui ne s'arr\xEAte
+      jamais."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -208,8 +246,11 @@ MonoBehaviour:
     ClassId: 1
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pendant 1 tour, toute attaque M\xCAL\xC9E subie par le Soulrender
+      renvoie 100 d\xE9g\xE2ts \xE0 l'attaquant ET lui co\xFBte 1 PM additionnel
+      pour son prochain mouvement. Le Soulrender prend les d\xE9g\xE2ts normalement."
+    LoreFlavor: "Le pi\xE8ge du chasseur. Riposte Carmin n'est pas une d\xE9fense
+      \u2014 c'est une invitation. Elle dit \xE0 l'adversaire : 'Viens me frapper.'"
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -227,8 +268,11 @@ MonoBehaviour:
     ClassId: 1
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Retire instantan\xE9ment tous les DoT actifs sur le Soulrender
+      (poison, plaie ouverte, autres saignements ennemis). Le Soulrender se soigne
+      de 60 HP par DoT retir\xE9 (min 60, max 180)."
+    LoreFlavor: "L'auto-caut\xE9risation. Anti-Necram et anti-Ghostra. Quand le bleed
+      devient trop dense, le Soulrender br\xFBle ses propres plaies pour repartir."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -246,8 +290,11 @@ MonoBehaviour:
     ClassId: 1
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Le Soulrender gagne un BOUCLIER de 200 HP pendant 2 tours. Pendant
+      la dur\xE9e du bouclier, ses sorts \xE0 port\xE9e 1 (m\xEAl\xE9e) gagnent +30
+      d\xE9g\xE2ts. Le bouclier se vide normalement aux d\xE9g\xE2ts subis."
+    LoreFlavor: "Le mur viandard. Peau de Fer ne fait pas que prot\xE9ger \u2014
+      elle ENCOURAGE l'engagement. Anti-Colossar/Nightseer qui zone \xE0 distance."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -265,8 +312,10 @@ MonoBehaviour:
     ClassId: 1
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: 'Le Soulrender se soigne de 100 HP. Avec 1 HG : 160 HP. Si le Soulrender
+      saigne actuellement (DoT actif sur lui) : +50 HP additionnels.'
+    LoreFlavor: "Le rapide. S\xE8ve Vive est le micro-heal qui maintient le Soulrender
+      en vie sans qu'il quitte le combat."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -284,8 +333,11 @@ MonoBehaviour:
     ClassId: 1
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Utilisable uniquement \xE0 <30% HP. Le Soulrender se soigne de
+      200 HP ET gagne 3 HG. UTILISABLE 1 FOIS PAR MATCH."
+    LoreFlavor: "L'ultime. Dernier Souffle n'est pas un heal \u2014 c'est une renaissance.
+      Le Soulrender qui aurait d\xFB mourir au tour 5 revient \xE0 50% HP avec 3
+      HG en main, pr\xEAt pour un \xC2me Lac\xE9r\xE9e."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -303,8 +355,13 @@ MonoBehaviour:
     ClassId: 1
     Category: 4
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 320 d\xE9g\xE2ts. Le Soulrender se soigne de 50% des d\xE9g\xE2ts
+      qui ont pass\xE9 (apr\xE8s bouclier). Si la cible meurt sur ce sort : le combat
+      est marqu\xE9 d'une explosion de sang qui cr\xE9e du Sang Coagul\xE9 en croix
+      5 cases."
+    LoreFlavor: "L'ex\xE9cution rituelle. \xC2me Lac\xE9r\xE9e n'est pas un simple
+      finisher \u2014 c'est l'aboutissement d'un cycle. Le Soulrender a saign\xE9,
+      fait saigner, accumul\xE9. Maintenant il r\xE9colte."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 5
@@ -322,8 +379,11 @@ MonoBehaviour:
     ClassId: 2
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 200 d\xE9g\xE2ts. Si la cible est Traqu\xE9 : 280 d\xE9g\xE2ts
+      ET le Nightseer regagne 1 PR."
+    LoreFlavor: "Le sniper. Tir Pr\xE9cis n'a pas besoin de surprendre \u2014 sa
+      simple existence \xE0 6 cases force l'adversaire \xE0 toujours regarder en
+      l'air."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -341,8 +401,13 @@ MonoBehaviour:
     ClassId: 2
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Tir en ligne droite. Inflige 130 d\xE9g\xE2ts \xE0 toutes les cibles
+      touch\xE9es. Pose un Filet de Ronces (identique au sort tactique : 100 d\xE9g\xE2ts,
+      -2 PM, applique EMPREINT\xC9 2 tours au d\xE9clenchement) sur la derni\xE8re
+      case touch\xE9e."
+    LoreFlavor: "Le double effet. Vol\xE9e d'\xC9pines fait des d\xE9g\xE2ts ET pose
+      un pi\xE8ge. L'adversaire qui survit doit d\xE9cider : foncer dans le filet
+      ou contourner et perdre du tempo."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -360,8 +425,13 @@ MonoBehaviour:
     ClassId: 2
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "AoE 2x2 cases. 170 d\xE9g\xE2ts dans la zone. Si une case Voil\xE9
+      existe dans la zone, elle se d\xE9chire et inflige 80 d\xE9g\xE2ts suppl\xE9mentaires.
+      Avec 2 PR : port\xE9e passe \xE0 10, peut frapper depuis l'autre c\xF4t\xE9
+      de la map."
+    LoreFlavor: "L'\u0153il qui frappe \xE0 travers le brouillard. D\xE9tonation
+      Onirique punit la lecture. Si l'adversaire pensait \xEAtre hors de port\xE9e,
+      il ne l'\xE9tait pas \u2014 le Nightseer voyait \xE0 travers."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -379,8 +449,11 @@ MonoBehaviour:
     ClassId: 2
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 200 d\xE9g\xE2ts. Si la cible a moins de 50% de ses PM
+      max actuels (donc s'est d\xE9j\xE0 d\xE9plac\xE9e) : +100 d\xE9g\xE2ts ET applique
+      EMPREINT\xC9 pour 2 tours."
+    LoreFlavor: L'archer immobile. Frappe de l'Ombre punit le mouvement. Les classes
+      qui sprintent (Ghostra, Soulrender qui charge) se font shred.
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -398,8 +471,13 @@ MonoBehaviour:
     ClassId: 2
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Cible une case. Centre + 4 cases adjacentes en croix : 220 d\xE9g\xE2ts
+      au centre, 130 sur les c\xF4t\xE9s. Toute cible Traqu\xE9 dans la zone : +60
+      d\xE9g\xE2ts. Toute case Voil\xE9 dans la zone : d\xE9chir\xE9e, d\xE9voil\xE9e,
+      +50 d\xE9g\xE2ts \xE0 qui s'y trouvait. ATTENTION : consommer 3 PR ici diff\xE8re
+      le cooldown du Traquenard."
+    LoreFlavor: "Le moment o\xF9 la map r\xE9v\xE8le sa v\xE9rit\xE9. Salve Mortelle
+      d\xE9chire toutes les illusions du Nightseer en m\xEAme temps."
     ActionPointCost: 5
     MovementPointCost: 0
     ClassResourceCost: 3
@@ -417,8 +495,11 @@ MonoBehaviour:
     ClassId: 2
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Applique TRAQU\xC9 \xE0 la cible pendant 3 tours. Sort tr\xE8s
+      peu cher car le payoff est dans les autres sorts. Coexiste avec Voil\xE9/Empreint\xE9
+      sur d'autres cibles, pas sur la m\xEAme."
+    LoreFlavor: "L'oeil. Quand l'adversaire prend une Marque du Chasseur, il sait
+      que les 3 prochains tours vont \xEAtre violents."
     ActionPointCost: 1
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -436,8 +517,12 @@ MonoBehaviour:
     ClassId: 2
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pose une emb\xFBche invisible sur une case (Voil\xE9 pour l'adversaire).
+      Toute unit\xE9 ennemie qui entre : 100 d\xE9g\xE2ts, -2 PM, et applique EMPREINT\xC9
+      pour 2 tours."
+    LoreFlavor: "Le pi\xE8ge classique, mais r\xE9-ing\xE9ni\xE9r\xE9. Le Filet est
+      lisible pour le Nightseer \u2014 il SAIT o\xF9 il l'a pos\xE9. Il l'utilise
+      pour pousser l'adversaire ailleurs."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -455,8 +540,11 @@ MonoBehaviour:
     ClassId: 2
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pose 3 emb\xFBches Voil\xE9es dans une zone 3x3 (placement al\xE9atoire
+      pour l'adversaire, choisi par le Nightseer). Chaque emb\xFBche : 70 d\xE9g\xE2ts
+      + applique EMPREINT\xC9."
+    LoreFlavor: "Le terrain min\xE9. Champ de Mines transforme une zone en no-go.
+      L'adversaire doit faire un d\xE9tour OU absorber 3 mines pour passer."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -474,8 +562,11 @@ MonoBehaviour:
     ClassId: 2
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pousse la cible 3 cases dans la direction choisie. Avec 1 PR :
+      5 cases. Si la cible finit sa course sur un Filet de Ronces, une mine, ou une
+      case Sang Coagul\xE9 : effets d\xE9clench\xE9s \xE0 pleine puissance."
+    LoreFlavor: "L'arme du conducteur. Bourrasque n'est pas une frappe \u2014 c'est
+      un volant. Le Nightseer d\xE9cide o\xF9 l'adversaire VA, pas o\xF9 il EST."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -493,8 +584,12 @@ MonoBehaviour:
     ClassId: 2
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "AoE croix 3 cases autour du Nightseer. Inflige 70 d\xE9g\xE2ts
+      + push 1 case + applique -1 PM aux cibles. Si une cible est pouss\xE9e sur
+      un Filet/mine : d\xE9clenchement."
+    LoreFlavor: "Le d\xE9crochage. Souffle Glacial est l'outil anti-m\xEAl\xE9e.
+      Quand un Soulrender colle au Nightseer, ce sort le repousse ET le pousse potentiellement
+      dans une mine voil\xE9e."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -512,8 +607,11 @@ MonoBehaviour:
     ClassId: 2
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Le Nightseer dispara\xEEt visuellement de l'\xE9cran adversaire
+      pendant 1 tour entier. Il ne peut pas \xEAtre cibl\xE9 directement (les AoE
+      non-cibl\xE9es passent toujours). Si on devine sa case par AoE : effet normal."
+    LoreFlavor: "Le grand silence. Voile d'Ombre est l'arme du d\xE9crochage. Quand
+      le Soulrender le pourchasse, le Nightseer dispara\xEEt juste avant le finisher."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -531,8 +629,10 @@ MonoBehaviour:
     ClassId: 2
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "T\xE9l\xE9porte le Nightseer jusqu'\xE0 4 cases. Si 1 PR consomm\xE9e,
+      la case d'arriv\xE9e devient VOIL\xC9E pour l'adversaire pendant 2 tours."
+    LoreFlavor: "Le coup le plus frustrant pour l'adversaire. Le Nightseer dispara\xEEt
+      litt\xE9ralement. L'adversaire doit deviner o\xF9 il est."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -550,8 +650,12 @@ MonoBehaviour:
     ClassId: 2
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Le Nightseer gagne un BOUCLIER de 130 HP pendant 2 tours. Pendant
+      la dur\xE9e, sa case est entour\xE9e d'un Filet de Ronces invisible : tout
+      ennemi adjacent fin de tour subit 70 d\xE9g\xE2ts + EMPREINT\xC9."
+    LoreFlavor: "L'\xE9pine d\xE9fensive. Camouflage Ronces dit \xE0 l'adversaire
+      : 'Approche-toi, vois ce qui se passe.' Anti-engage parfait contre Soulrender
+      et Ghostra m\xEAl\xE9e."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -569,8 +673,11 @@ MonoBehaviour:
     ClassId: 2
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Le Nightseer se soigne de 130 HP. Si une de ses emb\xFBches a \xE9t\xE9
+      d\xE9clench\xE9e ce tour ou le tour pr\xE9c\xE9dent : +60 HP additionnels.
+      Si une case Voil\xE9e existe actuellement sur la map : +30 HP."
+    LoreFlavor: "Le heal de r\xE9colte. S\xE8ve Sauvage r\xE9compense le Nightseer
+      qui a d\xE9j\xE0 fait son setup. Plus la map est pi\xE9g\xE9e, plus il survit."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -588,8 +695,11 @@ MonoBehaviour:
     ClassId: 2
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Utilisable uniquement \xE0 <30% HP. Le Nightseer se t\xE9l\xE9porte
+      jusqu'\xE0 7 cases ET se soigne de 150 HP. La case quitt\xE9e devient Voil\xE9e
+      pendant 2 tours. UTILISABLE 1 FOIS PAR MATCH."
+    LoreFlavor: "L'\xE9vasion totale. \xC9vanescence permet au Nightseer de quitter
+      compl\xE8tement le combat le temps d'un tour."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -607,8 +717,14 @@ MonoBehaviour:
     ClassId: 2
     Category: 4
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Le Nightseer se t\xE9l\xE9porte \xE0 1 case de la cible (c\xF4t\xE9
+      libre, choix du joueur). Inflige 280 d\xE9g\xE2ts. Applique PARALYSIE (-3 PM,
+      -2 PA) au prochain tour de la cible. Si la cible \xE9tait Traqu\xE9/Voil\xE9/Empreint\xE9
+      avant le sort : +80 d\xE9g\xE2ts ET la marque est consomm\xE9e pour g\xE9n\xE9rer
+      2 PR au Nightseer apr\xE8s le coup."
+    LoreFlavor: "L'embuscade pure. Traquenard n'est pas un finisher de DPS \u2014
+      c'est l'aboutissement d'un pi\xE8ge mental. La paralysie verrouille le tour
+      adverse, le Nightseer peut d\xE9crocher ou encha\xEEner."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 4
@@ -626,8 +742,12 @@ MonoBehaviour:
     ClassId: 3
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 180 d\xE9g\xE2ts. Si la cible est \xC9PINGL\xC9E (adjacente
+      \xE0 un Pilier, mur, ou bord de map du c\xF4t\xE9 oppos\xE9 au Colossar) :
+      280 d\xE9g\xE2ts."
+    LoreFlavor: "Le coup signature. La cible doit litt\xE9ralement \xE9viter d'avoir
+      un mur derri\xE8re elle pour exister. Le Colossar transforme les bords de map
+      en pi\xE8ges."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -645,8 +765,12 @@ MonoBehaviour:
     ClassId: 3
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "AoE autour du Colossar. Inflige 80 d\xE9g\xE2ts \xE0 toutes les
+      unit\xE9s adjacentes ET les pousse de 2 cases. Si une unit\xE9 est pouss\xE9e
+      contre un mur, Pilier, ou bord de map : 80 d\xE9g\xE2ts suppl\xE9mentaires
+      + APPLIQUE TRAUMA (-1 PM, -1 PA pendant 1 tour)."
+    LoreFlavor: "Le sort qui transforme un Pilier en arme. Sans Onde, un Pilier est
+      juste d\xE9coratif. Avec, c'est un mur sur lequel l'adversaire va s'\xE9craser."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -664,8 +788,12 @@ MonoBehaviour:
     ClassId: 3
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 160 d\xE9g\xE2ts. Si la cible a moins de 4 PA actuels (donc
+      a d\xE9j\xE0 cast ce tour) : 240 d\xE9g\xE2ts ET applique TRAUMA (-2 PA prochain
+      tour)."
+    LoreFlavor: "L'anti-tempo. Marteau Punisseur punit les classes qui spam \u2014
+      Soulrender, Necram. Le Colossar dit : 'Tu as fini ton tour ? Tant mieux. Maintenant
+      tu prends.'"
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -683,8 +811,13 @@ MonoBehaviour:
     ClassId: 3
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Frappe en ligne droite 4 cases. Inflige 130 d\xE9g\xE2ts \xE0 toutes
+      les cibles touch\xE9es. Toutes les cibles touch\xE9es : -1 PM au prochain tour.
+      Si une case Pilier ou Mur du Colossar se trouve sur la trajectoire : la frappe
+      traverse, +50 d\xE9g\xE2ts \xE0 la cible suivante."
+    LoreFlavor: "L'onde tellurique. Choc Sismique passe \xE0 travers ses propres
+      murs comme un piston. Le Colossar tire \xE0 travers ses fortifications \u2014
+      il est le seul."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -702,8 +835,12 @@ MonoBehaviour:
     ClassId: 3
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 100 d\xE9g\xE2ts imm\xE9diatement. Pendant 2 tours apr\xE8s
+      le cast, chaque attaque m\xEAl\xE9e subie par le Colossar renvoie 80 d\xE9g\xE2ts
+      \xE0 l'attaquant. Cap \xE0 4 retours."
+    LoreFlavor: "Le contre-engage. Repr\xE9sailles est pos\xE9 AVANT le combat rapproch\xE9
+      \u2014 c'est un engagement d\xE9lib\xE9r\xE9 du Colossar pour dire \xE0 un
+      Soulrender ou une Ghostra : 'Vas-y, viens.'"
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -721,8 +858,11 @@ MonoBehaviour:
     ClassId: 3
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pose un Pilier (200 HP, infranchissable, occupe 1 case) sur une
+      case vide. Reste jusqu'\xE0 destruction. Le Colossar gagne +1 FD \xE0 la pose.
+      Le Pilier bloque les lignes de vue et de tir des sorts directs."
+    LoreFlavor: "L'outil. \xC0 lui seul, Pilier ne menace personne. En combinaison
+      avec push/pull, il devient un instrument de meurtre."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -740,8 +880,12 @@ MonoBehaviour:
     ClassId: 3
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Cr\xE9e un mur infranchissable de 3 cases (en ligne) pendant 2
+      tours. Avec 1 FD : 5 cases. Le Mur bloque tout : d\xE9placements, ciblages
+      directs, lignes de tir."
+    LoreFlavor: "Le grand s\xE9parateur. Un Mur bien pos\xE9 peut couper la map en
+      deux et forcer l'adversaire \xE0 choisir : il fait demi-tour ou il d\xE9truit
+      le mur."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -759,8 +903,10 @@ MonoBehaviour:
     ClassId: 3
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "La cible perd 2 PM pendant 2 tours ET ne peut pas \xEAtre d\xE9plac\xE9e
+      par effets externes (push/pull/t\xE9l\xE9port) au prochain tour. Pas de d\xE9g\xE2ts."
+    LoreFlavor: "Le gel. Ancrage est l'anti-mobilit\xE9 ultime. Une Ghostra ancr\xE9e
+      ne peut plus se t\xE9l\xE9porter. C'est un sort qui D\xC9SACTIVE des kits entiers."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -778,8 +924,13 @@ MonoBehaviour:
     ClassId: 3
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Force la cible \xE0 tenter d'attaquer le Colossar pendant 1 tour
+      (ses sorts non-ciblant le Colossar co\xFBtent +2 PA). La cible perd aussi 1
+      PM. Si la cible n'est pas adjacente au Colossar \xE0 la fin de son tour : 100
+      d\xE9g\xE2ts auto."
+    LoreFlavor: "L'humiliation. Provocation force l'adversaire \xE0 venir au Colossar
+      \u2014 qui l'attend avec Repr\xE9sailles pos\xE9. Le Colossar dicte les engagements
+      directement par sort."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -797,8 +948,13 @@ MonoBehaviour:
     ClassId: 3
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 90 d\xE9g\xE2ts. Retire un buff/bouclier de la cible (au
+      choix du joueur). Si la cible n'a pas de buff/bouclier : applique TRAUMA (-2
+      PA prochain tour). Si la cible avait Camouflage Ronces, Linceul d'Ombres, Carapace
+      Visqueuse, Sto\xEFcisme, Peau de Fer : le bouclier est enti\xE8rement retir\xE9."
+    LoreFlavor: "Le briseur de mur. Brisure est l'anti-tank, l'anti-tortue. Aucune
+      classe ne peut se reposer derri\xE8re un bouclier face au Colossar \u2014 il
+      les casse explicitement."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -816,8 +972,12 @@ MonoBehaviour:
     ClassId: 3
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Le Colossar gagne un BOUCLIER de 200 HP pour 2 tours. Pendant ces
+      2 tours, il ne peut PAS \xEAtre d\xE9plac\xE9 (push/pull/t\xE9l\xE9port ennemi
+      sans effet). Si le bouclier survit aux 2 tours sans \xEAtre bris\xE9, le Colossar
+      r\xE9cup\xE8re 80 HP."
+    LoreFlavor: "Le rocher. Sto\xEFcisme est le contraire d'un panic-button \u2014
+      c'est une d\xE9claration. Le Colossar plante les pieds."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -835,8 +995,12 @@ MonoBehaviour:
     ClassId: 3
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pendant 2 tours, le Colossar subit -30% de d\xE9g\xE2ts de TOUTES
+      les sources (sauf DoT venin Necram qui ignore les r\xE9ductions). Ne se cumule
+      pas avec le passif Densit\xE9 Inerte au-del\xE0 du cap -50% total."
+    LoreFlavor: "L'armure mobile. Garde Protectrice est le bouclier qui ne casse
+      pas. Il n'a pas de HP \u2014 il a un timer. Le Colossar peut traverser une
+      zone hostile sans se faire d\xE9molir."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -854,8 +1018,10 @@ MonoBehaviour:
     ClassId: 3
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Le Colossar se soigne de 80 HP + 30 HP par attaque qu'il a subie
+      au tour pr\xE9c\xE9dent (max +120 HP, donc cap 200 HP)."
+    LoreFlavor: "Le contre-tank. Ressac Vital r\xE9compense le Colossar qui s'est
+      fait taper. Plus l'adversaire l'agresse, plus il se soigne. Anti-burst implacable."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -873,8 +1039,10 @@ MonoBehaviour:
     ClassId: 3
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pendant 1 tour, toute attaque (m\xEAl\xE9e OU \xE0 distance) subie
+      par le Colossar renvoie 60 d\xE9g\xE2ts \xE0 l'attaquant. Cap \xE0 4 retours."
+    LoreFlavor: "Le miroir. Renvoi du Bouclier est l'anti-Nightseer \u2014 un sort
+      \xE0 distance qui frappe le Colossar lui revient direct."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -892,8 +1060,11 @@ MonoBehaviour:
     ClassId: 3
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Soigne 150 HP sur soi OU sur un alli\xE9 \xE0 3 cases. UNIQUE HEAL
+      CROSS-CLASSE DU JEU. En 1v1 : self-only, agit comme un heal lourd \xE0 3 PA."
+    LoreFlavor: "Le seul vrai support du jeu. Inutile en 1v1 sauf comme heal classique,
+      mais son existence d\xE9finit le r\xF4le du Colossar en team. En 2v2/3v3 c'est
+      un game-changer."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -911,8 +1082,16 @@ MonoBehaviour:
     ClassId: 3
     Category: 4
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "ANNONCE 1 TOUR \xC0 L'AVANCE (le sol craque sous le Colossar \xE0
+      la fin du tour de cast \u2014 l'ennemi le voit). Au tour suivant : toutes les
+      cases adjacentes au Colossar (rayon 2) deviennent IMPRATICABLES pendant 2 tours.
+      Les ennemis dessus prennent 200 d\xE9g\xE2ts imm\xE9diats et sont \xE9ject\xE9s
+      vers la case libre la plus proche. Pendant les 2 tours d'Effondrement, le Colossar
+      gagne +1 PM, ses sorts co\xFBtent -1 PA, et toute attaque qu'il subit est r\xE9duite
+      de 30%. \xC0 la fin de l'Effondrement, FD revient \xE0 0."
+    LoreFlavor: "L'arme tellurique. L'annonce 1 tour \xE0 l'avance cr\xE9e un mindgame
+      brutal : l'adversaire DOIT se repositionner ou prendre 200 d\xE9g\xE2ts. Pas
+      de troisi\xE8me option. Le Colossar dicte la prochaine demi-minute."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 3
@@ -930,8 +1109,11 @@ MonoBehaviour:
     ClassId: 4
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 90 d\xE9g\xE2ts ET applique 2 marques de venin (au lieu
+      de 1). Cap \xE0 4 marques par cible."
+    LoreFlavor: "Le sort de base, mais redoutable. Crachat Acide combine d\xE9g\xE2ts
+      directs et setup en 1 PA-efficace. C'est l'arme \xE0 80% de l'utilisation Necram
+      en early."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -949,8 +1131,12 @@ MonoBehaviour:
     ClassId: 4
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 110 d\xE9g\xE2ts + 22 par marque sur la cible (max +90,
+      donc 200 d\xE9g\xE2ts max). Si la cible meurt : toutes ses marques sont transf\xE9r\xE9es
+      sur l'unit\xE9 ennemie la plus proche."
+    LoreFlavor: "L'embrasement. Morsure Putride est le finisher qui propage. Tuer
+      une cible avec elle ne stoppe pas le DoT \u2014 elle migre. Anti-team, mais
+      aussi outil pour cycler en 1v1."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -968,8 +1154,12 @@ MonoBehaviour:
     ClassId: 4
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 80 d\xE9g\xE2ts imm\xE9diats. Consomme TOUTES les marques
+      sur la cible : chaque marque consomm\xE9e inflige 50 d\xE9g\xE2ts. Avec 4 marques
+      : 280 d\xE9g\xE2ts totaux. Les marques disparaissent."
+    LoreFlavor: "Le d\xE9tonateur. D\xE9tonation est le moment o\xF9 le Necram r\xE9colte.
+      D\xE9cision : 'Maintenant ou plus tard ?' Plus tard = plus de marques = plus
+      de d\xE9g\xE2ts."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -987,8 +1177,12 @@ MonoBehaviour:
     ClassId: 4
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "AoE 1 case (le Necram et ses 8 voisines). Inflige 130 d\xE9g\xE2ts.
+      Le Necram se SOIGNE de 30 HP par marque active sur toutes les cibles touch\xE9es
+      (cap +120 HP)."
+    LoreFlavor: "Le moment o\xF9 le mage devient b\xEAte. La Faux est anti-Soulrender,
+      anti-Ghostra : si tu te rapproches du Necram, il en profite pour se soigner
+      sur ton dos."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1006,8 +1200,12 @@ MonoBehaviour:
     ClassId: 4
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pose une zone toxique 3x3 pendant 2 tours. Toute unit\xE9 dans
+      la zone : 60 d\xE9g\xE2ts imm\xE9diats + 1 marque. Toute unit\xE9 qui ENTRE
+      : 30 d\xE9g\xE2ts + 1 marque. Toute unit\xE9 qui FINIT son tour dans la zone
+      : 1 marque additionnelle."
+    LoreFlavor: "L'air vici\xE9. Brume Toxique ne tue pas \u2014 elle CONDAMNE. Les
+      ennemis voient une zone et savent qu'ils ne peuvent pas y mettre les pieds."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1025,8 +1223,11 @@ MonoBehaviour:
     ClassId: 4
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Applique 2 marques de venin sur la cible (sans d\xE9g\xE2ts directs).
+      Cap \xE0 4 marques par cible."
+    LoreFlavor: "Le baiser de la mort. Inoculation ne fait rien d'imm\xE9diat. L'adversaire
+      qui prend 2 marques sait que les 3 prochains tours vont \xEAtre un compte \xE0
+      rebours. La pression vient du SILENCE."
     ActionPointCost: 1
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1044,8 +1245,11 @@ MonoBehaviour:
     ClassId: 4
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pendant 3 tours, les marques sur la cible infligent +20 d\xE9g\xE2ts
+      par tick. La cible peut recevoir Marque Sacrificielle m\xEAme si elle n'a pas
+      encore de marques (mais sans marques actives, l'effet est neutre)."
+    LoreFlavor: "L'engrais. Marque Sacrificielle force l'adversaire \xE0 se soigner
+      CONSTAMMENT. Un tick \xE0 70 d\xE9g\xE2ts ne pardonne aucun d\xE9lai."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1063,8 +1267,12 @@ MonoBehaviour:
     ClassId: 4
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pendant 2 tours, chaque tick de venin sur les ennemis soigne le
+      Necram de 8 HP. Cap \xE0 4 marques actives qui comptent pour le heal (donc
+      max +32 HP par tour, +64 sur 2 tours)."
+    LoreFlavor: "Le parasite. Symbiose transforme le Necram en machine \xE0 r\xE9gen.
+      Plus il a de marques sur la map, plus il devient incassable. Anti-attrition
+      par excellence."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1082,8 +1290,12 @@ MonoBehaviour:
     ClassId: 4
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Cible une unit\xE9 ENNEMIE marqu\xE9e. Toutes ses marques (cap
+      3, ou 4 avec PT) sont COPI\xC9ES sur les autres unit\xE9s ennemies dans un
+      rayon de 3 cases. En 1v1 : la cible re\xE7oit un boost de tick (+1 marque dupliqu\xE9e
+      sur elle-m\xEAme)."
+    LoreFlavor: "L'\xE9pid\xE9mie. En 2v2/3v3, Contagion est d\xE9vastateur. En 1v1,
+      elle reste utilisable comme un boost de DoT sur la cible."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1101,8 +1313,12 @@ MonoBehaviour:
     ClassId: 4
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Le Necram gagne +2 PM ce tour ET peut traverser les unit\xE9s ennemies
+      au prochain d\xE9placement. Ses marques pos\xE9es par travers\xE9e appliquent
+      1 marque bonus."
+    LoreFlavor: "Le passage du fant\xF4me. Pas Spectral est l'unique vrai outil de
+      mobilit\xE9 du Necram. Il l'utilise pour se positionner dans la Brume ou s'extraire
+      d'une m\xEAl\xE9e."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1120,8 +1336,12 @@ MonoBehaviour:
     ClassId: 4
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pendant 2 tours, toute unit\xE9 ennemie qui finit son tour \xE0
+      2 cases ou moins du Necram re\xE7oit 1 marque automatiquement. Pendant ces
+      2 tours, toute attaque m\xEAl\xE9e subie par le Necram applique 1 marque \xE0
+      l'attaquant."
+    LoreFlavor: "Le linceul. Voile de Pestilence punit l'adjacence. Une Ghostra qui
+      se t\xE9l\xE9porte derri\xE8re le Necram pour un dorsal se retrouve marqu\xE9e."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1139,8 +1359,11 @@ MonoBehaviour:
     ClassId: 4
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Le Necram gagne un BOUCLIER de 110 HP pour 2 tours. Tout attaquant
+      m\xEAl\xE9e qui frappe le bouclier re\xE7oit 1 marque automatiquement."
+    LoreFlavor: "L'\xE9pine pourrie. Carapace Visqueuse n'est pas un mur \u2014 c'est
+      un pi\xE8ge d\xE9fensif. Frapper le Necram en m\xEAl\xE9e = signer son arr\xEAt
+      de mort."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1158,8 +1381,10 @@ MonoBehaviour:
     ClassId: 4
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 60 d\xE9g\xE2ts \xE0 la cible. Le Necram se soigne de 30
+      HP, ou 60 HP si la cible a 3+ marques actives."
+    LoreFlavor: "Le siphon. Drain Vital est le heal qui FAIT mal. Sustain \xE9conomique
+      anti-Soulrender qui presse trop."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1177,8 +1402,11 @@ MonoBehaviour:
     ClassId: 4
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: 'Le Necram se soigne de 70 HP + 15 HP par marque ennemis dans rayon
+      4 (max +90 HP). Avec 1 PT : +30 HP additionnels.'
+    LoreFlavor: "La r\xE9colte. R\xE9g\xE9n\xE9ration N\xE9crotique scale avec le
+      travail accompli. Plus de marques = plus de heal. C'est le heal qui dit : 'J'ai
+      bien sem\xE9.'"
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1196,8 +1424,12 @@ MonoBehaviour:
     ClassId: 4
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Utilisable uniquement \xE0 <30% HP. Le Necram se soigne de 220
+      HP ET applique 1 marque \xE0 toutes les unit\xE9s ennemies dans rayon 4. UTILISABLE
+      1 FOIS PAR MATCH."
+    LoreFlavor: "L'explosion fongique. Cocon Putride n'est pas qu'un panic-heal \u2014
+      c'est une aspersion. Le Necram \xE0 l'agonie devient soudain le Necram avec
+      6+ marques sur la map."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1215,8 +1447,14 @@ MonoBehaviour:
     ClassId: 4
     Category: 4
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Cible une unit\xE9 ennemie. TOUTES les marques sur la cible d\xE9clenchent
+      leur tick instantan\xE9ment X3 (multiplicateur Floraison appliqu\xE9). Une
+      cible avec 4 marques de venin (50 dmg/tick \xD7 4 \xD7 3) prend 600 d\xE9g\xE2ts
+      d'un coup. Les marques sont consomm\xE9es. Si la cible meurt sur ce sort :
+      les marques ne sont PAS consomm\xE9es et restent disponibles pour Contagion
+      ou D\xE9tonation Virulente sur d'autres cibles."
+    LoreFlavor: "L'apoptose. Virus Fatal est l'aboutissement absolu de la strat\xE9gie
+      Necram : 4-5 tours de setup transform\xE9s en 1 tour de mort lente acc\xE9l\xE9r\xE9e."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 6
@@ -1234,8 +1472,11 @@ MonoBehaviour:
     ClassId: 5
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 170 d\xE9g\xE2ts. Si dorsal : +50 d\xE9g\xE2ts (Angle 2)
+      ou +80 (Angle 3) du passif. Si la cible a PLAIE OUVERTE : +60 d\xE9g\xE2ts."
+    LoreFlavor: "La frappe la plus banale du jeu \u2014 sauf que personne ne sait
+      d'o\xF9 elle vient. La banalit\xE9 du sort est sa force : il sort de partout,
+      depuis n'importe quel leurre."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1253,8 +1494,11 @@ MonoBehaviour:
     ClassId: 5
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 130 d\xE9g\xE2ts + 60 si la cible a PLAIE OUVERTE. Si dorsal
+      : +bonus passif. La Plaie Ouverte n'est PAS consomm\xE9e."
+    LoreFlavor: "Le coup qui ronge. Lame Vorace empile sur une plaie ouverte sans
+      la fermer. Ghostra qui a pos\xE9 une Plaie Ouverte au tour pr\xE9c\xE9dent
+      peut la rentabiliser pendant 2 tours."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1272,8 +1516,14 @@ MonoBehaviour:
     ClassId: 5
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pose un Leurre sur une case vide \xE0 4 cases. Le Leurre est visuellement
+      identique \xE0 la Ghostra. Dure 4 rounds (amendement 16 mai 2026) ou jusqu'\xE0
+      interaction. Si le Leurre survit la dur\xE9e compl\xE8te, la Ghostra regagne
+      80 HP. Si le Leurre est d\xE9truit par un sort adverse, la Ghostra regagne
+      40 HP."
+    LoreFlavor: "Le clone qui paye les frais. R\xE9plique Fant\xF4me FORCE l'adversaire
+      \xE0 choisir : 'je frappe ce qui ressemble \xE0 la Ghostra ?' Toute lecture
+      co\xFBte. La Ghostra gagne quoi qu'il arrive."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1291,8 +1541,12 @@ MonoBehaviour:
     ClassId: 5
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "T\xE9l\xE9porte la Ghostra jusqu'\xE0 5 cases. Si une case adjacente
+      \xE0 l'arriv\xE9e contient une cible ennemie : la cible PIVOTE pour faire face
+      \xE0 la Ghostra. Co\xFBt optionnel : laisser un leurre sur la case quitt\xE9e
+      (compte dans le cap 3)."
+    LoreFlavor: "Le saut de l'absent. Pas dans l'Ombre n'est pas seulement une mobilit\xE9
+      \u2014 c'est un G\xC9N\xC9RATEUR de leurre."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1310,8 +1564,15 @@ MonoBehaviour:
     ClassId: 5
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 80 d\xE9g\xE2ts (amendement 16 mai 2026) + bonus dorsal
+      Angle Mort si applicable. Force la cible ennemie \xE0 faire DEMI-TOUR (180\xB0).
+      Sa direction de regard est invers\xE9e instantan\xE9ment. PAS DE VERROU : la
+      cible se r\xE9oriente normalement \xE0 son prochain tour (walk / cast / push
+      pivots standard). Si elle ne trigger aucun pivot, elle reste dos \u2192 dorsal
+      potentiel sur Lame Spec/Saigne-\xC2me suivant."
+    LoreFlavor: "L'ouverture chirurgicale. Volte-Face est d\xE9sormais un sort OFFENSIF
+      de setup dorsal \u2014 il ouvre la cible pour le combo ET tape pour 80. Il
+      transforme une cible en lapin frapp\xE9 dans le dos."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1329,8 +1590,10 @@ MonoBehaviour:
     ClassId: 5
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 200 d\xE9g\xE2ts + 70 si la cible a PLAIE OUVERTE (consomme
+      la plaie). Si la cible meurt : la Ghostra regagne 60 HP."
+    LoreFlavor: "L'aboutissement. Saigne-\xC2me consomme la plaie pour un payoff
+      massif. Le sort de fin du combo Plaie Ouverte \u2192 Lame Vorace \u2192 Saigne-\xC2me."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1348,8 +1611,12 @@ MonoBehaviour:
     ClassId: 5
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "La Ghostra se t\xE9l\xE9porte \xE0 1 case de la cible (c\xF4t\xE9
+      libre). Inflige 200 d\xE9g\xE2ts. Si dorsal : +bonus passif. Si la cible avait
+      \xE9t\xE9 VOLTE-FACE ou que sa direction a \xE9t\xE9 modifi\xE9e ce tour :
+      APPLIQUE PLAIE OUVERTE (40/tour \xD7 2t)."
+    LoreFlavor: "Le finisseur. Frappe Fant\xF4me arrive de nulle part. Combin\xE9e
+      \xE0 Volte-Face, c'est un combo qui peut shred 350+ HP en un tour."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1367,8 +1634,13 @@ MonoBehaviour:
     ClassId: 5
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 40 d\xE9g\xE2ts (amendement 16 mai 2026, nerf 80\u219240)
+      + bonus dorsal Angle Mort si applicable. Pivot 90\xB0 HORAIRE iso de la cible
+      (NE\u2192SE\u2192SW\u2192NW\u2192NE). Flag LastFacingForcedOnTurn pos\xE9 pour
+      combo Dague\u2192Frappe Fant\xF4me = PlaieOuverte. Cap 2\xD7/tour."
+    LoreFlavor: "Le caillou dans la vitre. Dague Lanc\xE9e est l'outil le plus subtile
+      : 1 PA, 40 d\xE9g\xE2ts, \xE7a para\xEEt minuscule. Mais elle MANIPULE le regard
+      de la cible."
     ActionPointCost: 1
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1386,8 +1658,12 @@ MonoBehaviour:
     ClassId: 5
     Category: 2
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pendant 2 tours, tous les sorts de la Ghostra sur la cible gagnent
+      +20 d\xE9g\xE2ts. Si la cible est touch\xE9e en dorsal pendant ces 2 tours
+      : applique automatiquement PLAIE OUVERTE."
+    LoreFlavor: "Le sceau. Marque de l'Ombre pr\xE9-charge une cible. La Ghostra
+      peut ensuite alterner R\xE9plique \u2192 permutation \u2192 Lame Spectrale
+      dorsal et l'effet plaie est garanti. Anti-tank par contournement."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1405,8 +1681,13 @@ MonoBehaviour:
     ClassId: 5
     Category: 1
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "AoE 8 cases adjacentes. Inflige 180 d\xE9g\xE2ts \xE0 toutes les
+      cibles. Toute cible touch\xE9e subit le bonus dorsal du passif si dorsale OU
+      si un leurre est adjacent \xE0 elle (consommation optionnelle : -1 leurre,
+      applique bonus dorsal automatique)."
+    LoreFlavor: "L'apocalypse en miniature. Danse des Lames est le moment o\xF9 la
+      Ghostra cesse d'\xEAtre un assassin et devient un cyclone. Tout converge en
+      une seconde."
     ActionPointCost: 5
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1424,8 +1705,10 @@ MonoBehaviour:
     ClassId: 5
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "La Ghostra gagne un BOUCLIER de 130 HP pendant 2 tours. Toute attaque
+      m\xEAl\xE9e subie pendant la dur\xE9e renvoie 40 d\xE9g\xE2ts \xE0 l'attaquant."
+    LoreFlavor: Le suaire. Linceul d'Ombres est le bouclier qui mord. Anti-Soulrender
+      qui charge.
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1443,8 +1726,12 @@ MonoBehaviour:
     ClassId: 5
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Retire INSTANTAN\xC9MENT tous les DoT actifs sur la Ghostra (saignements,
+      marques venin, plaies). Pendant 1 tour, la Ghostra est immunis\xE9e \xE0 toute
+      nouvelle application de DoT. UTILISABLE 1x PAR MATCH."
+    LoreFlavor: Le seul anti-DoT du kit Ghostra. Sans lui, la Ghostra se fait fondre
+      par Soulrender et Necram. Avec, elle peut plonger dans le brouillard et ressortir
+      propre.
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1462,8 +1749,14 @@ MonoBehaviour:
     ClassId: 5
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Pose un Leurre PROTECTEUR (200 HP, redirige 30% des d\xE9g\xE2ts
+      subis par la Ghostra pendant 3 rounds) (amendement 16 mai 2026 : 4 PA / 30%
+      / 3 rounds). Si le Leurre est d\xE9truit, la Ghostra regagne 80 HP. Pas de
+      stack si plusieurs Protective vivants (un seul absorbe par hit). Compte dans
+      le cap 3 leurres."
+    LoreFlavor: "Le clone-bouclier. R\xE9plique Protectrice n'est pas un leurre offensif
+      \u2014 c'est un sustain cach\xE9. Elle prolonge la vie de la Ghostra de 1-2
+      tours."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1481,8 +1774,12 @@ MonoBehaviour:
     ClassId: 5
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Utilisable uniquement \xE0 <30% HP. La Ghostra se soigne de 200
+      HP, se t\xE9l\xE9porte jusqu'\xE0 5 cases, ET pose un leurre sur la case quitt\xE9e.
+      UTILISABLE 1 FOIS PAR MATCH."
+    LoreFlavor: "L'\xE9vasion finale. Dernier Pas n'est pas qu'un heal \u2014 c'est
+      un tour offert. La Ghostra \xE0 200 HP se retrouve \xE0 50% HP, \xE0 5 cases
+      de l'engagement, avec un leurre fra\xEEchement pos\xE9."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1500,8 +1797,12 @@ MonoBehaviour:
     ClassId: 5
     Category: 3
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "La Ghostra gagne +2 PM ce tour ET son prochain d\xE9placement ignore
+      les unit\xE9s (peut traverser ennemis et leurres). Si elle traverse un ennemi,
+      elle d\xE9clenche un sort dorsal automatique sur lui (frappe gratuite \xE0
+      60 d\xE9g\xE2ts)."
+    LoreFlavor: "Le glissement. Pas de l'Au-Del\xE0 transforme la Ghostra en fant\xF4me
+      physique. Anti-Empoignade Soulrender, anti-Mur Colossar."
     ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1519,8 +1820,14 @@ MonoBehaviour:
     ClassId: 5
     Category: 4
     IconSprite: {fileID: 0}
-    Description: 
-    LoreFlavor: 
+    Description: "Inflige 350 d\xE9g\xE2ts SI la cible est dorsale (regarde ailleurs).
+      Applique PLAIE OUVERTE (50 d\xE9g\xE2ts/tour \xD7 3 tours). Si la cible meurt
+      sur ce sort, la Ghostra regagne 100 HP ET 2 leurres r\xE9apparaissent imm\xE9diatement
+      (2 pr\xEAts pour le cycle suivant). Si la cible n'est PAS dorsale au moment
+      du cast, le sort RATE et les 3 leurres sont quand m\xEAme consomm\xE9s."
+    LoreFlavor: "Le coup le plus risqu\xE9 du jeu. Ex\xE9cution Spectrale demande
+      une LECTURE PARFAITE \u2014 la cible doit \xEAtre dorsale. Rat\xE9e, la Ghostra
+      perd tout son setup. R\xE9ussie, elle finit le match en 1 tour."
     ActionPointCost: 3
     MovementPointCost: 0
     ClassResourceCost: 0

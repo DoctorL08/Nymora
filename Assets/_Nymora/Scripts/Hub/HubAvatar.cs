@@ -75,6 +75,16 @@ namespace Nymora.Hub
         // le bon sprite). _16 suffit pour "Soulrender"/"Nightseer"/"Colossar"/"Necram"/"Ghostra".
         [Networked, OnChangedRender(nameof(OnClassIdChanged))] public NetworkString<_16> NetClassId { get; set; }
 
+        // 5.3.g.bis hotfix multi (17 mai nuit) — Facing sync direct State Auth -> remotes.
+        // Sans ce field, le remote calculait son facing depuis le delta NetGridX/Y, mais
+        // NetGridX/Y n'est pousse qu'au END-of-step (cf HubMovementController.Update ligne 56),
+        // donc le pivot remote arrivait ~1 tile (~250ms a 4 t/s) APRES le debut du walk.
+        // Maintenant la State Auth pousse NetFacing des que _currentFacing change (dans
+        // TrackGridPositionForFacing, declenche par SetWorldPositionInterpolated des le 1er
+        // frame du step) -> OnNetFacingChanged cote remote applique le pivot instantanement.
+        // byte == cast direct de HubFacing (4 valeurs, SE=0/NE=1/SW=2/NW=3).
+        [Networked, OnChangedRender(nameof(OnNetFacingChanged))] public byte NetFacing { get; set; }
+
         private SpriteRenderer _sr;
         // Transform du child "Visual" (cree par RestructureHubAvatarPrefabTool). Recoit le
         // Scale + Y offset per-class via ApplyClassVisual. Fallback sur transform root si
@@ -137,7 +147,10 @@ namespace Nymora.Hub
                 NetWorldPos = transform.position;
                 // 5.3.g.bis — push la classe choisie via PlayerPrefs (sync vers remotes pour leur sprite)
                 NetClassId = SelectedClassPreferences.Get();
-                Debug.Log($"[HubAvatar] Local spawned at ({_spawnGridX},{_spawnGridY}) sub='{NetSub}' class='{NetClassId}'");
+                // 5.3.g.bis hotfix multi — init NetFacing explicite (SE=0 par defaut, evite
+                // d'avoir un remote qui lit 0 par defaut sans qu'on ait jamais set la valeur).
+                NetFacing = (byte)_currentFacing;
+                Debug.Log($"[HubAvatar] Local spawned at ({_spawnGridX},{_spawnGridY}) sub='{NetSub}' class='{NetClassId}' facing='{_currentFacing}'");
             }
             else
             {
@@ -157,7 +170,11 @@ namespace Nymora.Hub
                 _currentNetWorldPos = transform.position;
                 _lastSnapshotTime = Time.time;
                 if (_sr != null) _sr.sortingOrder = IsoProjection.SortingOrderFor(_gridX, _gridY, _baseSortingOrder);
-                Debug.Log($"[HubAvatar] Remote avatar spawned (player {Object.InputAuthority}) at ({NetGridX},{NetGridY}) sub='{NetSub}' class='{NetClassId}'");
+                // 5.3.g.bis hotfix multi — restituer le facing courant de la State Auth au
+                // moment du spawn remote (un joueur qui rejoint en cours doit voir le bon
+                // facing initial des autres). ApplyClassVisual plus bas applique ApplyFacingVisual.
+                _currentFacing = (HubFacing)NetFacing;
+                Debug.Log($"[HubAvatar] Remote avatar spawned (player {Object.InputAuthority}) at ({NetGridX},{NetGridY}) sub='{NetSub}' class='{NetClassId}' facing='{_currentFacing}'");
             }
 
             // Init walk-detection : marque la position de spawn comme "deja vue" et fait
@@ -263,13 +280,43 @@ namespace Nymora.Hub
         }
 
         /// <summary>
-        /// 5.3.g.bis — Compute facing depuis le delta grid (gx, gy). Iso 4 directions,
+        /// 5.3.g.bis — Compute facing depuis le delta grid (dx, dy). Iso 4 directions,
         /// convention IDENTIQUE a Quantum.FacingHelpers.FacingFromGridDelta (combat) :
-        /// projection world (dxWorld = gx-gy, dyWorld = gx+gy) -> classement quadrant.
+        /// projection world (dxWorld = dx-dy, dyWorld = dx+dy) -> classement quadrant.
         ///   (+1, 0) -> NE   (-1, 0) -> SW   (0, +1) -> NW   (0, -1) -> SE.
         /// Le pathfinder hub est 4-connexite donc pas de diagonales en pratique, mais
         /// la formule gere les diagonales proprement aussi (axe dominant via signe).
         /// </summary>
+        private static HubFacing ComputeFacingFromDelta(int dx, int dy)
+        {
+            int dxWorld = dx - dy;
+            int dyWorld = dx + dy;
+            bool east = dxWorld >= 0;
+            bool north = dyWorld >= 0;
+            if (east && north) return HubFacing.NE;
+            if (east && !north) return HubFacing.SE;
+            if (!east && north) return HubFacing.NW;
+            return HubFacing.SW;
+        }
+
+        /// <summary>
+        /// Apply un nouveau facing : update _currentFacing, replay anim, et push NetFacing
+        /// si State Authority pour sync immediat les remotes (cf [[project-hub-multi-instance-test-pending]]).
+        /// </summary>
+        private void ApplyAndPushFacing(HubFacing newFacing)
+        {
+            if (newFacing == _currentFacing) return;
+            _currentFacing = newFacing;
+            ApplyFacingVisual();
+            // 5.3.g.bis hotfix multi — push facing reseau cote State Auth des le moment du
+            // flip (1er frame du step ou avant via PrimeFacingForNextStep). Le remote recoit
+            // OnNetFacingChanged et pivote instant.
+            if (Object != null && Object.HasStateAuthority)
+            {
+                NetFacing = (byte)newFacing;
+            }
+        }
+
         private void TrackGridPositionForFacing()
         {
             if (_prevGridXForFacing == int.MinValue)
@@ -284,20 +331,36 @@ namespace Nymora.Hub
             _prevGridXForFacing = _gridX;
             _prevGridYForFacing = _gridY;
 
-            int dxWorld = dx - dy;
-            int dyWorld = dx + dy;
-            bool east = dxWorld >= 0;
-            bool north = dyWorld >= 0;
-            HubFacing newFacing;
-            if (east && north) newFacing = HubFacing.NE;
-            else if (east && !north) newFacing = HubFacing.SE;
-            else if (!east && north) newFacing = HubFacing.NW;
-            else newFacing = HubFacing.SW;
-            if (newFacing != _currentFacing)
-            {
-                _currentFacing = newFacing;
-                ApplyFacingVisual();
-            }
+            ApplyAndPushFacing(ComputeFacingFromDelta(dx, dy));
+        }
+
+        /// <summary>
+        /// 5.3.g.bis polish multi (17 mai nuit suite) — Push le facing AU MOMENT DU CLIC,
+        /// avant meme que HubMovementController.BeginNextStep se declenche (frame suivante).
+        /// Appele par HubInputController apres avoir calcule le path. Gain ~16-50ms cote
+        /// remote car NetFacing peut maintenant rattraper le prochain tick Fusion meme s'il
+        /// vient juste de partir, au lieu d'attendre le 1er frame du step.
+        /// </summary>
+        public void PrimeFacingForNextStep(int nextGx, int nextGy)
+        {
+            int dx = nextGx - _gridX;
+            int dy = nextGy - _gridY;
+            if (dx == 0 && dy == 0) return;
+            ApplyAndPushFacing(ComputeFacingFromDelta(dx, dy));
+        }
+
+        /// <summary>
+        /// 5.3.g.bis hotfix multi — Callback OnChangedRender NetFacing. Set par State Auth
+        /// dans TrackGridPositionForFacing au moment du flip. Cote remote, on applique direct
+        /// le facing recu (skip si HasStateAuthority puisque deja applique localement).
+        /// </summary>
+        private void OnNetFacingChanged()
+        {
+            if (Object != null && Object.HasStateAuthority) return;
+            var f = (HubFacing)NetFacing;
+            if (f == _currentFacing) return;
+            _currentFacing = f;
+            ApplyFacingVisual();
         }
 
         /// <summary>
@@ -432,7 +495,13 @@ namespace Nymora.Hub
             _gridX = NetGridX;
             _gridY = NetGridY;
             if (_sr != null) _sr.sortingOrder = IsoProjection.SortingOrderFor(_gridX, _gridY, _baseSortingOrder);
-            TrackGridPositionForFacing();
+            // 5.3.g.bis hotfix multi — pas de TrackGridPositionForFacing cote remote :
+            // NetGridX/Y push au end-of-step donnerait un facing en retard d'~1 tile.
+            // Le facing remote vient de OnNetFacingChanged (push State Auth des le 1er frame).
+            // On garde quand meme _prev*ForFacing a jour pour eviter un fake-delta si jamais
+            // le tracker etait reactive plus tard (defensif).
+            _prevGridXForFacing = _gridX;
+            _prevGridYForFacing = _gridY;
         }
 
         public void SetGridPosition(int gx, int gy)

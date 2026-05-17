@@ -66,6 +66,12 @@ namespace Nymora.Hub
             }
 
             if (_logClicks) Debug.Log($"[HubInput] Path {localAvatar.GridX},{localAvatar.GridY} -> {gx},{gy} ({path.Count} steps)");
+            // 5.3.g.bis polish multi (17 mai nuit) — push facing reseau IMMEDIATEMENT au clic,
+            // avant que BeginNextStep ne se declenche frame suivante. Gain visible cote remote :
+            // NetFacing peut rattraper le prochain tick Fusion meme s'il part juste apres
+            // (sinon on perdait 1 frame + potentiellement 33ms d'attente du tick suivant).
+            var firstStep = path[0];
+            localAvatar.PrimeFacingForNextStep(firstStep.gx, firstStep.gy);
             movement.Follow(path);
         }
 
