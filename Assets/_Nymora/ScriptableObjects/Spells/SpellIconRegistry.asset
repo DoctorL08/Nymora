@@ -79,5 +79,11 @@ MonoBehaviour:
     Icon: {fileID: 21300000, guid: 75447d6a77840eb49a064e02fb2974d8, type: 3}
   _passifSoulrenderIcon: {fileID: 21300000, guid: 7eed818221811164da380957901fb2b0, type: 3}
   _passifNightseerIcon: {fileID: 21300000, guid: 78b6a6f1bb567b74cbe1bf104d4bff05, type: 3}
+  _passifColossarIcon: {fileID: 21300000, guid: abc2a6a311ccbf0449b3ecd320e32078, type: 3}
+  _passifNecramIcon: {fileID: 21300000, guid: 39ce341e88860dd4d9f3192447caa5a4, type: 3}
+  _passifGhostraIcon: {fileID: 21300000, guid: 157dc72e9556aa747b9c63577ebc768f, type: 3}
   _avatarSoulrenderIcon: {fileID: 21300000, guid: 3f95fbb52494a3f4d93d0b30fd208db0, type: 3}
   _avatarNightseerIcon: {fileID: 21300000, guid: 2dbbd3972343fde4b81be760fc498e48, type: 3}
+  _avatarColossarIcon: {fileID: 21300000, guid: 9c27e5e111293fe4d9874f2b0d9958b0, type: 3}
+  _avatarNecramIcon: {fileID: 21300000, guid: 965ef7b152f20fc418f0d3c0d54187e0, type: 3}
+  _avatarGhostraIcon: {fileID: 21300000, guid: ce9eb058347645146ae14aef4c40a443, type: 3}

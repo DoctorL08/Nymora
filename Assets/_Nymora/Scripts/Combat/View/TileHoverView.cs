@@ -1,5 +1,6 @@
 using Nymora.Combat.Grid;
 using Nymora.Combat.View.Obstacles;
+using Nymora.Combat.View.HUD;
 using Quantum;
 using UnityEngine;
 
@@ -35,6 +36,10 @@ namespace Nymora.Combat.View
         [Tooltip("Activer l'affichage du HP de l'obstacle sous la souris.")]
         [SerializeField] private bool _enableObstacleHpReveal = true;
 
+        [Tooltip("POLISH-5d (17 mai) : highlight le combatant sous la souris + tooltip HP. " +
+                 "Requiert un CombatantTooltipView dans la scene (auto-singleton).")]
+        [SerializeField] private bool _enableCombatantHover = true;
+
         private Vector3 _centerOffset;
         private bool _gridReady;
 
@@ -43,6 +48,7 @@ namespace Nymora.Combat.View
         private int _prevHoverY = int.MinValue;
         private TileView _prevTile;
         private ObstacleView _prevObstacle;
+        private CombatantView _prevCombatant;
 
         private void Awake()
         {
@@ -100,12 +106,24 @@ namespace Nymora.Combat.View
                 _gridSettings.TileWorldHeight,
                 _centerOffset);
 
-            // Hors grille : restore et exit.
-            const int gridWidth = 15;
-            const int gridHeight = 17;
+            // POLISH-5e (17 mai) : on consulte GridConstants au lieu de hardcoder 15/17.
+            // Permet de resize la grille sans forker les bounds View.
+            int gridWidth = Quantum.GridConstants.Width;
+            int gridHeight = Quantum.GridConstants.Height;
             bool outOfGrid = gx < 0 || gx >= gridWidth || gy < 0 || gy >= gridHeight;
 
-            // Pas de changement de cellule : rien a faire.
+            // POLISH-5d (17 mai) — detection combatant sprite-based (independant de la
+            // case logique). Le sprite combatant peut depasser sa tile en hauteur (sprite
+            // 1.16x avec child Visual Y -0.22). Si la souris est au-dessus du sprite mais
+            // pas sur sa case grille, on detecte quand meme. Le hover combatant est calcule
+            // chaque frame (peu de combatants en jeu, O(N) negligeable) ; tile/obstacle
+            // restent gerees par changement de case (cf early-return ci-dessous).
+            CombatantView hoveredCombatant = _enableCombatantHover
+                ? FindCombatantViewByMouse(mouseWorld)
+                : null;
+            UpdateCombatantHover(hoveredCombatant);
+
+            // Pas de changement de cellule (tile/obstacle) : rien a faire pour ces 2.
             if (!outOfGrid && gx == _prevHoverX && gy == _prevHoverY) return;
             if (outOfGrid && _prevHoverX == int.MinValue) return;
 
@@ -120,7 +138,6 @@ namespace Nymora.Combat.View
                 _prevObstacle.SetHpVisible(false);
                 _prevObstacle = null;
             }
-
             if (outOfGrid)
             {
                 _prevHoverX = int.MinValue;
@@ -131,7 +148,7 @@ namespace Nymora.Combat.View
             _prevHoverX = gx;
             _prevHoverY = gy;
 
-            // Apply nouveau hover.
+            // Apply nouveau hover tile/obstacle.
             if (_enableTileGlow && _gridRenderer != null)
             {
                 _prevTile = _gridRenderer.GetTileView(gx, gy);
@@ -142,6 +159,85 @@ namespace Nymora.Combat.View
                 _prevObstacle = _obstacleRenderer.GetObstacleViewAt(gx, gy);
                 if (_prevObstacle != null) _prevObstacle.SetHpVisible(true);
             }
+        }
+
+        /// <summary>
+        /// POLISH-5d — Applique/restore le hover combatant detecte par sprite bounds.
+        /// Diff par rapport au precedent _prevCombatant : si change, clear l'ancien et
+        /// applique le nouveau (+ tooltip HP).
+        /// </summary>
+        private void UpdateCombatantHover(CombatantView next)
+        {
+            if (next == _prevCombatant) return;
+
+            // Restore l'ancien.
+            if (_prevCombatant != null)
+            {
+                _prevCombatant.ClearHighlight();
+                if (CombatantTooltipView.Instance != null) CombatantTooltipView.Instance.Hide();
+            }
+            _prevCombatant = next;
+
+            // Apply le nouveau.
+            if (next != null)
+            {
+                next.ApplyHighlight();
+                if (CombatantTooltipView.Instance != null && TryGetCombatantHp(next.Entity, out int hp, out int maxHp))
+                {
+                    CombatantTooltipView.Instance.Show(hp, maxHp);
+                }
+            }
+        }
+
+        /// <summary>
+        /// POLISH-5d — Detection sprite-based : iterate tous les CombatantView, check si la
+        /// position monde de la souris est dans les bounds du SpriteRenderer du combatant.
+        /// Plus precis que la detection grille quand le sprite deborde de sa tile (sprite
+        /// scale 1.16x + child Visual Y -0.22 chez plusieurs classes). Si plusieurs sprites
+        /// se chevauchent visuellement, le plus haut sortingOrder gagne.
+        /// </summary>
+        private static CombatantView FindCombatantViewByMouse(Vector3 mouseWorld)
+        {
+            var views = Object.FindObjectsByType<CombatantView>(FindObjectsSortMode.None);
+            CombatantView best = null;
+            int bestSortingOrder = int.MinValue;
+            for (int i = 0; i < views.Length; i++)
+            {
+                var v = views[i];
+                if (v == null || !v.isActiveAndEnabled) continue;
+                var sr = v.GetComponentInChildren<SpriteRenderer>();
+                if (sr == null || !sr.enabled || sr.sprite == null) continue;
+                Bounds b = sr.bounds;
+                // Aplatit le check sur (x, y) — z ignore car notre monde combat est 2D.
+                if (mouseWorld.x < b.min.x || mouseWorld.x > b.max.x) continue;
+                if (mouseWorld.y < b.min.y || mouseWorld.y > b.max.y) continue;
+                if (sr.sortingOrder > bestSortingOrder)
+                {
+                    bestSortingOrder = sr.sortingOrder;
+                    best = v;
+                }
+            }
+            return best;
+        }
+
+        /// <summary>
+        /// Query le frame Quantum verifie pour recuperer HP/MaxHP du combatant. Retourne false
+        /// si le runner n'est pas pret, si l'entity n'existe pas ou si le component Combatant
+        /// n'est pas trouve.
+        /// </summary>
+        private static bool TryGetCombatantHp(EntityRef entity, out int hp, out int maxHp)
+        {
+            hp = 0;
+            maxHp = 0;
+            var runner = QuantumRunner.Default;
+            if (runner == null || runner.Game == null) return false;
+            var frame = runner.Game.Frames.Verified;
+            if (!frame.Exists(entity)) return false;
+            if (!frame.Has<Combatant>(entity)) return false;
+            var combatant = frame.Get<Combatant>(entity);
+            hp = combatant.HP;
+            maxHp = combatant.MaxHP;
+            return true;
         }
     }
 }

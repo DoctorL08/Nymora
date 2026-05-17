@@ -28,13 +28,14 @@ enum ObstacleKind : Byte
                   //   peut sortir en cassant 1-2 Failles avec ses sorts AoE.
 }
 
-// Slot par-case dans le singleton. 8 bytes (EntityRef) * 255 tiles = ~2 KB, OK.
+// Slot par-case dans le singleton. 8 bytes (EntityRef) * 100 tiles = ~800 B, OK.
+// POLISH-5e (17 mai) : 255 -> 100 (grille 10x10).
 struct ObstacleTile {
     EntityRef Obstacle;
 }
 
 singleton component ObstacleSingleton {
-    array<ObstacleTile>[255] Tiles;
+    array<ObstacleTile>[100] Tiles;
 }
 
 // Component porte par chaque entity Obstacle.

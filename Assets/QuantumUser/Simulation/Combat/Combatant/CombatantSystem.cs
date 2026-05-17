@@ -9,11 +9,15 @@ namespace Quantum
     /// </summary>
     public unsafe class CombatantSystem : SystemSignalsOnly
     {
-        // Spawn par defaut en 2.2 : 2 classes Phase 2 face a face sur la ligne centrale.
-        private const int P1SpawnX = 3;
-        private const int P1SpawnY = 8;
-        private const int P2SpawnX = 11;
-        private const int P2SpawnY = 8;
+        // POLISH-5e (17 mai) : grille 10x10, spawn sur la diagonale horizontale mediane du
+        // losange iso (gx+gy=9). P0 a gauche-bas visuel = (2, 7), P1 a droite-haut visuel =
+        // (7, 2). Distance Manhattan 10, distance world horizontal ~5 unites (face-a-face
+        // pile dans l'arene). Cale sur les "angles gauche/droit" iso designe par Lorenzo
+        // sur la map Map_Combat_1.
+        private const int P1SpawnX = 2;
+        private const int P1SpawnY = 7;
+        private const int P2SpawnX = 7;
+        private const int P2SpawnY = 2;
 
         public override void OnInit(Frame f)
         {
@@ -68,12 +72,11 @@ namespace Quantum
                 LastDagueLanceeOnTurn = -1000,    // 3.7.b.iv : Dague Lancee jouable au spawn (cap 2x/tour).
                 DagueLanceeCountThisTurn = 0,     // 3.7.b.iv : 0 cast au spawn.
                 LastExecutionSpectraleUsedOnTurn = -1000, // 3.6 : signature Ghostra jouable au spawn (reserve pour 3.7.d).
-                // 3.7.a.i.0 / 3.7.b.iii hotfix : facing initial face-a-face Bible-correct geometrique iso.
-                //   P0 spawn (3,8) regarde NE (vers P1en 11,8 — world delta +x +y = NE).
-                //   P1 spawn (11,8) regarde SW (vers P0 en 3,8 — world delta -x -y = SW).
-                //   Initialement P1 etait NW (erreur), masquee par FacingTowardEnemy au spawn cote View.
-                //   Maintenant que Quantum est source-of-truth (3.7.b.iii), correction obligatoire.
-                Facing = (playerIndex == 0) ? IsoFacing.NE : IsoFacing.SW,
+                // POLISH-5e (17 mai) : nouveau facing post-spawn-diagonal.
+                //   P0 spawn (2,7) regarde vers P1 (7,2) : world delta = ((7-2)*0.5, (2-7)*0.25)
+                //     = (+2.5, -1.25) -> Sud-Est = IsoFacing.SE.
+                //   P1 spawn (7,2) regarde vers P0 (2,7) : world delta = (-2.5, +1.25) -> Nord-Ouest = NW.
+                Facing = (playerIndex == 0) ? IsoFacing.SE : IsoFacing.NW,
             };
 
             var entity = f.Create();

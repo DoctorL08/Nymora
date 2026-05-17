@@ -4,12 +4,15 @@ namespace Quantum
 
     // Constantes structurelles de la grille de combat (Bible V7.1).
     // Volontairement hardcodees ici car elles fixent la taille du fixed array
-    // dans Grid.qtn (array<Tile>[255]) — une modification implique regeneration
-    // du DSL Quantum. Ce n'est PAS de la donnee de gameplay tunable.
+    // dans Grid.qtn / Fog.qtn / Obstacle.qtn (array<...>[Count]) — toute modification
+    // implique regeneration du DSL Quantum + bump CombatRulesVersion.
+    //
+    // POLISH-5e (17 mai) : 15x17=255 -> 10x10=100 pour caler l'arene losange de la map
+    // background Map_Combat_1. Spawn positions ajustees dans CombatantSystem.
     public static class GridConstants
     {
-        public const int Width = 15;
-        public const int Height = 17;
+        public const int Width = 10;
+        public const int Height = 10;
         public const int Count = Width * Height;
     }
 

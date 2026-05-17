@@ -135,6 +135,27 @@ namespace Nymora.Combat.View
             SetStageAndFacing(0, IsoFacing.SE);
         }
 
+        // ======================================================================
+        // POLISH-5d (17 mai) — Hover highlight (tint sprite). Drive par TileHoverView
+        // quand la souris passe sur la case du combatant.
+        // ======================================================================
+        private static readonly Color HighlightTint = new Color(1.25f, 1.25f, 0.95f, 1f); // jaune doux > 1 pour glow
+
+        public void ApplyHighlight()
+        {
+            if (_sprite == null) return;
+            _sprite.color = HighlightTint;
+        }
+
+        public void ClearHighlight()
+        {
+            if (_sprite == null) return;
+            // Restore couleur normale (blanc plein). Si une coroutine teleport modifie alpha,
+            // ce reset peut entrer en conflit — mais le hover ne s'applique qu'a un combatant
+            // immobile (la grille reste statique pendant un hover). Cas tres rare en pratique.
+            _sprite.color = Color.white;
+        }
+
         /// <summary>
         /// 2.16.c.vi — Maj position + path cardinal cell-by-cell.
         ///

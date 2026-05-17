@@ -155,10 +155,17 @@ namespace Nymora.Hub
         {
             if (Instance != null && Instance != this)
             {
-                Destroy(this);
+                // Doublon (cas : Lorenzo reload la scene hub apres etre passe en combat).
+                // On detruit le GameObject entier — pas juste le component — pour eviter
+                // les MonoBehaviour fantomes attaches sans Instance.
+                Destroy(gameObject);
                 return;
             }
             Instance = this;
+            // POLISH-5d (17 mai) : le client WS persiste hub -> combat -> retour hub. La
+            // connexion WebSocket reste vivante, l'historique chat est conserve, et la
+            // scene combat instancie son propre HubChatUI brancho sur ce singleton.
+            DontDestroyOnLoad(gameObject);
         }
 
         private async void Start()

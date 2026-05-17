@@ -37,14 +37,24 @@ namespace Nymora.Combat.View
         [SerializeField] private Sprite _passifSoulrenderIcon;
         [Tooltip("L'Oeil qui n'est pas — Nightseer (icon_passif_oeil_qui_nest_pas.png).")]
         [SerializeField] private Sprite _passifNightseerIcon;
-        // Phase 3 : _passifColossarIcon, _passifNecramIcon, _passifGhostraIcon
+        [Tooltip("Densite Inerte — Colossar (icon_passif_densite_inerte.png).")]
+        [SerializeField] private Sprite _passifColossarIcon;
+        [Tooltip("Floraison — Necram (icon_passif_floraison.png).")]
+        [SerializeField] private Sprite _passifNecramIcon;
+        [Tooltip("Angle Mort — Ghostra (icon_passif_angle_mort.png).")]
+        [SerializeField] private Sprite _passifGhostraIcon;
 
         [Header("Avatars (portrait HUD, 1 par classe — 2.13.e)")]
         [Tooltip("Portrait Soulrender (SR_avatar_128px.png).")]
         [SerializeField] private Sprite _avatarSoulrenderIcon;
         [Tooltip("Portrait Nightseer (NS_avatar_128px.png).")]
         [SerializeField] private Sprite _avatarNightseerIcon;
-        // Phase 3 : _avatarColossarIcon, _avatarNecramIcon, _avatarGhostraIcon
+        [Tooltip("Portrait Colossar (colossar_avatar_128px.png).")]
+        [SerializeField] private Sprite _avatarColossarIcon;
+        [Tooltip("Portrait Necram (necram_avatar_128px.png).")]
+        [SerializeField] private Sprite _avatarNecramIcon;
+        [Tooltip("Portrait Ghostra (GHOSTRA_Avatar_128px.png).")]
+        [SerializeField] private Sprite _avatarGhostraIcon;
 
         private Dictionary<SpellId, Sprite> _cache;
 
@@ -60,7 +70,9 @@ namespace Nymora.Combat.View
             {
                 case NymoraClass.Soulrender: return _passifSoulrenderIcon;
                 case NymoraClass.Nightseer:  return _passifNightseerIcon;
-                // Phase 3 : autres classes
+                case NymoraClass.Colossar:   return _passifColossarIcon;
+                case NymoraClass.Necram:     return _passifNecramIcon;
+                case NymoraClass.Ghostra:    return _passifGhostraIcon;
                 default: return null;
             }
         }
@@ -75,7 +87,9 @@ namespace Nymora.Combat.View
             {
                 case NymoraClass.Soulrender: return _avatarSoulrenderIcon;
                 case NymoraClass.Nightseer:  return _avatarNightseerIcon;
-                // Phase 3 : autres classes
+                case NymoraClass.Colossar:   return _avatarColossarIcon;
+                case NymoraClass.Necram:     return _avatarNecramIcon;
+                case NymoraClass.Ghostra:    return _avatarGhostraIcon;
                 default: return null;
             }
         }
@@ -90,13 +104,25 @@ namespace Nymora.Combat.View
             Sprite passifSoulrenderIcon,
             Sprite avatarSoulrenderIcon = null,
             Sprite avatarNightseerIcon = null,
-            Sprite passifNightseerIcon = null)
+            Sprite passifNightseerIcon = null,
+            Sprite passifColossarIcon = null,
+            Sprite passifNecramIcon = null,
+            Sprite passifGhostraIcon = null,
+            Sprite avatarColossarIcon = null,
+            Sprite avatarNecramIcon = null,
+            Sprite avatarGhostraIcon = null)
         {
             _entries = entries ?? Array.Empty<Entry>();
             _passifSoulrenderIcon = passifSoulrenderIcon;
             _avatarSoulrenderIcon = avatarSoulrenderIcon;
             _avatarNightseerIcon = avatarNightseerIcon;
             _passifNightseerIcon = passifNightseerIcon;
+            _passifColossarIcon = passifColossarIcon;
+            _passifNecramIcon = passifNecramIcon;
+            _passifGhostraIcon = passifGhostraIcon;
+            _avatarColossarIcon = avatarColossarIcon;
+            _avatarNecramIcon = avatarNecramIcon;
+            _avatarGhostraIcon = avatarGhostraIcon;
             _cache = null; // force rebuild au prochain GetIcon
         }
 #endif

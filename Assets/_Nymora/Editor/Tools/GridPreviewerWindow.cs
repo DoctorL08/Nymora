@@ -16,8 +16,10 @@ namespace Nymora.Editor.Tools
     /// </summary>
     public class GridPreviewerWindow : EditorWindow
     {
-        private const int Width = 15;
-        private const int Height = 17;
+        // POLISH-5e (17 mai) : lit GridConstants au lieu d'hardcoder, pour rester aligne
+        // si la dimension grille change sans avoir a re-modifier le previewer.
+        private static int Width => Quantum.GridConstants.Width;
+        private static int Height => Quantum.GridConstants.Height;
         private const string PreviewRootName = "__GridPreview (Editor Only)";
 
         private GridSettings _settings;

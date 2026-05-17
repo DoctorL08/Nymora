@@ -4,8 +4,8 @@
 // faisait exploser la GridSingleton au-dela de la limite Quantum (~10kB) pour les
 // structs passees par valeur (cf InvalidProgramException "Passing an argument of size 10208").
 //
-// FogSingleton mirror la grille (array<FogTile>[255] indexes par y*Width+x, meme convention
-// que GridHelpers.Index). Lookups via FogHelpers.
+// FogSingleton mirror la grille (array<FogTile>[100] indexes par y*Width+x, meme convention
+// que GridHelpers.Index). Lookups via FogHelpers. POLISH-5e (17 mai) : 255 -> 100 (10x10).
 //
 // Les enums TrapKind / MarkKind sont definis dans Grid.qtn / Combatant.qtn respectivement
 // (proches de leurs structs cibles).
@@ -30,5 +30,5 @@ struct FogTile {
 }
 
 singleton component FogSingleton {
-    array<FogTile>[255] Tiles;
+    array<FogTile>[100] Tiles;
 }

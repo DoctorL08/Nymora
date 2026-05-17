@@ -1,10 +1,10 @@
-// Grille de combat Nymora — 15x17 cases.
+// Grille de combat Nymora — 10x10 cases (POLISH-5e 17 mai, etait 15x17).
 // Tile : data d'une case (walkable + occupant entity + terrain).
-// GridSingleton : singleton Quantum qui stocke les 255 tiles + dimensions.
+// GridSingleton : singleton Quantum qui stocke les 100 tiles + dimensions.
 //
 // Width et Height sont stockes dans la singleton pour eviter les valeurs magiques
-// cote runtime, mais la taille du fixed array (255) est verrouillee au compile time.
-// Toute modification de la taille de grille => regenerer ce DSL.
+// cote runtime, mais la taille du fixed array (100) est verrouillee au compile time.
+// Toute modification de la taille de grille => regenerer ce DSL + bump CombatRulesVersion.
 
 // 2.10.c — Terrains poses par les sorts Soulrender (et futures classes).
 // Verrouille : ne PAS reorganiser les ints existants (CombatRulesVersion).
@@ -48,5 +48,5 @@ struct Tile {
 singleton component GridSingleton {
     Int32 Width;
     Int32 Height;
-    array<Tile>[255] Tiles;
+    array<Tile>[100] Tiles;
 }
