@@ -44,14 +44,13 @@ namespace Nymora.Editor.Tools
         private const string WallPrefabPath   = PrefabFolder + "/Obstacle_Wall.prefab";
 
         // Conventions PPU (1 case = 1 unite world Unity) :
-        //   - tiles_fondation.png : 128x128 px -> PPU 180 (sprite occupe ~0.71 unite world,
-        //     correspond au visuel d'une case iso pleine avec un debord vertical leger pour
-        //     l'effet "cube qui pose dessus"). Tuning Lorenzo 3.1.bis :
-        //       PPU 128 = 2x trop grand (le cube debordait sur cases voisines)
-        //       PPU 256 = trop petit (le cube paraissait flotter au milieu de la case)
-        //       PPU 180 = sweet spot (moyenne geometrique)
+        //   - tiles_fondation.png : 128x128 px -> PPU 128 (sprite occupe 1.0 unite world =
+        //     largeur exacte d'une case iso). Combine au pivot BottomCenter, la base du
+        //     bloc de pierre se cale sur le centre de la tile et le bloc s'eleve au-dessus.
+        //     Historique tuning : PPU 180 (avec pivot Center) testait un "shrink" mais le
+        //     bloc paraissait trop petit + flottait au milieu de la case (re-fix 18 mai).
         //   - Placeholder procedural : 64x64 px -> PPU 64 (meme convention que tiles grille)
-        private const int DesignerSpritePPU = 180;
+        private const int DesignerSpritePPU = 128;
         private const int PlaceholderSpritePPU = 64;
 
         // Sprite procedural placeholder.
@@ -113,8 +112,10 @@ namespace Nymora.Editor.Tools
         /// <summary>
         /// Force les import settings standard pour un sprite obstacle :
         /// Sprite type / PPU passe en arg / Point filter / alpha is transparency / no mipmap /
-        /// pivot Center (3.1.bis Option A : sprite iso losange dessine centre dans le canvas
-        /// 128x128 — pivot Center fait que le centre du losange tombe sur la case grille).
+        /// pivot BottomCenter (re-fix 18 mai : le sprite tiles_fondation represente un bloc
+        /// de pierre 3D iso vu de cote — la base du sprite est le "sol" de la case grille.
+        /// BottomCenter fait que la base se cale sur le worldPos de la case et le bloc
+        /// s'eleve naturellement au-dessus, avec le top de pierre visible sur la case).
         ///
         /// Tout passe par TextureImporterSettings (read/modify/write en 1 fois) — ne PAS
         /// melanger avec des modifs directes sur l'importer (importer.textureType = X), sinon
@@ -128,7 +129,7 @@ namespace Nymora.Editor.Tools
             var settings = new TextureImporterSettings();
             importer.ReadTextureSettings(settings);
 
-            const int Center = (int)SpriteAlignment.Center;
+            const int BottomCenter = (int)SpriteAlignment.BottomCenter;
 
             bool dirty = false;
             if (settings.textureType != TextureImporterType.Sprite) { settings.textureType = TextureImporterType.Sprite; dirty = true; }
@@ -137,13 +138,13 @@ namespace Nymora.Editor.Tools
             if (settings.filterMode != FilterMode.Point) { settings.filterMode = FilterMode.Point; dirty = true; }
             if (!settings.alphaIsTransparency) { settings.alphaIsTransparency = true; dirty = true; }
             if (settings.mipmapEnabled) { settings.mipmapEnabled = false; dirty = true; }
-            if (settings.spriteAlignment != Center) { settings.spriteAlignment = Center; dirty = true; }
+            if (settings.spriteAlignment != BottomCenter) { settings.spriteAlignment = BottomCenter; dirty = true; }
 
             if (dirty)
             {
                 importer.SetTextureSettings(settings);
                 importer.SaveAndReimport();
-                Debug.Log($"[CreateObstaclePrefabTool] Import settings applique : {spritePath} (PPU={ppu}, Point, transparent, pivot=Center)");
+                Debug.Log($"[CreateObstaclePrefabTool] Import settings applique : {spritePath} (PPU={ppu}, Point, transparent, pivot=BottomCenter)");
             }
         }
 
@@ -198,11 +199,12 @@ namespace Nymora.Editor.Tools
                 sr.sprite = sprite;
 
                 // HP label child (TMP world space, au-dessus du sprite).
-                // Position y=0.55f : sprite tiles_fondation 128px PPU 180 + pivot center
-                // = sprite va de y=-0.355 a y=+0.355 unite. Label a 0.55 reste juste au-dessus.
+                // Position y=1.2f : sprite tiles_fondation 128px PPU 128 + pivot BottomCenter
+                // = sprite va de y=0 (base sur worldPos) a y=1.0 (top). Label a 1.2 reste
+                // juste au-dessus avec marge 0.2 (cf re-fix 18 mai PPU/pivot).
                 var labelGO = new GameObject("HPLabel");
                 labelGO.transform.SetParent(root.transform, false);
-                labelGO.transform.localPosition = new Vector3(0f, 0.55f, 0f);
+                labelGO.transform.localPosition = new Vector3(0f, 1.2f, 0f);
                 var tmp = labelGO.AddComponent<TextMeshPro>();
                 tmp.text = defaultHpLabel;
                 tmp.fontSize = 3;
