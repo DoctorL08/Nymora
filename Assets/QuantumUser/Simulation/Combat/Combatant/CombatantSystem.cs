@@ -3,15 +3,16 @@ namespace Quantum
     using Photon.Deterministic;
 
     /// <summary>
-    /// Spawn les 2 combattants au demarrage du combat.
+    /// Spawn les 2 combattants au demarrage du combat — via ISignalOnPlayerAdded pour
+    /// les DEUX modes (IA et PvP).
     ///
     /// 2.2 — spawn hardcoded P0=Ghostra/P1=Soulrender en OnInit (test 1 seul client).
-    /// 4.14.d — mode dual :
-    ///   IsBotMatch=1 (30_CombatIA) : spawn hardcoded comme avant (P0=Ghostra, P1=Soulrender,
-    ///     testing rapide). Cohabite avec AISystem qui drive P1=bot.
-    ///   IsBotMatch=0 (33_CombatCasual / futurs ranked) : spawn via ISignalOnPlayerAdded
-    ///     quand chaque RuntimePlayer rejoint la simulation. Classe = RuntimePlayer.ClassId
-    ///     set par CombatBootstrapCasual depuis DeckBridge.
+    /// 4.14.d — split OnInit (IA hardcoded) / OnPlayerAdded (PvP via RuntimePlayer).
+    /// 5.4 (18 mai 2026) — unification : les 2 modes passent par OnPlayerAdded. Le bootstrap
+    ///   IA (CombatBootstrapIA) AddPlayer les 2 slots localement avec RuntimePlayer.ClassId
+    ///   resolu depuis DeckBridge (slot 0 = Lorenzo) + config inspector (slot 1 = bot).
+    ///   Fix bug : avant, OnInit hardcodait P0=Ghostra meme si Lorenzo avait choisi une
+    ///   autre classe dans le hub. Maintenant DeckBridge pilote la classe en IA comme en PvP.
     ///
     /// Positions hardcodees : slot 0 = (2,7) face SE, slot 1 = (7,2) face NW (cf POLISH-5e).
     /// </summary>
@@ -27,29 +28,20 @@ namespace Quantum
         private const int P2SpawnX = 7;
         private const int P2SpawnY = 2;
 
-        public override void OnInit(Frame f)
-        {
-            // 4.14.d — Mode IA (offline 30_CombatIA) : spawn hardcoded au tick 0.
-            //   IsBotMatch != 1 (PvP online) : ne fait rien ici, attends ISignalOnPlayerAdded.
-            if (f.RuntimeConfig.IsBotMatch == false) return;
-
-            // 3.6 — P0 = Ghostra (test visuel anims + framework Angle Mort + Permutation).
-            // Pour switch local IA : remplace NymoraClass.Ghostra par .Soulrender / .Nightseer / .Colossar / .Necram.
-            SpawnCombatant(f, playerIndex: 0, nymoraClass: NymoraClass.Ghostra, x: P1SpawnX, y: P1SpawnY);
-            SpawnCombatant(f, playerIndex: 1, nymoraClass: NymoraClass.Soulrender, x: P2SpawnX, y: P2SpawnY);
-        }
+        // 5.4 — Plus de spawn en OnInit. Les 2 modes (IA + PvP) attendent OnPlayerAdded.
+        // Le bootstrap respectif (CombatBootstrapIA / CombatBootstrapCasual) gere l'AddPlayer.
 
         /// <summary>
-        /// 4.14.d — En mode PvP (IsBotMatch=0), spawn le Combatant pour ce player en utilisant
-        /// le ClassId du RuntimePlayer (set par CombatBootstrapCasual depuis DeckBridge).
+        /// 5.4 — Spawn le Combatant pour ce player en utilisant le ClassId du RuntimePlayer.
+        ///   Mode IA  : CombatBootstrapIA AddPlayer(0) et AddPlayer(1) localement
+        ///              avec ClassId Lorenzo (DeckBridge) et ClassId Bot (configurable).
+        ///   Mode PvP : CombatBootstrapCasual AddPlayer(localSlot) ; l'autre slot arrive
+        ///              via Quantum sync reseau quand l'autre client AddPlayer aussi.
         /// firstTime=true uniquement au tout 1er AddPlayer du slot ; les reconnections
         /// (firstTime=false) ne re-spawnent pas (le Combatant existe deja).
         /// </summary>
         public void OnPlayerAdded(Frame f, PlayerRef player, bool firstTime)
         {
-            // Mode IA : spawn deja fait en OnInit, rien a faire ici.
-            if (f.RuntimeConfig.IsBotMatch) return;
-
             // Reconnection : Combatant deja existant, ne pas re-spawn.
             if (!firstTime) return;
 
@@ -69,13 +61,14 @@ namespace Quantum
 
             var nymoraClass = runtimePlayer != null && runtimePlayer.ClassId != NymoraClass.None
                 ? runtimePlayer.ClassId
-                : NymoraClass.Soulrender; // fallback safe si DeckBridge vide
+                : NymoraClass.Soulrender; // fallback safe si bootstrap n'a pas set ClassId
 
             int x = slot == 0 ? P1SpawnX : P2SpawnX;
             int y = slot == 0 ? P1SpawnY : P2SpawnY;
 
             SpawnCombatant(f, playerIndex: slot, nymoraClass: nymoraClass, x: x, y: y);
-            Log.Info($"[CombatantSystem] PvP spawn slot {slot} class {nymoraClass} at ({x},{y})");
+            string modeTag = f.RuntimeConfig.IsBotMatch ? "IA" : "PvP";
+            Log.Info($"[CombatantSystem] {modeTag} spawn slot {slot} class {nymoraClass} at ({x},{y})");
         }
 
         private static EntityRef SpawnCombatant(Frame f, int playerIndex, NymoraClass nymoraClass, int x, int y)

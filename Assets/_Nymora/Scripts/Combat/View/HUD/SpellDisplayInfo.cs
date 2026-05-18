@@ -1,40 +1,26 @@
+using Nymora.Core.Data;
 using Quantum;
 
 namespace Nymora.Combat.View.HUD
 {
     /// <summary>
     /// Helpers statiques pour les infos d'affichage d'un sort cote View (display name,
-    /// raccourci clavier, faut-il armer avant cast).
+    /// arbitrage arm-or-cast).
     ///
     /// Les couts/portees viennent de SpellRegistry (Quantum, pure static). L'icone vient
-    /// de SpellIconRegistry (SO). Ici on ajoute juste le texte humain + arbitrage arm.
+    /// de SpellIconRegistry (SO). Le nom affiche vient de <see cref="SpellBibleTexts"/>
+    /// (Nymora.Core) — source unique partagee avec le Deck Builder.
     ///
-    /// Etend ce switch quand on ajoute Nightseer (2.14) puis les autres classes.
+    /// Pre-5.4 : switch hardcode Soulrender-only -> les 4 autres classes affichaient
+    /// l'enum brut (ex "GhostraLameSpectrale") en titre tooltip.
     /// </summary>
     public static class SpellDisplayInfo
     {
         public static string GetDisplayName(SpellId id)
         {
-            switch (id)
-            {
-                case SpellId.SoulrenderTrancheAme:          return "Tranche-Ame";
-                case SpellId.SoulrenderOuvrePlaie:          return "Ouvre-Plaie";
-                case SpellId.SoulrenderPacteDeSang:         return "Pacte de Sang";
-                case SpellId.SoulrenderRugissement:         return "Rugissement";
-                case SpellId.SoulrenderRageInsatiable:      return "Rage Insatiable";
-                case SpellId.SoulrenderRiposteCarmin:       return "Riposte Carmin";
-                case SpellId.SoulrenderMarqueDeCarnage:     return "Marque de Carnage";
-                case SpellId.SoulrenderEmpoignade:          return "Empoignade";
-                case SpellId.SoulrenderPeauDeFer:           return "Peau de Fer";
-                case SpellId.SoulrenderSeveVive:            return "Seve Vive";
-                case SpellId.SoulrenderDernierSouffle:      return "Dernier Souffle";
-                case SpellId.SoulrenderChargeBrutale:       return "Charge Brutale";
-                case SpellId.SoulrenderDetonationSanglante: return "Detonation Sanglante";
-                case SpellId.SoulrenderCuree:               return "Curee";
-                case SpellId.SoulrenderCauterisation:       return "Cauterisation";
-                case SpellId.SoulrenderAmeLaceree:          return "Ame Laceree";
-                default:                                    return id.ToString();
-            }
+            return SpellBibleTexts.TryGetByQuantumId((int)id, out var entry)
+                ? entry.DisplayName
+                : id.ToString();
         }
 
         /// <summary>

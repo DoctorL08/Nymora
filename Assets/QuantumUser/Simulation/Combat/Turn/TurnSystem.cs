@@ -94,11 +94,12 @@ namespace Quantum
         /// Scan tous les Combatants vivants. Si <=1 alive ET >=2 total spawnees, set MatchEnd
         /// + Winner = dernier vivant (ou -1 si double KO = draw). Idempotent : skip si deja MatchEnd.
         ///
-        /// Le check totalCount >= 2 est CRITIQUE en PvP : OnPlayerAdded spawn les Combatants
-        /// un par un (slot 0 d'abord, puis slot 1 quand l'autre client rejoint Quantum).
-        /// Sans ce guard, le 1er Update fire avec 0 ou 1 Combatant -> aliveCount<=1 -> faux
-        /// MatchEnd Draw au lancement. En IA, CombatantSystem.OnInit spawn les 2 direct au
-        /// tick 0 donc totalCount==2 des le 1er Update.
+        /// Le check totalCount >= 2 est CRITIQUE en PvP comme en IA (depuis 5.4) :
+        /// OnPlayerAdded spawn les Combatants un par un. En PvP, slot 0 d'abord, puis
+        /// slot 1 quand l'autre client rejoint Quantum. En IA, CombatBootstrapIA fait
+        /// AddPlayer(0) puis AddPlayer(1) localement, ce qui declenche 2 OnPlayerAdded
+        /// sequentiels sur des ticks consecutifs. Sans ce guard, le 1er Update fire avec
+        /// 0 ou 1 Combatant -> aliveCount<=1 -> faux MatchEnd Draw au lancement.
         /// </summary>
         private static void CheckMatchEndOnDeath(Frame f, CombatState* state)
         {

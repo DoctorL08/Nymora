@@ -82,19 +82,33 @@ namespace Nymora.Combat.View
 
             var frame = game.Frames.Verified;
 
-            // 4.14.b — En mode PvP (RuntimeConfig.IsBotMatch=false), CombatBootstrapCasual a deja
-            // fait Game.AddPlayer(localSlot) avec un RuntimePlayer porteur du deck. L'auto-add
-            // local de 2 slots ici provoquerait "Failed to add player 0/1" (slots deja occupes
-            // par les 2 clients PvP). Skip dans ce cas — keep auto-add UNIQUEMENT pour 30_CombatIA
-            // (IsBotMatch=true) ou pour les scenes scenes-direct-play en dev.
+            // 4.14.b — En mode PvP (IsBotMatch=false), CombatBootstrapCasual a deja fait
+            // Game.AddPlayer(localSlot) avec un RuntimePlayer porteur du deck. L'auto-add
+            // ici provoquerait "Failed to add player 0/1" (slots deja occupes par les 2
+            // clients PvP). Skip dans ce cas.
+            // 5.4 (18 mai 2026) — meme logique en IA : CombatBootstrapIA fait AddPlayer(0)
+            // et AddPlayer(1) avec les bonnes classes (Lorenzo via DeckBridge, bot via
+            // inspector). Skip si Instance present. Fallback auto-add legacy uniquement si
+            // ni Casual ni IA bootstrap n'est en scene (mode dev raw-play 30_CombatIA sans
+            // avoir fait la manip Unity de remplacement QuantumRunnerLocalDebug ->
+            // CombatBootstrapIA — dans ce cas RuntimePlayer empty -> fallback Soulrender
+            // cote CombatantSystem.OnPlayerAdded).
             bool isPvp = frame.RuntimeConfig != null && !frame.RuntimeConfig.IsBotMatch;
-            if (_autoAddLocalPlayers && !isPvp)
+            bool hasIABootstrap = Nymora.Combat.Bootstrap.CombatBootstrapIA.Instance != null;
+            bool bootstrapHandlesAddPlayer = isPvp || hasIABootstrap;
+
+            if (_autoAddLocalPlayers && !bootstrapHandlesAddPlayer)
             {
                 for (int i = 0; i < _autoAddPlayerCount; i++)
                 {
                     game.AddPlayer(i, new RuntimePlayer());
                 }
-                Debug.Log($"[Nymora.CombatInput] Ajout de {_autoAddPlayerCount} player(s) local(aux) (mode debug IA/local).");
+                Debug.LogWarning($"[Nymora.CombatInput] Auto-add fallback : {_autoAddPlayerCount} RuntimePlayer empty (pas de CombatBootstrap detecte). " +
+                                 "Spawn en Soulrender par defaut. Pour avoir la classe choisie en hub : remplacer QuantumRunnerLocalDebug par CombatBootstrapIA dans la scene 30_CombatIA.");
+            }
+            else if (hasIABootstrap)
+            {
+                Debug.Log("[Nymora.CombatInput] Mode IA detecte avec CombatBootstrapIA — auto-add skip. _localPlayerIndex reste 0 (Lorenzo = slot 0 en IA).");
             }
             else if (isPvp)
             {

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using Nymora.Core.Data;
 using Nymora.Core.Enums;
 using Nymora.Core.ScriptableObjects;
 using Nymora.Network.Backend;
@@ -83,6 +84,9 @@ namespace Nymora.Hub
         // ====== State ======
         private NymoraApiClient _api;
         private bool _hasFetchedOnce;
+        // Default fallback "Soulrender" — override au Awake par SelectedClassPreferences.Get()
+        // pour restaurer la classe choisie pre-deconnexion (sinon retour systematique
+        // Soulrender en post-reco alors que l'avatar hub affiche la bonne classe).
         private string _currentClassId = "Soulrender";
         private readonly List<DeckDto> _myDecks = new List<DeckDto>();
 
@@ -114,6 +118,9 @@ namespace Nymora.Hub
                 enabled = false;
                 return;
             }
+            // Restaure la classe selectionnee pre-deco (sinon Soulrender hardcode par defaut).
+            // Cohere avec l'avatar hub qui lit deja SelectedClassPreferences.Get() au Spawn.
+            _currentClassId = SelectedClassPreferences.Get();
             _api = new NymoraApiClient(_backendSettings);
             if (_panelRoot != null) _panelRoot.SetActive(false);
             if (_tooltipPanel != null) _tooltipPanel.SetActive(false);
@@ -228,7 +235,33 @@ namespace Nymora.Hub
             _myDecks.Clear();
             if (res.Data.decks != null) foreach (var d in res.Data.decks) _myDecks.Add(d);
             _hasFetchedOnce = true;
+
+            // Restaure le dernier deck en edition (PlayerPrefs par classe) s'il existe
+            // encore cote backend. Permet a Lorenzo de retomber pile sur le deck qu'il
+            // editait avant deco au lieu de partir d'une compo vide.
+            TryRestoreLastEditedDeck();
+
             RenderAll();
+        }
+
+        private void TryRestoreLastEditedDeck()
+        {
+            // Si un deck est deja selectionne (l'utilisateur a cliqu dans la liste depuis
+            // l'ouverture du panel), ne pas l'ecraser.
+            if (!string.IsNullOrEmpty(_editingDeckId)) return;
+            string lastId = SelectedClassPreferences.GetLastEditedDeckId(_currentClassId);
+            if (string.IsNullOrEmpty(lastId)) return;
+            var deck = _myDecks.Find(d => d.id == lastId);
+            if (deck == null)
+            {
+                // Le deck a ete supprime cote backend depuis la derniere session — clean.
+                SelectedClassPreferences.ClearLastEditedDeckId(_currentClassId);
+                return;
+            }
+            _editingDeckId = deck.id;
+            for (int i = 0; i < 6; i++)
+                _slotSpellIds[i] = (deck.spellIds != null && i < deck.spellIds.Length) ? deck.spellIds[i] : null;
+            if (_deckNameInput != null) _deckNameInput.text = deck.name;
         }
 
         // ====== Render ======
@@ -508,6 +541,9 @@ namespace Nymora.Hub
         private void OnNewDeckClicked()
         {
             ClearComposition();
+            // L'utilisateur veut start fresh — efface le memo "dernier deck edite" pour
+            // que la prochaine reco ne retombe pas sur l'ancien deck.
+            SelectedClassPreferences.ClearLastEditedDeckId(_currentClassId);
             RenderAll();
             SetStatus("Nouveau deck — selectionne 6 sorts puis Save.");
         }
@@ -519,6 +555,8 @@ namespace Nymora.Hub
             _editingDeckId = deckId;
             for (int i = 0; i < 6; i++) _slotSpellIds[i] = (deck.spellIds != null && i < deck.spellIds.Length) ? deck.spellIds[i] : null;
             if (_deckNameInput != null) _deckNameInput.text = deck.name;
+            // Memorise le deck en edition pour restauration post-reco.
+            SelectedClassPreferences.SetLastEditedDeckId(_currentClassId, deckId);
             RenderAll();
             SetStatus($"Edition : {deck.name}");
         }
@@ -563,6 +601,8 @@ namespace Nymora.Hub
                 }
                 _myDecks.Add(res.Data.deck);
                 _editingDeckId = res.Data.deck.id;
+                // Memorise pour restauration post-reco.
+                SelectedClassPreferences.SetLastEditedDeckId(_currentClassId, _editingDeckId);
                 SetStatus($"Deck '{name}' cree.");
             }
             else
@@ -577,6 +617,9 @@ namespace Nymora.Hub
                 // Update local cache
                 int idx = _myDecks.FindIndex(d => d.id == _editingDeckId);
                 if (idx >= 0) _myDecks[idx] = res.Data.deck;
+                // Refresh pref (idempotent ; insure le memo si le user save sans avoir clique
+                // dans la liste, par ex apres restauration auto au boot puis save direct).
+                SelectedClassPreferences.SetLastEditedDeckId(_currentClassId, _editingDeckId);
                 SetStatus($"Deck '{name}' mis a jour.");
             }
             RenderAll();
@@ -602,6 +645,11 @@ namespace Nymora.Hub
                 return;
             }
             _myDecks.RemoveAll(d => d.id == deletingId);
+            // Clean le memo si on vient de delete le deck memorise (sinon prochaine reco
+            // tentera de le restaurer puis trouvera null -> clean a posteriori, c'est plus
+            // propre de clean tout de suite).
+            if (SelectedClassPreferences.GetLastEditedDeckId(_currentClassId) == deletingId)
+                SelectedClassPreferences.ClearLastEditedDeckId(_currentClassId);
             ClearComposition();
             RenderAll();
             SetStatus("Deck supprime.");

@@ -1795,6 +1795,7 @@ MonoBehaviour:
   _subtitleText: {fileID: 1040151531}
   _restartEasyButton: {fileID: 312956128}
   _restartMediumButton: {fileID: 471047667}
+  _returnToHubButton: {fileID: 0}
   _replayRecorder: {fileID: 1662786575}
   _saveReplayButton: {fileID: 1075760010}
   _saveReplayLabel: {fileID: 1664194053}
@@ -2118,6 +2119,9 @@ MonoBehaviour:
   _costText: {fileID: 1986076321}
   _descriptionText: {fileID: 1471051735}
   _verticalGap: 12
+  _fixedWidth: 320
+  _panelPadding: 10
+  _panelSpacing: 6
 --- !u!114 &322924976
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4180,6 +4184,7 @@ GameObject:
   m_Component:
   - component: {fileID: 796018060}
   - component: {fileID: 796018059}
+  - component: {fileID: 796018061}
   m_Layer: 0
   m_Name: QuantumDebugRunner
   m_TagString: Untagged
@@ -4194,7 +4199,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 796018058}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: ba1cef2e59fba6443b0b8a032263be28, type: 3}
   m_Name: 
@@ -4247,6 +4252,34 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &796018061
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 796018058}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b4dcfaaf7dd8074bb383b94ac0cff1d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  RuntimeConfig:
+    Seed: 0
+    Map:
+      Id:
+        Value: 426656525288901384
+    SimulationConfig:
+      Id:
+        Value: 2787071698916023345
+    SystemsConfig:
+      Id:
+        Value: 1785059092662275871
+    IsBotMatch: 1
+  SessionConfig: {fileID: 11400000, guid: f2ad71dea21e38743ba513154f5914e6, type: 2}
+  SpellCatalog: {fileID: 11400000, guid: c42fe7c9f9037c040bc3b27f45edb65f, type: 2}
+  BotClass: 1
+  VerboseLog: 1
 --- !u!1 &885939971
 GameObject:
   m_ObjectHideFlags: 0
