@@ -22,7 +22,10 @@ namespace Nymora.Hub
         // 5.1.e TEMP MVP — à retirer quand ranked Phase 6 prendra le relais
         [Header("XP MVP (TEMP — retirer quand ranked Phase 6)")]
         [SerializeField] private NymoraBackendSettings _backendSettings;
-        [SerializeField] private string _devClassId = "Soulrender";
+        // Bug 20 mai (POLISH-7 polish) : _devClassId etait hardcode "Soulrender" en SerializeField,
+        // donc l'XP fin de match allait TOUJOURS sur Soulrender peu importe la classe jouee.
+        // Garde comme fallback ultime si DeckBridge.PendingClassId + SelectedClassPreferences sont vides.
+        [SerializeField] private string _fallbackClassId = "Soulrender";
         [SerializeField] private int _xpVictory = 50;
         [SerializeField] private int _xpDefeat = 15;
         [SerializeField] private int _xpDraw = 25;
@@ -110,15 +113,29 @@ namespace Nymora.Hub
             string token = HubChatClient.Instance?.DevToken;
             if (string.IsNullOrEmpty(token)) return;
             _api.SetBearerToken(token);
-            var res = await _api.AwardXpAsync(_devClassId, amount, source);
+
+            // POLISH-7 polish (20 mai) — resoud la classe REELLEMENT jouee pendant le combat :
+            //   1. DeckBridge.PendingClassId : set par HubArenaPanel/HubMatchTransition au depart
+            //      du combat, persistant apres (Clear jamais appele cf DeckBridge.cs). Source la
+            //      plus fiable car capture la classe lockee au moment du combat.
+            //   2. SelectedClassPreferences.Get() : classe selectionnee via Class Selector (peut
+            //      avoir change apres le combat mais avant le retour hub — improbable mais safe).
+            //   3. _fallbackClassId Inspector ("Soulrender" defaut) : ultime fallback dev.
+            string classId = !string.IsNullOrEmpty(DeckBridge.PendingClassId)
+                ? DeckBridge.PendingClassId
+                : (!string.IsNullOrEmpty(SelectedClassPreferences.Get())
+                    ? SelectedClassPreferences.Get()
+                    : _fallbackClassId);
+
+            var res = await _api.AwardXpAsync(classId, amount, source);
             if (res.IsSuccess)
             {
-                Debug.Log($"[HubMatchResultDisplay] XP awarded +{amount} {_devClassId} → L{res.Data.level} ({res.Data.xp}/{res.Data.xpToNext})");
+                Debug.Log($"[HubMatchResultDisplay] XP awarded +{amount} {classId} → L{res.Data.level} ({res.Data.xp}/{res.Data.xpToNext})");
                 if (_chatUI != null)
                 {
                     string xpLine = res.Data.leveledUp
-                        ? $"<color=#ffd700>+{amount} XP {_devClassId} — NIVEAU {res.Data.level} !</color>"
-                        : $"<color=#aaffaa>+{amount} XP {_devClassId}</color>";
+                        ? $"<color=#ffd700>+{amount} XP {classId} — NIVEAU {res.Data.level} !</color>"
+                        : $"<color=#aaffaa>+{amount} XP {classId}</color>";
                     _chatUI.AppendSystemLineExternal(xpLine);
                 }
             }
