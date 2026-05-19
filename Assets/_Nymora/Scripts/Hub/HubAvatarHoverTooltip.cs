@@ -35,6 +35,22 @@ namespace Nymora.Hub
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void AutoCreate()
         {
+            // POLISH-7 polish (20 mai) — AfterSceneLoad ne se declenche qu'au boot du jeu.
+            // Sans listener sceneLoaded, au retour combat -> hub le tooltip etait detruit en
+            // combat (pas de DontDestroyOnLoad) et jamais recree -> survol avatars sans tooltip.
+            // On (re)cree maintenant a chaque scene loaded qui matche un nom de scene hub.
+            SceneManager.sceneLoaded -= OnSceneLoadedStatic;
+            SceneManager.sceneLoaded += OnSceneLoadedStatic;
+            TryCreateForActiveScene();
+        }
+
+        private static void OnSceneLoadedStatic(Scene scene, LoadSceneMode mode)
+        {
+            TryCreateForActiveScene();
+        }
+
+        private static void TryCreateForActiveScene()
+        {
             if (Instance != null) return;
             // 19 mai — Garde scene : ne s'auto-cree QUE dans la scene hub. Sinon en combat
             // (30_CombatIA / 33_CombatCasual / 40-42 ranked) le tooltip hub etait instancie
