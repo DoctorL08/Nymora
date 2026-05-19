@@ -184,13 +184,34 @@ namespace Nymora.Hub
             if (HubChatClient.Instance != null)
             {
                 HubChatClient.Instance.OnDeckChanged += HandleDeckChanged;
+                // POLISH-7 polish (20 mai) — pre-fetch au login pour que SelectedDeck (consume
+                // par HubArenaPanel + HubMatchTransition) soit dispo SANS qu'il faille ouvrir
+                // le Deck Builder. Sinon, clic direct Arena post-login -> MyDecks vide ->
+                // SelectedDeck null -> fallback Soulrender deck #0 au lieu du dernier deck
+                // utilise par Lorenzo. Pattern miroir HubWalletWidget.
+                HubChatClient.Instance.OnWelcome += HandleWelcomePreFetch;
+                if (!string.IsNullOrEmpty(HubChatClient.Instance.MyUserId))
+                {
+                    // WELCOME deja recu (Start arrive apres) -> fetch direct.
+                    FetchDecksAsync().Forget();
+                }
             }
+        }
+
+        private void HandleWelcomePreFetch(string sub, string email, string displayName)
+        {
+            if (_hasFetchedOnce) return;
+            FetchDecksAsync().Forget();
         }
 
         private void OnDestroy()
         {
             if (Instance == this) Instance = null;
-            if (HubChatClient.Instance != null) HubChatClient.Instance.OnDeckChanged -= HandleDeckChanged;
+            if (HubChatClient.Instance != null)
+            {
+                HubChatClient.Instance.OnDeckChanged -= HandleDeckChanged;
+                HubChatClient.Instance.OnWelcome -= HandleWelcomePreFetch;
+            }
         }
 
         public void Open()
