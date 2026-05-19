@@ -66,8 +66,48 @@ namespace Nymora.Combat.Bootstrap
 
         private CancellationTokenSource _cts;
 
+        // Mirror de CombatBootstrapCasual.ExpectedSceneName (incident 18 mai bis) :
+        // ce bootstrap n'a de sens QUE dans 30_CombatIA. Si le GO survit dans une AUTRE
+        // scene combat (typiquement 33_CombatCasual via residu de clone 4.14.b), son
+        // ShutdownAll() ligne 119 tue le runner Casual qui vient de demarrer.
+        // Fix 19 mai 2026 (brique 5.4.c PvP test).
+        private const string ExpectedSceneName = "30_CombatIA";
+
         private async void Start()
         {
+            // Garde 1 (forte) : si un CombatBootstrapCasual est instancie ailleurs dans
+            // la session (peu importe la scene de hosting), on est en match PvP en cours.
+            // IA skip total -> sinon son QuantumRunner.ShutdownAll() pre-clean ligne ~144
+            // tuerait le runner Casual qui vient juste de demarrer la sim PvP.
+            //
+            // Cas particulier observe 19 mai (brique 5.4.c) : Unity Editor multi-scene
+            // editing avec 30_CombatIA chargee additive en plus de 33_CombatCasual.
+            // gameObject.scene.name retourne "30_CombatIA" pour ce GO (resident dans la
+            // scene IA additive), donc une simple garde scene-check ne suffit pas.
+            var casualBootstrap = FindAnyObjectByType<CombatBootstrapCasual>();
+            if (casualBootstrap != null)
+            {
+                Log($"CombatBootstrapCasual detecte (scene='{casualBootstrap.gameObject.scene.name}') -> IA skip (mode PvP en cours).");
+                return;
+            }
+
+            // Garde 2 (defensive) : ce component n'a de sens que dans 30_CombatIA en
+            // mode single. Si on est dans une autre scene SANS Casual non plus, on skip
+            // quand meme par precaution.
+            if (gameObject.scene.name != ExpectedSceneName)
+            {
+                Log($"Bootstrap skip : ce component est dans la scene '{gameObject.scene.name}' mais ne doit s'activer que dans '{ExpectedSceneName}'.");
+                return;
+            }
+
+            // Garde 3 (defensive) : multi-scene editing avec une scene active != IA.
+            var activeScene = SceneManager.GetActiveScene();
+            if (activeScene.name != ExpectedSceneName)
+            {
+                Log($"Bootstrap skip : scene active='{activeScene.name}' != '{ExpectedSceneName}' (probable multi-scene editing).");
+                return;
+            }
+
             Instance = this;
             _cts = new CancellationTokenSource();
             try

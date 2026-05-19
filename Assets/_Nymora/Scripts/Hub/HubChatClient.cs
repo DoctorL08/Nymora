@@ -95,8 +95,19 @@ namespace Nymora.Hub
         // 5.3 — Deck events. Signal generique : le panel doit refetch ses decks.
         // Payload ignore pour simplicite (createdAt/updatedAt/spellIds parsing nested JsonUtility = chiant).
         public event Action OnDeckChanged;
+        // 5.4 — Wallet events
+        public event Action<WalletUpdateData> OnWalletUpdate;
         public event Action OnConnected;
         public event Action<string> OnDisconnected;
+
+        public struct WalletUpdateData
+        {
+            public int Nymos;
+            public int Shards;
+            public string DeltaCurrency;  // "Nymos" | "Shards" | "" si pas de delta
+            public int DeltaAmount;       // signe
+            public string Reason;
+        }
 
         private ClientWebSocket _ws;
         private CancellationTokenSource _cts;
@@ -104,7 +115,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate }
 
         private struct IncomingEvent
         {
@@ -152,6 +163,11 @@ namespace Nymora.Hub
             public bool Unlocked;
             public string Title;
             public int Points;
+            // 5.4 — wallet
+            public int Nymos;
+            public int Shards;
+            public string DeltaCurrency;
+            public int DeltaAmount;
         }
 
         private void Awake()
@@ -506,6 +522,17 @@ namespace Nymora.Hub
                         // (plus simple que parser le nested DeckDto via JsonUtility).
                         _queue.Enqueue(new IncomingEvent { Kind = EventKind.DeckChanged });
                         break;
+                    case "WALLET_UPDATE":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.WalletUpdate,
+                            Nymos = msg.payload?.nymos ?? 0,
+                            Shards = msg.payload?.shards ?? 0,
+                            DeltaCurrency = msg.payload?.delta?.currency ?? "",
+                            DeltaAmount = msg.payload?.delta?.amount ?? 0,
+                            Reason = msg.payload?.delta?.reason ?? "",
+                        });
+                        break;
                     case "ERROR":
                         Debug.LogWarning($"[ChatClient] Server ERROR: {msg.payload?.code}/{msg.payload?.message}");
                         break;
@@ -580,6 +607,18 @@ namespace Nymora.Hub
             public bool unlocked;
             public string title;
             public int points;
+            // 5.4 — wallet
+            public int nymos;
+            public int shards;
+            public WalletDeltaPayload delta;
+        }
+
+        [Serializable]
+        private class WalletDeltaPayload
+        {
+            public string currency;
+            public int amount;
+            public string reason;
         }
 
         [Serializable]
@@ -700,6 +739,16 @@ namespace Nymora.Hub
                         break;
                     case EventKind.DeckChanged:
                         OnDeckChanged?.Invoke();
+                        break;
+                    case EventKind.WalletUpdate:
+                        OnWalletUpdate?.Invoke(new WalletUpdateData
+                        {
+                            Nymos = ev.Nymos,
+                            Shards = ev.Shards,
+                            DeltaCurrency = ev.DeltaCurrency,
+                            DeltaAmount = ev.DeltaAmount,
+                            Reason = ev.Reason,
+                        });
                         break;
                 }
             }

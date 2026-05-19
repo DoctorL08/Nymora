@@ -24,7 +24,8 @@ namespace Nymora.Combat.Bootstrap
     ///   2. Photon Realtime : ConnectToRoomAsync avec RoomName = matchId (max 2 players)
     ///   3. Attend que les 2 actors soient dans la room (timeout 30s)
     ///   4. Quantum SessionRunner.StartAsync en mode Multiplayer
-    ///   5. Game.AddPlayer(localSlot, runtimePlayer) ou localSlot = IsMasterClient ? 0 : 1
+    ///   5. Game.AddPlayer(0, runtimePlayer) puis poll GetLocalPlayers() pour resoudre
+    ///      le vrai PlayerRef attribue par Quantum (ordre d'arrivee dans la session).
     ///
     /// Garde-fous :
     ///   - Si MatchBridge.PendingMatchId vide -> LoadScene 10_CommunityHub (retour hub)
@@ -70,6 +71,15 @@ namespace Nymora.Combat.Bootstrap
         public RealtimeClient Client { get; private set; }
         public QuantumRunner Runner { get; private set; }
         public int LocalPlayerSlot { get; private set; } = -1;
+
+        /// <summary>
+        /// Fire une seule fois quand Quantum a attribue le PlayerRef global a ce client
+        /// (cf etape 7 dans BootstrapAsync). Les Views (CombatHUDController, CombatInputController)
+        /// s'y abonnent si elles s'initialisent AVANT que le poll GetLocalPlayers retourne — ce
+        /// qui arrive systematiquement car CallbackGameStarted est dispatche par Quantum pendant
+        /// l'await SessionRunner.StartAsync, donc avant qu'on ait pu appeler AddPlayer.
+        /// </summary>
+        public event Action<int> LocalPlayerSlotResolved;
 
         // 4.14.f hotfix — singleton pour que CombatInputController + CombatHUDController
         // resolvent leur _localPlayerIndex depuis LocalPlayerSlot (au lieu de 0 hardcoded
@@ -137,6 +147,49 @@ namespace Nymora.Combat.Bootstrap
 
         private async Task BootstrapAsync(string matchId, string playerName, CancellationToken ct)
         {
+            // ===== 0. Pre-clean : meme hardening que CombatBootstrapIA (5.4.b) =====
+            // Mirror du fix IA car le bug reproduit ici : Hub -> Combat -> Hub -> Combat
+            // re-entrant (ou crash Editor) laisse un QuantumRunner zombi DontDestroyOnLoad
+            // actif. Symptomes : 2 audio listeners, 2 event systems, CombatHUDController.Awake
+            // declenche 2x. Sans ShutdownAll, le SessionRunner.StartAsync pioche l'ancien
+            // runner singleton et ne reinit pas la sim, et la scene Quantum auto-loadee
+            // additivement (via AutoLoadSceneFromMap) reste empilee.
+            int disabledCount = 0;
+            foreach (var dbg in FindObjectsByType<QuantumRunnerLocalDebug>(FindObjectsSortMode.None))
+            {
+                if (dbg != null && dbg.enabled)
+                {
+                    dbg.enabled = false;
+                    disabledCount++;
+                }
+            }
+            if (disabledCount > 0)
+            {
+                Debug.LogWarning($"[CombatBootstrapCasual] {disabledCount} QuantumRunnerLocalDebug legacy detecte(s) et disabled.");
+            }
+
+            QuantumRunner.ShutdownAll();
+            await Task.Yield(); // laisse Quantum propager le shutdown sur 1 frame
+
+            // ===== 0.c Anti additive '30_CombatIA' =====
+            // QuantumMap.asset a ScenePath pointant sur 30_CombatIA.unity, donc la sim
+            // Quantum auto-load cette scene additivement quand on demarre Casual
+            // (SimulationConfig.AutoLoadSceneFromMap = UnloadPreviousSceneThenLoad).
+            // Resultat : 2 EventSystem coexistent + 2 AudioListener + 2 jeux de tile
+            // highlighters -> "There can be only one active Event System" + impossible
+            // de cliquer une tile en spell range (le highlighter dessine sur la scene
+            // fantome). On hook sceneLoaded et on unload 30_CombatIA des qu'elle apparait.
+            SceneManager.sceneLoaded -= HandleAdditiveSceneLoaded;
+            SceneManager.sceneLoaded += HandleAdditiveSceneLoaded;
+
+            // Si elle est deja chargee additivement (resilience cas reentrants), unload immediat.
+            var existingIA = SceneManager.GetSceneByName("30_CombatIA");
+            if (existingIA.IsValid() && existingIA.isLoaded)
+            {
+                Debug.LogWarning("[CombatBootstrapCasual] Scene '30_CombatIA' deja chargee additivement avant SessionRunner -> unload preventif.");
+                SceneManager.UnloadSceneAsync(existingIA);
+            }
+
             // ===== 1. Resolve Photon server settings =====
             var serverSettings = ServerSettings;
             if (serverSettings == null) PhotonServerSettings.TryGetGlobal(out serverSettings);
@@ -183,9 +236,16 @@ namespace Nymora.Combat.Bootstrap
             Client = await MatchmakingExtensions.ConnectToRoomAsync(matchmakingArgs);
             Log($"Photon room '{matchId}' connectee. ActorNumber={Client.LocalPlayer.ActorNumber} IsMaster={Client.LocalPlayer.IsMasterClient}");
 
-            // ===== 3. Determine local player slot (master=slot 0, guest=slot 1) =====
-            LocalPlayerSlot = Client.LocalPlayer.IsMasterClient ? 0 : 1;
-            Log($"LocalPlayerSlot={LocalPlayerSlot}");
+            // ===== 3. LocalPlayerSlot will be resolved AFTER AddPlayer (cf etape 6/7) =====
+            // Bug 19 mai 2026 : on basait LocalPlayerSlot sur IsMasterClient (0 si master,
+            // 1 si guest). Mais Quantum 3 attribue le PlayerRef GLOBAL selon l'ordre d'arrivee
+            // des AddPlayer dans la session reseau, PAS selon le slot Photon ni le hint local
+            // qu'on passe a AddPlayer (qui sert au split-screen multi-local). Resultat : quand
+            // le guest faisait AddPlayer avant le master (race condition), le master devenait
+            // PlayerRef=1 mais croyait etre PlayerRef=0 -> ses commands ciblaient le mauvais
+            // combatant -> "[Movement] rejet : ce n'est pas le tour de P1" pendant son propre
+            // tour. Fix : on poll Runner.Game.GetLocalPlayers() apres AddPlayer pour recuperer
+            // le vrai PlayerRef attribue (cf etape 7 plus bas). LocalPlayerSlot reste a -1 ici.
 
             // ===== 4. Clone runtime config + bind map from scene QuantumMapData =====
             var runtimeConfig = new QuantumUnityJsonSerializer().CloneConfig(RuntimeConfig);
@@ -235,8 +295,36 @@ namespace Nymora.Combat.Bootstrap
                 ClassId = ResolveClassIdForLocalPlayer(),
                 SpellIdValues = ResolveSpellIdValuesForLocalPlayer(),
             };
-            Runner.Game.AddPlayer(LocalPlayerSlot, localPlayer);
-            Log($"AddPlayer slot {LocalPlayerSlot} class={localPlayer.ClassId} deck=[{string.Join(",", localPlayer.SpellIdValues)}] (nickname='{playerName}'). Bootstrap online OK.");
+            // Le 1er argument de Game.AddPlayer est le "localPlayerSlot" : index local utilise
+            // uniquement quand un meme client controle plusieurs players (split-screen). En 1v1
+            // online un seul player local par client, donc on passe 0. Le PlayerRef GLOBAL
+            // (celui qui matche slot 0/1 dans CombatantSystem.OnPlayerAdded) est attribue
+            // par Quantum a la reception cote serveur.
+            const int LOCAL_SPLITSCREEN_SLOT = 0;
+            Runner.Game.AddPlayer(LOCAL_SPLITSCREEN_SLOT, localPlayer);
+            Log($"AddPlayer class={localPlayer.ClassId} deck=[{string.Join(",", localPlayer.SpellIdValues)}] (nickname='{playerName}'). Awaiting Quantum PlayerRef assignment...");
+
+            // ===== 7. Poll GetLocalPlayers pour recuperer le vrai PlayerRef attribue par Quantum =====
+            // Compteur de Task.Yield (et non source de temps non-deterministe) car le HealthCheck
+            // interdit les sources temporelles dans Scripts/Combat/. ~600 yields = ~10s a 60fps
+            // (un Task.Yield resume au tick suivant du dispatcher Unity).
+            const int playerRefResolveMaxAttempts = 600;
+            for (int attempt = 0; attempt < playerRefResolveMaxAttempts; attempt++)
+            {
+                if (_cts.IsCancellationRequested) return;
+                var localPlayers = Runner.Game.GetLocalPlayers();
+                if (localPlayers != null && localPlayers.Count > 0)
+                {
+                    LocalPlayerSlot = localPlayers[0];
+                    Log($"Quantum a attribue PlayerRef={LocalPlayerSlot} a ce client (IsMaster={Client.LocalPlayer.IsMasterClient}, attempt={attempt}). Bootstrap online OK.");
+                    try { LocalPlayerSlotResolved?.Invoke(LocalPlayerSlot); }
+                    catch (Exception ex) { Debug.LogException(ex); }
+                    return;
+                }
+                await Task.Yield();
+            }
+
+            Debug.LogError($"[CombatBootstrapCasual] TIMEOUT {playerRefResolveMaxAttempts} yields : Quantum.GetLocalPlayers() reste vide apres AddPlayer. LocalPlayerSlot reste -1 -> les Views vont logger erreur et input PvP cassera. Verifier qu'AddPlayer a bien ete acquitte par le serveur Quantum.");
         }
 
         // ====== 4.14.d helpers ======
@@ -293,8 +381,39 @@ namespace Nymora.Combat.Bootstrap
         private void OnDestroy()
         {
             if (Instance == this) Instance = null;
+            SceneManager.sceneLoaded -= HandleAdditiveSceneLoaded;
             _cts?.Cancel();
             _ = ShutdownAsync();
+        }
+
+        private static void HandleAdditiveSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            if (mode != LoadSceneMode.Additive) return;
+            if (scene.name != "30_CombatIA") return;
+            Debug.LogWarning("[CombatBootstrapCasual] Scene additive '30_CombatIA' detectee (auto-load Quantum via QuantumMap.ScenePath) -> cleanup differe d'une frame (laisse Quantum finir son SetActiveScene avant unload).");
+            _ = DeferredAdditiveCleanupAsync();
+        }
+
+        private static async Task DeferredAdditiveCleanupAsync()
+        {
+            // Quantum (QuantumCallbackHandler_UnityCallbacks.LoadScene) appelle
+            // SceneManager.SetActiveScene(30_CombatIA) juste apres sceneLoaded. Si on
+            // UnloadAsync immediatement, son SetActiveScene throw ArgumentException
+            // "scene is not loaded". On laisse passer 2 frames, puis on remet
+            // 33_CombatCasual comme active et on unload la fantome.
+            await Task.Yield();
+            await Task.Yield();
+
+            var ghost = SceneManager.GetSceneByName("30_CombatIA");
+            if (!ghost.IsValid() || !ghost.isLoaded) return;
+
+            var casual = SceneManager.GetSceneByName("33_CombatCasual");
+            if (casual.IsValid() && casual.isLoaded)
+            {
+                SceneManager.SetActiveScene(casual);
+            }
+            Debug.LogWarning("[CombatBootstrapCasual] Unload differe de la scene fantome '30_CombatIA'.");
+            SceneManager.UnloadSceneAsync(ghost);
         }
 
         private async Task ShutdownAsync()

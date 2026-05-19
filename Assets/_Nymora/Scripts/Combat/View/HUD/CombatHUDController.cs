@@ -64,16 +64,38 @@ namespace Nymora.Combat.View.HUD
 
         // POLISH-6a (19 mai) — Singleton-like accessor pour que CombatantTooltipView lise
         // l'armed spell sans drag-drop Inspector. Set au Awake, clear au OnDestroy.
-        public static CombatHUDController Instance { get; private set; }
+        //
+        // 19 mai (PvP casual fix) — Self-healing getter. La scene 33_CombatCasual auto-load
+        // additivement la scene 30_CombatIA via QuantumMap.ScenePath (cf memoire
+        // project_combat_scene_bootstrap_isolation). Pendant ~2 frames, 2 instances de
+        // CombatHUDController coexistent (une par scene). Le HUD fantome IA ecrase Instance
+        // dans son Awake, puis quand DeferredAdditiveCleanup unload 30_CombatIA, son
+        // OnDestroy fait `if (Instance == this) Instance = null` -> Instance devient null
+        // malgre le HUD Casual legitime toujours en vie -> CombatantTooltipView lit
+        // `hud == null` -> pas de preview damage ligne dans le tooltip.
+        // Fix : si _instance est null/destroyed, le getter re-scan via FindAnyObjectByType
+        // pour retrouver le HUD encore vivant. Cout = 1 scan par miss (rare).
+        private static CombatHUDController _instance;
+        public static CombatHUDController Instance
+        {
+            get
+            {
+                // Operator overload `bool` UnityEngine.Object : retourne false si l'object
+                // a ete destroye (les references C# restent mais l'objet natif est dead).
+                if (_instance != null && _instance) return _instance;
+                _instance = FindAnyObjectByType<CombatHUDController>(FindObjectsInactive.Exclude);
+                return _instance;
+            }
+        }
 
         private void OnDestroy()
         {
-            if (Instance == this) Instance = null;
+            if (_instance == this) _instance = null;
         }
 
         private void Awake()
         {
-            Instance = this;
+            _instance = this;
             // 5.3.g — Si on vient du Hub avec un deck equipe via DeckBridge, override _testDeck
             // et _signatureSpell avant BindSlots() pour que le HUD affiche les bons sorts.
             ApplyDeckBridgeIfPending();
@@ -175,6 +197,10 @@ namespace Nymora.Combat.View.HUD
         /// <summary>
         /// 4.14.f hotfix — En PvP, resolve _localPlayerIndex depuis CombatBootstrapCasual.LocalPlayerSlot.
         /// Sinon le HUD est en mode IA (slot 0 hardcoded) et affiche Victory/Defeat inverse cote slot 1.
+        /// Bug 19 mai : Quantum dispatch CallbackGameStarted PENDANT l'await SessionRunner.StartAsync,
+        /// donc AVANT que CombatBootstrapCasual ait pu appeler AddPlayer + poll GetLocalPlayers.
+        /// Si LocalPlayerSlot pas encore resolu, on s'abonne a l'event LocalPlayerSlotResolved
+        /// pour retry quand le poll dans le bootstrap obtient le vrai PlayerRef.
         /// </summary>
         private void OnGameStartedResolveLocalSlot(Quantum.QuantumGame game)
         {
@@ -184,17 +210,34 @@ namespace Nymora.Combat.View.HUD
             if (!isPvp) return;
 
             var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
-            if (bootstrap == null || bootstrap.LocalPlayerSlot < 0)
+            if (bootstrap == null)
             {
-                Debug.LogError("[CombatHUDController] PvP detecte mais CombatBootstrapCasual.Instance null OU LocalPlayerSlot<0 — HUD slot wrong.");
+                Debug.LogError("[CombatHUDController] PvP detecte mais CombatBootstrapCasual.Instance null — HUD slot wrong.");
                 return;
             }
-            _localPlayerIndex = bootstrap.LocalPlayerSlot;
+
+            if (bootstrap.LocalPlayerSlot >= 0)
+            {
+                ApplyLocalPlayerSlot(bootstrap.LocalPlayerSlot);
+            }
+            else
+            {
+                Debug.LogWarning("[CombatHUDController] LocalPlayerSlot pas encore resolu (Quantum CallbackGameStarted dispatche avant AddPlayer/GetLocalPlayers) — attente event LocalPlayerSlotResolved...");
+                bootstrap.LocalPlayerSlotResolved += ApplyLocalPlayerSlot;
+            }
+        }
+
+        private void ApplyLocalPlayerSlot(int slot)
+        {
+            _localPlayerIndex = slot;
             // _debugAllPlayersControllable force false en PvP : sinon GetCurrentSenderPlayer
             // retourne state.ActivePlayerIndex meme sur les tours du local, et le HUD peut
             // se trouver desync entre slot affiche et slot reel.
             _debugAllPlayersControllable = false;
             Debug.Log($"[CombatHUDController] PvP: _localPlayerIndex={_localPlayerIndex} (depuis CombatBootstrapCasual.LocalPlayerSlot), _debugAllPlayersControllable=false.");
+
+            var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
+            if (bootstrap != null) bootstrap.LocalPlayerSlotResolved -= ApplyLocalPlayerSlot;
         }
 
         private void BindSlots()
@@ -495,8 +538,16 @@ namespace Nymora.Combat.View.HUD
             }
 
             int senderPlayer = ResolveControlPlayer(state.ActivePlayerIndex);
-            game.SendCommand(senderPlayer, new EndTurnCommand());
-            Debug.Log($"[Nymora.HUD] EndTurnCommand sent player={senderPlayer}");
+            // ATTENTION : SendCommand attend le splitscreen slot LOCAL (= 0 en prod 1-local-
+            // par-client), PAS le PlayerRef GLOBAL Quantum. Bug 19 mai 2026 : on passait
+            // senderPlayer (PlayerRef global) -> si Quantum attribuait PlayerRef=1 au client
+            // (race AddPlayer ordering PvP, cf project_quantum_playerref_resolution),
+            // Quantum cherchait un local player au splitscreen slot 1 introuvable -> plugin
+            // renvoie Error #19 "Player not found" et disconnect. Cf rationale identique
+            // dans CombatInputController.Update.
+            int splitscreenSlot = _debugAllPlayersControllable ? senderPlayer : 0;
+            game.SendCommand(splitscreenSlot, new EndTurnCommand());
+            Debug.Log($"[Nymora.HUD] EndTurnCommand sent player={senderPlayer} splitscreenSlot={splitscreenSlot}");
             Disarm(); // securite : passer le tour annule un eventuel armement
         }
 

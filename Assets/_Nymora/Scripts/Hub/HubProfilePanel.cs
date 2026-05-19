@@ -20,7 +20,7 @@ namespace Nymora.Hub
     /// </summary>
     public sealed class HubProfilePanel : MonoBehaviour
     {
-        public enum ProfileTab { View, Stats, Classes, Achievements, Cosmetics }
+        public enum ProfileTab { View, Stats, Classes, Achievements, Cosmetics, Wallet }
 
         [Header("Backend")]
         [SerializeField] private NymoraBackendSettings _backendSettings;
@@ -35,6 +35,7 @@ namespace Nymora.Hub
         [SerializeField] private Button _tabClassesButton;
         [SerializeField] private Button _tabAchievementsButton;
         [SerializeField] private Button _tabCosmeticsButton;
+        [SerializeField] private Button _tabWalletButton;
 
         [Header("Content panels")]
         [SerializeField] private GameObject _contentView;
@@ -42,6 +43,7 @@ namespace Nymora.Hub
         [SerializeField] private GameObject _contentClasses;
         [SerializeField] private GameObject _contentAchievements;
         [SerializeField] private GameObject _contentCosmetics;
+        [SerializeField] private GameObject _contentWallet;
 
         [Header("Vue tab fields")]
         [SerializeField] private TextMeshProUGUI _viewDisplayName;
@@ -97,6 +99,18 @@ namespace Nymora.Hub
         // Chat UI reference for unlock toast (set via 4.10 wire ; fallback null si pas wire)
         [SerializeField] private HubChatUI _chatUIForAchievementToast;
 
+        // ====== Brique 5.4.b — Wallet tab (Portefeuille) ======
+        [Header("Wallet tab")]
+        [SerializeField] private TextMeshProUGUI _walletHeader;
+        [SerializeField] private RectTransform _walletTransactionsContainer;
+        [SerializeField] private float _walletTxItemHeight = 36f;
+        [SerializeField] private Color _walletAwardColor = new Color(0.45f, 0.85f, 0.50f, 1f);
+        [SerializeField] private Color _walletSpendColor = new Color(0.95f, 0.55f, 0.45f, 1f);
+        [SerializeField] private Color _walletRowBg = new Color(0.15f, 0.16f, 0.20f, 1f);
+        [SerializeField] private Color _walletRowBgAlt = new Color(0.18f, 0.19f, 0.23f, 1f);
+        private bool _hasFetchedWalletOnce;
+        private readonly List<GameObject> _spawnedWalletGOs = new List<GameObject>();
+
         public bool IsOpen => _panelRoot != null && _panelRoot.activeSelf;
 
         private void Awake()
@@ -127,6 +141,7 @@ namespace Nymora.Hub
             if (_tabClassesButton != null) _tabClassesButton.onClick.AddListener(() => SwitchTab(ProfileTab.Classes));
             if (_tabAchievementsButton != null) _tabAchievementsButton.onClick.AddListener(() => SwitchTab(ProfileTab.Achievements));
             if (_tabCosmeticsButton != null) _tabCosmeticsButton.onClick.AddListener(() => SwitchTab(ProfileTab.Cosmetics));
+            if (_tabWalletButton != null) _tabWalletButton.onClick.AddListener(() => SwitchTab(ProfileTab.Wallet));
         }
 
         private void OnDisable()
@@ -137,6 +152,7 @@ namespace Nymora.Hub
             if (_tabClassesButton != null) _tabClassesButton.onClick.RemoveAllListeners();
             if (_tabAchievementsButton != null) _tabAchievementsButton.onClick.RemoveAllListeners();
             if (_tabCosmeticsButton != null) _tabCosmeticsButton.onClick.RemoveAllListeners();
+            if (_tabWalletButton != null) _tabWalletButton.onClick.RemoveAllListeners();
         }
 
         private void Start()
@@ -147,6 +163,7 @@ namespace Nymora.Hub
                 HubChatClient.Instance.OnClassLevelUp += HandleClassLevelUp;
                 HubChatClient.Instance.OnAchievementProgress += HandleAchievementProgress;
                 HubChatClient.Instance.OnAchievementUnlocked += HandleAchievementUnlocked;
+                HubChatClient.Instance.OnWalletUpdate += HandleWalletUpdate;
             }
         }
 
@@ -159,6 +176,7 @@ namespace Nymora.Hub
                 HubChatClient.Instance.OnClassLevelUp -= HandleClassLevelUp;
                 HubChatClient.Instance.OnAchievementProgress -= HandleAchievementProgress;
                 HubChatClient.Instance.OnAchievementUnlocked -= HandleAchievementUnlocked;
+                HubChatClient.Instance.OnWalletUpdate -= HandleWalletUpdate;
             }
         }
 
@@ -189,6 +207,7 @@ namespace Nymora.Hub
             if (_contentClasses != null) _contentClasses.SetActive(tab == ProfileTab.Classes);
             if (_contentAchievements != null) _contentAchievements.SetActive(tab == ProfileTab.Achievements);
             if (_contentCosmetics != null) _contentCosmetics.SetActive(tab == ProfileTab.Cosmetics);
+            if (_contentWallet != null) _contentWallet.SetActive(tab == ProfileTab.Wallet);
             UpdateTabStyles();
             // 5.1 — Lazy fetch progression au 1er switch sur Classes
             if (tab == ProfileTab.Classes && !_hasFetchedProgressionOnce)
@@ -200,6 +219,11 @@ namespace Nymora.Hub
             {
                 FetchAchievementsAsync().Forget();
             }
+            // 5.4 — Lazy fetch wallet au 1er switch sur Wallet
+            if (tab == ProfileTab.Wallet && !_hasFetchedWalletOnce)
+            {
+                FetchWalletAsync().Forget();
+            }
         }
 
         private void UpdateTabStyles()
@@ -209,6 +233,7 @@ namespace Nymora.Hub
             SetButtonBg(_tabClassesButton, _activeTab == ProfileTab.Classes ? _tabActiveColor : _tabInactiveColor);
             SetButtonBg(_tabAchievementsButton, _activeTab == ProfileTab.Achievements ? _tabActiveColor : _tabInactiveColor);
             SetButtonBg(_tabCosmeticsButton, _activeTab == ProfileTab.Cosmetics ? _tabActiveColor : _tabInactiveColor);
+            SetButtonBg(_tabWalletButton, _activeTab == ProfileTab.Wallet ? _tabActiveColor : _tabInactiveColor);
         }
 
         private static void SetButtonBg(Button btn, Color color)
@@ -539,6 +564,145 @@ namespace Nymora.Hub
             {
                 _chatUIForAchievementToast.AppendSystemLineExternal(
                     $"<color=#ffd700>🏆 Succès débloqué : <b>{title}</b> (+{points} pts)</color>");
+            }
+        }
+
+        // ====== Brique 5.4.b — Wallet tab logic ======
+
+        private async UniTask FetchWalletAsync()
+        {
+            string token = ResolveDevToken();
+            if (string.IsNullOrEmpty(token)) return;
+            _api.SetBearerToken(token);
+
+            var res = await _api.GetWalletMeAsync();
+            if (!res.IsSuccess)
+            {
+                Debug.LogWarning($"[ProfilePanel] /wallet/me failed: {res.StatusCode} {res.ErrorMessage}");
+                return;
+            }
+            ApplyWalletData(res.Data);
+            _hasFetchedWalletOnce = true;
+        }
+
+        private void ApplyWalletData(WalletMeResponse data)
+        {
+            UpdateWalletHeader(data.nymos, data.shards);
+            RebuildWalletTransactions(data.transactions ?? new WalletTransactionDto[0]);
+        }
+
+        private void UpdateWalletHeader(int nymos, int shards)
+        {
+            if (_walletHeader == null) return;
+            // ◆ / ◇ (U+25C6/U+25C7) — BMP universel, supporte par LiberationSans SDF.
+            // Emojis 🪙/💎 ne rendent pas (incident 5.4.b 19 mai).
+            _walletHeader.text =
+                $"<color=#f5dc66>◆ <b>{nymos}</b> Nymos</color>   ·   <color=#8be0ff>◇ <b>{shards}</b> Shards</color>";
+        }
+
+        private void RebuildWalletTransactions(WalletTransactionDto[] txs)
+        {
+            if (_walletTransactionsContainer == null) return;
+
+            foreach (var go in _spawnedWalletGOs) if (go != null) Destroy(go);
+            _spawnedWalletGOs.Clear();
+
+            if (txs.Length == 0)
+            {
+                SpawnWalletEmptyRow();
+                return;
+            }
+
+            for (int i = 0; i < txs.Length; i++)
+            {
+                SpawnWalletTxRow(txs[i], i);
+            }
+        }
+
+        private void SpawnWalletEmptyRow()
+        {
+            var go = new GameObject("WalletEmpty", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            go.transform.SetParent(_walletTransactionsContainer, false);
+            var tmp = go.GetComponent<TextMeshProUGUI>();
+            tmp.text = "<i>Aucune transaction pour le moment.</i>";
+            tmp.fontSize = 14;
+            tmp.color = new Color(0.7f, 0.7f, 0.75f);
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.richText = true;
+            go.GetComponent<LayoutElement>().preferredHeight = 48f;
+            _spawnedWalletGOs.Add(go);
+        }
+
+        private void SpawnWalletTxRow(WalletTransactionDto tx, int index)
+        {
+            var row = new GameObject($"WalletTx_{index}",
+                typeof(RectTransform), typeof(Image), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+            row.transform.SetParent(_walletTransactionsContainer, false);
+            row.GetComponent<Image>().color = (index % 2 == 0) ? _walletRowBg : _walletRowBgAlt;
+            var hl = row.GetComponent<HorizontalLayoutGroup>();
+            hl.padding = new RectOffset(10, 10, 4, 4);
+            hl.spacing = 8;
+            hl.childForceExpandHeight = true;
+            hl.childControlHeight = true;
+            hl.childControlWidth = true;
+            hl.childAlignment = TextAnchor.MiddleLeft;
+            row.GetComponent<LayoutElement>().preferredHeight = _walletTxItemHeight;
+
+            // Date (compact yyyy-MM-dd HH:mm)
+            var dateGo = new GameObject("Date", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            dateGo.transform.SetParent(row.transform, false);
+            var dateTmp = dateGo.GetComponent<TextMeshProUGUI>();
+            dateTmp.text = FormatDate(tx.createdAt) ?? "—";
+            dateTmp.fontSize = 13;
+            dateTmp.color = new Color(0.7f, 0.7f, 0.78f);
+            dateTmp.alignment = TextAlignmentOptions.MidlineLeft;
+            dateGo.GetComponent<LayoutElement>().preferredWidth = 130f;
+
+            // Reason (flex)
+            var reasonGo = new GameObject("Reason", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            reasonGo.transform.SetParent(row.transform, false);
+            var reasonTmp = reasonGo.GetComponent<TextMeshProUGUI>();
+            reasonTmp.text = tx.reason ?? "—";
+            reasonTmp.fontSize = 14;
+            reasonTmp.color = new Color(0.92f, 0.92f, 0.95f);
+            reasonTmp.alignment = TextAlignmentOptions.MidlineLeft;
+            reasonGo.GetComponent<LayoutElement>().flexibleWidth = 1f;
+
+            // Amount signe + currency
+            string currencyIcon = tx.currency == "Shards" ? "◇" : "◆";
+            string sign = tx.amount >= 0 ? "+" : "";
+            var amountGo = new GameObject("Amount", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            amountGo.transform.SetParent(row.transform, false);
+            var amountTmp = amountGo.GetComponent<TextMeshProUGUI>();
+            amountTmp.text = $"{sign}{tx.amount} {currencyIcon}";
+            amountTmp.fontSize = 14;
+            amountTmp.color = tx.amount >= 0 ? _walletAwardColor : _walletSpendColor;
+            amountTmp.fontStyle = FontStyles.Bold;
+            amountTmp.alignment = TextAlignmentOptions.MidlineRight;
+            amountGo.GetComponent<LayoutElement>().preferredWidth = 100f;
+
+            // BalanceAfter snapshot (en gris)
+            var balGo = new GameObject("Balance", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            balGo.transform.SetParent(row.transform, false);
+            var balTmp = balGo.GetComponent<TextMeshProUGUI>();
+            balTmp.text = $"<size=70%>(solde {tx.balanceAfter})</size>";
+            balTmp.fontSize = 13;
+            balTmp.color = new Color(0.6f, 0.6f, 0.65f);
+            balTmp.alignment = TextAlignmentOptions.MidlineRight;
+            balTmp.richText = true;
+            balGo.GetComponent<LayoutElement>().preferredWidth = 90f;
+
+            _spawnedWalletGOs.Add(row);
+        }
+
+        private void HandleWalletUpdate(HubChatClient.WalletUpdateData data)
+        {
+            UpdateWalletHeader(data.Nymos, data.Shards);
+            // Si on est sur le tab Wallet et qu'on a deja fetch, refetch pour avoir
+            // la derniere transaction. Sinon (panel ferme ou autre tab), juste header.
+            if (_hasFetchedWalletOnce && _activeTab == ProfileTab.Wallet)
+            {
+                FetchWalletAsync().Forget();
             }
         }
     }

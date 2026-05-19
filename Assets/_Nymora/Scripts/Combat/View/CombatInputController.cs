@@ -116,21 +116,23 @@ namespace Nymora.Combat.View
 
                 // 4.14.f hotfix — En PvP, le SendCommand DOIT etre envoye par le slot LOCAL
                 // (celui sur lequel ce client a l'autorite). Sans ca, Quantum reject le command
-                // avec "Player not found" (Error #19) et disconnect. CombatBootstrapCasual.Instance
-                // expose LocalPlayerSlot (0 = MasterClient/host, 1 = guest, depuis Photon ActorNumber).
+                // avec "Player not found" (Error #19) et disconnect.
+                // Bug 19 mai : Quantum dispatch CallbackGameStarted AVANT que CombatBootstrapCasual
+                // ait pu resoudre LocalPlayerSlot via GetLocalPlayers. Si pas encore resolu, on
+                // s'abonne a l'event LocalPlayerSlotResolved du bootstrap pour retry plus tard.
                 var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
-                if (bootstrap != null && bootstrap.LocalPlayerSlot >= 0)
+                if (bootstrap == null)
                 {
-                    _localPlayerIndex = bootstrap.LocalPlayerSlot;
-                    // _debugAllPlayersMovable force false en PvP : sinon le sender devient
-                    // state.ActivePlayerIndex (slot actif du tour), et les 2 clients enverraient
-                    // leurs commands au meme slot = un sur deux est rejete "Player not found".
-                    _debugAllPlayersMovable = false;
-                    Debug.Log($"[Nymora.CombatInput] PvP: _localPlayerIndex={_localPlayerIndex} (depuis CombatBootstrapCasual.LocalPlayerSlot), _debugAllPlayersMovable=false.");
+                    Debug.LogError("[Nymora.CombatInput] PvP mais CombatBootstrapCasual.Instance null — input combat va casser. Verifier l'ordre Awake/Start.");
+                }
+                else if (bootstrap.LocalPlayerSlot >= 0)
+                {
+                    ApplyLocalPlayerSlot(bootstrap.LocalPlayerSlot);
                 }
                 else
                 {
-                    Debug.LogError("[Nymora.CombatInput] PvP mais CombatBootstrapCasual.Instance null OU LocalPlayerSlot<0 — input combat va casser. Verifier l'ordre Awake/Start.");
+                    Debug.LogWarning("[Nymora.CombatInput] LocalPlayerSlot pas encore resolu (Quantum CallbackGameStarted dispatche avant AddPlayer/GetLocalPlayers) — attente event LocalPlayerSlotResolved...");
+                    bootstrap.LocalPlayerSlotResolved += ApplyLocalPlayerSlot;
                 }
             }
 
@@ -144,6 +146,19 @@ namespace Nymora.Combat.View
                 ? IsoProjection.CenterOffset(grid.Width, grid.Height, _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight)
                 : Vector3.zero;
             _gridReady = true;
+        }
+
+        private void ApplyLocalPlayerSlot(int slot)
+        {
+            _localPlayerIndex = slot;
+            // _debugAllPlayersMovable force false en PvP : sinon le sender devient
+            // state.ActivePlayerIndex (slot actif du tour), et les 2 clients enverraient
+            // leurs commands au meme slot = un sur deux est rejete "Player not found".
+            _debugAllPlayersMovable = false;
+            Debug.Log($"[Nymora.CombatInput] PvP: _localPlayerIndex={_localPlayerIndex} (depuis CombatBootstrapCasual.LocalPlayerSlot), _debugAllPlayersMovable=false.");
+
+            var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
+            if (bootstrap != null) bootstrap.LocalPlayerSlotResolved -= ApplyLocalPlayerSlot;
         }
 
         private void Update()
@@ -197,13 +212,30 @@ namespace Nymora.Combat.View
                 _centerOffset);
 
             // Determine le sender (joueur actif si debug, sinon local).
+            //
+            // ATTENTION semantique : 2 valeurs distinctes a ne pas confondre.
+            //   - senderPlayer = PlayerRef GLOBAL Quantum (0 ou 1). Sert au filtering UI :
+            //     "est-ce mon combatant ?", caster cell pour sorts Self, logging.
+            //   - splitscreenSlot = index LOCAL cote ce client, passe a Game.SendCommand.
+            //     En prod 1 player local par client -> TOUJOURS 0 (cf CombatBootstrapCasual
+            //     qui fait AddPlayer(LOCAL_SPLITSCREEN_SLOT=0, ...)). En legacy debug auto-add
+            //     (Phase 2 IA, 2 RuntimePlayer ajoutes sur le meme client) -> coincide avec
+            //     ActivePlayerIndex car les 2 PlayerRef sont locals.
+            //
+            // Bug 19 mai 2026 : on passait senderPlayer (= PlayerRef global) a SendCommand.
+            // Si Quantum attribuait PlayerRef=1 au client (race AddPlayer ordering en PvP,
+            // cf project_quantum_playerref_resolution), Quantum cherchait un local player
+            // au splitscreen slot 1 -> introuvable -> plugin renvoie Error #19 "Player not
+            // found" et disconnect immediat. Fix : decouple les 2 semantiques.
             int senderPlayer = _localPlayerIndex;
+            int splitscreenSlot = 0;
             if (_debugAllPlayersMovable)
             {
                 var frame = game.Frames.Verified;
                 if (frame.TryGetSingleton<CombatState>(out var state))
                 {
                     senderPlayer = state.ActivePlayerIndex;
+                    splitscreenSlot = senderPlayer; // legacy 2-locals : slot = PlayerRef
                 }
             }
 
@@ -240,25 +272,29 @@ namespace Nymora.Combat.View
                         tx = cx;
                         ty = cy;
                     }
-                    SendSpellAt(game, senderPlayer, armedSpell, tx, ty, 0);
+                    SendSpellAt(game, splitscreenSlot, senderPlayer, armedSpell, tx, ty, 0);
                     return;
                 }
 
-                // Mouvement classique
+                // Mouvement classique. SendCommand prend le splitscreenSlot (slot LOCAL),
+                // pas le PlayerRef global. Cf commentaire au-dessus pour le rationale.
                 var moveCmd = new MoveCommand { TargetX = gx, TargetY = gy };
-                game.SendCommand(senderPlayer, moveCmd);
-                Debug.Log($"[Nymora.CombatInput] Sent MoveCommand player={senderPlayer} target=({gx},{gy})");
+                game.SendCommand(splitscreenSlot, moveCmd);
+                Debug.Log($"[Nymora.CombatInput] Sent MoveCommand player={senderPlayer} splitscreenSlot={splitscreenSlot} target=({gx},{gy})");
             }
         }
 
-        private static void SendSpellAt(QuantumGame game, int sender, SpellId spell, int tx, int ty, byte hgSpend)
+        private static void SendSpellAt(QuantumGame game, int splitscreenSlot, int sender, SpellId spell, int tx, int ty, byte hgSpend)
         {
+            // splitscreenSlot = index local cote ce client (0 en prod, ActivePlayerIndex en
+            // legacy debug auto-add). sender = PlayerRef global Quantum, sert uniquement au
+            // logging ici. Cf rationale dans Update() au-dessus.
             var cmd = new CastSpellCommand { Spell = spell, TargetX = tx, TargetY = ty, HGSpend = hgSpend };
-            game.SendCommand(sender, cmd);
+            game.SendCommand(splitscreenSlot, cmd);
             // 19 mai POLISH-6h — Memorise le cast pour permettre au FloatingTextManager de
             // spawner un texte epique (or + scale bounce) si le sort est signature.
             Nymora.Combat.View.HUD.SignatureCastBridge.NotifySpellCast(spell);
-            Debug.Log($"[Nymora.CombatInput] Sent Cast {spell} player={sender} target=({tx},{ty}) HGSpend={hgSpend}");
+            Debug.Log($"[Nymora.CombatInput] Sent Cast {spell} player={sender} splitscreenSlot={splitscreenSlot} target=({tx},{ty}) HGSpend={hgSpend}");
         }
 
         /// <summary>

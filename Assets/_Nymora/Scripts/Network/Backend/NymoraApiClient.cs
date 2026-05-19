@@ -261,6 +261,27 @@ namespace Nymora.Network.Backend
         public UniTask<ApiResult<VersionResponse>> GetVersionAsync(CancellationToken ct = default)
             => GetJsonAsync<VersionResponse>("/version", requireAuth: false, ct, sendVersionHeader: false);
 
+        // ====== Brique 5.4 — Wallet (Nymos + Shards) ======
+
+        public UniTask<ApiResult<WalletMeResponse>> GetWalletMeAsync(CancellationToken ct = default)
+            => GetJsonAsync<WalletMeResponse>("/wallet/me", requireAuth: true, ct);
+
+        /// <summary>POST /wallet/award — grant manuel (dev/admin uniquement, gate en prod).
+        /// idempotencyKey permet de bloquer un double-credit sur retry (ex: end-of-match).</summary>
+        public UniTask<ApiResult<WalletAwardResponse>> AwardCurrencyAsync(
+            string currency, int amount, string reason, string idempotencyKey = null, CancellationToken ct = default)
+            => PostJsonAsync<WalletAwardResponse>("/wallet/award",
+                new WalletAwardBody { currency = currency, amount = amount, reason = reason, idempotencyKey = idempotencyKey },
+                requireAuth: true, ct);
+
+        /// <summary>POST /wallet/spend — debit avec check fonds. 409 INSUFFICIENT_FUNDS si solde insuffisant.
+        /// Reserve a Phase 5.5 boutique. Non utilise en 5.4.b.</summary>
+        public UniTask<ApiResult<WalletSpendResponse>> SpendCurrencyAsync(
+            string currency, int amount, string reason, string idempotencyKey = null, CancellationToken ct = default)
+            => PostJsonAsync<WalletSpendResponse>("/wallet/spend",
+                new WalletSpendBody { currency = currency, amount = amount, reason = reason, idempotencyKey = idempotencyKey },
+                requireAuth: true, ct);
+
         private async UniTask<ApiResult<TResponse>> PostJsonAsync<TResponse>(
             string path, object body, bool requireAuth, CancellationToken ct, bool sendVersionHeader = true)
         {

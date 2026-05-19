@@ -384,4 +384,76 @@ namespace Nymora.Network.Backend
     {
         public DeckDto deck;
     }
+
+    // ====== Brique 5.4 — Wallet (Nymos + Shards) ======
+
+    [Serializable]
+    public class WalletSnapshotDto
+    {
+        public int nymos;
+        public int shards;
+    }
+
+    [Serializable]
+    public class WalletDeltaDto
+    {
+        public string currency;   // "Nymos" | "Shards"
+        public int amount;        // signe : + award, - spend
+        public string reason;
+    }
+
+    [Serializable]
+    public class WalletTransactionDto
+    {
+        public string id;
+        public string currency;   // "Nymos" | "Shards"
+        public int amount;        // signe
+        public string reason;
+        public int balanceAfter;
+        public string createdAt;  // ISO
+    }
+
+    [Serializable]
+    public class WalletMeResponse
+    {
+        public int nymos;
+        public int shards;
+        public WalletTransactionDto[] transactions;
+    }
+
+    [Serializable]
+    public class WalletAwardBody
+    {
+        public string currency;
+        public int amount;
+        public string reason;
+        public string idempotencyKey;
+    }
+
+    [Serializable]
+    public class WalletAwardResponse
+    {
+        public bool alreadyApplied;
+        public WalletSnapshotDto wallet;
+        public WalletDeltaDto delta;
+        public int balanceAfter;
+    }
+
+    [Serializable]
+    public class WalletSpendBody
+    {
+        public string currency;
+        public int amount;
+        public string reason;
+        public string idempotencyKey;
+    }
+
+    [Serializable]
+    public class WalletSpendResponse
+    {
+        public bool ok;
+        public bool alreadyApplied;
+        public WalletSnapshotDto wallet;
+        public int balanceAfter;
+    }
 }
