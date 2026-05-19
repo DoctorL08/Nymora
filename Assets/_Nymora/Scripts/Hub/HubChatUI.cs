@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Nymora.Hub
@@ -55,6 +56,7 @@ namespace Nymora.Hub
             AppendSystemLine(ChatTab.Global, "--- Chat connecting ---");
             UpdateTabStyles();
             RefreshHistoryText();
+            EnsureHistoryClickHandler();
             if (HubChatClient.Instance != null)
             {
                 HubChatClient.Instance.OnConnected += HandleConnected;
@@ -100,12 +102,15 @@ namespace Nymora.Hub
         private void HandleMessage(string channel, string from, string text)
         {
             if (channel != _channel) return;
-            AppendLine(ChatTab.Global, $"<color=#9bcdf5>{from}</color>: {text}");
+            // POLISH-7 polish (20 mai) : pseudo wrappe dans link cliquable pour ouvrir
+            // le menu contextuel chat (MP / Ami / Inviter clan / Signaler).
+            AppendLine(ChatTab.Global, $"{WrapPseudoLink(from)}: {text}");
         }
 
         private void HandleWhisper(string from, string to, string text)
         {
-            AppendLine(ChatTab.Private, $"<color=#d8a4ff>[{from} → {to}]</color> {text}");
+            // POLISH-7 polish : 2 pseudos cliquables dans la ligne whisper (sender + receiver).
+            AppendLine(ChatTab.Private, $"<color=#d8a4ff>[{WrapPseudoLink(from)} → {WrapPseudoLink(to)}]</color> {text}");
         }
 
         // POLISH-7 (20 mai) : les events portent maintenant le displayName (pseudo officiel
@@ -275,6 +280,73 @@ namespace Nymora.Hub
             _historyText.text = string.Join("\n", list);
             Canvas.ForceUpdateCanvases();
             if (_scrollRect != null) _scrollRect.verticalNormalizedPosition = 0f;
+        }
+
+        // ====== POLISH-7 polish (20 mai) — Pseudos cliquables dans le chat ======
+
+        // Prefix utilise dans le link tag TMP : <link="user:dev-2">dev-2</link>
+        private const string LinkPrefix = "user:";
+
+        /// <summary>Wrap un pseudo dans un &lt;link&gt; TMP + couleur bleue claire pour le distinguer.</summary>
+        private static string WrapPseudoLink(string displayName)
+        {
+            if (string.IsNullOrEmpty(displayName)) return displayName;
+            return $"<link=\"{LinkPrefix}{displayName}\"><color=#9bcdf5>{displayName}</color></link>";
+        }
+
+        /// <summary>
+        /// Auto-attache un PointerClickHandler sur le _historyText au Start. Active aussi
+        /// raycastTarget pour que les clicks soient detectes par l'EventSystem.
+        /// </summary>
+        private void EnsureHistoryClickHandler()
+        {
+            if (_historyText == null) return;
+            _historyText.raycastTarget = true;
+            var handler = _historyText.GetComponent<ChatHistoryClickHandler>();
+            if (handler == null) handler = _historyText.gameObject.AddComponent<ChatHistoryClickHandler>();
+            handler.Bind(this, _historyText);
+        }
+
+        /// <summary>Callback depuis ChatHistoryClickHandler quand un link est clique.</summary>
+        internal void OnPseudoLinkClicked(string linkId)
+        {
+            if (string.IsNullOrEmpty(linkId) || !linkId.StartsWith(LinkPrefix)) return;
+            string displayName = linkId.Substring(LinkPrefix.Length);
+            if (string.IsNullOrEmpty(displayName)) return;
+            if (ChatUserContextMenu.Instance == null)
+            {
+                Debug.LogWarning("[HubChatUI] ChatUserContextMenu.Instance null — auto-create devrait s'etre declenchee au load de la scene hub.");
+                return;
+            }
+            ChatUserContextMenu.Instance.Show(displayName, this);
+        }
+    }
+
+    /// <summary>
+    /// Sub-component attache au TMP _historyText. Detecte les clicks sur les pseudos
+    /// (wrappes en &lt;link&gt;) et delegue a HubChatUI.OnPseudoLinkClicked.
+    /// </summary>
+    internal sealed class ChatHistoryClickHandler : MonoBehaviour, IPointerClickHandler
+    {
+        private HubChatUI _owner;
+        private TextMeshProUGUI _text;
+
+        public void Bind(HubChatUI owner, TextMeshProUGUI text)
+        {
+            _owner = owner;
+            _text = text;
+        }
+
+        public void OnPointerClick(PointerEventData eventData)
+        {
+            if (_owner == null || _text == null) return;
+            Camera cam = _text.canvas != null && _text.canvas.renderMode != RenderMode.ScreenSpaceOverlay
+                ? _text.canvas.worldCamera
+                : null;
+            int linkIdx = TMP_TextUtilities.FindIntersectingLink(_text, eventData.position, cam);
+            if (linkIdx < 0) return;
+            var linkInfo = _text.textInfo.linkInfo[linkIdx];
+            _owner.OnPseudoLinkClicked(linkInfo.GetLinkID());
         }
     }
 }

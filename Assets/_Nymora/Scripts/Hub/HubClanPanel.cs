@@ -169,6 +169,27 @@ namespace Nymora.Hub
             InviteByUserIdAsync(targetUserId).Forget();
         }
 
+        /// <summary>
+        /// POLISH-7 polish (20 mai) — Invite par pseudo depuis le menu contextuel chat
+        /// (click sur un pseudo dans le chat). Le backend resolve displayName -> userId.
+        /// </summary>
+        public void InviteByDisplayNameFromContextMenu(string displayName)
+        {
+            InviteByDisplayNameAsync(displayName).Forget();
+        }
+
+        private async UniTask InviteByDisplayNameAsync(string targetDisplayName)
+        {
+            if (!EnsureToken()) return;
+            var res = await _api.InviteToClanByDisplayNameAsync(targetDisplayName);
+            if (!res.IsSuccess)
+            {
+                Debug.LogWarning($"[ClanPanel] Invite by displayName failed ({res.StatusCode}): {res.ErrorMessage}");
+                return;
+            }
+            Debug.Log($"[ClanPanel] Invitation envoyee a {res.Data.toDisplayName}");
+        }
+
         // ====== Event handlers WS ======
         private void HandleWsAnyClanEvent6(string a, string b, string c, string d, string e, string f)
         {
