@@ -22,7 +22,8 @@ namespace Nymora.Hub
         public static IncomingChallengePopup Instance { get; private set; }
 
         private string _currentChallengeId;
-        private string _currentFromEmail;
+        // POLISH-7 (20 mai) : on stocke le displayName (pseudo officiel) au lieu de l'email.
+        private string _currentFromDisplayName;
 
         public bool IsOpen => _panel != null && _panel.activeSelf;
 
@@ -66,11 +67,11 @@ namespace Nymora.Hub
             }
         }
 
-        private void HandleIncoming(string challengeId, string fromUserId, string fromEmail)
+        private void HandleIncoming(string challengeId, string fromUserId, string fromDisplayName)
         {
             _currentChallengeId = challengeId;
-            _currentFromEmail = fromEmail;
-            if (_label != null) _label.text = $"{fromEmail}\nvous défie !";
+            _currentFromDisplayName = fromDisplayName;
+            if (_label != null) _label.text = $"{fromDisplayName}\nvous défie !";
             if (_panel != null) _panel.SetActive(true);
         }
 
@@ -104,7 +105,7 @@ namespace Nymora.Hub
         public void Hide()
         {
             _currentChallengeId = null;
-            _currentFromEmail = null;
+            _currentFromDisplayName = null;
             if (_panel != null) _panel.SetActive(false);
         }
     }

@@ -91,6 +91,12 @@ namespace Nymora.Hub
         // Vide ("") = pas de clan. _32 chars max (suffisant : noms clans plus longs sont rares).
         [Networked] public NetworkString<_32> NetClanName { get; set; }
 
+        // POLISH-7 (20 mai) — Pseudo officiel (Profile.displayName) sync entre clients pour que
+        // les remotes voient le bon pseudo dans HubAvatarHoverTooltip. State Auth pousse depuis
+        // HubChatClient.MyDisplayName au Spawn (ou via OnWelcome retarde si WELCOME pas encore recu).
+        // _32 chars max (largement suffisant pour un pseudo unique en DB).
+        [Networked] public NetworkString<_32> NetDisplayName { get; set; }
+
         private SpriteRenderer _sr;
         // Transform du child "Visual" (cree par RestructureHubAvatarPrefabTool). Recoit le
         // Scale + Y offset per-class via ApplyClassVisual. Fallback sur transform root si
@@ -478,19 +484,25 @@ namespace Nymora.Hub
             if (!string.IsNullOrEmpty(client.MyUserId))
             {
                 NetSub = client.MyUserId;
+                // POLISH-7 (20 mai) : push aussi le pseudo officiel au Spawn (NetDisplayName).
+                // MyDisplayName est set par le meme WELCOME que MyUserId donc dispo en meme temps.
+                if (!string.IsNullOrEmpty(client.MyDisplayName)) NetDisplayName = client.MyDisplayName;
                 return;
             }
-            // WELCOME pas encore arrivé : on s'abonne pour push retardé
+            // WELCOME pas encore arrivé : on s'abonne pour push retardé (NetSub + NetDisplayName)
             client.OnWelcome += HandleWelcomePostSpawn;
         }
 
-        private void HandleWelcomePostSpawn(string sub, string email)
+        private void HandleWelcomePostSpawn(string sub, string email, string displayName)
         {
             if (HubChatClient.Instance != null) HubChatClient.Instance.OnWelcome -= HandleWelcomePostSpawn;
             if (Object != null && Object.HasStateAuthority && !string.IsNullOrEmpty(sub))
             {
                 NetSub = sub;
-                Debug.Log($"[HubAvatar] NetSub assigne post-spawn via WELCOME : '{sub}'");
+                // POLISH-7 (20 mai) : push aussi le displayName officiel sur le reseau pour
+                // que les remotes voient le bon pseudo dans leur tooltip avatar hover.
+                if (!string.IsNullOrEmpty(displayName)) NetDisplayName = displayName;
+                Debug.Log($"[HubAvatar] NetSub/NetDisplayName assignes post-spawn via WELCOME : sub='{sub}' displayName='{displayName}'");
             }
         }
 

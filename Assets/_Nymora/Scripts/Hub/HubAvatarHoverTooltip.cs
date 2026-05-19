@@ -184,44 +184,23 @@ namespace Nymora.Hub
         }
 
         /// <summary>
-        /// Resoud le contenu du tooltip pour un avatar : pseudo (partie avant '@' de l'email
-        /// pour le local, fallback sub raccourci pour les remotes). Si le joueur est dans
-        /// un clan (NetClanName non vide), prepend une ligne rouge avec le nom du clan.
+        /// Resoud le contenu du tooltip pour un avatar : pseudo (Profile.displayName) lu via
+        /// le [Networked] NetDisplayName de HubAvatar. Si vide (race au Spawn), fallback "?".
+        /// Si le joueur est dans un clan (NetClanName non vide), prepend une ligne rouge.
         ///
-        /// Le clan est sync via [Networked] NetClanName sur HubAvatar (pushe par la State Auth
-        /// au Spawn + sur OnClanStateChanged) -> dispo aussi pour les remotes sans cache backend.
+        /// POLISH-7 (20 mai) : avant cette brique, le local utilisait email.split('@')[0] et
+        /// les remotes affichaient "Joueur <sub raccourci>". Maintenant single source = backend.
         /// </summary>
         private static string ResolveDisplayName(HubAvatar avatar)
         {
-            string pseudo;
-            if (avatar == HubAvatar.Local
-                && HubChatClient.Instance != null
-                && !string.IsNullOrEmpty(HubChatClient.Instance.MyEmail))
-            {
-                pseudo = ExtractPseudoFromEmail(HubChatClient.Instance.MyEmail);
-            }
-            else
-            {
-                string sub = avatar.Sub;
-                if (string.IsNullOrEmpty(sub)) pseudo = "?";
-                else pseudo = sub.Length > 8 ? $"Joueur {sub.Substring(0, 8)}" : $"Joueur {sub}";
-            }
+            string pseudo = avatar.NetDisplayName.ToString();
+            if (string.IsNullOrEmpty(pseudo)) pseudo = "?";
 
             string clanName = avatar.NetClanName.ToString();
             string clanLine = string.IsNullOrEmpty(clanName)
                 ? ""
                 : $"<color=#e85060>[{clanName}]</color>\n";
             return clanLine + pseudo;
-        }
-
-        /// <summary>
-        /// "dev-1@nymora.local" -> "dev-1". Pattern du script dev:token (displayName = email
-        /// avant @ par defaut). Fallback sur l'email complet si pas de '@'.
-        /// </summary>
-        private static string ExtractPseudoFromEmail(string email)
-        {
-            int atIdx = email.IndexOf('@');
-            return atIdx > 0 ? email.Substring(0, atIdx) : email;
         }
     }
 }

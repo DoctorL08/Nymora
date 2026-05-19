@@ -130,7 +130,9 @@ namespace Nymora.Hub
 
             // 19 mai — Push pseudo/clan local pour le tooltip combatant (Combat tooltip).
             // Opponent = bot IA -> clear (le tooltip affichera "Bot" fallback en interne).
-            string localPseudo = ExtractPseudoFromEmail(HubChatClient.Instance?.MyEmail);
+            // POLISH-7 (20 mai) : utilise MyDisplayName (push par WELCOME backend) au lieu
+            // d'extract email.
+            string localPseudo = HubChatClient.Instance?.MyDisplayName ?? "";
             string localClan = (HubClanPanel.Instance != null && HubClanPanel.Instance.HasClan)
                 ? HubClanPanel.Instance.MyClanName : "";
             PlayerProfileBridge.SetLocal(localPseudo, localClan);
@@ -139,13 +141,6 @@ namespace Nymora.Hub
             _transitionInProgress = true;
             Debug.Log($"[ArenaPanel] Entrainement (vs IA) selectionne -> shutdown Fusion + LoadScene '{_trainingSceneName}'");
             await GoToTrainingAsync();
-        }
-
-        private static string ExtractPseudoFromEmail(string email)
-        {
-            if (string.IsNullOrEmpty(email)) return "";
-            int atIdx = email.IndexOf('@');
-            return atIdx > 0 ? email.Substring(0, atIdx) : email;
         }
 
         private async Task GoToTrainingAsync()

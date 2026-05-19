@@ -50,7 +50,8 @@ namespace Nymora.Hub
         {
             yield return new WaitForEndOfFrame();
 
-            var result = MatchBridge.ConsumeLastResult(out var matchId, out var opponentEmail);
+            // POLISH-7 (20 mai) : ConsumeLastResult retourne maintenant opponentDisplayName en plus.
+            var result = MatchBridge.ConsumeLastResult(out var matchId, out var opponentEmail, out var opponentDisplayName);
             string color;
             string label;
             int xpGained;
@@ -79,8 +80,12 @@ namespace Nymora.Hub
                     yield break;
             }
 
-            var line = $"<color={color}>[MATCH] {label} vs {opponentEmail} (id={SafeShortId(matchId)})</color>";
-            Debug.Log($"[HubMatchResultDisplay] {line}");
+            // POLISH-7 : affichage pseudo officiel ; fallback email si vieux match (champ vide).
+            // Le "(id=xxxx)" cote chat a ete retire (vestige debug 4.8.b/c) ; le matchId reste
+            // visible dans la console via le Debug.Log ci-dessous pour le diagnostic.
+            string opponentLabel = !string.IsNullOrEmpty(opponentDisplayName) ? opponentDisplayName : opponentEmail;
+            var line = $"<color={color}>[MATCH] {label} vs {opponentLabel}</color>";
+            Debug.Log($"[HubMatchResultDisplay] {line} (matchId={SafeShortId(matchId)})");
 
             if (_chatUI != null)
             {

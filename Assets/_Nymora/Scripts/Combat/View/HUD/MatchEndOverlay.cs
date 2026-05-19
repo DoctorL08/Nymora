@@ -255,11 +255,13 @@ namespace Nymora.Combat.View.HUD
                 else if (_winnerPlayerIndex == _localPlayerIndex) result = MatchResult.Victory;
                 else result = MatchResult.Defeat;
 
-                // Capture matchId + opponentEmail AVANT que SetMatchResult clear pending.
+                // Capture matchId + opponent identite AVANT que SetMatchResult clear pending.
+                // POLISH-7 (20 mai) : on capture aussi le displayName pour l'affichage hub.
                 string matchId = MatchBridge.PendingMatchId;
                 string opponentEmail = MatchBridge.OpponentEmail;
-                MatchBridge.SetMatchResult(result, matchId, opponentEmail);
-                Debug.Log($"[Nymora.HUD] Retour Hub clique (PvP) — result={result} matchId={matchId} opponent={opponentEmail}");
+                string opponentDisplayName = MatchBridge.OpponentDisplayName;
+                MatchBridge.SetMatchResult(result, matchId, opponentEmail, opponentDisplayName);
+                Debug.Log($"[Nymora.HUD] Retour Hub clique (PvP) — result={result} matchId={matchId} opponent='{opponentDisplayName}' (email={opponentEmail})");
             }
             else
             {

@@ -108,36 +108,41 @@ namespace Nymora.Hub
             AppendLine(ChatTab.Private, $"<color=#d8a4ff>[{from} → {to}]</color> {text}");
         }
 
-        private void HandleIncomingChallenge(string challengeId, string fromUserId, string fromEmail)
+        // POLISH-7 (20 mai) : les events portent maintenant le displayName (pseudo officiel
+        // Profile.displayName) au 3e param, plus l'email. Affichage UI = pseudo partout.
+        // POLISH-7 polish : retire les "(id=xxxxxxxx)" des lignes chat (vestige debug 4.8.b/c
+        // que Lorenzo confondait avec un id joueur). Les ids restent en console via Debug.Log.
+
+        private void HandleIncomingChallenge(string challengeId, string fromUserId, string fromDisplayName)
         {
-            AppendLine(ChatTab.Global, $"<color=#ffaa00>[DEFI] {fromEmail} vous défie ! (id={challengeId.Substring(0, 8)}) — Accepter/Refuser arrive en 4.8.c</color>");
+            AppendLine(ChatTab.Global, $"<color=#ffaa00>[DEFI] {fromDisplayName} vous défie !</color>");
         }
 
-        private void HandleChallengeSent(string challengeId, string toUserId, string toEmail)
+        private void HandleChallengeSent(string challengeId, string toUserId, string toDisplayName)
         {
-            AppendLine(ChatTab.Global, $"<color=#88ff88>[DEFI] Défi envoyé à {toEmail} (id={challengeId.Substring(0, 8)})</color>");
+            AppendLine(ChatTab.Global, $"<color=#88ff88>[DEFI] Défi envoyé à {toDisplayName}</color>");
         }
 
-        private void HandleChallengeResponse(string challengeId, bool accepted, string fromUserId, string fromEmail)
+        private void HandleChallengeResponse(string challengeId, bool accepted, string fromUserId, string fromDisplayName)
         {
             if (accepted)
             {
-                AppendLine(ChatTab.Global, $"<color=#88ff88>[DEFI] {fromEmail} a accepté votre défi ! (id={challengeId.Substring(0, 8)})</color>");
+                AppendLine(ChatTab.Global, $"<color=#88ff88>[DEFI] {fromDisplayName} a accepté votre défi !</color>");
             }
             else
             {
-                AppendLine(ChatTab.Global, $"<color=#ff8888>[DEFI] {fromEmail} a refusé votre défi (id={challengeId.Substring(0, 8)})</color>");
+                AppendLine(ChatTab.Global, $"<color=#ff8888>[DEFI] {fromDisplayName} a refusé votre défi</color>");
             }
         }
 
-        private void HandleMatchReady(string matchId, string opponentSub, string opponentEmail)
+        private void HandleMatchReady(string matchId, string opponentSub, string opponentDisplayName)
         {
-            AppendLine(ChatTab.Global, $"<color=#88e0ff>[MATCH] Prêt vs {opponentEmail} (id={matchId.Substring(0, 8)}) — transition scène en 4.8.d.ii</color>");
+            AppendLine(ChatTab.Global, $"<color=#88e0ff>[MATCH] Prêt vs {opponentDisplayName}</color>");
         }
 
-        private void HandleReportSent(string toEmail)
+        private void HandleReportSent(string toDisplayName)
         {
-            AppendLine(ChatTab.Global, $"<color=#ffa040>[MODÉRATION] Signalement envoyé contre {toEmail}</color>");
+            AppendLine(ChatTab.Global, $"<color=#ffa040>[MODÉRATION] Signalement envoyé contre {toDisplayName}</color>");
         }
 
         private void HandleModerationNotice(string kind, long muteUntilMs)

@@ -41,7 +41,7 @@ namespace Nymora.Hub
             }
         }
 
-        private async void HandleMatchReady(string matchId, string opponentSub, string opponentEmail)
+        private async void HandleMatchReady(string matchId, string opponentSub, string opponentDisplayName)
         {
             if (_transitionInProgress)
             {
@@ -99,32 +99,30 @@ namespace Nymora.Hub
 
             // 4.14.e — Set MatchBridge avec LOCAL identity (pour CombatBootstrapCasual)
             // + opponent (deja transmis par MATCH_READY backend, sert au retour hub).
+            // POLISH-7 (20 mai) : on push aussi les displayName local + opponent pour les
+            // affichages combat (tooltip Combatant) + retour hub (system line VICTOIRE vs X).
             var chat = HubChatClient.Instance;
             string localSub = chat?.MyUserId;
             string localEmail = chat?.MyEmail;
-            MatchBridge.SetPendingMatch(matchId, opponentSub, opponentEmail, localSub, localEmail);
+            string localDisplayName = chat?.MyDisplayName;
+            // opponentEmail n'est plus push directement par OnMatchReady (POLISH-7) -> on
+            // garde une chaine vide cote MatchBridge.OpponentEmail (pas besoin pour gameplay,
+            // l'identite reseau Photon utilise sub uniquement).
+            MatchBridge.SetPendingMatch(matchId, opponentSub, "", localSub, localEmail,
+                                         opponentDisplayName, localDisplayName);
 
-            // 19 mai — Push pseudo/clan pour le tooltip combat. Local via HubClanPanel,
-            // opponent pseudo via email (extract avant @). Clan opponent inconnu cote client
-            // (pas de cache sub->clan en PvP) -> vide pour MVP.
-            string localPseudo = ExtractPseudoFromEmail(localEmail);
+            // 19 mai — Push pseudo/clan pour le tooltip combat. POLISH-7 : displayName officiel
+            // au lieu d'extract email. Clan opponent inconnu cote client (pas de cache sub->clan
+            // en PvP) -> vide pour MVP.
             string localClan = (HubClanPanel.Instance != null && HubClanPanel.Instance.HasClan)
                 ? HubClanPanel.Instance.MyClanName : "";
-            PlayerProfileBridge.SetLocal(localPseudo, localClan);
-            string oppPseudo = ExtractPseudoFromEmail(opponentEmail);
-            PlayerProfileBridge.SetOpponent(oppPseudo, "");
+            PlayerProfileBridge.SetLocal(localDisplayName, localClan);
+            PlayerProfileBridge.SetOpponent(opponentDisplayName, "");
 
-            if (_logVerbose) Debug.Log($"[HubMatchTransition] MatchBridge set matchId={matchId} opponent={opponentEmail} " +
-                                       $"local={localEmail} deck={deck.classId}/'{deck.name}'. Transition vers '{_combatSceneName}' dans {_transitionDelaySeconds}s.");
+            if (_logVerbose) Debug.Log($"[HubMatchTransition] MatchBridge set matchId={matchId} opponent='{opponentDisplayName}' " +
+                                       $"local='{localDisplayName}' deck={deck.classId}/'{deck.name}'. Transition vers '{_combatSceneName}' dans {_transitionDelaySeconds}s.");
 
             await TransitionAsync();
-        }
-
-        private static string ExtractPseudoFromEmail(string email)
-        {
-            if (string.IsNullOrEmpty(email)) return "";
-            int atIdx = email.IndexOf('@');
-            return atIdx > 0 ? email.Substring(0, atIdx) : email;
         }
 
         private async Task TransitionAsync()

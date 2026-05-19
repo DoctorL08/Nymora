@@ -138,9 +138,10 @@ namespace Nymora.Hub
             }
         }
 
-        private void HandleWelcome(string sub, string email)
+        private void HandleWelcome(string sub, string email, string displayName)
         {
             // 4.11 polish — fetch l'etat clan initial des qu'on est connecte (token valide).
+            // POLISH-7 (20 mai) : signature OnWelcome etendue avec displayName, non utilise ici.
             RefreshClanStateAsync().Forget();
         }
 

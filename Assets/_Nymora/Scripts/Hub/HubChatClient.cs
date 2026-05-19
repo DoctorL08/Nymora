@@ -37,20 +37,26 @@ namespace Nymora.Hub
         // 4.8.b — Identité officielle du client, set par le message WELCOME du backend.
         public string MyUserId { get; private set; }
         public string MyEmail { get; private set; }
+        // POLISH-7 (20 mai) — pseudo officiel (Profile.displayName) push par le backend
+        // au WELCOME. Source de verite pour TOUT affichage UI (chat, tooltip, popups).
+        // L'email reste expose en MyEmail uniquement pour debug/logs internes — plus jamais affiche.
+        public string MyDisplayName { get; private set; }
 
         // 4.12 — Expose le JWT dev pour reutilisation par HubProfilePanel (REST /profile/me).
         // En dev local, Lorenzo colle un seul devToken ici et tout le hub (WS + REST) l'utilise.
         // Quand le flow login 00_Login sera systematise, basculer sur AuthService + PlayerPrefs.
         public string DevToken => _devToken;
 
-        public event Action<string, string> OnWelcome;                 // sub, email
-        public event Action<string, string, string> OnMessageReceived; // channel, from, text
-        public event Action<string, string, string> OnWhisperReceived; // from, to, text
-        public event Action<string, string, string> OnIncomingChallenge; // challengeId, fromUserId, fromEmail
-        public event Action<string, string, string> OnChallengeSent;     // challengeId, toUserId, toEmail
-        public event Action<string, bool, string, string> OnChallengeResponse; // challengeId, accepted, fromUserId (responder), fromEmail
-        public event Action<string, string, string> OnMatchReady;              // matchId, opponentSub, opponentEmail (4.8.d.i)
-        public event Action<string> OnReportSent;                              // targetEmail (4.13)
+        // POLISH-7 (20 mai) : tous les events portent maintenant un displayName (pseudo) la
+        // ou ils portaient un email. L'email reste echange via MyEmail pour debug interne.
+        public event Action<string, string, string> OnWelcome;                 // sub, email, displayName
+        public event Action<string, string, string> OnMessageReceived; // channel, fromDisplayName, text
+        public event Action<string, string, string> OnWhisperReceived; // fromDisplayName, toDisplayName, text
+        public event Action<string, string, string> OnIncomingChallenge; // challengeId, fromUserId, fromDisplayName
+        public event Action<string, string, string> OnChallengeSent;     // challengeId, toUserId, toDisplayName
+        public event Action<string, bool, string, string> OnChallengeResponse; // challengeId, accepted, fromUserId (responder), fromDisplayName
+        public event Action<string, string, string> OnMatchReady;              // matchId, opponentSub, opponentDisplayName (4.8.d.i)
+        public event Action<string> OnReportSent;                              // targetDisplayName (4.13)
         public event Action<string, long> OnModerationNotice;                  // kind (reported|muted), muteUntil ms (4.13)
         // 4.10 — Friend events
         public event Action<string, string, string> OnIncomingFriendRequest;     // friendshipId, fromUserId, fromDisplayName
@@ -129,6 +135,11 @@ namespace Nymora.Hub
             public string Email;
             public string FromEmail;
             public string ToEmail;
+            // POLISH-7 (20 mai) — pseudo Profile.displayName push par le backend dans
+            // chaque payload sortant. Remplace l'email pour l'affichage UI.
+            // FromDisplayName / ToDisplayName sont REUTILISES (deja presents pour friends 4.10) :
+            // les events sont mutuellement exclusifs au runtime, pas de collision possible.
+            public string DisplayName;       // payload WELCOME
             public string ChallengeId;
             public bool Accepted;
             public string ModerationKind;
@@ -278,23 +289,35 @@ namespace Nymora.Hub
                             Kind = EventKind.Welcome,
                             Sub = msg.payload?.sub ?? "",
                             Email = msg.payload?.email ?? "",
+                            // POLISH-7 : displayName officiel du backend ; fallback email.split('@')[0] si vieux backend.
+                            DisplayName = !string.IsNullOrEmpty(msg.payload?.displayName)
+                                ? msg.payload.displayName
+                                : SplitEmailLocal(msg.payload?.email),
                         });
                         break;
                     case "CHANNEL_MESSAGE":
+                        // POLISH-7 : From porte le displayName (pseudo) si push par backend ; fallback email.
                         _queue.Enqueue(new IncomingEvent
                         {
                             Kind = EventKind.Message,
                             Channel = msg.channel,
-                            From = msg.payload?.from ?? "",
+                            From = !string.IsNullOrEmpty(msg.payload?.fromDisplayName)
+                                ? msg.payload.fromDisplayName
+                                : (msg.payload?.from ?? ""),
                             Text = msg.payload?.text ?? "",
                         });
                         break;
                     case "WHISPER_RECEIVED":
+                        // POLISH-7 : From/To portent les displayName si pushed ; fallback email.
                         _queue.Enqueue(new IncomingEvent
                         {
                             Kind = EventKind.Whisper,
-                            From = msg.payload?.from ?? "",
-                            To = msg.payload?.to ?? "",
+                            From = !string.IsNullOrEmpty(msg.payload?.fromDisplayName)
+                                ? msg.payload.fromDisplayName
+                                : (msg.payload?.from ?? ""),
+                            To = !string.IsNullOrEmpty(msg.payload?.toDisplayName)
+                                ? msg.payload.toDisplayName
+                                : (msg.payload?.to ?? ""),
                             Text = msg.payload?.text ?? "",
                         });
                         break;
@@ -305,6 +328,10 @@ namespace Nymora.Hub
                             ChallengeId = msg.payload?.challengeId ?? "",
                             From = msg.payload?.from ?? "",
                             FromEmail = msg.payload?.fromEmail ?? "",
+                            // POLISH-7 : fallback split email si vieux backend.
+                            FromDisplayName = !string.IsNullOrEmpty(msg.payload?.fromDisplayName)
+                                ? msg.payload.fromDisplayName
+                                : SplitEmailLocal(msg.payload?.fromEmail),
                         });
                         break;
                     case "CHALLENGE_SENT":
@@ -314,6 +341,9 @@ namespace Nymora.Hub
                             ChallengeId = msg.payload?.challengeId ?? "",
                             To = msg.payload?.to ?? "",
                             ToEmail = msg.payload?.toEmail ?? "",
+                            ToDisplayName = !string.IsNullOrEmpty(msg.payload?.toDisplayName)
+                                ? msg.payload.toDisplayName
+                                : SplitEmailLocal(msg.payload?.toEmail),
                         });
                         break;
                     case "CHALLENGE_RESPONSE":
@@ -324,6 +354,9 @@ namespace Nymora.Hub
                             Accepted = msg.payload != null && msg.payload.accepted,
                             From = msg.payload?.from ?? "",
                             FromEmail = msg.payload?.fromEmail ?? "",
+                            FromDisplayName = !string.IsNullOrEmpty(msg.payload?.fromDisplayName)
+                                ? msg.payload.fromDisplayName
+                                : SplitEmailLocal(msg.payload?.fromEmail),
                         });
                         break;
                     case "MATCH_READY":
@@ -336,8 +369,14 @@ namespace Nymora.Hub
                             ChallengeId = msg.payload?.matchId ?? "",
                             From = opps[0]?.sub ?? "",
                             FromEmail = opps[0]?.email ?? "",
+                            FromDisplayName = !string.IsNullOrEmpty(opps[0]?.displayName)
+                                ? opps[0].displayName
+                                : SplitEmailLocal(opps[0]?.email),
                             To = opps[1]?.sub ?? "",
                             ToEmail = opps[1]?.email ?? "",
+                            ToDisplayName = !string.IsNullOrEmpty(opps[1]?.displayName)
+                                ? opps[1].displayName
+                                : SplitEmailLocal(opps[1]?.email),
                         });
                         break;
                     }
@@ -346,6 +385,9 @@ namespace Nymora.Hub
                         {
                             Kind = EventKind.ReportSent,
                             ToEmail = msg.payload?.toEmail ?? "",
+                            ToDisplayName = !string.IsNullOrEmpty(msg.payload?.toDisplayName)
+                                ? msg.payload.toDisplayName
+                                : SplitEmailLocal(msg.payload?.toEmail),
                         });
                         break;
                     case "MODERATION_NOTICE":
@@ -626,6 +668,8 @@ namespace Nymora.Hub
         {
             public string sub;
             public string email;
+            // POLISH-7 (20 mai) — push par le backend dans MATCH_READY.opponents[]
+            public string displayName;
         }
 
         private void Update()
@@ -643,35 +687,44 @@ namespace Nymora.Hub
                     case EventKind.Welcome:
                         MyUserId = ev.Sub;
                         MyEmail = ev.Email;
-                        Debug.Log($"[ChatClient] WELCOME sub={MyUserId} email={MyEmail}");
-                        OnWelcome?.Invoke(MyUserId, MyEmail);
+                        MyDisplayName = ev.DisplayName;
+                        Debug.Log($"[ChatClient] WELCOME sub={MyUserId} email={MyEmail} displayName={MyDisplayName}");
+                        // POLISH-7 : signature etendue (sub, email, displayName).
+                        OnWelcome?.Invoke(MyUserId, MyEmail, MyDisplayName);
                         break;
                     case EventKind.Message:
+                        // POLISH-7 : ev.From porte le displayName (cf parse CHANNEL_MESSAGE).
                         OnMessageReceived?.Invoke(ev.Channel, ev.From, ev.Text);
                         break;
                     case EventKind.Whisper:
+                        // POLISH-7 : ev.From / ev.To portent les displayName (cf parse WHISPER_RECEIVED).
                         OnWhisperReceived?.Invoke(ev.From, ev.To, ev.Text);
                         break;
                     case EventKind.IncomingChallenge:
-                        OnIncomingChallenge?.Invoke(ev.ChallengeId, ev.From, ev.FromEmail);
+                        // POLISH-7 : 3e param = fromDisplayName au lieu de fromEmail.
+                        OnIncomingChallenge?.Invoke(ev.ChallengeId, ev.From, ev.FromDisplayName);
                         break;
                     case EventKind.ChallengeSent:
-                        OnChallengeSent?.Invoke(ev.ChallengeId, ev.To, ev.ToEmail);
+                        OnChallengeSent?.Invoke(ev.ChallengeId, ev.To, ev.ToDisplayName);
                         break;
                     case EventKind.ChallengeResponse:
-                        OnChallengeResponse?.Invoke(ev.ChallengeId, ev.Accepted, ev.From, ev.FromEmail);
+                        OnChallengeResponse?.Invoke(ev.ChallengeId, ev.Accepted, ev.From, ev.FromDisplayName);
                         break;
                     case EventKind.MatchReady:
                     {
                         // Resoudre l'opponent : celui dont le sub != MyUserId
-                        string oppSub = ev.From == MyUserId ? ev.To : ev.From;
-                        string oppEmail = ev.From == MyUserId ? ev.ToEmail : ev.FromEmail;
-                        Debug.Log($"[ChatClient] MATCH_READY matchId={ev.ChallengeId} opponent={oppEmail}");
-                        OnMatchReady?.Invoke(ev.ChallengeId, oppSub, oppEmail);
+                        bool localIsFirst = (ev.From == MyUserId);
+                        string oppSub = localIsFirst ? ev.To : ev.From;
+                        string oppDisplayName = localIsFirst ? ev.ToDisplayName : ev.FromDisplayName;
+                        string oppEmailLog = localIsFirst ? ev.ToEmail : ev.FromEmail;
+                        Debug.Log($"[ChatClient] MATCH_READY matchId={ev.ChallengeId} opponent={oppDisplayName} (email={oppEmailLog} sub={oppSub})");
+                        // POLISH-7 : 3e param = opponentDisplayName au lieu d'opponentEmail.
+                        OnMatchReady?.Invoke(ev.ChallengeId, oppSub, oppDisplayName);
                         break;
                     }
                     case EventKind.ReportSent:
-                        OnReportSent?.Invoke(ev.ToEmail);
+                        // POLISH-7 : param = toDisplayName au lieu de toEmail.
+                        OnReportSent?.Invoke(ev.ToDisplayName);
                         break;
                     case EventKind.ModerationNotice:
                         OnModerationNotice?.Invoke(ev.ModerationKind, ev.MuteUntil);
@@ -835,6 +888,16 @@ namespace Nymora.Hub
         private static string EscapeJsonString(string s)
         {
             return s.Replace("\\", "\\\\").Replace("\"", "\\\"").Replace("\n", "\\n").Replace("\r", "");
+        }
+
+        // POLISH-7 (20 mai) — fallback uniquement si le backend (vieux build) n'envoie pas
+        // de displayName : on prend l'email avant '@'. Cote backend post-POLISH-7.a, ce
+        // fallback ne devrait jamais s'activer.
+        private static string SplitEmailLocal(string email)
+        {
+            if (string.IsNullOrEmpty(email)) return "";
+            int atIdx = email.IndexOf('@');
+            return atIdx > 0 ? email.Substring(0, atIdx) : email;
         }
 
         private async Task SendJsonAsync(string json)

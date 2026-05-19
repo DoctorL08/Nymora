@@ -100,8 +100,9 @@ namespace Nymora.Hub
             }
         }
 
-        private void HandleWelcome(string sub, string email)
+        private void HandleWelcome(string sub, string email, string displayName)
         {
+            // POLISH-7 (20 mai) : signature OnWelcome etendue avec displayName, non utilise ici.
             if (_initialFetchDone) return;
             FetchAsync().Forget();
         }
