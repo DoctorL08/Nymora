@@ -165,3 +165,6 @@ MonoBehaviour:
   _stage0ControllerNE: {fileID: 9100000, guid: b06704a6ec7b8b34f8db643a755a3825, type: 2}
   _stage1ControllerNE: {fileID: 9100000, guid: 03f2e0749c07ae34ebe8ed465248e4da, type: 2}
   _stage2ControllerNE: {fileID: 9100000, guid: 1bbd3529b7d24b34fbb0b782b8f6eeab, type: 2}
+  _stage0VisualYOffset: -0.15
+  _stage1VisualYOffset: -0.15
+  _stage2VisualYOffset: -0.15

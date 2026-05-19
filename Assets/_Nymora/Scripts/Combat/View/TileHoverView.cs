@@ -121,7 +121,17 @@ namespace Nymora.Combat.View
             CombatantView hoveredCombatant = _enableCombatantHover
                 ? FindCombatantViewByMouse(mouseWorld)
                 : null;
-            UpdateCombatantHover(hoveredCombatant);
+
+            // Si pas de vrai CombatantView hovered, check les leurres Ghostra : leur proxy
+            // pointe vers l'Entity du vrai Ghostra parent, ce qui permet d'afficher le MEME
+            // tooltip (mindgame Bible V7.1 : adversaire indiscernable cote caster vs vrai).
+            EntityRef tooltipEntity = hoveredCombatant != null ? hoveredCombatant.Entity : default;
+            if (hoveredCombatant == null && _enableCombatantHover)
+            {
+                var proxy = FindDecoyHoverProxyByMouse(mouseWorld);
+                if (proxy != null) tooltipEntity = proxy.GhostraParentEntity;
+            }
+            UpdateCombatantHover(hoveredCombatant, tooltipEntity);
 
             // Pas de changement de cellule (tile/obstacle) : rien a faire pour ces 2.
             if (!outOfGrid && gx == _prevHoverX && gy == _prevHoverY) return;
@@ -165,28 +175,93 @@ namespace Nymora.Combat.View
         /// POLISH-5d — Applique/restore le hover combatant detecte par sprite bounds.
         /// Diff par rapport au precedent _prevCombatant : si change, clear l'ancien et
         /// applique le nouveau (+ tooltip HP).
+        ///
+        /// 18 mai : <paramref name="tooltipEntity"/> peut differer de <paramref name="next"/>.Entity
+        /// pour les leurres Ghostra : le hover est sur le leurre (highlight visuel optionnel)
+        /// mais le tooltip affiche les HP du vrai Ghostra parent (mindgame indiscernable).
         /// </summary>
-        private void UpdateCombatantHover(CombatantView next)
+        private void UpdateCombatantHover(CombatantView next, EntityRef tooltipEntity)
         {
-            if (next == _prevCombatant) return;
-
-            // Restore l'ancien.
-            if (_prevCombatant != null)
+            // Track via prev pour le highlight visuel (sprite jaune) -- ne s'applique
+            // qu'aux vrais CombatantView, pas aux leurres.
+            bool combatantChanged = next != _prevCombatant;
+            if (combatantChanged)
             {
-                _prevCombatant.ClearHighlight();
-                if (CombatantTooltipView.Instance != null) CombatantTooltipView.Instance.Hide();
+                if (_prevCombatant != null) _prevCombatant.ClearHighlight();
+                _prevCombatant = next;
+                if (next != null) next.ApplyHighlight();
             }
-            _prevCombatant = next;
 
-            // Apply le nouveau.
-            if (next != null)
+            // Track tooltip separement : peut etre actif sur un leurre meme si pas de
+            // CombatantView highlight.
+            bool tooltipChanged = tooltipEntity != _prevTooltipEntity;
+            if (tooltipChanged)
             {
-                next.ApplyHighlight();
-                if (CombatantTooltipView.Instance != null && TryGetCombatantHp(next.Entity, out int hp, out int maxHp))
+                _prevTooltipEntity = tooltipEntity;
+                if (CombatantTooltipView.Instance != null)
                 {
-                    CombatantTooltipView.Instance.Show(hp, maxHp);
+                    if (tooltipEntity != default && TryGetCombatantHp(tooltipEntity, out int hp, out int maxHp))
+                    {
+                        // 19 mai — World-space anchor : si on hover un CombatantView (vrai
+                        // combatant), on ancre au sprite combatant. Si on hover un leurre
+                        // Ghostra (DecoyHoverProxy), on ancre au sprite leurre (transform de
+                        // _prevCombatant si match, sinon fallback search).
+                        Transform anchor = ResolveTooltipAnchor(next, tooltipEntity);
+                        CombatantTooltipView.Instance.Show(tooltipEntity, hp, maxHp, anchor);
+                    }
+                    else
+                    {
+                        CombatantTooltipView.Instance.Hide();
+                    }
                 }
             }
+        }
+
+        /// <summary>
+        /// Resoud le Transform a utiliser pour positionner le tooltip world-space :
+        /// - Si on hover un vrai CombatantView : utilise son transform direct.
+        /// - Sinon (cas leurre Ghostra) : cherche le DecoyHoverProxy sous la souris.
+        /// </summary>
+        private Transform ResolveTooltipAnchor(CombatantView combatantHovered, EntityRef tooltipEntity)
+        {
+            if (combatantHovered != null) return combatantHovered.transform;
+            // Fallback : iterate proxies pour trouver celui dont l'EntityRef parent match.
+            var proxies = Object.FindObjectsByType<DecoyHoverProxy>(FindObjectsSortMode.None);
+            for (int i = 0; i < proxies.Length; i++)
+            {
+                if (proxies[i] != null && proxies[i].GhostraParentEntity == tooltipEntity)
+                    return proxies[i].transform;
+            }
+            return null;
+        }
+
+        private EntityRef _prevTooltipEntity;
+
+        /// <summary>
+        /// 18 mai — Detecte un DecoyHoverProxy survole (= leurre Ghostra). Retourne le
+        /// proxy au meilleur sortingOrder si plusieurs leurres se chevauchent.
+        /// </summary>
+        private static DecoyHoverProxy FindDecoyHoverProxyByMouse(Vector3 mouseWorld)
+        {
+            var proxies = Object.FindObjectsByType<DecoyHoverProxy>(FindObjectsSortMode.None);
+            DecoyHoverProxy best = null;
+            int bestSortingOrder = int.MinValue;
+            for (int i = 0; i < proxies.Length; i++)
+            {
+                var p = proxies[i];
+                if (p == null || !p.isActiveAndEnabled) continue;
+                var sr = p.GetComponent<SpriteRenderer>();
+                if (sr == null || !sr.enabled || sr.sprite == null) continue;
+                Bounds b = sr.bounds;
+                if (mouseWorld.x < b.min.x || mouseWorld.x > b.max.x) continue;
+                if (mouseWorld.y < b.min.y || mouseWorld.y > b.max.y) continue;
+                if (sr.sortingOrder > bestSortingOrder)
+                {
+                    bestSortingOrder = sr.sortingOrder;
+                    best = p;
+                }
+            }
+            return best;
         }
 
         /// <summary>

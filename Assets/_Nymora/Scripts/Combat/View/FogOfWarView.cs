@@ -11,8 +11,12 @@ namespace Nymora.Combat.View
     ///   - Si le viewer != owner : overlay sombre par-dessus la case + tout son contenu
     ///     (combattants, marques, VFX...) pour masquer l'info a l'adversaire.
     ///
-    /// Le "viewer" = ActivePlayerIndex par defaut (mode 1v1 local Phase 2). En Phase 6+ avec
-    /// vrai matchmaking, on switchera sur le LocalPlayerIndex pour avoir une perspective fixe.
+    /// Le "viewer" = LocalPlayerIndex du client courant (via LocalPlayerResolver). Chaque
+    /// client a un POV fixe sur ses voiles propres (hint subtil) vs ceux des autres (brume
+    /// sombre opaque), peu importe le tour. Fix bug 18 mai : auparavant base sur
+    /// state.ActivePlayerIndex -> pendant le tour du Nightseer, l'adversaire voyait un hint
+    /// subtle violet au lieu d'une brume sombre opaque, et les pieges devenaient visibles
+    /// (cf TrapView meme bug).
     ///
     /// Mode GM "reveal all" : toggle via le checkbox `_revealAll` dans l'Inspector. Le raccourci
     /// clavier F12 a ete supprime a la cloture polish Phase 3 (17 mai 2026).
@@ -27,14 +31,16 @@ namespace Nymora.Combat.View
 
         [Header("Perspective (POV)")]
         [Tooltip("Si >= 0, force le POV sur ce playerIndex (pour tests).\n" +
-                 "-1 (default Phase 2) : POV = joueur actif courant. Les voiles poses par P0 " +
-                 "sont visibles quand P0 est actif, masques quand P1 est actif.")]
+                 "-1 (default) : POV = LocalPlayerIndex du client courant (via LocalPlayerResolver). " +
+                 "Chaque client voit ses propres voiles comme hint et les voiles adverses comme brume.")]
         [SerializeField] private int _forcedViewerPlayer = -1;
 
         [Header("Rendu")]
-        [Tooltip("Couleur overlay sombre cote adversaire (non-owner). Alpha = opacite (0.92 = quasi " +
-                 "opaque mais laisse deviner le damier en dessous, 1.0 = noir complet).")]
-        [SerializeField] private Color _fogColorEnemy = new Color(0.05f, 0.05f, 0.10f, 0.92f);
+        [Tooltip("Couleur overlay 'brume' cote adversaire (non-owner). Tuning 18 mai : passe " +
+                 "de noir-opaque-0.92 a violet-sombre-semi-transparent-0.65 pour atmosphere " +
+                 "Nightseer plus subtile. Alpha 0.65 = on devine le damier dessous, teinte " +
+                 "violet matche l'identite mage des ombres.")]
+        [SerializeField] private Color _fogColorEnemy = new Color(0.18f, 0.10f, 0.28f, 0.65f);
 
         [Tooltip("Indicateur subtil cote proprietaire (le caster voit ses propres voiles). " +
                  "Affiche uniquement sur les voiles SANS piege (sinon TrapView prend le relais).")]
@@ -150,7 +156,7 @@ namespace Nymora.Combat.View
             if (!frame.TryGetSingleton<CombatState>(out var state)) return;
             if (!frame.TryGetSingleton<FogSingleton>(out _)) return;
 
-            int viewer = _forcedViewerPlayer >= 0 ? _forcedViewerPlayer : state.ActivePlayerIndex;
+            int viewer = _forcedViewerPlayer >= 0 ? _forcedViewerPlayer : LocalPlayerResolver.Resolve();
 
             for (int y = 0; y < _height; y++)
             {

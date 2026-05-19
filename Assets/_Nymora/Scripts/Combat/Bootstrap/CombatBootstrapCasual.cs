@@ -79,8 +79,33 @@ namespace Nymora.Combat.Bootstrap
         private CancellationTokenSource _cts;
         private bool _bootstrapInProgress;
 
+        // Nom de la scene legitime pour CE bootstrap. Garde stricte : si le component
+        // se reveille dans une autre scene (chargement additif fantome, multi-scene editing,
+        // Quantum auto-load de QuantumMap.Scene), on no-op. Plus robuste que la comparaison
+        // active vs gameObject.scene car les deux peuvent avoir le meme nom dans certains
+        // cas de chargement additif (cf incident 18 mai bis).
+        private const string ExpectedSceneName = "33_CombatCasual";
+
         private async void Start()
         {
+            // Garde par nom de scene en dur : ce bootstrap n'a de sens QUE dans
+            // 33_CombatCasual. Si on est ailleurs (additif fantome ou autre), no-op.
+            if (gameObject.scene.name != ExpectedSceneName)
+            {
+                Log($"Bootstrap skip : ce component est dans la scene '{gameObject.scene.name}' mais ne doit s'activer que dans '{ExpectedSceneName}'.");
+                return;
+            }
+
+            // Garde secondaire multi-scene editing : si 33_CombatCasual est chargee
+            // mais qu'une AUTRE scene combat (typiquement 30_CombatIA) est active,
+            // on no-op aussi pour ne pas interferer avec le combat IA en cours.
+            var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+            if (activeScene.name != ExpectedSceneName)
+            {
+                Log($"Bootstrap skip : scene active='{activeScene.name}' != '{ExpectedSceneName}' (probable multi-scene editing avec une autre scene combat).");
+                return;
+            }
+
             Instance = this;
             if (!MatchBridge.HasPendingMatch)
             {

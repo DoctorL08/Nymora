@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Nymora.Core.Enums;
 using Nymora.Core.ScriptableObjects;
 using TMPro;
 using UnityEngine;
@@ -22,6 +23,10 @@ namespace Nymora.Hub
     {
         [Header("Data — 5 ClassDefinition.asset (drag-drop)")]
         [SerializeField] private NymoraClassDefinition[] _classDefinitions;
+
+        [Tooltip("SpellCatalog pour lire les stats Bible du sort signature (PA, range, description). " +
+                 "Drag-drop SpellCatalog.asset depuis Assets/_Nymora/ScriptableObjects/Spells/.")]
+        [SerializeField] private SpellCatalog _spellCatalog;
 
         [Header("Root")]
         [SerializeField] private GameObject _panelRoot;
@@ -278,21 +283,137 @@ namespace Nymora.Hub
             loreTmp.enableWordWrapping = true;
             loreTmp.richText = true;
 
-            // Icones Passif/Signature en TOP-sequentiel (juste sous le lore)
+            // 3 icones en TOP-sequentiel (juste sous le lore) : Passif | Phases | Signature
             float iconsTopOffset = loreTopOffset + loreH + 8f;
-            string passifTooltip =
-                $"<size=24><color=#ffe28a><b>Passif : {def.PassiveName}</b></color></size>\n\n" +
-                $"<size=18>{def.PassiveDescription}</size>";
-            SpawnInfoIconTop(card.transform, "P", new Color(0.85f, 0.70f, 0.30f, 1f),
-                xOffset: -80f, topOffset: iconsTopOffset, tooltipText: passifTooltip, labelOverlay: "Passif");
 
-            string signatureTooltip =
-                $"<size=24><color=#ffb066><b>Signature : {def.SignatureName}</b></color></size>\n\n" +
-                $"<size=18>Chargement : {def.ResourceCap} {def.ResourceKind}</size>";
+            // === Tooltip PASSIF : nom + description complete + valeurs Bible ===
+            string passifTooltip = BuildPassifTooltip(def);
+            SpawnInfoIconTop(card.transform, "P", new Color(0.85f, 0.70f, 0.30f, 1f),
+                xOffset: -130f, topOffset: iconsTopOffset, tooltipText: passifTooltip, labelOverlay: "Passif");
+
+            // === Tooltip PHASES : description du chargement persona (stage 0/1/2) ===
+            string phasesTooltip = BuildPhasesTooltip(def);
+            SpawnInfoIconTop(card.transform, "C", new Color(0.55f, 0.65f, 0.85f, 1f),
+                xOffset: 0f, topOffset: iconsTopOffset, tooltipText: phasesTooltip, labelOverlay: "Phases");
+
+            // === Tooltip SIGNATURE : nom + PA + range + description Bible complete ===
+            string signatureTooltip = BuildSignatureTooltip(def);
             SpawnInfoIconTop(card.transform, "S", new Color(0.85f, 0.50f, 0.30f, 1f),
-                xOffset: 80f, topOffset: iconsTopOffset, tooltipText: signatureTooltip, labelOverlay: "Signature");
+                xOffset: 130f, topOffset: iconsTopOffset, tooltipText: signatureTooltip, labelOverlay: "Signature");
 
             _spawned.Add(card);
+        }
+
+        // ====== Tooltip builders (18 mai : enrichissement projection joueur) ======
+
+        private string BuildPassifTooltip(NymoraClassDefinition def)
+        {
+            string desc = string.IsNullOrEmpty(def.PassiveDescription)
+                ? "<i>(Description a remplir cote NymoraClassDefinition.asset)</i>"
+                : def.PassiveDescription;
+            string resourceInfo = (def.ResourceKind != ResourceType.None)
+                ? $"\n\n<size=14><color=#aac>Ressource : <b>{def.ResourceKind}</b> (cap {def.ResourceCap})</color></size>"
+                : "";
+            return $"<size=24><color=#ffe28a><b>Passif : {def.PassiveName}</b></color></size>\n\n" +
+                   $"<size=18>{desc}</size>" +
+                   resourceInfo;
+        }
+
+        private string BuildPhasesTooltip(NymoraClassDefinition def)
+        {
+            // Dict hardcode : description Bible V7.1 des phases visuelles + BONUS exacts donnes
+            // par chaque stage + GENERATION des points de ressource (HG/PR/FD/PT/RM).
+            // Source : SpellSystem.cs L1232 (Soulrender), TurnSystem.cs L470 (Nightseer),
+            // ColossarPassif.GainFondation, NecramVeninHelpers, Ghostra DecoyHelpers.
+            string body, generation;
+            switch (def.ClassId)
+            {
+                case NymoraClass.Soulrender:
+                    generation = "<color=#ffd060><b>Génération HG :</b></color>  <b>+1 HG par sort qui inflige des dégâts</b> (max 1/sort).  Bonus +1 si la cible était <i>Marquée de Carnage</i>.  Cap 5.";
+                    body = "<color=#ffe2a0><b>Stage 0</b></color> — <b>0-1 HG</b> : peau normale\n" +
+                           "  <i>Bonus : aucun (accumulation passive via dégâts subis)</i>\n\n" +
+                           "<color=#ffb060><b>Stage 1</b></color> — <b>2-4 HG</b> : aura rouge progressive\n" +
+                           "  <i>Bonus : aucun (HG dépensable sur sorts à coût HG)</i>\n\n" +
+                           "<color=#ff6060><b>Stage 2</b></color> — <b>5 HG (cap)</b> : fissures écarlates\n" +
+                           "  <i><color=#ffd060>Bonus : <b>signature Âme Lacérée prête</b> (320 dgts + heal 50% dgts passés)</color></i>";
+                    break;
+                case NymoraClass.Colossar:
+                    generation = "<color=#a0d0ff><b>Génération FD :</b></color>  <b>+1 FD par obstacle spawné</b> (pilier ou mur).  Le compteur d'obstacles actifs déclenche aussi le passif <i>Densité Inerte</i> (réduction dgts).  Cap 3.";
+                    body = "<color=#a0c8ff><b>Stage 0</b></color> — <b>0 obstacle actif</b> : posture standard\n" +
+                           "  <i>Bonus : aucune réduction de dégâts</i>\n\n" +
+                           "<color=#80b0ff><b>Stage 1</b></color> — <b>1-2 obstacles</b> : densité partielle\n" +
+                           "  <i><color=#a0d0ff>Bonus : <b>-8% à -16% dégâts subis</b> + +20 dmg sorts portée 1-2 si adjacent à un obstacle</color></i>\n\n" +
+                           "<color=#6090ff><b>Stage 2</b></color> — <b>3 obstacles (cap)</b> : densité maximale\n" +
+                           "  <i><color=#a0d0ff>Bonus : <b>-24% dégâts subis</b> (cap) + +30 HP à chaque destruction de pilier + signature prête</color></i>";
+                    break;
+                case NymoraClass.Ghostra:
+                    generation = "<color=#d0b0ff><b>Génération RM :</b></color>  <b>Resource = nombre de leurres actifs</b> sur le terrain (synchro auto avec les sorts Réplique).  Pose / perte / expiration de leurre met à jour le compteur en temps réel.  Cap 3.";
+                    body = "<color=#c0a0ff><b>Stage 0</b></color> — <b>Angle 1 (0 leurre)</b> : posture neutre\n" +
+                           "  <i>Bonus : aucun bonus dorsal (sauf via Marque de l'Ombre)</i>\n\n" +
+                           "<color=#a080ff><b>Stage 1</b></color> — <b>Angle 2 (1-2 leurres)</b> : aura spectrale\n" +
+                           "  <i><color=#d0b0ff>Bonus : <b>+50 dégâts dorsaux</b> + applique <b>Plaie Ouverte</b> auto sur dorsal (40/tour × 2t)</color></i>\n\n" +
+                           "<color=#8060ff><b>Stage 2</b></color> — <b>Angle 3 (3 leurres)</b> : forme finale\n" +
+                           "  <i><color=#d0b0ff>Bonus : <b>+80 dégâts dorsaux</b> + Plaie Ouverte auto + signature Exécution Spectrale prête</color></i>";
+                    break;
+                case NymoraClass.Necram:
+                    generation = $"<color=#b0e090><b>Génération PT :</b></color>  <b>+1 PT par marque de venin/peste appliquée</b> (cap +2/tour via marques).  <b>+1 PT par tick global</b> de marques sur la map.  Cap {def.ResourceCap}.";
+                    body = $"<color=#a0e090><b>Stage 0</b></color> — ressource basse : posture standard\n" +
+                           $"  <i>Bonus : marques de venin/peste appliquées par les sorts (DoT empilable)</i>\n\n" +
+                           $"<color=#80c070><b>Stage 1</b></color> — ressource moyenne : aura putride\n" +
+                           $"  <i><color=#b0e090>Bonus : Floraison augmente le tick des marques (DoT plus violent)</color></i>\n\n" +
+                           $"<color=#60a050><b>Stage 2</b></color> — ressource au cap ({def.ResourceCap} {def.ResourceKind})\n" +
+                           $"  <i><color=#b0e090>Bonus : <b>signature Virus Fatal prête</b> (déclenche ×3 tous les ticks de marques en un coup)</color></i>";
+                    break;
+                case NymoraClass.Nightseer:
+                    generation = "<color=#c0b0d0><b>Génération PR :</b></color>  <b>+1 PR par round SANS dégâts subis</b>.  <b>-1 PR par round avec dégâts subis</b> (plancher 0).  Récompense la furtivité totale.  Cap 4.";
+                    body = "<color=#9090a0><b>Pas de phases visuelles</b></color>\n\n" +
+                           "Le Nightseer reste discret. Sa puissance se mesure aux pièges et voiles posés, pas à son apparence.\n\n" +
+                           "<i><color=#b0a0c0>Mindgame Bible : l'adversaire ne sait jamais ce qui se cache sous un voile (piège ou rien). C'est le seul kit de Nymora basé 100% sur l'information asymétrique.</color></i>";
+                    break;
+                default:
+                    generation = "";
+                    body = "<i>(Phases non documentées pour cette classe)</i>";
+                    break;
+            }
+            string genBlock = string.IsNullOrEmpty(generation) ? "" : $"<size=15>{generation}</size>\n\n";
+            return $"<size=24><color=#b0c8ff><b>Phases & bonus</b></color></size>\n\n{genBlock}<size=15>{body}</size>";
+        }
+
+        private string BuildSignatureTooltip(NymoraClassDefinition def)
+        {
+            var sigDef = FindSignatureSpellDef(def.ClassId);
+
+            string header = $"<size=24><color=#ffb066><b>Signature : {def.SignatureName}</b></color></size>";
+            string chargeInfo = $"<size=14><color=#aac>Chargement : <b>{def.ResourceCap} {def.ResourceKind}</b> (cooldown {def.SignatureCooldownTurns} tours)</color></size>";
+
+            if (sigDef == null)
+            {
+                // Fallback si SpellCatalog absent ou signature non resolue
+                string desc = string.IsNullOrEmpty(def.SignatureDescription) ? "" : $"\n\n<size=18>{def.SignatureDescription}</size>";
+                return $"{header}\n\n{chargeInfo}{desc}";
+            }
+
+            string stats = $"<size=16><b>{sigDef.ActionPointCost} PA</b>  ·  range <b>{sigDef.MinRange}-{sigDef.MaxRange}</b>  ·  <i>{sigDef.Filter}</i></size>";
+            string description = !string.IsNullOrEmpty(sigDef.Description)
+                ? $"<size=18>{sigDef.Description}</size>"
+                : (!string.IsNullOrEmpty(def.SignatureDescription) ? $"<size=18>{def.SignatureDescription}</size>" : "");
+            string lore = !string.IsNullOrEmpty(sigDef.LoreFlavor)
+                ? $"\n\n<size=14><i><color=#c8b890>{sigDef.LoreFlavor}</color></i></size>"
+                : "";
+
+            return $"{header}\n\n{chargeInfo}\n\n{stats}\n\n{description}{lore}";
+        }
+
+        private SpellDefinition FindSignatureSpellDef(NymoraClass classId)
+        {
+            if (_spellCatalog == null || _spellCatalog.Spells == null) return null;
+            for (int i = 0; i < _spellCatalog.Spells.Count; i++)
+            {
+                var s = _spellCatalog.Spells[i];
+                if (s == null) continue;
+                if (s.ClassId == classId && s.Category == SpellCategory.Signature) return s;
+            }
+            return null;
         }
 
         /// <summary>
@@ -414,14 +535,16 @@ namespace Nymora.Hub
             if (_tooltipPanel != null) return;
             if (_carouselContainer == null) return;
 
-            _tooltipPanel = new GameObject("ClassInfoTooltip", typeof(RectTransform), typeof(Image), typeof(CanvasGroup));
+            _tooltipPanel = new GameObject("ClassInfoTooltip",
+                typeof(RectTransform), typeof(Image), typeof(CanvasGroup),
+                typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
             _tooltipPanel.transform.SetParent(_carouselContainer, false);
             var rt = _tooltipPanel.GetComponent<RectTransform>();
             rt.anchorMin = new Vector2(0.5f, 0f);
             rt.anchorMax = new Vector2(0.5f, 0f);
             rt.pivot = new Vector2(0.5f, 0f);
             rt.anchoredPosition = new Vector2(0f, 90f);
-            rt.sizeDelta = new Vector2(700f, 200f);
+            rt.sizeDelta = new Vector2(820f, 0f); // largeur fixe 820, hauteur calc auto
             var bgImg = _tooltipPanel.GetComponent<Image>();
             bgImg.color = new Color(0.05f, 0.06f, 0.08f, 0.97f);
             bgImg.raycastTarget = false; // empeche le tooltip de capter la souris (anti-flicker)
@@ -431,12 +554,22 @@ namespace Nymora.Hub
             cg.blocksRaycasts = false;
             cg.interactable = false;
 
+            // VerticalLayoutGroup + ContentSizeFitter pour que le tooltip grandisse avec le texte
+            // (18 mai : ancien size fixe 700x200 tronquait les descriptions longues — signatures
+            // Bible font 3-5 lignes, plus stats + lore = ~6-8 lignes total).
+            var vlg = _tooltipPanel.GetComponent<VerticalLayoutGroup>();
+            vlg.padding = new RectOffset(20, 20, 16, 16);
+            vlg.childAlignment = TextAnchor.UpperLeft;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+            vlg.childControlWidth = true;
+            vlg.childControlHeight = true;
+
+            var fitter = _tooltipPanel.GetComponent<ContentSizeFitter>();
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
             var textGo = MakeChild("Text", _tooltipPanel.transform, typeof(TextMeshProUGUI));
-            var trt = textGo.GetComponent<RectTransform>();
-            trt.anchorMin = Vector2.zero;
-            trt.anchorMax = Vector2.one;
-            trt.offsetMin = new Vector2(20f, 16f);
-            trt.offsetMax = new Vector2(-20f, -16f);
             _tooltipText = textGo.GetComponent<TextMeshProUGUI>();
             _tooltipText.fontSize = 18f;
             _tooltipText.color = Color.white;

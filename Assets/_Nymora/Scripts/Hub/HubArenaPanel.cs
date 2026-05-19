@@ -94,18 +94,58 @@ namespace Nymora.Hub
                 Debug.LogWarning("[ArenaPanel] HubDeckBuilderPanel introuvable — ouvre le Deck Builder une fois avant.");
                 return;
             }
-            if (dbp.MyDecks == null || dbp.MyDecks.Count == 0)
+
+            // Fix 18 mai — Force le DeckBuilder a fetch les decks de la CLASSE SELECTIONNEE
+            // (SelectedClassPreferences) AVANT de lire MyDecks. Sans ca, si Lorenzo se
+            // connecte puis lance Combat IA direct sans ouvrir le Deck Builder, MyDecks
+            // reste vide (panel jamais fetch) -> log "Aucun deck equipe" alors qu'il en a
+            // un cote backend. Pattern identique a HubMatchTransition.HandleMatchReady (PvP).
+            string selectedClass = SelectedClassPreferences.Get();
+            if (string.IsNullOrEmpty(selectedClass)) selectedClass = "Soulrender";
+            try
             {
-                Debug.LogWarning($"[ArenaPanel] Aucun deck equipe pour {dbp.CurrentClassId}. Cree un deck dans le Deck Builder avant de lancer un combat.");
+                await dbp.EnsureClassLoadedAsync(selectedClass);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[ArenaPanel] EnsureClassLoadedAsync({selectedClass}) echec : {ex.Message} — combat IA annule.");
                 return;
             }
-            var deck = dbp.MyDecks[0];
+
+            if (dbp.MyDecks == null || dbp.MyDecks.Count == 0)
+            {
+                Debug.LogWarning($"[ArenaPanel] Aucun deck '{selectedClass}' equipe. Cree un deck dans le Deck Builder avant de lancer un combat.");
+                return;
+            }
+            // Utilise le deck SELECTIONNE par l'utilisateur (clique en dernier dans la liste)
+            // au lieu de MyDecks[0] systematique. Fallback MyDecks[0] si aucun deck cliqu.
+            var deck = dbp.SelectedDeck;
+            if (deck == null)
+            {
+                Debug.LogWarning($"[ArenaPanel] SelectedDeck null malgre MyDecks.Count>0 — anomalie. Combat annule.");
+                return;
+            }
             DeckBridge.SetPendingDeck(deck.classId, deck.spellIds, deck.name);
             Debug.Log($"[ArenaPanel] DeckBridge set : classId={deck.classId} deckName='{deck.name}' spellIds=[{string.Join(",", deck.spellIds)}]");
+
+            // 19 mai — Push pseudo/clan local pour le tooltip combatant (Combat tooltip).
+            // Opponent = bot IA -> clear (le tooltip affichera "Bot" fallback en interne).
+            string localPseudo = ExtractPseudoFromEmail(HubChatClient.Instance?.MyEmail);
+            string localClan = (HubClanPanel.Instance != null && HubClanPanel.Instance.HasClan)
+                ? HubClanPanel.Instance.MyClanName : "";
+            PlayerProfileBridge.SetLocal(localPseudo, localClan);
+            PlayerProfileBridge.ClearOpponent();
 
             _transitionInProgress = true;
             Debug.Log($"[ArenaPanel] Entrainement (vs IA) selectionne -> shutdown Fusion + LoadScene '{_trainingSceneName}'");
             await GoToTrainingAsync();
+        }
+
+        private static string ExtractPseudoFromEmail(string email)
+        {
+            if (string.IsNullOrEmpty(email)) return "";
+            int atIdx = email.IndexOf('@');
+            return atIdx > 0 ? email.Substring(0, atIdx) : email;
         }
 
         private async Task GoToTrainingAsync()

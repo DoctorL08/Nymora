@@ -2119,6 +2119,9 @@ MonoBehaviour:
   _costText: {fileID: 1986076321}
   _descriptionText: {fileID: 1471051735}
   _verticalGap: 12
+  _fixedWidth: 320
+  _panelPadding: 10
+  _panelSpacing: 6
 --- !u!114 &322924976
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2330,6 +2333,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _iconRegistry: {fileID: 11400000, guid: 4e36fb9871b28214498ae02d3a2914fb, type: 2}
+  _classDefinitions:
+  - {fileID: 11400000, guid: 9363d65973614ae4aa5cd9560f9fa059, type: 2}
+  - {fileID: 11400000, guid: 5e2df6cd8c8eb354c98ca170295b4c53, type: 2}
+  - {fileID: 11400000, guid: 0e8842fc0c60d1b4a9ed3f0a32b496af, type: 2}
+  - {fileID: 11400000, guid: f3d55ecd043366643ae2397dd9d8f63b, type: 2}
+  - {fileID: 11400000, guid: 91674f8f09b77f34f983be2a5cdfb8e9, type: 2}
   _spellCatalog: {fileID: 11400000, guid: c42fe7c9f9037c040bc3b27f45edb65f, type: 2}
   _localPlayerIndex: 0
   _debugAllPlayersControllable: 1
@@ -4951,8 +4960,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _gridRenderer: {fileID: 932372492}
   _forcedViewerPlayer: -1
-  _fogColorEnemy: {r: 0.05, g: 0.05, b: 0.1, a: 0.92}
-  _fogColorOwner: {r: 0.45, g: 0.3, b: 0.85, a: 0.3}
+  _fogColorEnemy: {r: 0.18039216, g: 0.101960786, b: 0.2784314, a: 0.3529412}
+  _fogColorOwner: {r: 0.45, g: 0.3, b: 0.85, a: 0}
   _sortingOrderEnemy: 3000
   _sortingOrderOwner: 999
   _overlayScale: 2
@@ -6659,7 +6668,9 @@ MonoBehaviour:
   _gridSettings: {fileID: 11400000, guid: e28dde8a0c27b744889dfe45f498a670, type: 2}
   _combatantRenderer: {fileID: 1246937100}
   _placeholderSprite: {fileID: -4618120519007728642, guid: b3d18e83d17ccde41994dc5aec821dfa, type: 3}
-  _decoyIdleController: {fileID: 0}
+  _decoyIdleController: {fileID: 9100000, guid: 80363a828a60c284895a43b6eaa5f026, type: 2}
+  _decoyStage1Controller: {fileID: 9100000, guid: c3be956107fcc9645852d31687ebbc7b, type: 2}
+  _decoyStage2Controller: {fileID: 9100000, guid: 81d79427959a21a449cbee1bb36491a5, type: 2}
   _decoyScale: {x: 1.16, y: 1.16, z: 1}
   _decoyYOffset: -0.22
   _decoySortingOrder: 5
@@ -7453,8 +7464,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _gridSettings: {fileID: 11400000, guid: e28dde8a0c27b744889dfe45f498a670, type: 2}
-  _pillarPrefab: {fileID: 4215405980490732012, guid: f34a57677af893f45a938eba06ca368b, type: 3}
-  _wallPrefab: {fileID: 1901966709116348956, guid: 9206baf38ed96314f8b3d1119472d323, type: 3}
+  _pillarPrefab: {fileID: 7621181073481854375, guid: f34a57677af893f45a938eba06ca368b, type: 3}
+  _wallPrefab: {fileID: 7621181073481854375, guid: f34a57677af893f45a938eba06ca368b, type: 3}
 --- !u!4 &1445919801
 Transform:
   m_ObjectHideFlags: 0

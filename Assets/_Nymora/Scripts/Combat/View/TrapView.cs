@@ -7,7 +7,13 @@ namespace Nymora.Combat.View
     /// <summary>
     /// 2.15.b — Indicateur visuel des pieges Nightseer (Filet de Ronces, Mine).
     ///
-    /// Visible UNIQUEMENT par le proprietaire du piege (le Nightseer poseur).
+    /// Visible UNIQUEMENT par le proprietaire du piege (le Nightseer poseur), du POV
+    /// du CLIENT local (pas du joueur dont c'est le tour). Fix bug 18 mai : auparavant
+    /// base sur ActivePlayerIndex -> pendant le tour du Nightseer, l'adversaire voyait
+    /// les pieges (POV = ActivePlayer = Nightseer = match). Maintenant base sur
+    /// LocalPlayerResolver.Resolve() -> chaque client voit ses propres pieges, peu
+    /// importe le tour.
+    ///
     /// L'adversaire continue de voir l'overlay sombre du Voile via FogOfWarView et ne sait
     /// pas si la case sombre cache un piege ou un voile vide (mindgame Bible V7.1).
     ///
@@ -29,8 +35,9 @@ namespace Nymora.Combat.View
         [SerializeField] private GridRenderer _gridRenderer;
 
         [Header("Perspective (POV)")]
-        [Tooltip("Si >= 0, force le POV sur ce playerIndex (tests). -1 (default Phase 2) : POV = " +
-                 "joueur actif courant. Aligne sur FogOfWarView pour coherence.")]
+        [Tooltip("Si >= 0, force le POV sur ce playerIndex (tests). -1 (default) : POV = " +
+                 "joueur LOCAL du client (via LocalPlayerResolver). Chaque client voit ses " +
+                 "propres pieges peu importe le tour.")]
         [SerializeField] private int _forcedViewerPlayer = -1;
 
         [Header("Sprite runique anime")]
@@ -166,7 +173,7 @@ namespace Nymora.Combat.View
             if (!frame.TryGetSingleton<CombatState>(out var state)) return;
             if (!frame.TryGetSingleton<FogSingleton>(out _)) return;
 
-            int viewer = _forcedViewerPlayer >= 0 ? _forcedViewerPlayer : state.ActivePlayerIndex;
+            int viewer = _forcedViewerPlayer >= 0 ? _forcedViewerPlayer : LocalPlayerResolver.Resolve();
 
             for (int y = 0; y < _height; y++)
             {

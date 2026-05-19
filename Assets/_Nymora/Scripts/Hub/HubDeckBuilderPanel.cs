@@ -107,6 +107,26 @@ namespace Nymora.Hub
         public string CurrentClassId => _currentClassId;
         public IReadOnlyList<DeckDto> MyDecks => _myDecks;
 
+        /// <summary>
+        /// 18 mai — Deck actuellement selectionne par l'utilisateur dans la liste (clique
+        /// en dernier). Si aucun deck selectionne, fallback sur MyDecks[0] (premier cree).
+        /// Utilise par HubArenaPanel + HubMatchTransition pour lancer le combat avec
+        /// la BONNE composition de sorts (au lieu de MyDecks[0] systematique).
+        /// </summary>
+        public DeckDto SelectedDeck
+        {
+            get
+            {
+                if (_myDecks == null || _myDecks.Count == 0) return null;
+                if (!string.IsNullOrEmpty(_editingDeckId))
+                {
+                    var sel = _myDecks.Find(d => d.id == _editingDeckId);
+                    if (sel != null) return sel;
+                }
+                return _myDecks[0];
+            }
+        }
+
         private void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(this); return; }
@@ -124,6 +144,11 @@ namespace Nymora.Hub
             _api = new NymoraApiClient(_backendSettings);
             if (_panelRoot != null) _panelRoot.SetActive(false);
             if (_tooltipPanel != null) _tooltipPanel.SetActive(false);
+
+            // Polish UI (fix 18 mai) : init layout DecksList + style input + label bouton Save.
+            EnsureDecksListLayout();
+            EnsureNameInputStyle();
+            UpdateSaveButtonLabel();
         }
 
         private void OnEnable()
@@ -172,6 +197,7 @@ namespace Nymora.Hub
         {
             if (_panelRoot == null) return;
             _panelRoot.SetActive(true);
+            SetArenaButtonVisible(false); // fix 18 mai : arena pas pertinent en mode Deck Builder
             if (!_hasFetchedOnce) FetchDecksAsync().Forget();
             else RenderAll();
         }
@@ -179,7 +205,19 @@ namespace Nymora.Hub
         public void Close()
         {
             if (_panelRoot != null) _panelRoot.SetActive(false);
+            SetArenaButtonVisible(true);
             HideTooltip();
+        }
+
+        /// <summary>
+        /// Cache/affiche le bouton Arena du hub. Appele au Open/Close du DeckBuilder pour
+        /// eviter que le bouton Arena chevauche le panel (et n'a pas de sens en mode edition
+        /// de deck). Find one-shot (negligeable perf), idempotent si bouton absent.
+        /// </summary>
+        private static void SetArenaButtonVisible(bool visible)
+        {
+            var arenaBtn = Object.FindAnyObjectByType<HubArenaButton>(FindObjectsInactive.Include);
+            if (arenaBtn != null) arenaBtn.gameObject.SetActive(visible);
         }
 
         public void Toggle()
@@ -321,33 +359,48 @@ namespace Nymora.Hub
                 numTmp.alignment = TextAlignmentOptions.TopLeft;
                 numTmp.fontStyle = FontStyles.Bold;
 
-                // Label central
+                // Icone du slot (centre, 56x56). Affiche si _slotSpellIds[i] non-null et
+                // def.IconSprite assigne. Label texte rendu en dessous (cost + nom abrege).
+                SpellDefinition slotDef = _slotSpellIds[i] != null ? _spellCatalog?.FindBySpellId(_slotSpellIds[i]) : null;
+                if (slotDef != null && slotDef.IconSprite != null)
+                {
+                    var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+                    iconGo.transform.SetParent(slotGo.transform, false);
+                    var iconRt = iconGo.GetComponent<RectTransform>();
+                    iconRt.anchorMin = new Vector2(0.5f, 1f);
+                    iconRt.anchorMax = new Vector2(0.5f, 1f);
+                    iconRt.pivot = new Vector2(0.5f, 1f);
+                    iconRt.anchoredPosition = new Vector2(0f, -22f);
+                    iconRt.sizeDelta = new Vector2(56f, 56f);
+                    var iconImg = iconGo.GetComponent<Image>();
+                    iconImg.sprite = slotDef.IconSprite;
+                    iconImg.preserveAspect = true;
+                    iconImg.raycastTarget = false;
+                }
+
+                // Label central (bas) — affichage texte PA + nom abrege en dessous de l'icone
                 var labelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
                 labelGo.transform.SetParent(slotGo.transform, false);
                 var labelRt = labelGo.GetComponent<RectTransform>();
-                labelRt.anchorMin = Vector2.zero;
-                labelRt.anchorMax = Vector2.one;
-                labelRt.offsetMin = new Vector2(6f, 6f);
-                labelRt.offsetMax = new Vector2(-6f, -6f);
+                labelRt.anchorMin = new Vector2(0f, 0f);
+                labelRt.anchorMax = new Vector2(1f, 0f);
+                labelRt.pivot = new Vector2(0.5f, 0f);
+                labelRt.anchoredPosition = new Vector2(0f, 4f);
+                labelRt.sizeDelta = new Vector2(-6f, 38f);
                 var tmp = labelGo.GetComponent<TextMeshProUGUI>();
-                tmp.fontSize = 14f;
+                tmp.fontSize = 11f;
                 tmp.color = Color.white;
                 tmp.alignment = TextAlignmentOptions.Center;
                 tmp.fontStyle = FontStyles.Bold;
                 tmp.enableWordWrapping = true;
-                if (_slotSpellIds[i] != null)
+                tmp.richText = true;
+                if (slotDef != null)
                 {
-                    var def = _spellCatalog?.FindBySpellId(_slotSpellIds[i]);
-                    if (def != null)
-                    {
-                        tmp.text = $"{def.DisplayName}\n<size=11><color=#cce>{def.ActionPointCost} PA</color></size>";
-                        tmp.richText = true;
-                    }
+                    tmp.text = $"<size=10>{slotDef.DisplayName}</size>\n<color=#cce>{slotDef.ActionPointCost} PA</color>";
                 }
                 else
                 {
                     tmp.text = "<color=#666>vide</color>";
-                    tmp.richText = true;
                 }
 
                 AddHoverHandler(slotGo, _slotSpellIds[i]);
@@ -438,18 +491,36 @@ namespace Nymora.Hub
                 btn.interactable = !isEquipped;
                 btn.onClick.AddListener(() => OnSpellGridClicked(spellId));
 
-                // Nom du sort (haut, gros)
+                // Icone (centre haut, 64x64). Affiche si def.IconSprite assigne via
+                // PopulateSpellCatalog (18 mai). Le nom passe sous l'icone.
+                if (def.IconSprite != null)
+                {
+                    var iconGo = new GameObject("Icon", typeof(RectTransform), typeof(Image));
+                    iconGo.transform.SetParent(go.transform, false);
+                    var iconRt = iconGo.GetComponent<RectTransform>();
+                    iconRt.anchorMin = new Vector2(0.5f, 1f);
+                    iconRt.anchorMax = new Vector2(0.5f, 1f);
+                    iconRt.pivot = new Vector2(0.5f, 1f);
+                    iconRt.anchoredPosition = new Vector2(0f, -8f);
+                    iconRt.sizeDelta = new Vector2(64f, 64f);
+                    var iconImg = iconGo.GetComponent<Image>();
+                    iconImg.sprite = def.IconSprite;
+                    iconImg.preserveAspect = true;
+                    iconImg.raycastTarget = false;
+                }
+
+                // Nom du sort (sous l'icone, fontSize legerement plus petit pour laisser place a l'icone)
                 var nameGo = new GameObject("Name", typeof(RectTransform), typeof(TextMeshProUGUI));
                 nameGo.transform.SetParent(go.transform, false);
                 var nameRt = nameGo.GetComponent<RectTransform>();
                 nameRt.anchorMin = new Vector2(0f, 1f);
                 nameRt.anchorMax = new Vector2(1f, 1f);
                 nameRt.pivot = new Vector2(0.5f, 1f);
-                nameRt.anchoredPosition = new Vector2(0f, -10f);
-                nameRt.sizeDelta = new Vector2(-20f, 70f);
+                nameRt.anchoredPosition = new Vector2(0f, def.IconSprite != null ? -78f : -10f);
+                nameRt.sizeDelta = new Vector2(-20f, def.IconSprite != null ? 40f : 70f);
                 var nameTmp = nameGo.GetComponent<TextMeshProUGUI>();
                 nameTmp.text = def.DisplayName;
-                nameTmp.fontSize = 20f;
+                nameTmp.fontSize = def.IconSprite != null ? 16f : 20f;
                 nameTmp.color = Color.white;
                 nameTmp.alignment = TextAlignmentOptions.Center;
                 nameTmp.fontStyle = FontStyles.Bold;
@@ -477,16 +548,200 @@ namespace Nymora.Hub
             }
         }
 
+        private RectTransform _decksScrollContent;
+
+        /// <summary>
+        /// Refonte ergo sidebar (fix 18 mai ter) :
+        ///   1. Reordonne les enfants : Title -> NameInput -> ButtonsRow -> DecksList (avec
+        ///      scroll). Les boutons restent fixes en haut, l'utilisateur les voit toujours
+        ///      meme avec 5 decks.
+        ///   2. Transforme le DecksList en ScrollView : ajoute RectMask2D + ScrollRect, et
+        ///      cree un child "Content" qui hebergera les items (avec VerticalLayoutGroup +
+        ///      ContentSizeFitter pour scroll vertical natif).
+        /// Idempotent : si la structure ScrollRect existe deja, on n'y touche pas, juste on
+        /// re-applique l'ordering (cas hot-reload Unity).
+        /// </summary>
+        private void EnsureDecksListLayout()
+        {
+            if (_decksList == null) return;
+
+            // ===== 1. Setup ScrollRect + Content si pas deja fait =====
+            var existingContent = _decksList.Find("Content") as RectTransform;
+            if (existingContent == null)
+            {
+                // a) Disable le VerticalLayoutGroup du DecksList (sinon il essaie de layouter
+                //    le Content child, ce qui fout en l'air le scroll).
+                var oldVlg = _decksList.GetComponent<VerticalLayoutGroup>();
+
+                // b) Add RectMask2D pour clipper les items qui depassent.
+                if (_decksList.GetComponent<RectMask2D>() == null)
+                    _decksList.gameObject.AddComponent<RectMask2D>();
+
+                // c) Add Image en background (sinon le RectMask2D n'a rien a clipper visuellement
+                //    et certains raycasts peuvent ne pas passer).
+                if (_decksList.GetComponent<Image>() == null)
+                {
+                    var bgImg = _decksList.gameObject.AddComponent<Image>();
+                    bgImg.color = new Color(0f, 0f, 0f, 0.001f); // quasi-transparent, juste pour raycast
+                }
+
+                // d) Add ScrollRect.
+                var sr = _decksList.GetComponent<ScrollRect>();
+                if (sr == null) sr = _decksList.gameObject.AddComponent<ScrollRect>();
+                sr.horizontal = false;
+                sr.vertical = true;
+                sr.viewport = _decksList;
+                sr.movementType = ScrollRect.MovementType.Clamped;
+                sr.scrollSensitivity = 30f;
+
+                // e) Cree un child "Content" anchored top-stretch, qui grandira vers le bas.
+                var contentGo = new GameObject("Content", typeof(RectTransform), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+                contentGo.transform.SetParent(_decksList, false);
+                var contentRt = (RectTransform)contentGo.transform;
+                contentRt.anchorMin = new Vector2(0f, 1f);
+                contentRt.anchorMax = new Vector2(1f, 1f);
+                contentRt.pivot = new Vector2(0.5f, 1f);
+                contentRt.anchoredPosition = Vector2.zero;
+                contentRt.sizeDelta = new Vector2(0f, 0f);
+
+                var newVlg = contentGo.GetComponent<VerticalLayoutGroup>();
+                if (oldVlg != null)
+                {
+                    newVlg.spacing = oldVlg.spacing;
+                    newVlg.childAlignment = oldVlg.childAlignment;
+                    newVlg.childForceExpandWidth = oldVlg.childForceExpandWidth;
+                    newVlg.childForceExpandHeight = oldVlg.childForceExpandHeight;
+                    newVlg.childControlWidth = oldVlg.childControlWidth;
+                    newVlg.childControlHeight = oldVlg.childControlHeight;
+                    oldVlg.enabled = false; // disable l'ancien pour eviter double-layout
+                }
+                else
+                {
+                    newVlg.spacing = 4f;
+                    newVlg.childAlignment = TextAnchor.UpperLeft;
+                    newVlg.childForceExpandWidth = true;
+                    newVlg.childForceExpandHeight = false;
+                    newVlg.childControlWidth = true;
+                    newVlg.childControlHeight = false;
+                }
+
+                var fitter = contentGo.GetComponent<ContentSizeFitter>();
+                fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+                fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+                sr.content = contentRt;
+                existingContent = contentRt;
+            }
+            _decksScrollContent = existingContent;
+
+            // ===== 1.bis Le DecksList prend tout l'espace vertical restant du sidebar =====
+            // Demande Lorenzo (18 mai) : la zone scroll doit aller jusqu'en bas du menu, pas
+            // se limiter aux 2/3 (320px fixe etait trop petit vs sidebar ~500px).
+            //
+            // Solution : flexibleHeight=1 sur le LayoutElement du DecksList + activer
+            // childControlHeight=true sur le VerticalLayoutGroup du sidebar parent. Le VLG
+            // distribue alors l'espace restant (apres Title + NameInput + ButtonsRow qui ont
+            // des preferredHeight stricts) au DecksList.
+            var le = _decksList.GetComponent<LayoutElement>();
+            if (le != null)
+            {
+                if (!Mathf.Approximately(le.minHeight, 120f)) le.minHeight = 120f; // au moins 2 items visibles
+                if (le.flexibleHeight != 1f) le.flexibleHeight = 1f; // prend tout l'espace restant
+            }
+            var sidebarVlg = _decksList.parent != null
+                ? _decksList.parent.GetComponent<VerticalLayoutGroup>()
+                : null;
+            if (sidebarVlg != null && !sidebarVlg.childControlHeight)
+            {
+                sidebarVlg.childControlHeight = true;
+                // childForceExpandHeight reste a false : seuls les enfants avec flexibleHeight>0
+                // recoivent l'espace flex (= DecksList uniquement).
+            }
+
+            // ===== 2. Reordonne les enfants du sidebar parent =====
+            //    Cible : Title (sibling 0) -> NameInput (1) -> ButtonsRow (2) -> DecksList (3)
+            var sidebar = _decksList.parent;
+            if (sidebar != null && _deckNameInput != null && _saveDeckButton != null)
+            {
+                Transform nameInputT = _deckNameInput.transform;
+                Transform buttonsRowT = _saveDeckButton.transform.parent;
+                // Trouve l'index du Title (si present). Sinon part de 0.
+                int baseIdx = 0;
+                var title = sidebar.Find("SidebarTitle") ?? sidebar.Find("Title");
+                if (title != null) baseIdx = title.GetSiblingIndex() + 1;
+
+                if (nameInputT != null && nameInputT.parent == sidebar)
+                    nameInputT.SetSiblingIndex(baseIdx);
+                if (buttonsRowT != null && buttonsRowT.parent == sidebar)
+                    buttonsRowT.SetSiblingIndex(baseIdx + 1);
+                _decksList.SetSiblingIndex(baseIdx + 2);
+            }
+        }
+
+        /// <summary>
+        /// Force un rebuild immediate du layout DecksList apres ajout/clear d'items.
+        /// Sans ca, au PREMIER render (connexion : Open -> FetchDecksAsync -> RenderAll),
+        /// les items se chevauchent visuellement car le ContentSizeFitter+VerticalLayoutGroup
+        /// n'ont pas encore eu de frame pour recalculer. Cliquer "Nouveau" trigger un
+        /// 2e RenderAll qui passe par le rebuild correct, d'ou le bug "visible uniquement
+        /// a la connexion".
+        /// </summary>
+        private void ForceDecksListRebuild()
+        {
+            if (_decksList == null) return;
+            LayoutRebuilder.ForceRebuildLayoutImmediate(_decksList);
+        }
+
+        /// <summary>
+        /// Style l'input "Nom du deck" avec une couleur distincte du sidebar sombre, pour
+        /// que l'utilisateur le repere clairement comme champ editable. Idempotent.
+        /// </summary>
+        private void EnsureNameInputStyle()
+        {
+            if (_deckNameInput == null) return;
+            var img = _deckNameInput.GetComponent<Image>();
+            if (img == null) return;
+            // Bleu profond Nymora-themed, contraste avec le fond sidebar (0.10-0.15 gris).
+            var target = new Color(0.18f, 0.26f, 0.38f, 1f);
+            if (img.color != target) img.color = target;
+        }
+
+        /// <summary>
+        /// Met a jour le label du bouton _saveDeckButton selon le contexte :
+        /// - Deck selectionne dans la liste (_editingDeckId != null) -> "Modifier"
+        /// - Nouveau deck ou liste vide (_editingDeckId == null) -> "Save"
+        /// </summary>
+        private void UpdateSaveButtonLabel()
+        {
+            if (_saveDeckButton == null) return;
+            var tmp = _saveDeckButton.GetComponentInChildren<TMPro.TextMeshProUGUI>(true);
+            if (tmp == null) return;
+            string targetText = string.IsNullOrEmpty(_editingDeckId) ? "Save" : "Modifier";
+            if (tmp.text != targetText) tmp.text = targetText;
+        }
+
         private void RenderDecksList()
         {
             ClearSpawned(_spawnedDeckItems);
             if (_decksList == null) return;
 
+            // Self-healing layout (fix 18 mai) : le RectTransform du DecksList etait fige
+            // a 100x100 par defaut alors que LayoutElement.preferredHeight=320 -> seul 1 item
+            // visible. Force ContentSizeFitter.PreferredSize pour que le decksList grandisse
+            // avec ses enfants empilles verticalement (max 5 decks Bible * 60px = 300px,
+            // tient sous la limite preferredHeight=320 du sidebar parent).
+            EnsureDecksListLayout();
+
+            // Spawn dans _decksScrollContent (cree par EnsureDecksListLayout). Fallback sur
+            // _decksList direct si la setup ScrollRect a echoue pour une raison X (degrade
+            // gracieux : pas de scroll, mais les decks restent visibles).
+            Transform parentForItems = (_decksScrollContent != null) ? (Transform)_decksScrollContent : (Transform)_decksList;
+
             foreach (var deck in _myDecks)
             {
                 string deckId = deck.id;
                 var item = new GameObject($"DeckItem_{deck.id}", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
-                item.transform.SetParent(_decksList, false);
+                item.transform.SetParent(parentForItems, false);
                 item.GetComponent<LayoutElement>().preferredHeight = 56f;
                 var img = item.GetComponent<Image>();
                 bool isActive = deck.id == _editingDeckId;
@@ -508,6 +763,12 @@ namespace Nymora.Hub
 
                 _spawnedDeckItems.Add(item);
             }
+
+            // Force rebuild immediate apres ajout des items pour eviter le chevauchement
+            // visuel au premier render (la frame suivante recalculerait, mais entre temps
+            // l'utilisateur voit le bug fugace).
+            ForceDecksListRebuild();
+            UpdateSaveButtonLabel();
         }
 
         // ====== Interactions ======

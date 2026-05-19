@@ -80,7 +80,18 @@ namespace Nymora.Combat.View.HUD
                             c.GridX, c.GridY,
                             _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight) + _centerOffset;
                         worldPos.y += _spawnYOffsetWorld;
-                        _manager.Spawn(worldPos, delta);
+                        // 19 mai POLISH-6h — Si un sort signature vient d'etre cast (dans la fenetre
+                        // SignatureCastBridge ~1.5s), spawn le texte EPIQUE (gros or bounce). Sinon
+                        // texte standard rouge/vert. Limite aux degats (delta < 0) — un signature ne
+                        // soigne jamais en l'etat actuel mais defensif.
+                        if (delta < 0 && SignatureCastBridge.IsSignatureRecent())
+                        {
+                            _manager.SpawnSignatureHit(worldPos, delta);
+                        }
+                        else
+                        {
+                            _manager.Spawn(worldPos, delta);
+                        }
                     }
                 }
                 _lastHP[entity] = currentHP;

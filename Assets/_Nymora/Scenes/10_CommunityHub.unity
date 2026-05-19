@@ -23018,7 +23018,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _backendUrl: ws://localhost:3000
-  _devToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkNGE5MWViNy1hNTFjLTQxYzUtYTg1OC0xYmFlM2Q5NThkMTQiLCJlbWFpbCI6ImFtaS0xQG55bW9yYS5sb2NhbCIsImlhdCI6MTc3OTA1NDg0OCwiZXhwIjoxNzc5MTQxMjQ4fQ.QnBNzsvV-_H9FCYbkR4QJ9JdgKO2Vq1D7dsHBbMZFCk
+  _devToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3YmZkYWY0OS01MWRlLTQwYWItYTUwMy1kYjM3YWZkMmRjMWIiLCJlbWFpbCI6ImRldi0xQG55bW9yYS5sb2NhbCIsImlhdCI6MTc3OTE0MTQ4MSwiZXhwIjoxNzc5MjI3ODgxfQ.K4j2s_QaKsrwGSJvpXlB7bEFhC8dl_GKJpXE-kgER3g
   _autoConnect: 1
   _autoJoinChannel: global
   _logVerbose: 1
@@ -50682,6 +50682,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 0e8842fc0c60d1b4a9ed3f0a32b496af, type: 2}
   - {fileID: 11400000, guid: f3d55ecd043366643ae2397dd9d8f63b, type: 2}
   - {fileID: 11400000, guid: 91674f8f09b77f34f983be2a5cdfb8e9, type: 2}
+  _spellCatalog: {fileID: 11400000, guid: c42fe7c9f9037c040bc3b27f45edb65f, type: 2}
   _panelRoot: {fileID: 688757616}
   _closeButton: {fileID: 670457942}
   _carouselContainer: {fileID: 11633785}

@@ -25,17 +25,24 @@ namespace Nymora.Combat.View
         [SerializeField] private CombatantRenderer _combatantRenderer;
         [Tooltip("Sprite fallback si _decoyIdleController null. Sert de 1er sprite statique avant que l'animator demarre. Drag-and-drop le 1er frame idle de stage0_SE.")]
         [SerializeField] private Sprite _placeholderSprite;
-        [Tooltip("AnimatorController joue sur les leurres (Bible-strict idle-only). Default = GhostraStage0_SE.controller : son etat default est Idle, et comme on ne trigger jamais Walk/Cast/Attack sur le leurre, il boucle en Idle indefiniment. Pour les leurres en mouvement (permutation), reste statique mais avec respiration idle.")]
+        [Tooltip("AnimatorController stage 0 (Bible Angle 1 : 0 leurre actif). Default = GhostraStage0_SE.controller. " +
+                 "Son etat default est Idle, le leurre boucle en Idle indefiniment.")]
         [SerializeField] private RuntimeAnimatorController _decoyIdleController;
+        [Tooltip("AnimatorController stage 1 (Bible Angle 2 : 1-2 leurres actifs). Default = GhostraStage1_SE.controller. " +
+                 "Si null, fallback sur _decoyIdleController.")]
+        [SerializeField] private RuntimeAnimatorController _decoyStage1Controller;
+        [Tooltip("AnimatorController stage 2 (Bible Angle 3 : 3 leurres actifs = au cap). Default = GhostraStage2_SE.controller. " +
+                 "Si null, fallback sur _decoyStage1Controller puis _decoyIdleController.")]
+        [SerializeField] private RuntimeAnimatorController _decoyStage2Controller;
         [Tooltip("Scale appliquee au GameObject leurre. Default 1.16 (calibre Lorenzo, aligne avec RestructureGhostraPrefabTool).")]
         [SerializeField] private Vector3 _decoyScale = new Vector3(1.16f, 1.16f, 1f);
         [Tooltip("Y offset applique au sprite leurre (aligne avec le Visual.LocalPosition.y du prefab Ghostra : -0.22).")]
         [SerializeField] private float _decoyYOffset = -0.22f;
         [Tooltip("Sorting order applique aux leurres. Default 5 (au-dessus des tiles, sous la vraie Ghostra ~10).")]
         [SerializeField] private int _decoySortingOrder = 5;
-        [Tooltip("Alpha du sprite leurre. 1 = identique a la vraie Ghostra. Default 0.85 = legerement translucide pour aider le joueur a distinguer ses leurres.")]
+        [Tooltip("Alpha du sprite leurre COTE CASTER (le Ghostra qui a pose). 1 = identique a la vraie Ghostra. Default 0.85 = legerement translucide pour aider le caster a distinguer ses leurres. COTE ADVERSAIRE l'alpha est force a 1 (indiscernable Bible V7.1).")]
         [SerializeField, Range(0f, 1f)] private float _decoyAlpha = 0.85f;
-        [Tooltip("Tint applique au sprite leurre (cote joueur Ghostra seulement). Default cyan pale pour aider a distinguer les leurres de la vraie Ghostra. Bible-strict: cote adversaire les leurres devraient etre indiscernables (sans tint) - a gerer en multijoueur futur.")]
+        [Tooltip("Tint applique au sprite leurre COTE CASTER uniquement. Default cyan pale pour aider le caster a distinguer ses leurres. Cote adversaire le tint est force a blanc opaque (indiscernable du vrai Ghostra).")]
         [SerializeField] private Color _decoyTint = new Color(0.7f, 0.88f, 1.0f, 1.0f); // bleu pale spectral
 
         // Cle composite (ghostraEntity, slotIndex) -> GameObject leurre actif.
@@ -103,7 +110,7 @@ namespace Nymora.Combat.View
 
                     if (!_decoyVisuals.TryGetValue(key, out var go) || go == null)
                     {
-                        go = CreateDecoyGameObject(ghostraEntity, slot, d.Kind);
+                        go = CreateDecoyGameObject(ghostraEntity, slot, d.Kind, ghostra.PlayerIndex);
                         _decoyVisuals[key] = go;
                     }
 
@@ -116,6 +123,15 @@ namespace Nymora.Combat.View
 
                     // Sync sprite avec la vraie Ghostra (Bible "indiscernable cote adversaire").
                     SyncSpriteFromGhostra(go, ghostraEntity);
+
+                    // Refresh tint chaque frame : robuste au tweak Inspector en Play Mode et
+                    // au cas ou LocalPlayer change (improbable mais safe).
+                    ApplyTintForOwnership(go, ghostra.PlayerIndex);
+
+                    // Sync stage chaque frame : le Ghostra parent peut changer de stage
+                    // (0/1/2 = Angle 1/2/3 Bible V7.1, base sur nb leurres actifs). Le leurre
+                    // suit visuellement le stage du parent (cohenrence indiscernable Bible).
+                    SyncStageFromGhostra(go, ghostra);
                 }
             }
 
@@ -138,7 +154,7 @@ namespace Nymora.Combat.View
             }
         }
 
-        private GameObject CreateDecoyGameObject(EntityRef ghostra, int slot, DecoyKind kind)
+        private GameObject CreateDecoyGameObject(EntityRef ghostra, int slot, DecoyKind kind, int ghostraPlayerIndex)
         {
             var go = new GameObject($"FakeGhostra_E#{ghostra.Index}_slot{slot}_{kind}");
             go.transform.SetParent(transform, worldPositionStays: false);
@@ -146,10 +162,10 @@ namespace Nymora.Combat.View
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sortingOrder = _decoySortingOrder;
-            // 3.7.a.i.4 — tint cote joueur Ghostra (alpha + couleur) pour distinguer les
-            // leurres de la vraie Ghostra (visuellement). Bible-strict cote adversaire
-            // (multijoueur futur) : tint=blanc opaque pour rendre indiscernable.
-            sr.color = new Color(_decoyTint.r, _decoyTint.g, _decoyTint.b, _decoyAlpha);
+            // Tint applique selon ownership : caster voit cyan/translucide, adversaire voit
+            // blanc opaque indiscernable. Resolu chaque frame dans ApplyTintForOwnership.
+            // Init = adversaire-style (blanc opaque) safe par defaut.
+            sr.color = Color.white;
 
             // 3.7.a.i.4 — ajoute Animator avec controller idle-only. Comme on ne trigger
             // jamais Walk/Cast/Attack sur le leurre, il boucle en Idle (default state).
@@ -164,7 +180,61 @@ namespace Nymora.Combat.View
             {
                 sr.sprite = _placeholderSprite;
             }
+
+            // Proxy hover : permet a TileHoverView de detecter le survol et d'afficher
+            // le tooltip du VRAI Ghostra parent (Bible V7.1 : mindgame indiscernable).
+            var proxy = go.AddComponent<DecoyHoverProxy>();
+            proxy.GhostraParentEntity = ghostra;
+
             return go;
+        }
+
+        /// <summary>
+        /// Sync l'AnimatorController du leurre sur le stage du Ghostra parent (chaque frame,
+        /// idempotent : ne touche que si le controller cible a change). Logique identique a
+        /// CombatantRenderer.ComputeStage (Ghostra branch) : nb decoys actifs -> stage 0/1/2.
+        /// Fallback descendant si le controller stage demande est null (stage 2 -> stage 1 ->
+        /// stage 0 / idle).
+        /// </summary>
+        private void SyncStageFromGhostra(GameObject decoyGo, Combatant ghostra)
+        {
+            var anim = decoyGo.GetComponent<Animator>();
+            if (anim == null) return; // mode fallback sprite statique : pas de stage swap
+
+            int active = 0;
+            for (int i = 0; i < 3; i++)
+            {
+                if (ghostra.Decoys[i].Kind != DecoyKind.None) active++;
+            }
+            int stage = active >= 3 ? 2 : active >= 1 ? 1 : 0;
+
+            RuntimeAnimatorController target =
+                stage == 2 ? (_decoyStage2Controller ?? _decoyStage1Controller ?? _decoyIdleController)
+              : stage == 1 ? (_decoyStage1Controller ?? _decoyIdleController)
+              :              _decoyIdleController;
+
+            if (target != null && !ReferenceEquals(anim.runtimeAnimatorController, target))
+            {
+                anim.runtimeAnimatorController = target;
+            }
+        }
+
+        /// <summary>
+        /// Applique le tint au sprite leurre selon LocalPlayer vs Ghostra owner :
+        /// - LocalPlayer == ghostraPlayerIndex (le caster Ghostra voit son propre leurre)
+        ///   -> tint cyan + alpha 0.85 (aide visuelle a distinguer ses leurres).
+        /// - LocalPlayer != ghostraPlayerIndex (l'adversaire voit le leurre)
+        ///   -> tint blanc opaque (1,1,1,1) = indiscernable du vrai Ghostra (Bible V7.1).
+        /// </summary>
+        private void ApplyTintForOwnership(GameObject decoyGo, int ghostraPlayerIndex)
+        {
+            var sr = decoyGo.GetComponent<SpriteRenderer>();
+            if (sr == null) return;
+            int localPlayer = LocalPlayerResolver.Resolve();
+            Color target = (localPlayer == ghostraPlayerIndex)
+                ? new Color(_decoyTint.r, _decoyTint.g, _decoyTint.b, _decoyAlpha)
+                : Color.white;
+            if (sr.color != target) sr.color = target;
         }
 
         /// <summary>

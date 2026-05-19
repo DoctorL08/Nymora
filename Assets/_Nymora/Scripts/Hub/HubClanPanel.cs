@@ -64,6 +64,7 @@ namespace Nymora.Hub
         /// <summary>4.11 polish — true si je suis dans un clan (utilisé par ChallengePopup pour masquer "Inviter dans clan").</summary>
         public bool HasClan => _myClan != null;
         public string MyClanRole => _myClan?.myRole;
+        public string MyClanName => _myClan?.name;
         public bool CanInviteToClan => HasClan && (_myClan.myRole == "Leader" || _myClan.myRole == "Officer");
         public event Action OnClanStateChanged;
 

@@ -9,6 +9,7 @@ using UnityEngine;
 // AUSSI dans Quantum (codegen) — on prend Nymora.Core.Enums comme source-of-truth UI.
 using TargetingFilter = Nymora.Core.Enums.TargetingFilter;
 using TargetingShape = Nymora.Core.Enums.TargetingShape;
+using NymoraClass = Nymora.Core.Enums.NymoraClass;
 
 namespace Nymora.Editor.Tools
 {
@@ -111,7 +112,12 @@ namespace Nymora.Editor.Tools
                 entry.Description = bible.Description;
                 entry.LoreFlavor = bible.LoreFlavor;
 
-                // IconSprite : preserve (NE PAS overwrite — assigne manuellement Inspector).
+                // IconSprite : auto-populate depuis le dossier icones de la classe (18 mai).
+                // Convention filename : `icon_<suffix>` ou suffix = SpellIdTech apres le 1er '_'
+                // (= apres le prefixe classe). Ex : "soulrender_tranche_ame" -> "icon_tranche_ame".
+                // Si non trouve, preserve la valeur existante (drag-and-drop manuel reste possible).
+                var icon = ResolveIconSprite(bible.SpellIdTech, bible.ClassId);
+                if (icon != null) entry.IconSprite = icon;
 
                 // Versioning
                 entry.CombatRulesVersion = GameVersion.CombatRulesVersion;
@@ -130,7 +136,72 @@ namespace Nymora.Editor.Tools
             {
                 Debug.LogWarning($"[Nymora.PopulateSpellCatalog] ATTENTION : seulement {newList.Count}/80 sorts populates. Verifier SpellBibleTexts.Entries ou SpellRegistry.");
             }
+            int iconsHit = 0, iconsMiss = 0;
+            foreach (var s in newList)
+            {
+                if (s.IconSprite != null) iconsHit++; else iconsMiss++;
+            }
+            Debug.Log($"[Nymora.PopulateSpellCatalog] Icones : {iconsHit} assignees / {iconsMiss} manquantes (drag manuel ou re-naming designer).");
         }
 
+        // ================ ICON RESOLUTION (18 mai) ================
+
+        private static readonly Dictionary<NymoraClass, string> ClassIconFolders = new Dictionary<NymoraClass, string>
+        {
+            { NymoraClass.Soulrender, "Assets/_Nymora/Art/Sprites/Soulrender/soulrender_icons" },
+            { NymoraClass.Nightseer,  "Assets/_Nymora/Art/Sprites/Nightseer/Icons" },
+            { NymoraClass.Colossar,   "Assets/_Nymora/Art/Sprites/Colossar/colossar_icons" },
+            { NymoraClass.Necram,     "Assets/_Nymora/Art/Sprites/Necram/necram_icons" },
+            { NymoraClass.Ghostra,    "Assets/_Nymora/Art/Sprites/Ghostra/Spell_Icon" },
+        };
+
+        // Overrides pour les sorts dont le SpellIdTech (Bible) drop des particules
+        // ("de", "du", "l'") alors que le filename designer les conserve. Source :
+        // PopulateSpellIconRegistry.FileToSpellId (= verite filename designer).
+        private static readonly Dictionary<string, string> FilenameOverrides = new Dictionary<string, string>
+        {
+            { "nightseer_volee_epines",        "icon_volee_depines" },
+            { "nightseer_frappe_ombre",        "icon_frappe_de_lombre" },
+            { "nightseer_marque_chasseur",     "icon_marque_du_chasseur" },
+            { "nightseer_filet_ronces",        "icon_filet_de_ronces" },
+            { "nightseer_champ_mines",         "icon_champ_de_mines" },
+            { "nightseer_voile_ombre",         "icon_voile_dombre" },
+            { "colossar_renvoi_bouclier",      "icon_renvoi_du_bouclier" },
+            { "necram_voile_pestilence",       "icon_voile_de_pestilence" },
+            { "ghostra_pas_dans_ombre",        "icon_pas_dans_lombre" },
+            { "ghostra_marque_ombre",          "icon_marque_de_lombre" },
+            { "ghostra_linceul_ombres",        "icon_linceul_dombres" },
+            { "ghostra_pas_au_dela",           "icon_pas_de_lau_dela" },
+        };
+
+        /// <summary>
+        /// Resoud le Sprite icone pour un sort donne. Format attendu :
+        ///   filename = "icon_<suffix>" ou suffix = SpellIdTech apres le 1er '_'.
+        /// Ex : "nightseer_filet_de_ronces" -> chercher "icon_filet_de_ronces" dans le dossier
+        /// Nightseer/Icons. Retourne null si introuvable (le caller preserve la valeur existante).
+        /// </summary>
+        private static Sprite ResolveIconSprite(string spellIdTech, NymoraClass classId)
+        {
+            if (string.IsNullOrEmpty(spellIdTech)) return null;
+            if (!ClassIconFolders.TryGetValue(classId, out string folder)) return null;
+
+            // 1. Check les overrides explicites (cas particules droppees)
+            string filename;
+            if (!FilenameOverrides.TryGetValue(spellIdTech, out filename))
+            {
+                // 2. Convention default : suffix apres le 1er '_' du SpellIdTech
+                int sep = spellIdTech.IndexOf('_');
+                if (sep < 0 || sep >= spellIdTech.Length - 1) return null;
+                filename = "icon_" + spellIdTech.Substring(sep + 1);
+            }
+
+            string path = $"{folder}/{filename}.png";
+            var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+            if (sprite == null)
+            {
+                Debug.LogWarning($"[Nymora.PopulateSpellCatalog] Icone introuvable pour {spellIdTech} (path attendu : {path}). Drag-and-drop manuel via Inspector si necessaire.");
+            }
+            return sprite;
+        }
     }
 }

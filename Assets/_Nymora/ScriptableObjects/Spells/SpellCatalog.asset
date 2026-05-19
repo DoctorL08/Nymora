@@ -17,7 +17,7 @@ MonoBehaviour:
     DisplayName: "Tranche-\xC2me"
     ClassId: 1
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 083094a95f31e574ca657d0312dc0980, type: 3}
     Description: "Inflige 220 d\xE9g\xE2ts. Si le coup tue, le Soulrender RECULE
       de 2 cases gratuitement (mouvement non-PM). Effet purement de mise en sc\xE8ne,
       mais bloque les contre-attaques zone post-kill."
@@ -35,12 +35,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 10
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_ouvre_plaie
     DisplayName: Ouvre-Plaie
     ClassId: 1
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 78883985173bc20458ca1b389764ef4e, type: 3}
     Description: "Inflige 110 d\xE9g\xE2ts. SI 1 HG d\xE9pens\xE9 : 230 d\xE9g\xE2ts
       ET la cible ne peut pas se soigner ni recevoir de bouclier pendant 2 tours."
     LoreFlavor: "L'anti-sustain. La simple existence de ce sort dans le deck Soulrender
@@ -57,12 +57,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 11
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_charge_brutale
     DisplayName: Charge Brutale
     ClassId: 1
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 42eb5c642a861f2468e9e0b27236d024, type: 3}
     Description: "Le Soulrender fonce en ligne droite jusqu'\xE0 la premi\xE8re unit\xE9
       ou case bloquante. Inflige 180 d\xE9g\xE2ts \xE0 la cible touch\xE9e. Toute
       case foul\xE9e pendant la charge devient Vapeur Carmin pendant 1 tour."
@@ -79,12 +79,12 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 12
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_detonation_sanglante
     DisplayName: "D\xE9tonation Sanglante"
     ClassId: 1
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: eb83950984866424aa5b299cdc9a01e0, type: 3}
     Description: "Centre AoE croix 3. Inflige 60 d\xE9g\xE2ts de base \xE0 toutes
       les cibles dans la zone, +40 par HG consomm\xE9. Avec 5 HG : 260 d\xE9g\xE2ts.
       Sang Coagul\xE9 cr\xE9\xE9 sous le centre pendant 2 tours. ATTENTION : consommer
@@ -102,12 +102,12 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 13
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_curee
     DisplayName: "Cur\xE9e"
     ClassId: 1
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 4e854a459119c1f48976404ab5db6550, type: 3}
     Description: "Inflige 150 d\xE9g\xE2ts. SI la cible meurt sur ce sort : le Soulrender
       heal 50% de ses HP max manquants ET r\xE9cup\xE8re 4 PA pour le tour suivant.
       Si la cible NE MEURT PAS : le Soulrender perd 60 HP."
@@ -125,12 +125,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 14
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_pacte_de_sang
     DisplayName: Pacte de Sang
     ClassId: 1
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 0ce8f5ed15939bf4a93f5b14c61e9e2b, type: 3}
     Description: "Le Soulrender s'inflige 80 d\xE9g\xE2ts \xE0 lui-m\xEAme et gagne
       +3 HG imm\xE9diatement. Son prochain sort offensif ce tour gagne +50% de d\xE9g\xE2ts.
       UTILISABLE 1 FOIS PAR MATCH."
@@ -148,12 +148,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 15
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_marque_de_carnage
     DisplayName: Marque de Carnage
     ClassId: 1
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 389ba80aef2658343a0c7e6acc5e9076, type: 3}
     Description: "Marque la cible 3 tours. Pendant ce temps, tous les sorts du Soulrender
       sur cette cible g\xE9n\xE8rent +1 HG bonus. La marque est visible sur le sprite
       ennemi (croix de sang)."
@@ -171,12 +171,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 16
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_empoignade
     DisplayName: Empoignade
     ClassId: 1
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 94e8c4fd8e0f30c4dacab8630aee6e94, type: 3}
     Description: "Tire la cible jusqu'\xE0 1 case du Soulrender. La cible ne peut
       pas \xEAtre t\xE9l\xE9port\xE9e par un de ses propres sorts au tour suivant.
       Pas de d\xE9g\xE2ts."
@@ -194,12 +194,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 17
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_rugissement
     DisplayName: Rugissement
     ClassId: 1
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: ad54cdbdcef435b48b8ed1eaebb351c7, type: 3}
     Description: "AoE rayon 3 autour du Soulrender. Toutes les cibles ennemies subissent
       -1 PM ET ne peuvent pas t\xE9l\xE9porter au tour suivant. Si une cible est
       sous 50% HP : -2 PM au lieu de -1. Pas de d\xE9g\xE2ts."
@@ -217,12 +217,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 18
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_rage_insatiable
     DisplayName: Rage Insatiable
     ClassId: 1
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 58e5fba93e4941e49932955b16078bae, type: 3}
     Description: "Pendant 2 tours, chaque sort offensif lanc\xE9 par le Soulrender
       regen\xE8re 1 PA (max 1 par tour). Les sorts co\xFBtent 1 PA de plus pendant
       ces 2 tours."
@@ -240,12 +240,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 19
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_riposte_carmin
     DisplayName: Riposte Carmin
     ClassId: 1
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 7c8fe6cd38b1ad04cb06803076bf9dcd, type: 3}
     Description: "Pendant 1 tour, toute attaque M\xCAL\xC9E subie par le Soulrender
       renvoie 100 d\xE9g\xE2ts \xE0 l'attaquant ET lui co\xFBte 1 PM additionnel
       pour son prochain mouvement. Le Soulrender prend les d\xE9g\xE2ts normalement."
@@ -262,12 +262,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 20
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_cauterisation
     DisplayName: "Caut\xE9risation"
     ClassId: 1
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 1bfd4be4ee92f464e9c0e27f54f68805, type: 3}
     Description: "Retire instantan\xE9ment tous les DoT actifs sur le Soulrender
       (poison, plaie ouverte, autres saignements ennemis). Le Soulrender se soigne
       de 60 HP par DoT retir\xE9 (min 60, max 180)."
@@ -284,12 +284,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 21
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_peau_de_fer
     DisplayName: Peau de Fer
     ClassId: 1
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: c950ce5e96a73b544b8bdbd9513b3f20, type: 3}
     Description: "Le Soulrender gagne un BOUCLIER de 200 HP pendant 2 tours. Pendant
       la dur\xE9e du bouclier, ses sorts \xE0 port\xE9e 1 (m\xEAl\xE9e) gagnent +30
       d\xE9g\xE2ts. Le bouclier se vide normalement aux d\xE9g\xE2ts subis."
@@ -306,12 +306,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 22
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_seve_vive
     DisplayName: "S\xE8ve Vive"
     ClassId: 1
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 5e40e987d08ebb7478790186023771ce, type: 3}
     Description: 'Le Soulrender se soigne de 100 HP. Avec 1 HG : 160 HP. Si le Soulrender
       saigne actuellement (DoT actif sur lui) : +50 HP additionnels.'
     LoreFlavor: "Le rapide. S\xE8ve Vive est le micro-heal qui maintient le Soulrender
@@ -327,12 +327,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 23
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_dernier_souffle
     DisplayName: Dernier Souffle
     ClassId: 1
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 2807cb681c8a2a94b8c86d5a8f8be925, type: 3}
     Description: "Utilisable uniquement \xE0 <30% HP. Le Soulrender se soigne de
       200 HP ET gagne 3 HG. UTILISABLE 1 FOIS PAR MATCH."
     LoreFlavor: "L'ultime. Dernier Souffle n'est pas un heal \u2014 c'est une renaissance.
@@ -349,12 +349,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 24
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: soulrender_ame_laceree
     DisplayName: "\xC2me Lac\xE9r\xE9e"
     ClassId: 1
     Category: 4
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: cb67810643002f44cbb28a734b5088ac, type: 3}
     Description: "Inflige 320 d\xE9g\xE2ts. Le Soulrender se soigne de 50% des d\xE9g\xE2ts
       qui ont pass\xE9 (apr\xE8s bouclier). Si la cible meurt sur ce sort : le combat
       est marqu\xE9 d'une explosion de sang qui cr\xE9e du Sang Coagul\xE9 en croix
@@ -373,12 +373,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 25
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_tir_precis
     DisplayName: "Tir Pr\xE9cis"
     ClassId: 2
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 3a41b275ad231134dabc8d1a3afd871d, type: 3}
     Description: "Inflige 200 d\xE9g\xE2ts. Si la cible est Traqu\xE9 : 280 d\xE9g\xE2ts
       ET le Nightseer regagne 1 PR."
     LoreFlavor: "Le sniper. Tir Pr\xE9cis n'a pas besoin de surprendre \u2014 sa
@@ -395,12 +395,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 30
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_volee_epines
     DisplayName: "Vol\xE9e d'\xC9pines"
     ClassId: 2
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 75447d6a77840eb49a064e02fb2974d8, type: 3}
     Description: "Tir en ligne droite. Inflige 130 d\xE9g\xE2ts \xE0 toutes les cibles
       touch\xE9es. Pose un Filet de Ronces (identique au sort tactique : 100 d\xE9g\xE2ts,
       -2 PM, applique EMPREINT\xC9 2 tours au d\xE9clenchement) sur la derni\xE8re
@@ -419,12 +419,12 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 31
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_detonation_onirique
     DisplayName: "D\xE9tonation Onirique"
     ClassId: 2
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 3fdd2beb90d66d84e8c14f745d334f4d, type: 3}
     Description: "AoE 2x2 cases. 170 d\xE9g\xE2ts dans la zone. Si une case Voil\xE9
       existe dans la zone, elle se d\xE9chire et inflige 80 d\xE9g\xE2ts suppl\xE9mentaires.
       Avec 2 PR : port\xE9e passe \xE0 10, peut frapper depuis l'autre c\xF4t\xE9
@@ -443,12 +443,12 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 32
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_frappe_ombre
     DisplayName: Frappe de l'Ombre
     ClassId: 2
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: bfc54f3b972344a45b5dabeb0c326815, type: 3}
     Description: "Inflige 200 d\xE9g\xE2ts. Si la cible a moins de 50% de ses PM
       max actuels (donc s'est d\xE9j\xE0 d\xE9plac\xE9e) : +100 d\xE9g\xE2ts ET applique
       EMPREINT\xC9 pour 2 tours."
@@ -465,12 +465,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 33
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_salve_mortelle
     DisplayName: Salve Mortelle
     ClassId: 2
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: a9ce94dbed9fdab4e92885412bdd07d3, type: 3}
     Description: "Cible une case. Centre + 4 cases adjacentes en croix : 220 d\xE9g\xE2ts
       au centre, 130 sur les c\xF4t\xE9s. Toute cible Traqu\xE9 dans la zone : +60
       d\xE9g\xE2ts. Toute case Voil\xE9 dans la zone : d\xE9chir\xE9e, d\xE9voil\xE9e,
@@ -489,12 +489,12 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 34
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_marque_chasseur
     DisplayName: Marque du Chasseur
     ClassId: 2
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 52ba33e8721255947b58fa5044483469, type: 3}
     Description: "Applique TRAQU\xC9 \xE0 la cible pendant 3 tours. Sort tr\xE8s
       peu cher car le payoff est dans les autres sorts. Coexiste avec Voil\xE9/Empreint\xE9
       sur d'autres cibles, pas sur la m\xEAme."
@@ -511,12 +511,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 35
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_filet_ronces
     DisplayName: Filet de Ronces
     ClassId: 2
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 3f2119518139afe4bbf3c0b0160e9268, type: 3}
     Description: "Pose une emb\xFBche invisible sur une case (Voil\xE9 pour l'adversaire).
       Toute unit\xE9 ennemie qui entre : 100 d\xE9g\xE2ts, -2 PM, et applique EMPREINT\xC9
       pour 2 tours."
@@ -534,12 +534,12 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 36
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_champ_mines
     DisplayName: Champ de Mines
     ClassId: 2
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 7ff5c166da2ee3544b43dd22c7ec313d, type: 3}
     Description: "Pose 3 emb\xFBches Voil\xE9es dans une zone 3x3 (placement al\xE9atoire
       pour l'adversaire, choisi par le Nightseer). Chaque emb\xFBche : 70 d\xE9g\xE2ts
       + applique EMPREINT\xC9."
@@ -556,12 +556,12 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 37
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_bourrasque
     DisplayName: Bourrasque
     ClassId: 2
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 3743e6bc30adbf145b08f97cd36753c5, type: 3}
     Description: "Pousse la cible 3 cases dans la direction choisie. Avec 1 PR :
       5 cases. Si la cible finit sa course sur un Filet de Ronces, une mine, ou une
       case Sang Coagul\xE9 : effets d\xE9clench\xE9s \xE0 pleine puissance."
@@ -578,12 +578,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 38
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_souffle_glacial
     DisplayName: Souffle Glacial
     ClassId: 2
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 809ee397f16267143ba6c630ceb09704, type: 3}
     Description: "AoE croix 3 cases autour du Nightseer. Inflige 70 d\xE9g\xE2ts
       + push 1 case + applique -1 PM aux cibles. Si une cible est pouss\xE9e sur
       un Filet/mine : d\xE9clenchement."
@@ -601,12 +601,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 39
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_voile_ombre
     DisplayName: Voile d'Ombre
     ClassId: 2
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: d85380713dca1354dad31a5613d767c3, type: 3}
     Description: "Le Nightseer dispara\xEEt visuellement de l'\xE9cran adversaire
       pendant 1 tour entier. Il ne peut pas \xEAtre cibl\xE9 directement (les AoE
       non-cibl\xE9es passent toujours). Si on devine sa case par AoE : effet normal."
@@ -623,12 +623,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 40
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_pas_furtif
     DisplayName: Pas Furtif
     ClassId: 2
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 074360b2c992e14459b2d40695b672ef, type: 3}
     Description: "T\xE9l\xE9porte le Nightseer jusqu'\xE0 4 cases. Si 1 PR consomm\xE9e,
       la case d'arriv\xE9e devient VOIL\xC9E pour l'adversaire pendant 2 tours."
     LoreFlavor: "Le coup le plus frustrant pour l'adversaire. Le Nightseer dispara\xEEt
@@ -644,12 +644,12 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 41
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_camouflage_ronces
     DisplayName: Camouflage de Ronces
     ClassId: 2
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: bc351b69e59c687478432867dbb1980a, type: 3}
     Description: "Le Nightseer gagne un BOUCLIER de 130 HP pendant 2 tours. Pendant
       la dur\xE9e, sa case est entour\xE9e d'un Filet de Ronces invisible : tout
       ennemi adjacent fin de tour subit 70 d\xE9g\xE2ts + EMPREINT\xC9."
@@ -667,12 +667,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 42
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_seve_sauvage
     DisplayName: "S\xE8ve Sauvage"
     ClassId: 2
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: b5cd5932e6a70694dbb7900404e7c062, type: 3}
     Description: "Le Nightseer se soigne de 130 HP. Si une de ses emb\xFBches a \xE9t\xE9
       d\xE9clench\xE9e ce tour ou le tour pr\xE9c\xE9dent : +60 HP additionnels.
       Si une case Voil\xE9e existe actuellement sur la map : +30 HP."
@@ -689,12 +689,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 43
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_evanescence
     DisplayName: "\xC9vanescence"
     ClassId: 2
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: bbc8ea309f815654694f1fd3742285bd, type: 3}
     Description: "Utilisable uniquement \xE0 <30% HP. Le Nightseer se t\xE9l\xE9porte
       jusqu'\xE0 7 cases ET se soigne de 150 HP. La case quitt\xE9e devient Voil\xE9e
       pendant 2 tours. UTILISABLE 1 FOIS PAR MATCH."
@@ -711,12 +711,12 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 44
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: nightseer_traquenard
     DisplayName: Traquenard
     ClassId: 2
     Category: 4
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 9c1a34930e5c7044d80274b8c839af56, type: 3}
     Description: "Le Nightseer se t\xE9l\xE9porte \xE0 1 case de la cible (c\xF4t\xE9
       libre, choix du joueur). Inflige 280 d\xE9g\xE2ts. Applique PARALYSIE (-3 PM,
       -2 PA) au prochain tour de la cible. Si la cible \xE9tait Traqu\xE9/Voil\xE9/Empreint\xE9
@@ -736,12 +736,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 45
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_frappe_lourde
     DisplayName: Frappe Lourde
     ClassId: 3
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: a72dcbacde51b39479f5471d9113f9cc, type: 3}
     Description: "Inflige 180 d\xE9g\xE2ts. Si la cible est \xC9PINGL\xC9E (adjacente
       \xE0 un Pilier, mur, ou bord de map du c\xF4t\xE9 oppos\xE9 au Colossar) :
       280 d\xE9g\xE2ts."
@@ -759,12 +759,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 50
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_onde_de_choc
     DisplayName: Onde de Choc
     ClassId: 3
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 3ed276896efab05498e69c866b39ed49, type: 3}
     Description: "AoE autour du Colossar. Inflige 80 d\xE9g\xE2ts \xE0 toutes les
       unit\xE9s adjacentes ET les pousse de 2 cases. Si une unit\xE9 est pouss\xE9e
       contre un mur, Pilier, ou bord de map : 80 d\xE9g\xE2ts suppl\xE9mentaires
@@ -782,12 +782,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 51
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_marteau_punisseur
     DisplayName: Marteau Punisseur
     ClassId: 3
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: aaa1a26a733b84e40ba07dff1ccff180, type: 3}
     Description: "Inflige 160 d\xE9g\xE2ts. Si la cible a moins de 4 PA actuels (donc
       a d\xE9j\xE0 cast ce tour) : 240 d\xE9g\xE2ts ET applique TRAUMA (-2 PA prochain
       tour)."
@@ -805,12 +805,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 52
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_choc_sismique
     DisplayName: Choc Sismique
     ClassId: 3
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 3ffef056d4ada7f449660b23442b2fb2, type: 3}
     Description: "Frappe en ligne droite 4 cases. Inflige 130 d\xE9g\xE2ts \xE0 toutes
       les cibles touch\xE9es. Toutes les cibles touch\xE9es : -1 PM au prochain tour.
       Si une case Pilier ou Mur du Colossar se trouve sur la trajectoire : la frappe
@@ -829,12 +829,12 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 53
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_represailles
     DisplayName: "Repr\xE9sailles"
     ClassId: 3
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: a9c240f6f9e5fea4795519f2bce4e2fc, type: 3}
     Description: "Inflige 100 d\xE9g\xE2ts imm\xE9diatement. Pendant 2 tours apr\xE8s
       le cast, chaque attaque m\xEAl\xE9e subie par le Colossar renvoie 80 d\xE9g\xE2ts
       \xE0 l'attaquant. Cap \xE0 4 retours."
@@ -852,12 +852,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 54
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_pilier
     DisplayName: Pilier
     ClassId: 3
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 63b042b619ca20c4f8c791e0c32b879e, type: 3}
     Description: "Pose un Pilier (200 HP, infranchissable, occupe 1 case) sur une
       case vide. Reste jusqu'\xE0 destruction. Le Colossar gagne +1 FD \xE0 la pose.
       Le Pilier bloque les lignes de vue et de tir des sorts directs."
@@ -874,12 +874,12 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 55
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_mur_de_pierre
     DisplayName: Mur de Pierre
     ClassId: 3
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 80958ac6ac5f1f648929977ce336e542, type: 3}
     Description: "Cr\xE9e un mur infranchissable de 3 cases (en ligne) pendant 2
       tours. Avec 1 FD : 5 cases. Le Mur bloque tout : d\xE9placements, ciblages
       directs, lignes de tir."
@@ -897,12 +897,12 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 56
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_ancrage
     DisplayName: Ancrage
     ClassId: 3
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 61902def475ee804297b993167f5e04e, type: 3}
     Description: "La cible perd 2 PM pendant 2 tours ET ne peut pas \xEAtre d\xE9plac\xE9e
       par effets externes (push/pull/t\xE9l\xE9port) au prochain tour. Pas de d\xE9g\xE2ts."
     LoreFlavor: "Le gel. Ancrage est l'anti-mobilit\xE9 ultime. Une Ghostra ancr\xE9e
@@ -918,12 +918,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 57
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_provocation
     DisplayName: Provocation
     ClassId: 3
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: ecd698be4ed589940851f304198b0558, type: 3}
     Description: "Force la cible \xE0 tenter d'attaquer le Colossar pendant 1 tour
       (ses sorts non-ciblant le Colossar co\xFBtent +2 PA). La cible perd aussi 1
       PM. Si la cible n'est pas adjacente au Colossar \xE0 la fin de son tour : 100
@@ -942,12 +942,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 58
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_brisure
     DisplayName: Brisure
     ClassId: 3
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 571fa06ecda9342428adc947eb40a7fc, type: 3}
     Description: "Inflige 90 d\xE9g\xE2ts. Retire un buff/bouclier de la cible (au
       choix du joueur). Si la cible n'a pas de buff/bouclier : applique TRAUMA (-2
       PA prochain tour). Si la cible avait Camouflage Ronces, Linceul d'Ombres, Carapace
@@ -966,12 +966,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 59
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_stoicisme
     DisplayName: "Sto\xEFcisme"
     ClassId: 3
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 0dc49312d616fb247bbbcc45bdba2f87, type: 3}
     Description: "Le Colossar gagne un BOUCLIER de 200 HP pour 2 tours. Pendant ces
       2 tours, il ne peut PAS \xEAtre d\xE9plac\xE9 (push/pull/t\xE9l\xE9port ennemi
       sans effet). Si le bouclier survit aux 2 tours sans \xEAtre bris\xE9, le Colossar
@@ -989,12 +989,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 60
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_garde_protectrice
     DisplayName: Garde Protectrice
     ClassId: 3
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: ca5169dc553ede149ab7a42026ed48ec, type: 3}
     Description: "Pendant 2 tours, le Colossar subit -30% de d\xE9g\xE2ts de TOUTES
       les sources (sauf DoT venin Necram qui ignore les r\xE9ductions). Ne se cumule
       pas avec le passif Densit\xE9 Inerte au-del\xE0 du cap -50% total."
@@ -1012,12 +1012,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 61
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_ressac_vital
     DisplayName: Ressac Vital
     ClassId: 3
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: ffb37f0e307898b42b15ba24affac1fb, type: 3}
     Description: "Le Colossar se soigne de 80 HP + 30 HP par attaque qu'il a subie
       au tour pr\xE9c\xE9dent (max +120 HP, donc cap 200 HP)."
     LoreFlavor: "Le contre-tank. Ressac Vital r\xE9compense le Colossar qui s'est
@@ -1033,12 +1033,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 62
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_renvoi_bouclier
     DisplayName: Renvoi du Bouclier
     ClassId: 3
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 19aacf35aa4f0374aa6d5e2e99f596cf, type: 3}
     Description: "Pendant 1 tour, toute attaque (m\xEAl\xE9e OU \xE0 distance) subie
       par le Colossar renvoie 60 d\xE9g\xE2ts \xE0 l'attaquant. Cap \xE0 4 retours."
     LoreFlavor: "Le miroir. Renvoi du Bouclier est l'anti-Nightseer \u2014 un sort
@@ -1054,12 +1054,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 63
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_soin_lourd
     DisplayName: Soin Lourd
     ClassId: 3
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: ad8252ee3b07d374cb6eae2127073f74, type: 3}
     Description: "Soigne 150 HP sur soi OU sur un alli\xE9 \xE0 3 cases. UNIQUE HEAL
       CROSS-CLASSE DU JEU. En 1v1 : self-only, agit comme un heal lourd \xE0 3 PA."
     LoreFlavor: "Le seul vrai support du jeu. Inutile en 1v1 sauf comme heal classique,
@@ -1076,12 +1076,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 64
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: colossar_effondrement
     DisplayName: Effondrement
     ClassId: 3
     Category: 4
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 53cad097ad4919d419fcd6f9eecca45c, type: 3}
     Description: "ANNONCE 1 TOUR \xC0 L'AVANCE (le sol craque sous le Colossar \xE0
       la fin du tour de cast \u2014 l'ennemi le voit). Au tour suivant : toutes les
       cases adjacentes au Colossar (rayon 2) deviennent IMPRATICABLES pendant 2 tours.
@@ -1103,12 +1103,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 65
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_crachat_acide
     DisplayName: Crachat Acide
     ClassId: 4
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: d1acf20c0573edd4d80d05c485ec54ea, type: 3}
     Description: "Inflige 90 d\xE9g\xE2ts ET applique 2 marques de venin (au lieu
       de 1). Cap \xE0 4 marques par cible."
     LoreFlavor: "Le sort de base, mais redoutable. Crachat Acide combine d\xE9g\xE2ts
@@ -1125,12 +1125,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 70
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_morsure_putride
     DisplayName: Morsure Putride
     ClassId: 4
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 4dd49d5c57255bf42af7f2588397fd79, type: 3}
     Description: "Inflige 110 d\xE9g\xE2ts + 22 par marque sur la cible (max +90,
       donc 200 d\xE9g\xE2ts max). Si la cible meurt : toutes ses marques sont transf\xE9r\xE9es
       sur l'unit\xE9 ennemie la plus proche."
@@ -1148,12 +1148,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 71
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_detonation_virulente
     DisplayName: "D\xE9tonation Virulente"
     ClassId: 4
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: f1f91b3d0aee3274798e853631b1468c, type: 3}
     Description: "Inflige 80 d\xE9g\xE2ts imm\xE9diats. Consomme TOUTES les marques
       sur la cible : chaque marque consomm\xE9e inflige 50 d\xE9g\xE2ts. Avec 4 marques
       : 280 d\xE9g\xE2ts totaux. Les marques disparaissent."
@@ -1171,12 +1171,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 72
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_faux_decharnee
     DisplayName: "Faux D\xE9charn\xE9e"
     ClassId: 4
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 2d867e789ad08b8468de71078f18861e, type: 3}
     Description: "AoE 1 case (le Necram et ses 8 voisines). Inflige 130 d\xE9g\xE2ts.
       Le Necram se SOIGNE de 30 HP par marque active sur toutes les cibles touch\xE9es
       (cap +120 HP)."
@@ -1194,12 +1194,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 73
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_brume_toxique
     DisplayName: Brume Toxique
     ClassId: 4
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: fd77e1ec83029ce49831dfca748743e5, type: 3}
     Description: "Pose une zone toxique 3x3 pendant 2 tours. Toute unit\xE9 dans
       la zone : 60 d\xE9g\xE2ts imm\xE9diats + 1 marque. Toute unit\xE9 qui ENTRE
       : 30 d\xE9g\xE2ts + 1 marque. Toute unit\xE9 qui FINIT son tour dans la zone
@@ -1217,12 +1217,12 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 74
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_inoculation
     DisplayName: Inoculation
     ClassId: 4
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 00726a3e247eb8547aeb21f55affa46b, type: 3}
     Description: "Applique 2 marques de venin sur la cible (sans d\xE9g\xE2ts directs).
       Cap \xE0 4 marques par cible."
     LoreFlavor: "Le baiser de la mort. Inoculation ne fait rien d'imm\xE9diat. L'adversaire
@@ -1239,12 +1239,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 75
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_marque_sacrificielle
     DisplayName: Marque Sacrificielle
     ClassId: 4
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: d25e4bc623986ce4b9fb301a648b7fec, type: 3}
     Description: "Pendant 3 tours, les marques sur la cible infligent +20 d\xE9g\xE2ts
       par tick. La cible peut recevoir Marque Sacrificielle m\xEAme si elle n'a pas
       encore de marques (mais sans marques actives, l'effet est neutre)."
@@ -1261,12 +1261,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 76
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_symbiose_morbide
     DisplayName: Symbiose Morbide
     ClassId: 4
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 634d5a4af7b870443be2ed371ec8d30d, type: 3}
     Description: "Pendant 2 tours, chaque tick de venin sur les ennemis soigne le
       Necram de 8 HP. Cap \xE0 4 marques actives qui comptent pour le heal (donc
       max +32 HP par tour, +64 sur 2 tours)."
@@ -1284,12 +1284,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 77
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_contagion
     DisplayName: Contagion
     ClassId: 4
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 9ee9816c92eb51b429c5da342e663fd8, type: 3}
     Description: "Cible une unit\xE9 ENNEMIE marqu\xE9e. Toutes ses marques (cap
       3, ou 4 avec PT) sont COPI\xC9ES sur les autres unit\xE9s ennemies dans un
       rayon de 3 cases. En 1v1 : la cible re\xE7oit un boost de tick (+1 marque dupliqu\xE9e
@@ -1307,12 +1307,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 78
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_pas_spectral
     DisplayName: Pas Spectral
     ClassId: 4
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 340ae5d8942f4394885f3cbdba99dfb0, type: 3}
     Description: "Le Necram gagne +2 PM ce tour ET peut traverser les unit\xE9s ennemies
       au prochain d\xE9placement. Ses marques pos\xE9es par travers\xE9e appliquent
       1 marque bonus."
@@ -1330,12 +1330,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 79
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_voile_pestilence
     DisplayName: Voile de Pestilence
     ClassId: 4
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 1860b82e8188fdf4ca58084fde64716c, type: 3}
     Description: "Pendant 2 tours, toute unit\xE9 ennemie qui finit son tour \xE0
       2 cases ou moins du Necram re\xE7oit 1 marque automatiquement. Pendant ces
       2 tours, toute attaque m\xEAl\xE9e subie par le Necram applique 1 marque \xE0
@@ -1353,12 +1353,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 80
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_carapace_visqueuse
     DisplayName: Carapace Visqueuse
     ClassId: 4
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: ea232461e106fc3409c99acd58da69ac, type: 3}
     Description: "Le Necram gagne un BOUCLIER de 110 HP pour 2 tours. Tout attaquant
       m\xEAl\xE9e qui frappe le bouclier re\xE7oit 1 marque automatiquement."
     LoreFlavor: "L'\xE9pine pourrie. Carapace Visqueuse n'est pas un mur \u2014 c'est
@@ -1375,12 +1375,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 81
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_drain_vital
     DisplayName: Drain Vital
     ClassId: 4
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 7e207892c0c4d5d44af1ef399367c917, type: 3}
     Description: "Inflige 60 d\xE9g\xE2ts \xE0 la cible. Le Necram se soigne de 30
       HP, ou 60 HP si la cible a 3+ marques actives."
     LoreFlavor: "Le siphon. Drain Vital est le heal qui FAIT mal. Sustain \xE9conomique
@@ -1396,12 +1396,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 82
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_regeneration_necrotique
     DisplayName: "R\xE9g\xE9n\xE9ration N\xE9crotique"
     ClassId: 4
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 67937bb42191e5e4a9a34ce4341a03ef, type: 3}
     Description: 'Le Necram se soigne de 70 HP + 15 HP par marque ennemis dans rayon
       4 (max +90 HP). Avec 1 PT : +30 HP additionnels.'
     LoreFlavor: "La r\xE9colte. R\xE9g\xE9n\xE9ration N\xE9crotique scale avec le
@@ -1418,12 +1418,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 83
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_cocon_putride
     DisplayName: Cocon Putride
     ClassId: 4
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: f33a619672c98f8468a1244d98d68543, type: 3}
     Description: "Utilisable uniquement \xE0 <30% HP. Le Necram se soigne de 220
       HP ET applique 1 marque \xE0 toutes les unit\xE9s ennemies dans rayon 4. UTILISABLE
       1 FOIS PAR MATCH."
@@ -1441,12 +1441,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 84
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: necram_virus_fatal
     DisplayName: Virus Fatal
     ClassId: 4
     Category: 4
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: ba3c5d40bdfcc374ab9ed645d6890bd1, type: 3}
     Description: "Cible une unit\xE9 ennemie. TOUTES les marques sur la cible d\xE9clenchent
       leur tick instantan\xE9ment X3 (multiplicateur Floraison appliqu\xE9). Une
       cible avec 4 marques de venin (50 dmg/tick \xD7 4 \xD7 3) prend 600 d\xE9g\xE2ts
@@ -1466,12 +1466,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 85
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_lame_spectrale
     DisplayName: Lame Spectrale
     ClassId: 5
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 4a115d5705988044ba0ca59b29e74911, type: 3}
     Description: "Inflige 170 d\xE9g\xE2ts. Si dorsal : +50 d\xE9g\xE2ts (Angle 2)
       ou +80 (Angle 3) du passif. Si la cible a PLAIE OUVERTE : +60 d\xE9g\xE2ts."
     LoreFlavor: "La frappe la plus banale du jeu \u2014 sauf que personne ne sait
@@ -1488,12 +1488,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 86
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_lame_vorace_spectrale
     DisplayName: Lame Vorace Spectrale
     ClassId: 5
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 91aa5719d8e6e1841bd399f7fdee04d9, type: 3}
     Description: "Inflige 130 d\xE9g\xE2ts + 60 si la cible a PLAIE OUVERTE. Si dorsal
       : +bonus passif. La Plaie Ouverte n'est PAS consomm\xE9e."
     LoreFlavor: "Le coup qui ronge. Lame Vorace empile sur une plaie ouverte sans
@@ -1510,12 +1510,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 87
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_replique_fantome
     DisplayName: "R\xE9plique Fant\xF4me"
     ClassId: 5
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: ac17551545404464abf7d65dc5911c0c, type: 3}
     Description: "Pose un Leurre sur une case vide \xE0 4 cases. Le Leurre est visuellement
       identique \xE0 la Ghostra. Dure 4 rounds (amendement 16 mai 2026) ou jusqu'\xE0
       interaction. Si le Leurre survit la dur\xE9e compl\xE8te, la Ghostra regagne
@@ -1535,12 +1535,12 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 88
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_pas_dans_ombre
     DisplayName: Pas dans l'Ombre
     ClassId: 5
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: e31d96a2b513d3645ae1a9069fd822e7, type: 3}
     Description: "T\xE9l\xE9porte la Ghostra jusqu'\xE0 5 cases. Si une case adjacente
       \xE0 l'arriv\xE9e contient une cible ennemie : la cible PIVOTE pour faire face
       \xE0 la Ghostra. Co\xFBt optionnel : laisser un leurre sur la case quitt\xE9e
@@ -1558,12 +1558,12 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 89
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_volte_face
     DisplayName: Volte-Face
     ClassId: 5
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 54a70bda8531bb44389a7ffaca9a9ca1, type: 3}
     Description: "Inflige 80 d\xE9g\xE2ts (amendement 16 mai 2026) + bonus dorsal
       Angle Mort si applicable. Force la cible ennemie \xE0 faire DEMI-TOUR (180\xB0).
       Sa direction de regard est invers\xE9e instantan\xE9ment. PAS DE VERROU : la
@@ -1584,12 +1584,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 90
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_saigne_ame
     DisplayName: "Saigne-\xC2me"
     ClassId: 5
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: d990d913134aea442b41f9fe8a5db02a, type: 3}
     Description: "Inflige 200 d\xE9g\xE2ts + 70 si la cible a PLAIE OUVERTE (consomme
       la plaie). Si la cible meurt : la Ghostra regagne 60 HP."
     LoreFlavor: "L'aboutissement. Saigne-\xC2me consomme la plaie pour un payoff
@@ -1605,12 +1605,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 91
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_frappe_fantome
     DisplayName: "Frappe Fant\xF4me"
     ClassId: 5
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 0a27cfe47350a354b9d3b5679b41db43, type: 3}
     Description: "La Ghostra se t\xE9l\xE9porte \xE0 1 case de la cible (c\xF4t\xE9
       libre). Inflige 200 d\xE9g\xE2ts. Si dorsal : +bonus passif. Si la cible avait
       \xE9t\xE9 VOLTE-FACE ou que sa direction a \xE9t\xE9 modifi\xE9e ce tour :
@@ -1628,12 +1628,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 92
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_dague_lancee
     DisplayName: "Dague Lanc\xE9e"
     ClassId: 5
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 615737ab34a39f6418fc831367c4a40d, type: 3}
     Description: "Inflige 40 d\xE9g\xE2ts (amendement 16 mai 2026, nerf 80\u219240)
       + bonus dorsal Angle Mort si applicable. Pivot 90\xB0 HORAIRE iso de la cible
       (NE\u2192SE\u2192SW\u2192NW\u2192NE). Flag LastFacingForcedOnTurn pos\xE9 pour
@@ -1652,12 +1652,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 93
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_marque_ombre
     DisplayName: Marque de l'Ombre
     ClassId: 5
     Category: 2
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 4efa6067c8c32a84595fc4003c1a1685, type: 3}
     Description: "Pendant 2 tours, tous les sorts de la Ghostra sur la cible gagnent
       +20 d\xE9g\xE2ts. Si la cible est touch\xE9e en dorsal pendant ces 2 tours
       : applique automatiquement PLAIE OUVERTE."
@@ -1675,12 +1675,12 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 94
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_danse_des_lames
     DisplayName: Danse des Lames
     ClassId: 5
     Category: 1
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 6fc58c88d0ecdab4e957c69c4c06285a, type: 3}
     Description: "AoE 8 cases adjacentes. Inflige 180 d\xE9g\xE2ts \xE0 toutes les
       cibles. Toute cible touch\xE9e subit le bonus dorsal du passif si dorsale OU
       si un leurre est adjacent \xE0 elle (consommation optionnelle : -1 leurre,
@@ -1699,12 +1699,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 95
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_linceul_ombres
     DisplayName: Linceul d'Ombres
     ClassId: 5
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 35c8781ca685ec84a9f9241f2ec31eaa, type: 3}
     Description: "La Ghostra gagne un BOUCLIER de 130 HP pendant 2 tours. Toute attaque
       m\xEAl\xE9e subie pendant la dur\xE9e renvoie 40 d\xE9g\xE2ts \xE0 l'attaquant."
     LoreFlavor: Le suaire. Linceul d'Ombres est le bouclier qui mord. Anti-Soulrender
@@ -1720,12 +1720,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 96
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_voile_spectral
     DisplayName: Voile Spectral
     ClassId: 5
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 48a475de5c715604ca77b8af28a41ab4, type: 3}
     Description: "Retire INSTANTAN\xC9MENT tous les DoT actifs sur la Ghostra (saignements,
       marques venin, plaies). Pendant 1 tour, la Ghostra est immunis\xE9e \xE0 toute
       nouvelle application de DoT. UTILISABLE 1x PAR MATCH."
@@ -1743,12 +1743,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 97
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_replique_protectrice
     DisplayName: "R\xE9plique Protectrice"
     ClassId: 5
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: b861949ab5f010144b28347028eb5006, type: 3}
     Description: "Pose un Leurre PROTECTEUR (200 HP, redirige 30% des d\xE9g\xE2ts
       subis par la Ghostra pendant 3 rounds) (amendement 16 mai 2026 : 4 PA / 30%
       / 3 rounds). Si le Leurre est d\xE9truit, la Ghostra regagne 80 HP. Pas de
@@ -1768,12 +1768,12 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 98
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_dernier_pas
     DisplayName: Dernier Pas
     ClassId: 5
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: fec2574cc36d5aa409338c7dfec15645, type: 3}
     Description: "Utilisable uniquement \xE0 <30% HP. La Ghostra se soigne de 200
       HP, se t\xE9l\xE9porte jusqu'\xE0 5 cases, ET pose un leurre sur la case quitt\xE9e.
       UTILISABLE 1 FOIS PAR MATCH."
@@ -1791,12 +1791,12 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 99
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_pas_au_dela
     DisplayName: "Pas de l'Au-Del\xE0"
     ClassId: 5
     Category: 3
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 769b1c1e835b671448e917bfbc5bfc9c, type: 3}
     Description: "La Ghostra gagne +2 PM ce tour ET son prochain d\xE9placement ignore
       les unit\xE9s (peut traverser ennemis et leurres). Si elle traverse un ennemi,
       elle d\xE9clenche un sort dorsal automatique sur lui (frappe gratuite \xE0
@@ -1814,12 +1814,12 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 100
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74
   - SpellId: ghostra_execution_spectrale
     DisplayName: "Ex\xE9cution Spectrale"
     ClassId: 5
     Category: 4
-    IconSprite: {fileID: 0}
+    IconSprite: {fileID: 21300000, guid: 79531bdd5a8c27f48b9c96eded6ad0a4, type: 3}
     Description: "Inflige 350 d\xE9g\xE2ts SI la cible est dorsale (regarde ailleurs).
       Applique PLAIE OUVERTE (50 d\xE9g\xE2ts/tour \xD7 3 tours). Si la cible meurt
       sur ce sort, la Ghostra regagne 100 HP ET 2 leurres r\xE9apparaissent imm\xE9diatement
@@ -1839,4 +1839,4 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 101
-    CombatRulesVersion: 73
+    CombatRulesVersion: 74

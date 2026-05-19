@@ -1,47 +1,68 @@
+using Nymora.Core.Data;
+using Quantum;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
+using UnityEngine.SceneManagement;
 
 namespace Nymora.Combat.View.HUD
 {
     /// <summary>
-    /// POLISH-5d (17 mai) — Tooltip flottant qui affiche le HP d'un combatant survole
-    /// par la souris. Drive par TileHoverView (Show/Hide).
+    /// Tooltip world-space affiche au survol d'un combatant en combat (IA ou PvP).
+    /// 3 lignes (haut -> bas) :
+    ///   - Clan en rouge (uniquement si dans un clan)
+    ///   - Pseudo en blanc
+    ///   - HP en jaune
     ///
-    /// Auto-init complet : si attache a un GameObject vide, cree son propre Canvas
-    /// (overlay) + Panel + Text au Awake. Lorenzo n'a qu'a poser le component sur un
-    /// GameObject dans la scene combat (sans rien d'autre a configurer).
+    /// Pattern mirror du HubAvatarHoverTooltip : auto-instancie via
+    /// [RuntimeInitializeOnLoadMethod] uniquement dans les scenes combat. AUCUN
+    /// SerializeField -> impossible de subir le re-bind YAML legacy qui avait cause
+    /// le bug "tooltip gigantesque" (cf historique fix 19 mai).
     ///
-    /// Position : suit la souris en screen-space avec un offset (+15, +15) pour ne pas
-    /// se retrouver sous le curseur.
+    /// Content rebuild a chaque frame tant que visible -> HP se met a jour en live pendant
+    /// qu'on survole (utile pour pre-cast feedback en POLISH-6a). Skip rebuild si meme texte.
+    ///
+    /// Drive par TileHoverView qui appelle Show/Hide via Instance.
     /// </summary>
     public class CombatantTooltipView : MonoBehaviour
     {
         public static CombatantTooltipView Instance { get; private set; }
 
-        [Header("Optionnel (auto-cree si null)")]
-        [SerializeField] private Canvas _canvas;
-        [SerializeField] private RectTransform _panel;
-        [SerializeField] private TMP_Text _text;
+        // Defaults calibres pour la camera combat orthoSize 3.5 (hauteur ecran 7 units world).
+        // fontSize 1.0 = ~14% de la hauteur ecran -> bien lisible au-dessus du sprite combatant.
+        // Constantes uniquement -> impossible d'override par YAML stale.
+        private const float FontSize = 1.0f;
+        private const float YOffsetAboveSprite = 0.40f;
+        private const float BgPaddingX = 0.30f;
+        private const float BgPaddingY = 0.10f;
+        private const int BgSortingOrder = 4999;
+        private const int TextSortingOrder = 5000;
 
-        [Header("Style")]
-        [SerializeField] private Vector2 _mouseOffset = new Vector2(12f, 12f);
-        [SerializeField] private Vector2 _panelSize = new Vector2(95f, 24f);
-        [SerializeField] private Color _bgColor = new Color(0f, 0f, 0f, 0.78f);
-        [SerializeField] private int _fontSize = 13;
-        [SerializeField] private int _sortingOrder = 5000; // au-dessus de tout
-
+        private TextMeshPro _tooltipText;
+        private SpriteRenderer _tooltipBg;
+        private GameObject _tooltipRoot;
+        private Transform _anchoredSprite;
         private bool _visible;
+        // 19 mai — entity courante tracked pour refresh live du content (HP + event line)
+        // pendant que la souris reste sur le combattant. Sinon le tooltip ne montrerait que
+        // le HP/event au moment du Show initial et ne se rafraichirait pas si un coup tombe.
+        private EntityRef _currentEntity;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
+        private static void AutoCreate()
+        {
+            if (Instance != null) return;
+            // Skip si pas dans une scene combat (overhead nul en hub/menu).
+            string sceneName = SceneManager.GetActiveScene().name;
+            if (!sceneName.Contains("Combat")) return;
+            var hostGo = new GameObject("CombatantTooltipView");
+            hostGo.AddComponent<CombatantTooltipView>();
+        }
 
         private void Awake()
         {
-            if (Instance != null && Instance != this)
-            {
-                Destroy(gameObject);
-                return;
-            }
+            if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
-            EnsureUI();
+            SpawnTooltipGO();
             Hide();
         }
 
@@ -50,85 +71,248 @@ namespace Nymora.Combat.View.HUD
             if (Instance == this) Instance = null;
         }
 
-        private void EnsureUI()
+        private void SpawnTooltipGO()
         {
-            if (_canvas == null)
+            _tooltipRoot = new GameObject("CombatantTooltipRoot");
+            _tooltipRoot.transform.SetParent(transform, false);
+            // Force inactif des le spawn : sinon le carre noir + sprite est visible au centre
+            // du monde (0,0,0) jusqu'au premier hover.
+            _tooltipRoot.SetActive(false);
+
+            // Background : SpriteRenderer noir semi-transparent, scale ajuste a chaque Show().
+            var bgGo = new GameObject("Bg");
+            bgGo.transform.SetParent(_tooltipRoot.transform, false);
+            _tooltipBg = bgGo.AddComponent<SpriteRenderer>();
+            _tooltipBg.sprite = CreateWhitePixelSprite();
+            _tooltipBg.color = new Color(0f, 0f, 0f, 0.78f);
+            _tooltipBg.sortingOrder = BgSortingOrder;
+
+            // Texte
+            var textGo = new GameObject("Text");
+            textGo.transform.SetParent(_tooltipRoot.transform, false);
+            _tooltipText = textGo.AddComponent<TextMeshPro>();
+
+            // CRITICAL 19 mai — fontSize DOIT etre setee EN PREMIER. Bug observe : l'assignation
+            // `_tooltipText.font = TMP_Settings.defaultFontAsset` peut crash en NullReferenceException
+            // dans LoadFontAsset() en early Awake (TMP_Settings pas encore pret). L'exception
+            // interrompait SpawnTooltipGO -> fontSize restait au default TMP (36 world units) ->
+            // tooltip gigantesque (5x la hauteur ecran a orthoSize 3.5). En settant fontSize
+            // AVANT toute autre operation potentiellement explosive, on garantit que la valeur
+            // const est appliquee meme si TMP crash plus loin.
+            _tooltipText.fontSize = FontSize;
+            _tooltipText.color = Color.white;
+            _tooltipText.alignment = TextAlignmentOptions.Center;
+            _tooltipText.fontStyle = FontStyles.Bold;
+            _tooltipText.sortingOrder = TextSortingOrder;
+            _tooltipText.enableWordWrapping = false;
+            _tooltipText.raycastTarget = false;
+            _tooltipText.richText = true;
+            var rt = (RectTransform)textGo.transform;
+            rt.sizeDelta = new Vector2(6f, 2f);
+
+            // Font asset : wrap en try/catch defensif. Si le default font est pas dispo a ce
+            // stade, on laisse TMP utiliser son fallback interne — le tooltip rendra peut-etre
+            // avec une font generique mais la fontSize reste correcte (= pas gigantesque).
+            try
             {
-                var canvasGO = new GameObject("CombatantTooltipCanvas");
-                canvasGO.transform.SetParent(transform, false);
-                _canvas = canvasGO.AddComponent<Canvas>();
-                _canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-                _canvas.sortingOrder = _sortingOrder;
-                canvasGO.AddComponent<CanvasScaler>();
-                canvasGO.AddComponent<GraphicRaycaster>();
+                if (_tooltipText.font == null && TMPro.TMP_Settings.defaultFontAsset != null)
+                {
+                    _tooltipText.font = TMPro.TMP_Settings.defaultFontAsset;
+                }
             }
-            if (_panel == null)
+            catch (System.Exception ex)
             {
-                var panelGO = new GameObject("Panel");
-                panelGO.transform.SetParent(_canvas.transform, false);
-                _panel = panelGO.AddComponent<RectTransform>();
-                _panel.anchorMin = new Vector2(0f, 0f);
-                _panel.anchorMax = new Vector2(0f, 0f);
-                _panel.pivot = new Vector2(0f, 0f);
-                _panel.sizeDelta = _panelSize;
-                var bg = panelGO.AddComponent<Image>();
-                bg.color = _bgColor;
-                // Petit padding via outline pour la lisibilite contre fond clair.
-                var outline = panelGO.AddComponent<Outline>();
-                outline.effectColor = new Color(0f, 0f, 0f, 0.6f);
-                outline.effectDistance = new Vector2(1f, -1f);
-            }
-            if (_text == null)
-            {
-                var textGO = new GameObject("Text");
-                textGO.transform.SetParent(_panel, false);
-                var rect = textGO.AddComponent<RectTransform>();
-                rect.anchorMin = Vector2.zero;
-                rect.anchorMax = Vector2.one;
-                rect.offsetMin = new Vector2(6f, 3f);
-                rect.offsetMax = new Vector2(-6f, -3f);
-                _text = textGO.AddComponent<TextMeshProUGUI>();
-                _text.fontSize = _fontSize;
-                _text.color = Color.white;
-                _text.alignment = TextAlignmentOptions.MidlineLeft;
-                _text.text = "HP: -/-";
-                _text.raycastTarget = false;
+                Debug.LogWarning($"[CombatantTooltipView] Skip font assignment (TMP not ready): {ex.Message}");
             }
         }
 
-        public void Show(int hpCurrent, int hpMax)
+        private static Sprite CreateWhitePixelSprite()
         {
-            if (_text != null)
-            {
-                _text.text = $"HP: {hpCurrent} / {hpMax}";
-            }
-            if (_panel != null && !_visible)
-            {
-                _panel.gameObject.SetActive(true);
-            }
+            var tex = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            tex.SetPixel(0, 0, Color.white);
+            tex.Apply();
+            tex.filterMode = FilterMode.Point;
+            return Sprite.Create(tex, new Rect(0f, 0f, 1f, 1f), new Vector2(0.5f, 0.5f), 1f);
+        }
+
+        /// <summary>
+        /// Affiche le tooltip 3 lignes au-dessus du sprite combatant.
+        /// </summary>
+        public void Show(EntityRef entity, int hpCurrent, int hpMax, Transform anchorSprite)
+        {
+            if (_tooltipText == null || _tooltipRoot == null) return;
+            _currentEntity = entity;
+            ApplyContent(BuildContent(entity, hpCurrent, hpMax));
+            _anchoredSprite = anchorSprite;
+            _tooltipRoot.SetActive(true);
             _visible = true;
+            UpdatePosition();
         }
 
         public void Hide()
         {
-            if (_panel != null && _visible)
+            if (_tooltipRoot != null && _visible)
             {
-                _panel.gameObject.SetActive(false);
+                _tooltipRoot.SetActive(false);
             }
             _visible = false;
+            _anchoredSprite = null;
+            _currentEntity = default;
         }
 
         private void Update()
         {
-            if (!_visible || _panel == null) return;
-            // Position screen-space basee sur la souris + offset, clamp dans l'ecran.
-            Vector2 mouse = UnityEngine.Input.mousePosition;
-            Vector2 pos = mouse + _mouseOffset;
-            Vector2 size = _panel.sizeDelta;
-            // Clamp pour eviter de sortir a droite/haut.
-            if (pos.x + size.x > Screen.width) pos.x = Screen.width - size.x;
-            if (pos.y + size.y > Screen.height) pos.y = Screen.height - size.y;
-            _panel.anchoredPosition = pos;
+            if (!_visible) return;
+            RefreshLiveContent();
+            UpdatePosition();
+        }
+
+        /// <summary>
+        /// Re-query HP/MaxHP + event courants du combattant et rebuild le content. Permet au
+        /// tooltip de refleter en live les degats/soins/shield qui tombent pendant qu'on le
+        /// survole, sans avoir a re-hover.
+        /// </summary>
+        private void RefreshLiveContent()
+        {
+            if (_currentEntity == default) return;
+            if (!TryGetCombatantSnapshot(_currentEntity, out int hp, out int maxHp))
+            {
+                // Entity disparue (KO + cleanup) -> tooltip cache.
+                Hide();
+                return;
+            }
+            ApplyContent(BuildContent(_currentEntity, hp, maxHp));
+        }
+
+        private void ApplyContent(string content)
+        {
+            if (_tooltipText == null) return;
+            // Skip rebuild si meme texte (perf-friendly : evite TMP ForceMeshUpdate + bg resize
+            // a chaque frame quand rien ne change).
+            if (_tooltipText.text == content) return;
+            _tooltipText.text = content;
+            _tooltipText.ForceMeshUpdate(true);
+            ResizeBackgroundToText();
+        }
+
+        private static bool TryGetCombatantSnapshot(EntityRef entity, out int hp, out int maxHp)
+        {
+            hp = 0; maxHp = 0;
+            var runner = QuantumRunner.Default;
+            if (runner == null || runner.Game == null) return false;
+            var frame = runner.Game.Frames.Verified;
+            if (!frame.Exists(entity) || !frame.Has<Combatant>(entity)) return false;
+            var c = frame.Get<Combatant>(entity);
+            hp = c.HP;
+            maxHp = c.MaxHP;
+            return true;
+        }
+
+        private void UpdatePosition()
+        {
+            if (_anchoredSprite == null || _tooltipRoot == null) return;
+            var sr = _anchoredSprite.GetComponentInChildren<SpriteRenderer>();
+            if (sr == null || sr.sprite == null) return;
+            Vector3 pos = sr.bounds.center;
+            pos.y = sr.bounds.max.y + YOffsetAboveSprite;
+            pos.z = 0f;
+            _tooltipRoot.transform.position = pos;
+        }
+
+        private void ResizeBackgroundToText()
+        {
+            if (_tooltipBg == null || _tooltipText == null) return;
+            float w = _tooltipText.preferredWidth + BgPaddingX * 2f;
+            float h = _tooltipText.preferredHeight + BgPaddingY * 2f;
+            _tooltipBg.transform.localScale = new Vector3(w, h, 1f);
+            _tooltipBg.transform.localPosition = Vector3.zero;
+        }
+
+        /// <summary>
+        /// Construit le texte 3 lignes en RichText.
+        /// </summary>
+        private static string BuildContent(EntityRef entity, int hp, int maxHp)
+        {
+            int slot = ResolvePlayerIndex(entity);
+            int localSlot = LocalPlayerResolver.Resolve();
+            bool isLocal = (slot == localSlot);
+
+            string pseudo = isLocal ? PlayerProfileBridge.LocalPseudo : PlayerProfileBridge.OpponentPseudo;
+            string clan   = isLocal ? PlayerProfileBridge.LocalClan   : PlayerProfileBridge.OpponentClan;
+
+            if (string.IsNullOrEmpty(pseudo))
+            {
+                pseudo = isLocal ? "Joueur" : "Bot";
+            }
+
+            string clanLine = string.IsNullOrEmpty(clan)
+                ? ""
+                : $"<color=#e85060>[{clan}]</color>\n";
+            string pseudoLine = $"<color=#ffffff>{pseudo}</color>\n";
+            string hpLine = $"<color=#ffd060>HP : {hp} / {maxHp}</color>";
+            string previewLine = BuildSpellPreviewLine(entity);
+            return clanLine + pseudoLine + hpLine + previewLine;
+        }
+
+        /// <summary>
+        /// POLISH-6a (19 mai 2026) — Ligne preview du sort arme sur la cible survolee.
+        /// Affiche "- X degats" (rouge) / "+ X soins" (vert) / "+ X bouclier" (bleu) sous les HP.
+        /// Si un shield absorbe une partie/tout du coup, suffix " (Y absorbes)" ou " (absorbes)".
+        ///
+        /// No-op si :
+        ///   - aucun sort arme (CombatHUDController.Instance.ArmedSpell == null)
+        ///   - pas de runner/frame Quantum
+        ///   - sort pas encore supporte par SpellPreview (POLISH-6a = Frappe Fantome only)
+        ///   - caster local introuvable dans le frame
+        /// </summary>
+        private static string BuildSpellPreviewLine(EntityRef target)
+        {
+            var hud = CombatHUDController.Instance;
+            if (hud == null || !hud.ArmedSpell.HasValue) return "";
+            SpellId armed = hud.ArmedSpell.Value;
+
+            var runner = QuantumRunner.Default;
+            if (runner == null || runner.Game == null) return "";
+            var frame = runner.Game.Frames.Verified;
+            if (frame == null) return "";
+
+            int localSlot = LocalPlayerResolver.Resolve();
+            EntityRef casterEntity = ResolveCombatantByPlayerIndex(frame, localSlot);
+            if (casterEntity == default) return "";
+
+            if (!SpellPreview.TryCompute(frame, casterEntity, target, armed, out var p)) return "";
+            if (!p.Valid) return "";
+
+            if (p.FinalDamage > 0)
+            {
+                if (p.AbsorbedByShield > 0 && p.HpLost > 0)
+                    return $"\n<color=#ff7060>- {p.FinalDamage} degats ({p.AbsorbedByShield} absorbes)</color>";
+                if (p.AbsorbedByShield > 0)
+                    return $"\n<color=#ff7060>- {p.FinalDamage} degats (absorbes)</color>";
+                return $"\n<color=#ff7060>- {p.FinalDamage} degats</color>";
+            }
+            if (p.Healed > 0)        return $"\n<color=#80ff80>+ {p.Healed} soins</color>";
+            if (p.ShieldGained > 0)  return $"\n<color=#80c0ff>+ {p.ShieldGained} bouclier</color>";
+            return "";
+        }
+
+        private static EntityRef ResolveCombatantByPlayerIndex(Frame frame, int playerIndex)
+        {
+            var filter = frame.Filter<Combatant>();
+            while (filter.Next(out EntityRef e, out Combatant c))
+            {
+                if (c.PlayerIndex == playerIndex) return e;
+            }
+            return default;
+        }
+
+        private static int ResolvePlayerIndex(EntityRef entity)
+        {
+            var runner = QuantumRunner.Default;
+            if (runner == null || runner.Game == null) return -1;
+            var frame = runner.Game.Frames.Verified;
+            if (!frame.Exists(entity) || !frame.Has<Combatant>(entity)) return -1;
+            return frame.Get<Combatant>(entity).PlayerIndex;
         }
     }
 }

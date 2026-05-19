@@ -21,11 +21,15 @@ namespace Nymora.Combat.Bootstrap
     /// (GameMode.Local), pas de slot remote, on AddPlayer les 2 slots localement.
     ///
     /// Pipeline (au Start) :
-    ///   1. Lit DeckBridge.PendingClassId / PendingSpellIds (set par HubArenaPanel)
-    ///   2. Quantum SessionRunner.StartAsync en mode Local
-    ///   3. Game.AddPlayer(0, lorenzo)  — classe + 6 sorts du DeckBridge
+    ///   1. Pre-clean : disable tout QuantumRunnerLocalDebug legacy + ShutdownAll runners zombis
+    ///      (5.4.b hardening 18 mai : garantit l'isolation par instance peu importe l'etat
+    ///      de la scene ; un pote sur un build ancien qui n'aurait pas eu la manip Unity
+    ///      ne risque plus de spectater le combat d'une autre instance via Quantum cloud).
+    ///   2. Lit DeckBridge.PendingClassId / PendingSpellIds (set par HubArenaPanel)
+    ///   3. Quantum SessionRunner.StartAsync en mode Local (ClientId GUID unique par instance)
+    ///   4. Game.AddPlayer(0, lorenzo)  — classe + 6 sorts du DeckBridge
     ///      Game.AddPlayer(1, bot)      — classe configurable (default Soulrender)
-    ///   4. CombatantSystem.OnPlayerAdded spawn les 2 entities avec la bonne classe
+    ///   5. CombatantSystem.OnPlayerAdded spawn les 2 entities avec la bonne classe
     ///
     /// Fallback : si DeckBridge vide (Lorenzo lance la scene direct depuis l'Editor sans
     /// passer par le hub), slot 0 = Soulrender + array zeros (gameplay testable malgre tout).
@@ -85,6 +89,40 @@ namespace Nymora.Combat.Bootstrap
             if (RuntimeConfig == null)
                 throw new InvalidOperationException("RuntimeConfig non assigne dans l'Inspector — drag RuntimeConfigCombatIA.asset.");
 
+            // ===== 0. Pre-clean : garantir l'isolation par instance (5.4.b hardening) =====
+            // (i) Disable tout QuantumRunnerLocalDebug legacy encore actif dans la scene.
+            //     Si Lorenzo (ou un pote sur un build moins recent) n'a pas fait la manip
+            //     Unity du 18 mai pour disable QuantumRunnerLocalDebug, le composant risque
+            //     de lancer un 2e Quantum runner en parallele du notre, avec un comportement
+            //     non-deterministe (deux sims en course, l'une ecrase l'autre). On force le
+            //     disable pour rendre l'install foolproof.
+            int disabledCount = 0;
+            foreach (var dbg in FindObjectsByType<QuantumRunnerLocalDebug>(FindObjectsSortMode.None))
+            {
+                if (dbg != null && dbg.enabled)
+                {
+                    dbg.enabled = false;
+                    disabledCount++;
+                }
+            }
+            if (disabledCount > 0)
+            {
+                Debug.LogWarning($"[CombatBootstrapIA] {disabledCount} QuantumRunnerLocalDebug legacy detecte(s) et disabled. " +
+                                 "Tu peux faire la manip Unity (Inspector -> uncheck) pour rendre la scene propre.");
+            }
+
+            // (ii) Shutdown tout runner Quantum residuel (zombi d'une session precedente :
+            //      hub -> combat -> hub -> combat re-entrant, ou crash Editor laissant un
+            //      runner DontDestroyOnLoad encore actif). Sans ce ShutdownAll, le nouveau
+            //      SessionRunner.StartAsync peut piocher l'ancien runner singleton et ne
+            //      reinit pas la sim (cf pattern MatchEndOverlay.OnRestartClicked).
+            QuantumRunner.ShutdownAll();
+            await Task.Yield(); // laisse Quantum propager le shutdown sur 1 frame
+
+            // Log explicite du mode : aide a debugger si jamais quelqu'un confond
+            // 30_CombatIA (offline) avec 33_CombatCasual (Photon Realtime PvP).
+            Log("MODE OFFLINE LOCAL — instance isolee, aucune connexion reseau pour la sim.");
+
             // ===== 1. Clone runtime config + bind map from scene QuantumMapData =====
             var runtimeConfig = new QuantumUnityJsonSerializer().CloneConfig(RuntimeConfig);
 
@@ -102,12 +140,16 @@ namespace Nymora.Combat.Bootstrap
             runtimeConfig.IsBotMatch = true;
 
             // ===== 2. Start Quantum session (Local, 2 slots) =====
-            Log("Demarrage SessionRunner Quantum (Local, IA mode)...");
+            // ClientId GUID unique par instance (5.4.b hardening) : meme si l'AppIdQuantum
+            // active un mode multiplayer accidentel et qu'on partage le meme AppId entre
+            // PC, deux instances ne peuvent plus collide sur le meme ClientId.
+            string clientId = $"local_ia_{Guid.NewGuid():N}";
+            Log($"Demarrage SessionRunner Quantum (Local, IA mode, clientId={clientId})...");
             var sessionArgs = new SessionRunner.Arguments
             {
                 RunnerFactory = QuantumRunnerUnityFactory.DefaultFactory,
                 GameParameters = QuantumRunnerUnityFactory.CreateGameParameters,
-                ClientId = "local_ia",
+                ClientId = clientId,
                 RuntimeConfig = runtimeConfig,
                 SessionConfig = (SessionConfig != null ? SessionConfig.Config : null)
                                 ?? QuantumDeterministicSessionConfigAsset.DefaultConfig,

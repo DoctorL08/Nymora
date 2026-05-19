@@ -38,10 +38,10 @@ namespace Nymora.Combat.View.HUD
         [Tooltip("Click = AIConstants.CurrentDifficulty=Medium + reload scene.")]
         [SerializeField] private Button _restartMediumButton;
 
-        [Header("Retour Hub (4.14.g — PvP casual)")]
-        [Tooltip("Click = set MatchBridge.LastMatchResult + LoadScene 10_CommunityHub. " +
-                 "Visible UNIQUEMENT en mode PvP (IsBotMatch=false). Cache en mode IA " +
-                 "ou Lorenzo utilise Rejouer pour relancer un combat IA.")]
+        [Header("Retour Hub (4.14.g — PvP casual + Polish 18 mai — IA)")]
+        [Tooltip("Click = LoadScene 10_CommunityHub (+ SetMatchResult uniquement en PvP). " +
+                 "Visible en PvP ET en IA depuis polish 18 mai (avant : PvP only). " +
+                 "En IA, pas de SetMatchResult — XP MVP differable a Phase 6 ranked.")]
         [SerializeField] private Button _returnToHubButton;
 
         [Header("Replay (Brique 3.E.1)")]
@@ -151,11 +151,14 @@ namespace Nymora.Combat.View.HUD
             // et "Sauvegarder le replay" (replay deja existant, recorder force-disabled).
             // Le user reste libre de quitter via le bouton du ReplayControlsPanel.
             // 4.14.g : en mode PvP, cache les boutons Restart IA (pas pertinent online)
-            // et affiche le bouton Retour Hub a la place. En mode IA legacy, comportement
-            // inchange (Restart visible, Retour Hub cache).
+            // et affiche le bouton Retour Hub a la place.
+            // Polish 18 mai (decision user) : en mode IA aussi, on remplace Restart par
+            // Retour Hub. Pour relancer un combat IA, Lorenzo repasse par hub > Arena
+            // (laisse le choix de classe + difficulte au lieu de subir le choix actuel).
+            // Les fields Restart Easy/Medium restent en place pour eventual rollback.
             bool replayMode = IsInReplayMode();
-            bool restartVisible = !replayMode && !_isPvpMatch;
-            bool returnHubVisible = !replayMode && _isPvpMatch;
+            bool restartVisible = false;
+            bool returnHubVisible = !replayMode;
             if (_restartEasyButton != null) _restartEasyButton.gameObject.SetActive(restartVisible);
             if (_restartMediumButton != null) _restartMediumButton.gameObject.SetActive(restartVisible);
             if (_returnToHubButton != null) _returnToHubButton.gameObject.SetActive(returnHubVisible);
@@ -235,25 +238,33 @@ namespace Nymora.Combat.View.HUD
         }
 
         /// <summary>
-        /// 4.14.g — Bouton Retour Hub (visible uniquement en PvP). Set le resultat dans
-        /// MatchBridge.LastMatchResult (consume cote hub par HubMatchResultDisplay au
-        /// Start), shutdown Quantum runner, LoadScene 10_CommunityHub.
+        /// 4.14.g — Bouton Retour Hub. En PvP : set le resultat dans MatchBridge.LastMatchResult
+        /// (consume cote hub par HubMatchResultDisplay au Start = ligne chat + award XP MVP).
+        /// En IA (polish 18 mai) : pas de SetMatchResult — XP MVP IA differable a Phase 6 ranked
+        /// (cf project-xp-source-ranked-only). Toujours : shutdown Quantum + LoadScene hub.
         ///
         /// Win/Loss/Draw deduit du snapshot Refresh : winner == local -> VICTOIRE,
         /// winner != local && winner >= 0 -> DEFAITE, winner < 0 -> DRAW (double KO).
         /// </summary>
         private void OnReturnToHubClicked()
         {
-            MatchResult result;
-            if (_winnerPlayerIndex < 0) result = MatchResult.Draw;
-            else if (_winnerPlayerIndex == _localPlayerIndex) result = MatchResult.Victory;
-            else result = MatchResult.Defeat;
+            if (_isPvpMatch)
+            {
+                MatchResult result;
+                if (_winnerPlayerIndex < 0) result = MatchResult.Draw;
+                else if (_winnerPlayerIndex == _localPlayerIndex) result = MatchResult.Victory;
+                else result = MatchResult.Defeat;
 
-            // Capture matchId + opponentEmail AVANT que SetMatchResult clear pending.
-            string matchId = MatchBridge.PendingMatchId;
-            string opponentEmail = MatchBridge.OpponentEmail;
-            MatchBridge.SetMatchResult(result, matchId, opponentEmail);
-            Debug.Log($"[Nymora.HUD] Retour Hub clique — result={result} matchId={matchId} opponent={opponentEmail}");
+                // Capture matchId + opponentEmail AVANT que SetMatchResult clear pending.
+                string matchId = MatchBridge.PendingMatchId;
+                string opponentEmail = MatchBridge.OpponentEmail;
+                MatchBridge.SetMatchResult(result, matchId, opponentEmail);
+                Debug.Log($"[Nymora.HUD] Retour Hub clique (PvP) — result={result} matchId={matchId} opponent={opponentEmail}");
+            }
+            else
+            {
+                Debug.Log("[Nymora.HUD] Retour Hub clique (IA) — pas de SetMatchResult, pas d'XP MVP");
+            }
 
             QuantumRunner.ShutdownAll();
             SceneManager.LoadScene("10_CommunityHub");

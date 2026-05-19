@@ -86,7 +86,15 @@ namespace Nymora.Hub
                 // l'opponent que ce client est out (sinon il timeout 30s sur Photon room).
                 return;
             }
-            var deck = dbp.MyDecks[0];
+            // Utilise le deck SELECTIONNE par l'utilisateur (fix 18 mai). Fallback MyDecks[0]
+            // gere dans SelectedDeck si aucun deck cliqu.
+            var deck = dbp.SelectedDeck;
+            if (deck == null)
+            {
+                Debug.LogError($"[HubMatchTransition] SelectedDeck null malgre MyDecks.Count>0 — match {matchId} ANNULE.");
+                _transitionInProgress = false;
+                return;
+            }
             DeckBridge.SetPendingDeck(deck.classId, deck.spellIds, deck.name);
 
             // 4.14.e — Set MatchBridge avec LOCAL identity (pour CombatBootstrapCasual)
@@ -96,10 +104,27 @@ namespace Nymora.Hub
             string localEmail = chat?.MyEmail;
             MatchBridge.SetPendingMatch(matchId, opponentSub, opponentEmail, localSub, localEmail);
 
+            // 19 mai — Push pseudo/clan pour le tooltip combat. Local via HubClanPanel,
+            // opponent pseudo via email (extract avant @). Clan opponent inconnu cote client
+            // (pas de cache sub->clan en PvP) -> vide pour MVP.
+            string localPseudo = ExtractPseudoFromEmail(localEmail);
+            string localClan = (HubClanPanel.Instance != null && HubClanPanel.Instance.HasClan)
+                ? HubClanPanel.Instance.MyClanName : "";
+            PlayerProfileBridge.SetLocal(localPseudo, localClan);
+            string oppPseudo = ExtractPseudoFromEmail(opponentEmail);
+            PlayerProfileBridge.SetOpponent(oppPseudo, "");
+
             if (_logVerbose) Debug.Log($"[HubMatchTransition] MatchBridge set matchId={matchId} opponent={opponentEmail} " +
                                        $"local={localEmail} deck={deck.classId}/'{deck.name}'. Transition vers '{_combatSceneName}' dans {_transitionDelaySeconds}s.");
 
             await TransitionAsync();
+        }
+
+        private static string ExtractPseudoFromEmail(string email)
+        {
+            if (string.IsNullOrEmpty(email)) return "";
+            int atIdx = email.IndexOf('@');
+            return atIdx > 0 ? email.Substring(0, atIdx) : email;
         }
 
         private async Task TransitionAsync()

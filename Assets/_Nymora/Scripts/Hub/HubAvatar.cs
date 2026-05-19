@@ -85,6 +85,12 @@ namespace Nymora.Hub
         // byte == cast direct de HubFacing (4 valeurs, SE=0/NE=1/SW=2/NW=3).
         [Networked, OnChangedRender(nameof(OnNetFacingChanged))] public byte NetFacing { get; set; }
 
+        // 19 mai — Nom du clan du joueur, sync entre clients pour que les remotes voient le clan
+        // sur le tooltip d'avatar hover. State Auth pousse depuis HubClanPanel.MyClanName au Spawn,
+        // re-push si l'event OnClanStateChanged trigger (join/quit clan en cours de session).
+        // Vide ("") = pas de clan. _32 chars max (suffisant : noms clans plus longs sont rares).
+        [Networked] public NetworkString<_32> NetClanName { get; set; }
+
         private SpriteRenderer _sr;
         // Transform du child "Visual" (cree par RestructureHubAvatarPrefabTool). Recoit le
         // Scale + Y offset per-class via ApplyClassVisual. Fallback sur transform root si
@@ -150,7 +156,11 @@ namespace Nymora.Hub
                 // 5.3.g.bis hotfix multi — init NetFacing explicite (SE=0 par defaut, evite
                 // d'avoir un remote qui lit 0 par defaut sans qu'on ait jamais set la valeur).
                 NetFacing = (byte)_currentFacing;
-                Debug.Log($"[HubAvatar] Local spawned at ({_spawnGridX},{_spawnGridY}) sub='{NetSub}' class='{NetClassId}' facing='{_currentFacing}'");
+                // 19 mai — push le nom du clan pour les remotes (tooltip hover). Re-push automatique
+                // via HubClanPanel.OnClanStateChanged si Lorenzo rejoint/quitte un clan en cours.
+                PushClanName();
+                if (HubClanPanel.Instance != null) HubClanPanel.Instance.OnClanStateChanged += PushClanName;
+                Debug.Log($"[HubAvatar] Local spawned at ({_spawnGridX},{_spawnGridY}) sub='{NetSub}' class='{NetClassId}' facing='{_currentFacing}' clan='{NetClanName}'");
             }
             else
             {
@@ -371,6 +381,13 @@ namespace Nymora.Hub
         /// </summary>
         private void Update()
         {
+            // 19 mai — Poll clan sync (1x/sec) si State Auth. Robuste a la race condition
+            // HubClanPanel.Instance null au Spawned() ou fetch async HandleWelcome pas fini.
+            if (Object != null && Object.HasStateAuthority && Time.frameCount % 60 == 0)
+            {
+                SyncClanNameIfChanged();
+            }
+
             if (_currentClassDef == null) return;
             Vector3 curPos = transform.position;
             if (Vector3.SqrMagnitude(curPos - _lastTrackedWorldPos) > _moveSqrEpsilon)
@@ -420,7 +437,38 @@ namespace Nymora.Hub
         public override void Despawned(NetworkRunner runner, bool hasState)
         {
             if (HubChatClient.Instance != null) HubChatClient.Instance.OnWelcome -= HandleWelcomePostSpawn;
+            if (HubClanPanel.Instance != null) HubClanPanel.Instance.OnClanStateChanged -= PushClanName;
             if (Local == this) Local = null;
+        }
+
+        /// <summary>
+        /// 19 mai — Push NetClanName depuis HubClanPanel.MyClanName si State Auth (= avatar
+        /// local). No-op si pas d'instance HubClanPanel (panel pas encore spawn / scene
+        /// chargee). Appele : (1) au Spawned local, (2) sur OnClanStateChanged si subscribe
+        /// reussi, (3) tous les 60 frames via Update poll (robust fallback race condition).
+        /// </summary>
+        private void PushClanName()
+        {
+            if (Object == null || !Object.HasStateAuthority) return;
+            string clanName = (HubClanPanel.Instance != null && HubClanPanel.Instance.HasClan)
+                ? (HubClanPanel.Instance.MyClanName ?? "")
+                : "";
+            NetClanName = clanName;
+        }
+
+        /// <summary>
+        /// Version idempotente : push uniquement si change vs NetClanName actuel. Appelee
+        /// chaque ~1s via Update poll pour rattraper les race conditions du fetch clan async.
+        /// </summary>
+        private void SyncClanNameIfChanged()
+        {
+            string target = (HubClanPanel.Instance != null && HubClanPanel.Instance.HasClan)
+                ? (HubClanPanel.Instance.MyClanName ?? "")
+                : "";
+            if (NetClanName.ToString() != target)
+            {
+                NetClanName = target;
+            }
         }
 
         private void AssignSubFromChatClient()

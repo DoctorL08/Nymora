@@ -23,6 +23,10 @@ namespace Nymora.Combat.View.HUD
     {
         [Header("Catalog")]
         [SerializeField] private SpellIconRegistry _iconRegistry;
+        [Tooltip("Definitions des 5 classes (drag-drop NymoraClassDefinition assets). Utilise " +
+                 "par TimelineView pour afficher les sprites Idle animes des combatants au lieu " +
+                 "des portraits statiques.")]
+        [SerializeField] private Nymora.Core.ScriptableObjects.NymoraClassDefinition[] _classDefinitions;
         [Tooltip("SpellCatalog.asset (Nymora.Core) — utilise pour mapper SpellIdTech (string) -> " +
                  "Quantum.SpellId (enum) quand DeckBridge a un deck pending depuis le Hub.")]
         [SerializeField] private SpellCatalog _spellCatalog;
@@ -58,8 +62,18 @@ namespace Nymora.Combat.View.HUD
         public SpellId? ArmedSpell => _armedSpell;
         public event Action ArmedSpellChanged;
 
+        // POLISH-6a (19 mai) — Singleton-like accessor pour que CombatantTooltipView lise
+        // l'armed spell sans drag-drop Inspector. Set au Awake, clear au OnDestroy.
+        public static CombatHUDController Instance { get; private set; }
+
+        private void OnDestroy()
+        {
+            if (Instance == this) Instance = null;
+        }
+
         private void Awake()
         {
+            Instance = this;
             // 5.3.g — Si on vient du Hub avec un deck equipe via DeckBridge, override _testDeck
             // et _signatureSpell avant BindSlots() pour que le HUD affiche les bons sorts.
             ApplyDeckBridgeIfPending();
@@ -82,8 +96,25 @@ namespace Nymora.Combat.View.HUD
             // 2.13.e : portrait dans les ResourcePanels.
             if (_p0Panel != null) _p0Panel.Init(_iconRegistry);
             if (_p1Panel != null) _p1Panel.Init(_iconRegistry);
+            // 19 mai : timeline avec sprites idle animes (necessite NymoraClassDefinition).
+            if (_timeline != null) _timeline.Init(_classDefinitions);
+
+            // 19 mai POLISH-6g — Auto-attach SignatureSlotEnhancer sur le signature slot pour
+            // gerer apparition animee + lueur gold quand la ressource max est atteinte.
+            if (_signatureSlot != null)
+            {
+                _signatureEnhancer = _signatureSlot.gameObject.GetComponent<SignatureSlotEnhancer>();
+                if (_signatureEnhancer == null)
+                {
+                    _signatureEnhancer = _signatureSlot.gameObject.AddComponent<SignatureSlotEnhancer>();
+                }
+                _signatureEnhancer.Initialize();
+            }
+
             QuantumCallback.Subscribe(this, (CallbackUpdateView c) => OnUpdateView(c.Game));
         }
+
+        private SignatureSlotEnhancer _signatureEnhancer;
 
         /// <summary>
         /// 5.3.g — Si DeckBridge.HasPending, mappe les 6 SpellIdTech (snake_case) vers
@@ -181,11 +212,11 @@ namespace Nymora.Combat.View.HUD
                 }
             }
 
-            // Signature (touche B)
+            // Signature (touche è en AZERTY FR = Alpha7 cf CombatInputController.cs ligne 184).
             if (_signatureSlot != null)
             {
                 Sprite sigIcon = _iconRegistry != null ? _iconRegistry.GetIcon(_signatureSpell) : null;
-                _signatureSlot.Bind(this, _signatureSpell, sigIcon, "B");
+                _signatureSlot.Bind(this, _signatureSpell, sigIcon, "è");
             }
         }
 
@@ -226,8 +257,12 @@ namespace Nymora.Combat.View.HUD
             // Passif (combattant qu'on controle)
             if (_passive != null) { if (hasLocal) _passive.Refresh(local); else _passive.Clear(); }
 
-            // Timeline
-            if (_timeline != null) _timeline.Refresh(activePlayer);
+            // Timeline (sprites idle animes P0/P1 + highlight actif — refacto 19 mai)
+            // + cache des combatants pour le tooltip hover (phase + statuses + marques).
+            if (_timeline != null)
+            {
+                _timeline.RefreshWithCombatants(activePlayer, p0, hasP0, p1, hasP1, state.TurnNumber);
+            }
 
             // Slots : grisage selon PA / HG dispo du combattant qu'on controle, etat armed.
             // 2.13.c : passe aussi le turnNumber pour calcul du cooldown signature.
@@ -265,6 +300,33 @@ namespace Nymora.Combat.View.HUD
                 _signatureSlot.SetState(ResolveSlotState(_signatureSlot.Spell, c, valid, turnNumber));
                 _signatureSlot.SetCooldownLabel(ResolveCooldownTurnsLeft(_signatureSlot.Spell, c, valid, turnNumber));
             }
+            // 19 mai POLISH-6g — Signature visible UNIQUEMENT quand la ressource max est atteinte
+            // (HG/PR/FD/PT pour 4 classes, ou 3 leurres actifs pour Ghostra). Cast consomme la
+            // ressource -> repasse sous max -> SetUnlocked(false) -> slot cache. Recharge ->
+            // re-anim apparition automatiquement.
+            if (_signatureEnhancer != null)
+            {
+                _signatureEnhancer.SetUnlocked(valid && IsSignatureUnlocked(c));
+            }
+        }
+
+        /// <summary>
+        /// True si le combattant a sa ressource max -> signature debloque.
+        /// Ghostra : 3 leurres actifs. Autres : c.Resource >= max via CombatantStats.
+        /// </summary>
+        private static bool IsSignatureUnlocked(in Combatant c)
+        {
+            if (c.Class == NymoraClass.Ghostra)
+            {
+                int active = 0;
+                for (int i = 0; i < 3; i++)
+                {
+                    if (c.Decoys[i].Kind != DecoyKind.None) active++;
+                }
+                return active >= 3;
+            }
+            int max = CombatantStats.GetMaxResource(c.Class);
+            return max > 0 && c.Resource >= max;
         }
 
         private SpellSlotView.SlotState ResolveSlotState(SpellId spell, in Combatant c, bool valid, int turnNumber)

@@ -82,6 +82,14 @@ namespace Nymora.Combat.View
         [Tooltip("AnimatorController stage 2 NE.")]
         [SerializeField] private RuntimeAnimatorController _stage2ControllerNE;
 
+        [Header("Y offset visuel par stage (workaround pivot Aseprite non standardise)")]
+        [Tooltip("Y offset applique au sprite (child Visual) en stage 0. Default 0.")]
+        [SerializeField] private float _stage0VisualYOffset = 0f;
+        [Tooltip("Y offset applique au sprite (child Visual) en stage 1. Default 0.")]
+        [SerializeField] private float _stage1VisualYOffset = 0f;
+        [Tooltip("Y offset applique au sprite (child Visual) en stage 2. Default 0.")]
+        [SerializeField] private float _stage2VisualYOffset = 0f;
+
         public EntityRef Entity { get; private set; }
         public int GridX { get; private set; }
         public int GridY { get; private set; }
@@ -335,6 +343,28 @@ namespace Nymora.Combat.View
             var fallbackSprite = PickSprite(stage, useNE);
 
             if (_sprite != null) _sprite.flipX = flipX;
+
+            // Y offset visuel par stage (workaround pivot Aseprite non standardise — cf
+            // incident Colossar 18 mai ou stage1/2 montaient en Y par rapport au stage0).
+            // No-op pour les classes ou les 3 offsets sont a 0 (Necram/Ghostra/Soulrender/
+            // Nightseer). Pour Colossar : Lorenzo tune stage1/2 dans l'Inspector du prefab.
+            //
+            // PRE-REQUIS : le SpriteRenderer doit etre sur un child "Visual" du prefab
+            // (cf RestructureColossarPrefabTool). Sinon modifier _sprite.transform.localPosition
+            // shifte le root et casse worldPos. Pour les classes mono-GO (Soulrender, Nightseer
+            // sans restructure), garder les 3 offsets a 0 = pas de modif transform.
+            if (_sprite != null && _sprite.transform != transform)
+            {
+                float off = stage == 0 ? _stage0VisualYOffset
+                          : stage == 1 ? _stage1VisualYOffset
+                          : _stage2VisualYOffset;
+                Vector3 pos = _sprite.transform.localPosition;
+                if (!Mathf.Approximately(pos.y, off))
+                {
+                    pos.y = off;
+                    _sprite.transform.localPosition = pos;
+                }
+            }
 
             // Priorite Animator si dispo.
             if (_animator != null && controller != null)

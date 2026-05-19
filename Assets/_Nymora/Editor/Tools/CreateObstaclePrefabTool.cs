@@ -34,6 +34,25 @@ namespace Nymora.Editor.Tools
         // Sprite designer livre en 3.1.bis (priorite 1).
         private const string ColossarTilesFondationPath = "Assets/_Nymora/Art/Sprites/Colossar/Tiles/tiles_fondation.png";
 
+        // 4 frames Pilier livrees par le designer (18 mai, re-livraison) : pilier qui se
+        // degrade progressivement avec fissures + cristal dore plus visible a chaque frame.
+        // Anime cote View pilote par le ratio HP/MaxHP (cf ObstacleView._hpFrames).
+        private static readonly string[] ColossarPillarFramePaths =
+        {
+            "Assets/_Nymora/Art/Sprites/Colossar/Tiles/tiles_pilier_colossar_4frames1.png",
+            "Assets/_Nymora/Art/Sprites/Colossar/Tiles/tiles_pilier_colossar_4frames2.png",
+            "Assets/_Nymora/Art/Sprites/Colossar/Tiles/tiles_pilier_colossar_4frames3.png",
+            "Assets/_Nymora/Art/Sprites/Colossar/Tiles/tiles_pilier_colossar_4frames4.png",
+        };
+        // PPU + pivot custom dedies aux 4 frames Pilier (tuning Lorenzo 18 mai en jeu).
+        // Frames 128x128 px, contenu calibre par le designer mais shrink necessaire pour
+        // bien caler le pilier sur la case iso (losange) :
+        //   - PPU 76 (au lieu de 128) = sprite occupe ~1.68 unites world (vertical eleve)
+        //   - Pivot Custom (0.5, 0.21) = base du pilier alignee sur le bas du losange tile
+        // Determined visually par Lorenzo en Play Mode, validation OK.
+        private const int PillarFramePPU = 76;
+        private static readonly Vector2 PillarFramePivot = new Vector2(0.5f, 0.21f);
+
         // Sprite procedural fallback (priorite 2, genere si pas de tiles_fondation).
         private const string PlaceholderSpriteFolder = "Assets/_Nymora/Art/Sprites/Obstacles";
         private const string PlaceholderSpritePath = PlaceholderSpriteFolder + "/Placeholder_Pillar.png";
@@ -44,13 +63,11 @@ namespace Nymora.Editor.Tools
         private const string WallPrefabPath   = PrefabFolder + "/Obstacle_Wall.prefab";
 
         // Conventions PPU (1 case = 1 unite world Unity) :
-        //   - tiles_fondation.png : 128x128 px -> PPU 128 (sprite occupe 1.0 unite world =
-        //     largeur exacte d'une case iso). Combine au pivot BottomCenter, la base du
-        //     bloc de pierre se cale sur le centre de la tile et le bloc s'eleve au-dessus.
-        //     Historique tuning : PPU 180 (avec pivot Center) testait un "shrink" mais le
-        //     bloc paraissait trop petit + flottait au milieu de la case (re-fix 18 mai).
+        //   - tiles_fondation.png : 128x128 px -> PPU 180 (shrink, sprite occupe ~0.71 unite
+        //     world). Sert au Mur uniquement (le Pilier a son propre asset anime depuis le
+        //     re-livraison designer, cf tiles_pilier_colossar_4frames*.png).
         //   - Placeholder procedural : 64x64 px -> PPU 64 (meme convention que tiles grille)
-        private const int DesignerSpritePPU = 128;
+        private const int DesignerSpritePPU = 180;
         private const int PlaceholderSpritePPU = 64;
 
         // Sprite procedural placeholder.
@@ -66,24 +83,63 @@ namespace Nymora.Editor.Tools
         {
             EnsureFolderRecursive(PrefabFolder);
 
-            // 1. Resoud le sprite a utiliser : designer-livre en priorite, sinon placeholder genere.
-            Sprite sprite = ResolveOrCreateObstacleSprite();
-            if (sprite == null)
+            // 1. Resoud le sprite "base" (Wall + fallback) : tiles_fondation si livre, sinon placeholder.
+            Sprite baseSprite = ResolveOrCreateObstacleSprite();
+            if (baseSprite == null)
             {
                 Debug.LogError("[CreateObstaclePrefabTool] Echec resolution sprite — aucun prefab cree.");
                 return;
             }
 
-            // 2. Genere les 2 prefabs (Pilier + Mur). Pour l'instant meme sprite — le Mur
-            // aura son propre sprite quand le designer le livrera.
-            CreateObstaclePrefab(PillarPrefabPath, "Obstacle_Pillar", sprite, defaultHpLabel: "200/200");
-            CreateObstaclePrefab(WallPrefabPath,   "Obstacle_Wall",   sprite, defaultHpLabel: "150/150");
+            // 2. Resoud les 4 frames Pilier (re-livraison designer 18 mai). Fallback baseSprite
+            // si les frames manquent (devrait pas arriver, mais on degrade proprement).
+            Sprite[] pillarFrames = ResolvePillarFrames();
+            Sprite pillarBaseSprite = (pillarFrames != null && pillarFrames.Length > 0 && pillarFrames[0] != null)
+                ? pillarFrames[0]
+                : baseSprite;
+
+            // 3. Genere les 2 prefabs. Pillar : 4 frames pilotees par HP. Wall : sprite statique.
+            CreateObstaclePrefab(PillarPrefabPath, "Obstacle_Pillar", pillarBaseSprite, pillarFrames, defaultHpLabel: "200/200");
+            CreateObstaclePrefab(WallPrefabPath,   "Obstacle_Wall",   baseSprite,       hpFrames: null, defaultHpLabel: "150/150");
 
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
             Selection.activeObject = AssetDatabase.LoadAssetAtPath<GameObject>(PillarPrefabPath);
-            Debug.Log($"[CreateObstaclePrefabTool] DONE. Pilier : {PillarPrefabPath} | Mur : {WallPrefabPath}");
+            Debug.Log($"[CreateObstaclePrefabTool] DONE. Pilier : {PillarPrefabPath} ({(pillarFrames?.Length ?? 0)} frames) | Mur : {WallPrefabPath}");
+        }
+
+        // ====================================================================
+        // Resolution frames pilier (re-livraison designer 18 mai).
+        // ====================================================================
+
+        private static Sprite[] ResolvePillarFrames()
+        {
+            var frames = new Sprite[ColossarPillarFramePaths.Length];
+            int loaded = 0;
+            for (int i = 0; i < ColossarPillarFramePaths.Length; i++)
+            {
+                string path = ColossarPillarFramePaths[i];
+                if (!File.Exists(path))
+                {
+                    Debug.LogWarning($"[CreateObstaclePrefabTool] Frame pilier manquante : {path}");
+                    frames[i] = null;
+                    continue;
+                }
+                ApplySpriteImportSettings(path, PillarFramePPU, PillarFramePivot);
+                var sprite = AssetDatabase.LoadAssetAtPath<Sprite>(path);
+                if (sprite == null)
+                {
+                    Debug.LogWarning($"[CreateObstaclePrefabTool] Frame pilier impossible a charger : {path}");
+                }
+                else
+                {
+                    loaded++;
+                }
+                frames[i] = sprite;
+            }
+            Debug.Log($"[CreateObstaclePrefabTool] Frames Pilier resolues : {loaded}/{ColossarPillarFramePaths.Length}");
+            return loaded > 0 ? frames : null;
         }
 
         // ====================================================================
@@ -111,17 +167,15 @@ namespace Nymora.Editor.Tools
 
         /// <summary>
         /// Force les import settings standard pour un sprite obstacle :
-        /// Sprite type / PPU passe en arg / Point filter / alpha is transparency / no mipmap /
-        /// pivot BottomCenter (re-fix 18 mai : le sprite tiles_fondation represente un bloc
-        /// de pierre 3D iso vu de cote — la base du sprite est le "sol" de la case grille.
-        /// BottomCenter fait que la base se cale sur le worldPos de la case et le bloc
-        /// s'eleve naturellement au-dessus, avec le top de pierre visible sur la case).
+        /// Sprite type / PPU passe en arg / Point filter / alpha is transparency / no mipmap.
+        /// Pivot : Center par defaut, ou Custom si <paramref name="customPivot"/> fourni
+        /// (pivot precis = Vector2 en coordonnees normalisees 0..1).
         ///
         /// Tout passe par TextureImporterSettings (read/modify/write en 1 fois) — ne PAS
         /// melanger avec des modifs directes sur l'importer (importer.textureType = X), sinon
         /// SetTextureSettings ecrase les modifs directes faites juste avant.
         /// </summary>
-        private static void ApplySpriteImportSettings(string spritePath, int ppu)
+        private static void ApplySpriteImportSettings(string spritePath, int ppu, Vector2? customPivot = null)
         {
             var importer = AssetImporter.GetAtPath(spritePath) as TextureImporter;
             if (importer == null) return;
@@ -129,7 +183,10 @@ namespace Nymora.Editor.Tools
             var settings = new TextureImporterSettings();
             importer.ReadTextureSettings(settings);
 
-            const int BottomCenter = (int)SpriteAlignment.BottomCenter;
+            const int Center = (int)SpriteAlignment.Center;
+            const int Custom = (int)SpriteAlignment.Custom;
+
+            int targetAlignment = customPivot.HasValue ? Custom : Center;
 
             bool dirty = false;
             if (settings.textureType != TextureImporterType.Sprite) { settings.textureType = TextureImporterType.Sprite; dirty = true; }
@@ -138,13 +195,15 @@ namespace Nymora.Editor.Tools
             if (settings.filterMode != FilterMode.Point) { settings.filterMode = FilterMode.Point; dirty = true; }
             if (!settings.alphaIsTransparency) { settings.alphaIsTransparency = true; dirty = true; }
             if (settings.mipmapEnabled) { settings.mipmapEnabled = false; dirty = true; }
-            if (settings.spriteAlignment != BottomCenter) { settings.spriteAlignment = BottomCenter; dirty = true; }
+            if (settings.spriteAlignment != targetAlignment) { settings.spriteAlignment = targetAlignment; dirty = true; }
+            if (customPivot.HasValue && settings.spritePivot != customPivot.Value) { settings.spritePivot = customPivot.Value; dirty = true; }
 
             if (dirty)
             {
                 importer.SetTextureSettings(settings);
                 importer.SaveAndReimport();
-                Debug.Log($"[CreateObstaclePrefabTool] Import settings applique : {spritePath} (PPU={ppu}, Point, transparent, pivot=BottomCenter)");
+                string pivotLog = customPivot.HasValue ? $"Custom({customPivot.Value.x},{customPivot.Value.y})" : "Center";
+                Debug.Log($"[CreateObstaclePrefabTool] Import settings applique : {spritePath} (PPU={ppu}, Point, transparent, pivot={pivotLog})");
             }
         }
 
@@ -176,7 +235,7 @@ namespace Nymora.Editor.Tools
         // Generation prefab (paramebrable Pilier / Mur / etc.).
         // ====================================================================
 
-        private static void CreateObstaclePrefab(string prefabPath, string rootName, Sprite sprite, string defaultHpLabel)
+        private static void CreateObstaclePrefab(string prefabPath, string rootName, Sprite sprite, Sprite[] hpFrames, string defaultHpLabel)
         {
             // Cleanup existant (idempotent).
             if (File.Exists(prefabPath))
@@ -199,12 +258,11 @@ namespace Nymora.Editor.Tools
                 sr.sprite = sprite;
 
                 // HP label child (TMP world space, au-dessus du sprite).
-                // Position y=1.2f : sprite tiles_fondation 128px PPU 128 + pivot BottomCenter
-                // = sprite va de y=0 (base sur worldPos) a y=1.0 (top). Label a 1.2 reste
-                // juste au-dessus avec marge 0.2 (cf re-fix 18 mai PPU/pivot).
+                // Position y=0.55f : sprite centre sur la case (pivot Center), label
+                // juste au-dessus du sprite.
                 var labelGO = new GameObject("HPLabel");
                 labelGO.transform.SetParent(root.transform, false);
-                labelGO.transform.localPosition = new Vector3(0f, 1.2f, 0f);
+                labelGO.transform.localPosition = new Vector3(0f, 0.55f, 0f);
                 var tmp = labelGO.AddComponent<TextMeshPro>();
                 tmp.text = defaultHpLabel;
                 tmp.fontSize = 3;
@@ -214,15 +272,17 @@ namespace Nymora.Editor.Tools
                 var rect = labelGO.GetComponent<RectTransform>();
                 if (rect != null) rect.sizeDelta = new Vector2(2f, 0.5f);
 
-                // ObstacleView component sur le root (bind sprite + label).
+                // ObstacleView component sur le root (bind sprite + label + frames HP).
                 var view = root.AddComponent<ObstacleView>();
                 var so = new SerializedObject(view);
                 SetObjectRef(so, "_sprite", sr);
                 SetObjectRef(so, "_hpLabel", tmp);
+                SetSpriteArray(so, "_hpFrames", hpFrames);
                 so.ApplyModifiedPropertiesWithoutUndo();
 
                 PrefabUtility.SaveAsPrefabAsset(root, prefabPath);
-                Debug.Log($"[CreateObstaclePrefabTool] Prefab cree : {prefabPath} (sprite={sprite.name})");
+                int frameCount = (hpFrames == null) ? 0 : hpFrames.Length;
+                Debug.Log($"[CreateObstaclePrefabTool] Prefab cree : {prefabPath} (sprite={sprite.name}, hpFrames={frameCount})");
             }
             finally
             {
@@ -239,6 +299,22 @@ namespace Nymora.Editor.Tools
                 return;
             }
             prop.objectReferenceValue = value;
+        }
+
+        private static void SetSpriteArray(SerializedObject so, string propertyName, Sprite[] sprites)
+        {
+            var prop = so.FindProperty(propertyName);
+            if (prop == null)
+            {
+                Debug.LogWarning($"[CreateObstaclePrefabTool] Champ '{propertyName}' introuvable.");
+                return;
+            }
+            int count = sprites == null ? 0 : sprites.Length;
+            prop.arraySize = count;
+            for (int i = 0; i < count; i++)
+            {
+                prop.GetArrayElementAtIndex(i).objectReferenceValue = sprites[i];
+            }
         }
 
         private static void EnsureFolderRecursive(string folder)

@@ -255,6 +255,9 @@ namespace Nymora.Combat.View
         {
             var cmd = new CastSpellCommand { Spell = spell, TargetX = tx, TargetY = ty, HGSpend = hgSpend };
             game.SendCommand(sender, cmd);
+            // 19 mai POLISH-6h — Memorise le cast pour permettre au FloatingTextManager de
+            // spawner un texte epique (or + scale bounce) si le sort est signature.
+            Nymora.Combat.View.HUD.SignatureCastBridge.NotifySpellCast(spell);
             Debug.Log($"[Nymora.CombatInput] Sent Cast {spell} player={sender} target=({tx},{ty}) HGSpend={hgSpend}");
         }
 
