@@ -111,3 +111,6 @@ $RECYCLE.BIN/
 # -----------------------------------------------------------------------------
 _docs/healthcheck_report.md
 _docs/healthcheck_report_*.md
+
+# FontSwapper : backups locaux du tool (hors Assets/ par design)
+_FontSwapBackups/
