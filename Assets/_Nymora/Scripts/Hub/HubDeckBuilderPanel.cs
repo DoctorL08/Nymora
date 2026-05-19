@@ -198,6 +198,10 @@ namespace Nymora.Hub
             if (_panelRoot == null) return;
             _panelRoot.SetActive(true);
             SetArenaButtonVisible(false); // fix 18 mai : arena pas pertinent en mode Deck Builder
+            // POLISH-7 polish (20 mai) : le wallet widget (Nymos/Shards en haut-droite) chevauchait
+            // visuellement le panel Deck Builder. Masque le temps de l'edition (les balances
+            // restent visibles via l'onglet Wallet du profil).
+            SetWalletWidgetVisible(false);
             if (!_hasFetchedOnce) FetchDecksAsync().Forget();
             else RenderAll();
         }
@@ -206,6 +210,7 @@ namespace Nymora.Hub
         {
             if (_panelRoot != null) _panelRoot.SetActive(false);
             SetArenaButtonVisible(true);
+            SetWalletWidgetVisible(true);
             HideTooltip();
         }
 
@@ -218,6 +223,20 @@ namespace Nymora.Hub
         {
             var arenaBtn = Object.FindAnyObjectByType<HubArenaButton>(FindObjectsInactive.Include);
             if (arenaBtn != null) arenaBtn.gameObject.SetActive(visible);
+        }
+
+        /// <summary>
+        /// POLISH-7 polish (20 mai) — cache/affiche le wallet widget (Nymos + Shards en
+        /// haut-droite du hub). Meme mecanique que SetArenaButtonVisible : evite que le
+        /// widget chevauche visuellement le panel Deck Builder. Les balances restent
+        /// consultables via l'onglet Wallet du profil pendant l'edition.
+        /// </summary>
+        private static void SetWalletWidgetVisible(bool visible)
+        {
+            if (HubWalletWidget.Instance != null)
+            {
+                HubWalletWidget.Instance.gameObject.SetActive(visible);
+            }
         }
 
         public void Toggle()
