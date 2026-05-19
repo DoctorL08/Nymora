@@ -22,7 +22,10 @@ namespace Nymora.Hub
         [SerializeField] private TextMeshProUGUI _label;
         [SerializeField] private Image _targetColorSwatch;
         [SerializeField] private RectTransform _buttonContainer;
-        [SerializeField] private float _buttonHeight = 70f;
+        // POLISH-7 polish (20 mai) : default 70 -> 40 pour menu plus compact (Lorenzo
+        // peut tweaker Inspector si valeur deja serialisee differente).
+        [SerializeField] private float _buttonHeight = 40f;
+        [SerializeField] private int _buttonFontSize = 16;
 
         [Header("Refs externes")]
         [SerializeField] private HubChatUI _chatUI;
@@ -51,7 +54,40 @@ namespace Nymora.Hub
             }
             Instance = this;
             if (_panel != null) _panel.SetActive(false);
+
+            // POLISH-7 polish (20 mai) — swatch blanc 4.8.a (placeholder couleur HSV per-player)
+            // devenu inutile depuis les sprites de classe. On le desactive proprement sans toucher
+            // la scene (idempotent : si Lorenzo l'a deja supprime du scene, _targetColorSwatch=null).
+            if (_targetColorSwatch != null) _targetColorSwatch.gameObject.SetActive(false);
+
+            // POLISH-7 polish — resserre le VerticalLayoutGroup du buttonContainer (spacing 4)
+            // + ContentSizeFitter sur le panel pour que le bg noir s'ajuste a la hauteur des boutons.
+            EnsureCompactLayout();
             // 4.11 polish — BuildActions() est appele dans Show() pour reflechir l'etat clan dynamique.
+        }
+
+        private void EnsureCompactLayout()
+        {
+            if (_buttonContainer != null)
+            {
+                var vlg = _buttonContainer.GetComponent<VerticalLayoutGroup>();
+                if (vlg != null)
+                {
+                    vlg.spacing = 4f;
+                    vlg.padding = new RectOffset(8, 8, 6, 6);
+                    vlg.childForceExpandHeight = false;
+                    vlg.childControlHeight = true;
+                    vlg.childForceExpandWidth = true;
+                    vlg.childControlWidth = true;
+                }
+            }
+            if (_panel != null)
+            {
+                var fitter = _panel.GetComponent<ContentSizeFitter>();
+                if (fitter == null) fitter = _panel.AddComponent<ContentSizeFitter>();
+                fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+                fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            }
         }
 
         private void OnDestroy()
@@ -113,11 +149,13 @@ namespace Nymora.Hub
         {
             if (target == null || _panel == null) return;
             _currentTarget = target;
-            if (_label != null) _label.text = "Actions";
-            if (_targetColorSwatch != null)
+            // POLISH-7 polish (20 mai) — affiche le pseudo du target dans le titre au lieu du
+            // generique "Actions". Fallback "Actions" si NetDisplayName pas encore sync (race
+            // au Spawn). Le swatch blanc est cache au Awake (cf EnsureCompactLayout).
+            if (_label != null)
             {
-                var sr = target.GetComponent<SpriteRenderer>();
-                _targetColorSwatch.color = sr != null ? sr.color : Color.white;
+                string pseudo = target.NetDisplayName.ToString();
+                _label.text = string.IsNullOrEmpty(pseudo) ? "Actions" : pseudo;
             }
             // 4.11 polish — rebuild la liste d'actions selon l'etat actuel (clan etc.)
             BuildActions();
@@ -144,14 +182,14 @@ namespace Nymora.Hub
 
             foreach (var action in _actions)
             {
-                var btnGo = CreateRuntimeButton(_buttonContainer, action.Label, action.BgColor, _buttonHeight);
+                var btnGo = CreateRuntimeButton(_buttonContainer, action.Label, action.BgColor, _buttonHeight, _buttonFontSize);
                 var captured = action; // capture pour closure
                 btnGo.GetComponent<Button>().onClick.AddListener(() => captured.Execute(_currentTarget));
                 _spawnedButtons.Add(btnGo);
             }
         }
 
-        private static GameObject CreateRuntimeButton(Transform parent, string label, Color bgColor, float height)
+        private static GameObject CreateRuntimeButton(Transform parent, string label, Color bgColor, float height, int fontSize)
         {
             var go = new GameObject(label, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
             go.transform.SetParent(parent, false);
@@ -172,9 +210,11 @@ namespace Nymora.Hub
             labelRt.offsetMax = Vector2.zero;
             var labelText = labelGo.GetComponent<TextMeshProUGUI>();
             labelText.text = label;
-            labelText.fontSize = 26;
+            // POLISH-7 polish (20 mai) : fontSize 26 -> 16 + bold pour meilleure lisibilite.
+            labelText.fontSize = fontSize;
             labelText.color = Color.white;
             labelText.alignment = TextAlignmentOptions.Center;
+            labelText.fontStyle = FontStyles.Bold;
 
             return go;
         }
