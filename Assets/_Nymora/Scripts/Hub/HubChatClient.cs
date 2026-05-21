@@ -42,10 +42,21 @@ namespace Nymora.Hub
         // L'email reste expose en MyEmail uniquement pour debug/logs internes — plus jamais affiche.
         public string MyDisplayName { get; private set; }
 
-        // 4.12 — Expose le JWT dev pour reutilisation par HubProfilePanel (REST /profile/me).
-        // En dev local, Lorenzo colle un seul devToken ici et tout le hub (WS + REST) l'utilise.
-        // Quand le flow login 00_Login sera systematise, basculer sur AuthService + PlayerPrefs.
-        public string DevToken => _devToken;
+        // PlayerPrefs key du JWT pose par AuthService apres login/register (00_Login).
+        // Doit rester synchro avec AuthService.PlayerPrefsTokenKey.
+        private const string AuthTokenPlayerPrefsKey = "nymora.auth.jwt";
+
+        // B6.5 — Token effectif du hub (WS + REST). Cascade :
+        //   1. JWT du compte loggé (PlayerPrefs, pose par le flow 00_Login)
+        //   2. fallback _devToken Inspector (workflow dev local sans passer par login)
+        // Tout le hub passe par ce point unique (chaque panel lit DevToken).
+        public string DevToken => ResolveToken();
+
+        private string ResolveToken()
+        {
+            string authToken = PlayerPrefs.GetString(AuthTokenPlayerPrefsKey, string.Empty);
+            return !string.IsNullOrWhiteSpace(authToken) ? authToken : _devToken;
+        }
 
         // POLISH-7 (20 mai) : tous les events portent maintenant un displayName (pseudo) la
         // ou ils portaient un email. L'email reste echange via MyEmail pour debug interne.
@@ -210,15 +221,16 @@ namespace Nymora.Hub
                 Debug.Log("[ChatClient] Already connected");
                 return;
             }
-            if (string.IsNullOrWhiteSpace(_devToken))
+            string token = ResolveToken();
+            if (string.IsNullOrWhiteSpace(token))
             {
-                Debug.LogError("[ChatClient] _devToken vide. Lance 'npm run dev:token' cote backend et colle le JWT dans le SerializedField.");
+                Debug.LogError("[ChatClient] Aucun token. Connecte-toi via 00_Login, ou colle un JWT dev dans _devToken (workflow local).");
                 return;
             }
 
             _ws = new ClientWebSocket();
             _cts = new CancellationTokenSource();
-            var uri = new Uri($"{_backendUrl}/?token={_devToken}");
+            var uri = new Uri($"{_backendUrl}/?token={token}");
 
             try
             {

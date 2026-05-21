@@ -5,6 +5,7 @@ using Nymora.Core.Logging;
 using Nymora.Network.Backend;
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 namespace Nymora.UI.Login
@@ -30,6 +31,11 @@ namespace Nymora.UI.Login
         [SerializeField] private Button _registerButton;
         [SerializeField] private Button _logoutButton;
         [SerializeField] private Button _connectPhotonButton;
+        [SerializeField] private Button _enterHubButton;
+
+        [Header("Hub")]
+        [Tooltip("Nom de la scene hub chargee au clic sur 'Entrer dans le hub'.")]
+        [SerializeField] private string _hubSceneName = "10_CommunityHub";
 
         [Header("Photon")]
         [SerializeField] private PhotonConnectionTester _photonTester;
@@ -62,6 +68,7 @@ namespace Nymora.UI.Login
             _cts = new CancellationTokenSource();
 
             if (_updateRequiredPanel != null) _updateRequiredPanel.SetActive(false);
+            if (_enterHubButton != null) _enterHubButton.gameObject.SetActive(false);
         }
 
         private void OnEnable()
@@ -70,6 +77,7 @@ namespace Nymora.UI.Login
             if (_registerButton != null) _registerButton.onClick.AddListener(OnRegisterClicked);
             if (_logoutButton != null) _logoutButton.onClick.AddListener(OnLogoutClicked);
             if (_connectPhotonButton != null) _connectPhotonButton.onClick.AddListener(OnConnectPhotonClicked);
+            if (_enterHubButton != null) _enterHubButton.onClick.AddListener(OnEnterHubClicked);
         }
 
         private void OnDisable()
@@ -78,6 +86,7 @@ namespace Nymora.UI.Login
             if (_registerButton != null) _registerButton.onClick.RemoveListener(OnRegisterClicked);
             if (_logoutButton != null) _logoutButton.onClick.RemoveListener(OnLogoutClicked);
             if (_connectPhotonButton != null) _connectPhotonButton.onClick.RemoveListener(OnConnectPhotonClicked);
+            if (_enterHubButton != null) _enterHubButton.onClick.RemoveListener(OnEnterHubClicked);
         }
 
         private async void Start()
@@ -111,6 +120,7 @@ namespace Nymora.UI.Login
                 if (me.IsSuccess)
                 {
                     SetStatus($"Connecte : {me.Data.displayName} ({me.Data.email})");
+                    ShowEnterHub();
                 }
                 else if (me.StatusCode == 426)
                 {
@@ -147,6 +157,7 @@ namespace Nymora.UI.Login
             {
                 NymoraLog.Info("Login", $"JWT recu (longueur {res.Data.token.Length}).");
                 SetStatus($"Connecte : {res.Data.user.displayName}");
+                ShowEnterHub();
             }
             else if (res.StatusCode == 426)
             {
@@ -168,6 +179,7 @@ namespace Nymora.UI.Login
             {
                 NymoraLog.Info("Login", $"JWT recu (longueur {res.Data.token.Length}).");
                 SetStatus($"Inscrit + connecte : {res.Data.user.displayName}");
+                ShowEnterHub();
             }
             else if (res.StatusCode == 426)
             {
@@ -183,6 +195,23 @@ namespace Nymora.UI.Login
         {
             _auth.Logout();
             SetStatus("Deconnecte.");
+            if (_enterHubButton != null) _enterHubButton.gameObject.SetActive(false);
+        }
+
+        private void OnEnterHubClicked()
+        {
+            if (!_auth.IsLoggedIn)
+            {
+                SetStatus("Connecte-toi avant d'entrer dans le hub.");
+                return;
+            }
+            NymoraLog.Info("Login", $"Chargement de la scene hub '{_hubSceneName}'...");
+            SceneManager.LoadScene(_hubSceneName);
+        }
+
+        private void ShowEnterHub()
+        {
+            if (_enterHubButton != null) _enterHubButton.gameObject.SetActive(true);
         }
 
         private async void OnConnectPhotonClicked()

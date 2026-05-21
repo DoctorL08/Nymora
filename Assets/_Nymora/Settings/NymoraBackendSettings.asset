@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2b4a2e5a2ed955846aaacec29dd3011e, type: 3}
   m_Name: NymoraBackendSettings
   m_EditorClassIdentifier: 
-  _baseUrl: http://localhost:3000
+  _baseUrl: https://api.nymora.fr
   _timeoutSeconds: 15

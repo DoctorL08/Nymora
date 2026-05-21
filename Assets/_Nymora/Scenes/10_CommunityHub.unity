@@ -8123,23 +8123,23 @@ RectTransform:
   m_LocalScale: {x: 0, y: 0, z: 0}
   m_ConstrainProportionsScale: 0
   m_Children:
+  - {fileID: 570533328}
+  - {fileID: 1382204699}
+  - {fileID: 2127678266}
+  - {fileID: 1475698970}
+  - {fileID: 1238034041}
   - {fileID: 1226587305}
   - {fileID: 1383662928}
   - {fileID: 768458286}
   - {fileID: 1672066003}
   - {fileID: 565409599}
   - {fileID: 569681483}
-  - {fileID: 570533328}
-  - {fileID: 1382204699}
   - {fileID: 1760884661}
   - {fileID: 1808333921}
-  - {fileID: 2127678266}
   - {fileID: 319068161}
   - {fileID: 1003194326}
-  - {fileID: 1475698970}
   - {fileID: 289752907}
   - {fileID: 1765622512}
-  - {fileID: 1238034041}
   - {fileID: 504079491}
   - {fileID: 1144850296}
   m_Father: {fileID: 0}
@@ -15795,7 +15795,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -20, y: 20}
+  m_AnchoredPosition: {x: -780, y: 20}
   m_SizeDelta: {x: 180, y: 56}
   m_Pivot: {x: 1, y: 0}
 --- !u!114 &570533329
@@ -23613,8 +23613,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 80f6f90c31a363945bbe0d57b26c3255, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _backendUrl: ws://localhost:3000
-  _devToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3YmZkYWY0OS01MWRlLTQwYWItYTUwMy1kYjM3YWZkMmRjMWIiLCJlbWFpbCI6ImRldi0xQG55bW9yYS5sb2NhbCIsImlhdCI6MTc3OTIxNzk3MSwiZXhwIjoxNzc5MzA0MzcxfQ.EUoOMM5r7dpBrFLuUuxRTDC7hEkvyvWmoqJQvXOY7ww
+  _backendUrl: wss://api.nymora.fr
+  _devToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI3YmZkYWY0OS01MWRlLTQwYWItYTUwMy1kYjM3YWZkMmRjMWIiLCJlbWFpbCI6ImRldi0xQG55bW9yYS5sb2NhbCIsImlhdCI6MTc3OTM5Mzg5MywiZXhwIjoxNzc5NDgwMjkzfQ.S4gTU1VfbZCbxNWu6jfjPdTEqp1Md9Vjl9rIc3y3CZ4
   _autoConnect: 1
   _autoJoinChannel: global
   _logVerbose: 1
@@ -37326,7 +37326,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -780, y: 20}
+  m_AnchoredPosition: {x: -20, y: 20}
   m_SizeDelta: {x: 180, y: 56}
   m_Pivot: {x: 1, y: 0}
 --- !u!114 &1238034042
@@ -38016,7 +38016,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _chatUI: {fileID: 1226587304}
   _backendSettings: {fileID: 11400000, guid: 25da4a90aebea7c4d94a2359f25209d2, type: 2}
-  _devClassId: Soulrender
+  _fallbackClassId: Soulrender
   _xpVictory: 50
   _xpDefeat: 15
   _xpDraw: 25
@@ -41128,7 +41128,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -210, y: 20}
+  m_AnchoredPosition: {x: -590, y: 20}
   m_SizeDelta: {x: 180, y: 56}
   m_Pivot: {x: 1, y: 0}
 --- !u!114 &1382204700
@@ -41364,7 +41364,8 @@ MonoBehaviour:
   _label: {fileID: 1911503299}
   _targetColorSwatch: {fileID: 512377864}
   _buttonContainer: {fileID: 1182052270}
-  _buttonHeight: 70
+  _buttonHeight: 40
+  _buttonFontSize: 16
   _chatUI: {fileID: 1226587304}
 --- !u!1 &1395533581
 GameObject:
@@ -41880,7 +41881,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Mon profil
+  m_text: Profil
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 9c8a8667e2352a841a77df1104136a55, type: 2}
   m_sharedMaterial: {fileID: 7700272497058392182, guid: 9c8a8667e2352a841a77df1104136a55, type: 2}
@@ -42946,7 +42947,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 1, y: 0}
   m_AnchorMax: {x: 1, y: 0}
-  m_AnchoredPosition: {x: -590, y: 20}
+  m_AnchoredPosition: {x: -210, y: 20}
   m_SizeDelta: {x: 180, y: 56}
   m_Pivot: {x: 1, y: 0}
 --- !u!114 &1475698971
