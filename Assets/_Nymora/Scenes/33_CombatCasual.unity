@@ -10372,6 +10372,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2043161163}
   - component: {fileID: 2043161162}
+  - component: {fileID: 2043161164}
   m_Layer: 0
   m_Name: Map_Combat_1
   m_TagString: Untagged
@@ -10420,7 +10421,7 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: -1000
-  m_Sprite: {fileID: 21300000, guid: 399ba67178f2988478adb6fdca2d3c90, type: 3}
+  m_Sprite: {fileID: 21300000, guid: d1bd4a017937475ca588f9b5a50e2124, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
@@ -10446,6 +10447,32 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2043161164
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2043161161}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f1b4a2b58069e9a4d8b3849221b34ed1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _frames:
+  - {fileID: 21300000, guid: d1bd4a017937475ca588f9b5a50e2124, type: 3}
+  - {fileID: 21300000, guid: c5154439986d4c53a2740f80aaa2fd9e, type: 3}
+  - {fileID: 21300000, guid: 529d0f3b6e4c4509af928bbf5a301f62, type: 3}
+  - {fileID: 21300000, guid: c9a31033193149b0b0dfcc3d95bcccf4, type: 3}
+  - {fileID: 21300000, guid: 51ebb9c0df9f488d81271a9f76e27298, type: 3}
+  - {fileID: 21300000, guid: 393b4c267cc0460ebe75a1fa4f9e5df8, type: 3}
+  - {fileID: 21300000, guid: 87e63940540a47cc890f072eabf80ccd, type: 3}
+  - {fileID: 21300000, guid: bb7dcf18470e4cccbafaabef951559d4, type: 3}
+  - {fileID: 21300000, guid: 014434ad54194cd1b97930c88db91efb, type: 3}
+  - {fileID: 21300000, guid: a085e9cd943d42e5b18b796a63c9e21f, type: 3}
+  - {fileID: 21300000, guid: 2af74d411a8244b4bd1f83b9417f61d4, type: 3}
+  - {fileID: 21300000, guid: 1ad95c90cb124096971a7a6ccdfc89c7, type: 3}
+  _fps: 10
 --- !u!1 &2044210685
 GameObject:
   m_ObjectHideFlags: 0
