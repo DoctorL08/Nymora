@@ -121,6 +121,13 @@ namespace Nymora.Hub
                 HubChatClient.Instance.OnClanDisbanded += HandleWsClanDisbanded;
             }
             RefreshPendingCountAsync().Forget();
+            // D1 (22 mai, test designer) — fetch l'etat clan des le Start. HubChatClient est
+            // DontDestroyOnLoad : au RETOUR combat->hub, OnWelcome ne refire PAS (deja connecte),
+            // donc RefreshClanStateAsync (branche sur HandleWelcome) ne tournait pas -> le clan
+            // ne s'affichait qu'apres ouverture du menu clan. Fetch ici => le tag clan (avatar,
+            // via le poll HubAvatar sur HubClanPanel.MyClanName) + l'etat se chargent sans ouvrir
+            // le panel. EnsureToken (dans RefreshClanStateAsync) garde le cas non-connecte.
+            RefreshClanStateAsync().Forget();
         }
 
         private void OnDestroy()

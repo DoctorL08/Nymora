@@ -244,10 +244,14 @@ namespace Nymora.Hub
         private void WhisperTarget(HubAvatar target)
         {
             if (target == null) { Hide(); return; }
-            var targetSub = target.Sub;
-            if (string.IsNullOrEmpty(targetSub))
+            // D2 (22 mai, test designer) — le whisper /w resout sa cible par PSEUDO (displayName),
+            // PAS par Sub/UUID : la commande "/w <user>" est faite pour des pseudos tapes par des
+            // humains, et ChatUserContextMenu (clic pseudo dans le chat) whisper deja par
+            // displayName. On passait target.Sub -> "/w <UUID>" = cible incomprehensible/erronee.
+            string targetName = target.NetDisplayName.ToString();
+            if (string.IsNullOrEmpty(targetName))
             {
-                Debug.LogWarning("[ChallengePopup] Avatar remote sans NetSub — whisper annulé.");
+                Debug.LogWarning("[ChallengePopup] Avatar remote sans NetDisplayName — whisper annulé.");
                 Hide();
                 return;
             }
@@ -257,7 +261,7 @@ namespace Nymora.Hub
                 Hide();
                 return;
             }
-            _chatUI.OpenWhisperToUser(targetSub);
+            _chatUI.OpenWhisperToUser(targetName);
             Hide();
         }
 
