@@ -296,6 +296,10 @@ namespace Nymora.Network.Backend
         public UniTask<ApiResult<SeasonResponse>> GetSeasonAsync(CancellationToken ct = default)
             => GetJsonAsync<SeasonResponse>("/ranked/season", requireAuth: true, ct);
 
+        /// <summary>GET /ranked/leaderboard — top joueurs par MMR.</summary>
+        public UniTask<ApiResult<LeaderboardResponse>> GetLeaderboardAsync(int limit = 100, CancellationToken ct = default)
+            => GetJsonAsync<LeaderboardResponse>($"/ranked/leaderboard?limit={limit}", requireAuth: true, ct);
+
         private async UniTask<ApiResult<TResponse>> PostJsonAsync<TResponse>(
             string path, object body, bool requireAuth, CancellationToken ct, bool sendVersionHeader = true)
         {

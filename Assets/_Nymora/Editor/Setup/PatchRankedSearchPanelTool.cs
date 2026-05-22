@@ -125,6 +125,16 @@ namespace Nymora.Editor.Setup
             crtClose.pivot = new Vector2(1f, 0.5f);
             crtClose.anchoredPosition = new Vector2(-12f, 0f);
 
+            // 6.6.b — bouton Classement (header, a gauche du X).
+            var leaderboardGo = MakeButton(header.transform, "LeaderboardButton", "Classement",
+                new Color(0.28f, 0.30f, 0.42f, 1f), 150f, 40f);
+            var lbRt = leaderboardGo.GetComponent<RectTransform>();
+            lbRt.anchorMin = lbRt.anchorMax = new Vector2(1f, 0.5f);
+            lbRt.pivot = new Vector2(1f, 0.5f);
+            lbRt.anchoredPosition = new Vector2(-64f, 0f);
+            var lbLabel = leaderboardGo.transform.Find("Label")?.GetComponent<TMP_Text>();
+            if (lbLabel != null) lbLabel.fontSize = 18f;
+
             // Statut (texte central)
             var statusGo = NewChild("Status", container.transform);
             var sRt = statusGo.GetComponent<RectTransform>();
@@ -165,6 +175,7 @@ namespace Nymora.Editor.Setup
             so.FindProperty("_searchButton").objectReferenceValue = searchGo.GetComponent<Button>();
             so.FindProperty("_cancelButton").objectReferenceValue = cancelGo.GetComponent<Button>();
             so.FindProperty("_statusText").objectReferenceValue = statusTmp;
+            so.FindProperty("_leaderboardButton").objectReferenceValue = leaderboardGo.GetComponent<Button>();
             // 6.5 — wire l'asset NymoraBackendSettings (pour GET /ranked/season).
             var settingsGuids = AssetDatabase.FindAssets("t:NymoraBackendSettings");
             if (settingsGuids.Length > 0)

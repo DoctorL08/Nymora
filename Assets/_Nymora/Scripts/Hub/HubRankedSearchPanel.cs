@@ -30,6 +30,7 @@ namespace Nymora.Hub
         [SerializeField] private Button _searchButton;
         [SerializeField] private Button _cancelButton;
         [SerializeField] private TMP_Text _statusText;
+        [SerializeField] private Button _leaderboardButton; // 6.6.b — ouvre le classement
 
         [Header("Backend (saison)")]
         [SerializeField] private NymoraBackendSettings _backendSettings;
@@ -55,6 +56,7 @@ namespace Nymora.Hub
             if (_closeButton != null) _closeButton.onClick.AddListener(Close);
             if (_searchButton != null) _searchButton.onClick.AddListener(OnSearchClicked);
             if (_cancelButton != null) _cancelButton.onClick.AddListener(OnCancelClicked);
+            if (_leaderboardButton != null) _leaderboardButton.onClick.AddListener(OnLeaderboardClicked);
         }
 
         private void OnDisable()
@@ -62,6 +64,12 @@ namespace Nymora.Hub
             if (_closeButton != null) _closeButton.onClick.RemoveAllListeners();
             if (_searchButton != null) _searchButton.onClick.RemoveAllListeners();
             if (_cancelButton != null) _cancelButton.onClick.RemoveAllListeners();
+            if (_leaderboardButton != null) _leaderboardButton.onClick.RemoveAllListeners();
+        }
+
+        private void OnLeaderboardClicked()
+        {
+            HubLeaderboardPanel.Instance?.Open();
         }
 
         private void Start()

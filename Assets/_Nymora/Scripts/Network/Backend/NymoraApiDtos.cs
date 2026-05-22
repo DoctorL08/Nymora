@@ -491,4 +491,24 @@ namespace Nymora.Network.Backend
         public string endsAt;         // ISO 8601
         public int daysRemaining;
     }
+
+    // ====== Brique 6.6 — Leaderboard ======
+
+    [Serializable]
+    public class LeaderboardEntry
+    {
+        public int position;
+        public string userId;
+        public string displayName;
+        public int mmr;
+        public string rank;           // nom du palier (ex "Argent")
+        public int rankedWins;
+        public int rankedLosses;
+    }
+
+    [Serializable]
+    public class LeaderboardResponse
+    {
+        public LeaderboardEntry[] entries;
+    }
 }
