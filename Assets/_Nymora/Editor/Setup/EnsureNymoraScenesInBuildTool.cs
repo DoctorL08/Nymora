@@ -19,6 +19,7 @@ namespace Nymora.Editor.Setup
             "Assets/_Nymora/Scenes/10_CommunityHub.unity",
             "Assets/_Nymora/Scenes/30_CombatIA.unity",
             "Assets/_Nymora/Scenes/33_CombatCasual.unity",
+            "Assets/_Nymora/Scenes/40_CombatRanked1v1.unity",
         };
 
         [MenuItem("Nymora/Setup/Ensure Nymora Scenes In Build", priority = 10)]

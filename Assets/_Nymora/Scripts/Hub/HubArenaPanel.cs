@@ -12,9 +12,9 @@ namespace Nymora.Hub
     ///
     /// 4 modes :
     ///   - Entrainement (vs IA) — actif, charge la scene 30_CombatIA
-    ///   - Ranked 1v1 — desactive (Phase 6)
-    ///   - Ranked 2v2 — desactive (Phase 6)
-    ///   - Ranked 3v3 — desactive (Phase 6)
+    ///   - Ranked 1v1 — ACTIF (Phase 6.1) : ouvre le panneau "Recherche de partie classee"
+    ///   - Ranked 2v2 — desactive (reporte)
+    ///   - Ranked 3v3 — desactive (reporte)
     ///
     /// Transition vers 30_CombatIA : shutdown propre du NetworkRunner Fusion (cf
     /// HubMatchTransition pattern 4.8.d.ii.fix) puis SceneManager.LoadScene.
@@ -51,13 +51,16 @@ namespace Nymora.Hub
         {
             if (_closeButton != null) _closeButton.onClick.AddListener(Close);
             if (_trainingButton != null) _trainingButton.onClick.AddListener(OnTrainingClicked);
-            // Les boutons ranked sont desactives via .interactable=false dans le tool ; pas de listener.
+            // 6.1 — Ranked 1v1 actif : ouvre le panneau de recherche classee.
+            if (_ranked1v1Button != null) _ranked1v1Button.onClick.AddListener(OnRanked1v1Clicked);
+            // 2v2 / 3v3 restent desactives (.interactable=false dans le tool) ; pas de listener.
         }
 
         private void OnDisable()
         {
             if (_closeButton != null) _closeButton.onClick.RemoveAllListeners();
             if (_trainingButton != null) _trainingButton.onClick.RemoveAllListeners();
+            if (_ranked1v1Button != null) _ranked1v1Button.onClick.RemoveAllListeners();
         }
 
         private void OnDestroy()
@@ -79,6 +82,20 @@ namespace Nymora.Hub
         {
             if (IsOpen) Close();
             else Open();
+        }
+
+        // 6.1 — Ouvre le panneau "Recherche de partie classee" (matchmaking reel en 6.2).
+        private void OnRanked1v1Clicked()
+        {
+            if (_transitionInProgress) return;
+            var search = HubRankedSearchPanel.Instance;
+            if (search == null)
+            {
+                Debug.LogWarning("[ArenaPanel] HubRankedSearchPanel introuvable — lance 'Nymora > Setup > Patch Ranked Search Panel' sur la scene hub.");
+                return;
+            }
+            Close();
+            search.Open();
         }
 
         private async void OnTrainingClicked()

@@ -25,6 +25,7 @@ namespace Nymora.Editor.Setup
         private static readonly Color ArenaButtonColor = new Color(0.55f, 0.40f, 0.25f, 1f); // orange/brun arena
         private static readonly Color TrainingActiveColor = new Color(0.30f, 0.50f, 0.32f, 1f);
         private static readonly Color RankedDisabledColor = new Color(0.18f, 0.20f, 0.24f, 1f);
+        private static readonly Color Ranked1v1ActiveColor = new Color(0.45f, 0.38f, 0.62f, 1f); // violet "classe"
 
         [MenuItem("Nymora/Setup/Patch Arena Panel", priority = 38)]
         private static void Patch()
@@ -63,10 +64,11 @@ namespace Nymora.Editor.Setup
         {
             var existing = canvas.transform.Find("ArenaButton");
             GameObject go;
-            if (existing != null)
+            bool isNew = existing == null;
+            if (!isNew)
             {
                 go = existing.gameObject;
-                actions.Add("ArenaButton existant : re-style");
+                actions.Add("ArenaButton existant : re-style (position PRESERVEE)");
             }
             else
             {
@@ -75,12 +77,19 @@ namespace Nymora.Editor.Setup
                 actions.Add("ArenaButton cree");
             }
 
-            var rt = go.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(1f, 0f);
-            rt.anchorMax = new Vector2(1f, 0f);
-            rt.pivot = new Vector2(1f, 0f);
-            rt.anchoredPosition = new Vector2(-780f, 20f);
-            rt.sizeDelta = new Vector2(180f, 56f);
+            // IMPORTANT : on ne touche la geometrie (ancres/position/taille) QU'A LA CREATION.
+            // Sinon un re-run du tool ecrase le placement manuel (incident 22 mai : Arene
+            // ramenee a -780 = pile sous MyProfile, donc invisible). Position rightmost (-20)
+            // pour matcher l'ordre Profil/Amis/Clan/Decks/Arene si on cree from scratch.
+            if (isNew)
+            {
+                var rt = go.GetComponent<RectTransform>();
+                rt.anchorMin = new Vector2(1f, 0f);
+                rt.anchorMax = new Vector2(1f, 0f);
+                rt.pivot = new Vector2(1f, 0f);
+                rt.anchoredPosition = new Vector2(-20f, 20f);
+                rt.sizeDelta = new Vector2(180f, 56f);
+            }
 
             var img = go.GetComponent<Image>() ?? go.AddComponent<Image>();
             img.color = ArenaButtonColor;
@@ -186,7 +195,8 @@ namespace Nymora.Editor.Setup
             vlg.childControlHeight = false;
 
             var trainingBtn = MakeModeButton(modesContainer.transform, "TrainingButton", "Entraînement (vs IA)", TrainingActiveColor, enabled: true);
-            var r1v1Btn = MakeModeButton(modesContainer.transform, "Ranked1v1Button", "Ranked 1v1  (bientôt)", RankedDisabledColor, enabled: false);
+            // 6.1 — Ranked 1v1 ACTIF (ouvre le panneau de recherche classee).
+            var r1v1Btn = MakeModeButton(modesContainer.transform, "Ranked1v1Button", "Ranked 1v1", Ranked1v1ActiveColor, enabled: true);
             var r2v2Btn = MakeModeButton(modesContainer.transform, "Ranked2v2Button", "Ranked 2v2  (bientôt)", RankedDisabledColor, enabled: false);
             var r3v3Btn = MakeModeButton(modesContainer.transform, "Ranked3v3Button", "Ranked 3v3  (bientôt)", RankedDisabledColor, enabled: false);
 

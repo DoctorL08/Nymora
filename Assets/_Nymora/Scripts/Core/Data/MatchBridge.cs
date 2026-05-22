@@ -31,6 +31,15 @@ namespace Nymora.Core.Data
         public static string LocalDisplayName { get; private set; }
         public static bool HasPendingMatch => !string.IsNullOrEmpty(PendingMatchId);
 
+        // Phase 6.1 — flag VIEW-ONLY (aucun impact sur la simulation Quantum).
+        // true si le match en cours est CLASSE (ranked). Set par le flow matchmaking
+        // (brique 6.2) au moment du SetPendingMatch ; reste false pour casual/IA.
+        // Lu en brique 6.3 pour decider si le resultat impacte le MMR.
+        public static bool IsRanked { get; private set; }
+
+        /// <summary>Marque le match pending comme classe (ranked) ou non. Phase 6.1.</summary>
+        public static void SetRanked(bool ranked) => IsRanked = ranked;
+
         // 4.8.d.iii stub / 4.9 — résultat du dernier match, lu une fois côté hub puis reset.
         public static MatchResult LastMatchResult { get; private set; } = MatchResult.None;
         public static string LastOpponentEmail { get; private set; }
@@ -96,6 +105,7 @@ namespace Nymora.Core.Data
             LocalSub = null;
             LocalEmail = null;
             LocalDisplayName = null;
+            IsRanked = false;
             LastMatchResult = MatchResult.None;
             LastMatchId = null;
             LastOpponentEmail = null;
