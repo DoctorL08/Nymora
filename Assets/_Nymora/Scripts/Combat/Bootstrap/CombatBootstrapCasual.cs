@@ -263,6 +263,17 @@ namespace Nymora.Combat.Bootstrap
             // par erreur (clone de 30_CombatIA), on FORCE false pour cette scene PvP.
             runtimeConfig.IsBotMatch = false;
 
+            // PATCH 22 mai (test designer) — Seed RNG aleatoire par match. Sans ca, l'asset
+            // RuntimeConfig a Seed=0 -> RNGSession(0) identique a CHAQUE match -> l'initiative
+            // (TurnSystem.OnInit : f.RNG->Next(0,2)) tombait TOUJOURS sur le meme joueur (P0 =
+            // PILE). Meme pattern que le Photon Menu SDK (QuantumMenuConnectionBehaviourSDK).
+            // En online, le RuntimeConfig du createur de room est l'autoritaire synchronise aux
+            // 2 clients -> seed IDENTIQUE des deux cotes (deterministe) mais variable par match.
+            if (runtimeConfig.Seed == 0)
+            {
+                runtimeConfig.Seed = System.Guid.NewGuid().GetHashCode();
+            }
+
             // ===== 5. Start Quantum session (Multiplayer) =====
             Log("Demarrage SessionRunner Quantum (Multiplayer)...");
             var sessionArgs = new SessionRunner.Arguments

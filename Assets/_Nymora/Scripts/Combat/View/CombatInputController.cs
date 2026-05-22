@@ -169,6 +169,12 @@ namespace Nymora.Combat.View
             var game = QuantumRunner.Default?.Game;
             if (game == null) return;
 
+            // PATCH 22 mai (test designer) — intro "pile ou face" casual : tant que l'animation
+            // de revelation du premier joueur joue, on bloque l'input grille local (les clics UI
+            // sont deja bloques par l'overlay plein ecran). Casual uniquement (l'intro ne
+            // s'instancie qu'en scene Casual).
+            if (Nymora.Combat.View.HUD.CoinFlipIntroView.IsIntroActive) return;
+
             // Qualifie UnityEngine.Input : Quantum a aussi un type "Input" (struct DSL).
             bool mouseDown = UnityEngine.Input.GetMouseButtonDown(0);
 

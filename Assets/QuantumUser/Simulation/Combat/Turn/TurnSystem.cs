@@ -37,10 +37,22 @@ namespace Quantum
             // Int32 0/1 cote sim (Quantum .qtn ne supporte pas Bool), bool cote Unity.
             state->IsBotMatch = f.RuntimeConfig.IsBotMatch ? 1 : 0;
 
-            // Transition immediate vers le 1er TurnStart. La FSM termine son init au prochain Update.
-            state->CurrentPhase = CombatPhase.TurnStart;
+            // PATCH 22 mai (test designer) — Intro "pile ou face" CASUAL : on reste en PreMatch
+            // un court delai (timer d'intro stocke dans TurnTimerTicks, GELE cote tour) pendant
+            // lequel la View joue l'animation de revelation. Le timer 15s ne demarre qu'apres,
+            // au TurnStart -> le 1er joueur ne perd pas de temps. En IA (pas d'intro visuelle) :
+            // transition immediate vers TurnStart comme avant.
+            if (f.RuntimeConfig.IsBotMatch)
+            {
+                state->CurrentPhase = CombatPhase.TurnStart;
+            }
+            else
+            {
+                state->CurrentPhase = CombatPhase.PreMatch;
+                state->TurnTimerTicks = TurnConstants.GetIntroDelayTicks(f);
+            }
 
-            Log.Info($"[TurnSystem] Initiative: Joueur P{state->ActivePlayerIndex} commence le round 1");
+            Log.Info($"[TurnSystem] Initiative: Joueur P{state->ActivePlayerIndex} commence le round 1 (phase {state->CurrentPhase})");
         }
 
         public override void Update(Frame f)
@@ -71,9 +83,14 @@ namespace Quantum
                     EnterTurnEnd(f, state);
                     break;
 
-                // PreMatch est juste un sas avant l'OnInit, ne devrait pas arriver en Update.
-                // MatchEnd : no-op.
+                // PATCH 22 mai — PreMatch sert maintenant de sas d'intro "pile ou face" (casual) :
+                // on decremente le delai d'intro, puis on demarre le 1er tour. Timer de tour gele
+                // pendant ce temps.
                 case CombatPhase.PreMatch:
+                    TickPreMatchIntro(f, state);
+                    break;
+
+                // MatchEnd : no-op.
                 case CombatPhase.MatchEnd:
                 default:
                     break;
@@ -148,6 +165,22 @@ namespace Quantum
             state->WinnerPlayerIndex = otherSlot;
             state->CurrentPhase = CombatPhase.MatchEnd;
             Log.Info($"[TurnSystem] Player P{disconnectedSlot} disconnected — P{otherSlot} wins by forfait.");
+        }
+
+        /// <summary>
+        /// PATCH 22 mai — Sas d'intro "pile ou face" (casual). Decremente le delai stocke dans
+        /// TurnTimerTicks ; quand il atteint 0, demarre le 1er tour (TurnStart re-init le timer
+        /// 15s frais). Aucune action de tour ni decompte de timer reel pendant ce temps.
+        /// </summary>
+        private static void TickPreMatchIntro(Frame f, CombatState* state)
+        {
+            if (state->TurnTimerTicks > 0) state->TurnTimerTicks -= 1;
+            if (state->TurnTimerTicks <= 0)
+            {
+                state->TurnTimerTicks = 0;
+                state->CurrentPhase = CombatPhase.TurnStart;
+                Log.Info("[TurnSystem] Intro pile ou face terminee -> demarrage du tour 1");
+            }
         }
 
         private static void EnterTurnStart(Frame f, CombatState* state)
