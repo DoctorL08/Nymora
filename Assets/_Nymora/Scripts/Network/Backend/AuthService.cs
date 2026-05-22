@@ -14,7 +14,7 @@ namespace Nymora.Network.Backend
     /// Cycle de vie typique :
     ///   var api = new NymoraApiClient(settings);
     ///   var auth = new AuthService(api);
-    ///   if (!auth.IsLoggedIn) await auth.LoginAsync(email, password);
+    ///   if (!auth.IsLoggedIn) await auth.LoginAsync(pseudo, password);
     ///   var me = await auth.GetMeAsync();
     /// </summary>
     public class AuthService
@@ -50,10 +50,10 @@ namespace Nymora.Network.Backend
         }
 
         public async UniTask<ApiResult<AuthResponse>> LoginAsync(
-            string email, string password, CancellationToken ct = default)
+            string displayName, string password, CancellationToken ct = default)
         {
             var res = await _client.LoginAsync(
-                new LoginRequest { email = email, password = password }, ct);
+                new LoginRequest { displayName = displayName, password = password }, ct);
             if (res.IsSuccess)
             {
                 PersistToken(res.Data.token);

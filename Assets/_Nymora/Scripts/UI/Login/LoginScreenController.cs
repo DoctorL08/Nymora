@@ -11,56 +11,55 @@ using UnityEngine.UI;
 namespace Nymora.UI.Login
 {
     /// <summary>
-    /// Pilote la scene 00_Login devenue LAUNCHER (Brique L2).
+    /// Pilote la scene 00_Login : launcher (check de version) + ecran de connexion epure.
     ///
-    /// Au demarrage, le login est MASQUE. On interroge /version puis :
-    ///   - A jour (compatible ET aucune MaJ dispo) -> "Votre version de Nymora est a jour" + on revele le login.
-    ///   - MaJ disponible OU version trop vieille  -> panneau "Mise a jour requise pour jouer", login reste masque.
-    ///     (Le bouton de telechargement sera cable en Brique L3 ; ici il est present mais inerte.)
-    ///   - Backend injoignable -> message d'erreur, login revele quand meme (mode degrade, evite de bricker
-    ///     le seul testeur si le serveur a un hoquet).
+    /// Demarrage -> check /version :
+    ///   - MaJ dispo / version trop vieille -> panneau "Mise a jour requise pour jouer" (cf Briques L1-L4).
+    ///   - A jour -> verdict vert + on revele le panneau CONNEXION (pseudo + mot de passe + bouton Connexion).
     ///
-    /// Cable via l'Editor Script "Nymora &gt; Setup &gt; Create Login Scene" qui assigne toutes les references.
+    /// Connexion = login par pseudo PUIS entree directe dans le hub.
+    /// Le dernier pseudo utilise est memorise (PlayerPrefs) et pre-rempli.
+    /// Le bouton "S'inscrire" ouvre un panneau INSCRIPTION separe (email + pseudo + mdp + confirmation) ;
+    /// apres inscription reussie, on revient a l'ecran connexion avec le pseudo pre-rempli.
+    ///
+    /// Cable via "Nymora &gt; Setup &gt; Refine Login Form".
     /// </summary>
     public class LoginScreenController : MonoBehaviour
     {
+        private const string LastPseudoKey = "nymora.auth.lastPseudo";
+
         [Header("Backend")]
         [SerializeField] private NymoraBackendSettings _backendSettings;
 
-        [Header("Login (groupe masque tant que pas a jour)")]
-        [Tooltip("Conteneur de tout l'UI de login (champs + boutons). Active uniquement quand le client est a jour.")]
+        [Header("Connexion (panneau, masque tant que pas a jour)")]
         [SerializeField] private GameObject _loginPanel;
-        [SerializeField] private TMP_InputField _emailInput;
+        [SerializeField] private TMP_InputField _pseudoInput;
         [SerializeField] private TMP_InputField _passwordInput;
-        [SerializeField] private TMP_InputField _displayNameInput;
+        [SerializeField] private Button _connexionButton;
+        [SerializeField] private Button _openRegisterButton;
 
-        [Header("Buttons")]
-        [SerializeField] private Button _loginButton;
-        [SerializeField] private Button _registerButton;
-        [SerializeField] private Button _logoutButton;
-        [SerializeField] private Button _connectPhotonButton;
-        [SerializeField] private Button _enterHubButton;
+        [Header("Inscription (panneau separe)")]
+        [SerializeField] private GameObject _registerPanel;
+        [SerializeField] private TMP_InputField _regEmailInput;
+        [SerializeField] private TMP_InputField _regPseudoInput;
+        [SerializeField] private TMP_InputField _regPasswordInput;
+        [SerializeField] private TMP_InputField _regConfirmInput;
+        [SerializeField] private Button _createAccountButton;
+        [SerializeField] private Button _backToLoginButton;
 
         [Header("Hub")]
-        [Tooltip("Nom de la scene hub chargee au clic sur 'Entrer dans le hub'.")]
+        [Tooltip("Scene hub chargee apres connexion reussie.")]
         [SerializeField] private string _hubSceneName = "10_CommunityHub";
-
-        [Header("Photon")]
-        [SerializeField] private PhotonConnectionTester _photonTester;
 
         [Header("Status")]
         [SerializeField] private TMP_Text _statusText;
-        [Tooltip("Verdict de version PERSISTANT, affiche en haut (vert = a jour). Distinct du statut du bas.")]
         [SerializeField] private TMP_Text _versionVerdictText;
 
         [Header("Update Required panel")]
         [SerializeField] private GameObject _updateRequiredPanel;
         [SerializeField] private TMP_Text _updateRequiredText;
-        [Tooltip("Bouton 'Telecharger la mise a jour'. Comportement cable en Brique L3.")]
         [SerializeField] private Button _downloadButton;
-        [Tooltip("Image en mode Filled (Horizontal) servant de barre de progression. Remplie en L3.")]
         [SerializeField] private Image _progressBarFill;
-        [Tooltip("Texte sous la barre (ex: '42 %'). Mis a jour en L3.")]
         [SerializeField] private TMP_Text _progressText;
 
         private NymoraApiClient _api;
@@ -70,8 +69,8 @@ namespace Nymora.UI.Login
         private CancellationTokenSource _cts;
         private bool _versionLocked;
         private bool _downloading;
+        private bool _busy;
 
-        // Memorise pour la Brique L3 (telechargement) : URL + hash du zip de la derniere version.
         private string _pendingDownloadUrl;
         private string _pendingSha256;
 
@@ -90,53 +89,44 @@ namespace Nymora.UI.Login
             _updateService = new LauncherUpdateService();
             _cts = new CancellationTokenSource();
 
-            // Etat initial du launcher : tout masque, on attend le check de version.
             if (_updateRequiredPanel != null) _updateRequiredPanel.SetActive(false);
             if (_loginPanel != null) _loginPanel.SetActive(false);
-            if (_enterHubButton != null) _enterHubButton.gameObject.SetActive(false);
+            if (_registerPanel != null) _registerPanel.SetActive(false);
             if (_versionVerdictText != null) _versionVerdictText.text = string.Empty;
             ResetProgressBar();
         }
 
         private void OnEnable()
         {
-            if (_loginButton != null) _loginButton.onClick.AddListener(OnLoginClicked);
-            if (_registerButton != null) _registerButton.onClick.AddListener(OnRegisterClicked);
-            if (_logoutButton != null) _logoutButton.onClick.AddListener(OnLogoutClicked);
-            if (_connectPhotonButton != null) _connectPhotonButton.onClick.AddListener(OnConnectPhotonClicked);
-            if (_enterHubButton != null) _enterHubButton.onClick.AddListener(OnEnterHubClicked);
+            if (_connexionButton != null) _connexionButton.onClick.AddListener(OnConnexionClicked);
+            if (_openRegisterButton != null) _openRegisterButton.onClick.AddListener(OnOpenRegisterClicked);
+            if (_createAccountButton != null) _createAccountButton.onClick.AddListener(OnCreateAccountClicked);
+            if (_backToLoginButton != null) _backToLoginButton.onClick.AddListener(OnBackToLoginClicked);
             if (_downloadButton != null) _downloadButton.onClick.AddListener(OnDownloadClicked);
         }
 
         private void OnDisable()
         {
-            if (_loginButton != null) _loginButton.onClick.RemoveListener(OnLoginClicked);
-            if (_registerButton != null) _registerButton.onClick.RemoveListener(OnRegisterClicked);
-            if (_logoutButton != null) _logoutButton.onClick.RemoveListener(OnLogoutClicked);
-            if (_connectPhotonButton != null) _connectPhotonButton.onClick.RemoveListener(OnConnectPhotonClicked);
-            if (_enterHubButton != null) _enterHubButton.onClick.RemoveListener(OnEnterHubClicked);
+            if (_connexionButton != null) _connexionButton.onClick.RemoveListener(OnConnexionClicked);
+            if (_openRegisterButton != null) _openRegisterButton.onClick.RemoveListener(OnOpenRegisterClicked);
+            if (_createAccountButton != null) _createAccountButton.onClick.RemoveListener(OnCreateAccountClicked);
+            if (_backToLoginButton != null) _backToLoginButton.onClick.RemoveListener(OnBackToLoginClicked);
             if (_downloadButton != null) _downloadButton.onClick.RemoveListener(OnDownloadClicked);
         }
 
         private async void Start()
         {
-            // Etape 1 : check version client vs serveur AVANT de reveler quoi que ce soit.
             SetStatus($"Verification de la version (client {GameVersion.Current})...");
             var versionCheck = await _versionClient.CheckAsync(_cts.Token);
 
             if (!versionCheck.IsReachable)
             {
-                // Mode degrade : impossible de confirmer la version. On previent mais on
-                // debloque le login pour ne pas bloquer le seul testeur si le serveur hoquette.
                 SetVersionVerdict("Serveur de version injoignable (mode hors-ligne).", new Color(0.95f, 0.7f, 0.3f));
-                SetStatus($"{versionCheck.ErrorMessage}\n(login debloque malgre tout)");
+                SetStatus($"{versionCheck.ErrorMessage}\n(connexion debloquee malgre tout)");
                 RevealLogin();
-                await TryResumeSessionAsync();
                 return;
             }
 
-            // Toute MaJ disponible (ou version trop vieille) verrouille le login : Kyami
-            // doit etre a jour avant de jouer (anti-mismatch de version en PvP).
             bool updateRequired = !versionCheck.IsCompatible || versionCheck.IsUpdateAvailable;
             if (updateRequired)
             {
@@ -145,40 +135,9 @@ namespace Nymora.UI.Login
                 return;
             }
 
-            // Etape 2 : a jour -> verdict vert PERSISTANT, on revele le login, on reprend la session.
             SetVersionVerdict("Votre version de Nymora est a jour.", new Color(0.4f, 0.85f, 0.5f));
+            SetStatus(string.Empty); // efface "Verification de la version..."
             RevealLogin();
-            await TryResumeSessionAsync();
-        }
-
-        /// <summary>Si un JWT est persiste, valide la session cote serveur et propose d'entrer dans le hub.</summary>
-        private async UniTask TryResumeSessionAsync()
-        {
-            if (_versionLocked) return;
-
-            if (_auth.IsLoggedIn)
-            {
-                SetStatus("Token detecte, verification cote serveur...");
-                var me = await _auth.GetMeAsync(_cts.Token);
-                if (me.IsSuccess)
-                {
-                    SetStatus($"Connecte : {me.Data.displayName} ({me.Data.email})");
-                    ShowEnterHub();
-                }
-                else if (me.StatusCode == 426)
-                {
-                    ShowUpdateRequired(null, null, _pendingDownloadUrl, _pendingSha256);
-                }
-                else
-                {
-                    SetStatus($"Token invalide ({me.StatusCode}) : {me.ErrorMessage}. Reconnecte-toi.");
-                    _auth.Logout();
-                }
-            }
-            else
-            {
-                SetStatus("Version a jour. Inscris-toi ou connecte-toi.");
-            }
         }
 
         private void OnDestroy()
@@ -191,76 +150,129 @@ namespace Nymora.UI.Login
             }
         }
 
-        private async void OnLoginClicked()
-        {
-            if (_versionLocked) return;
-            SetStatus("Connexion...");
-            var res = await _auth.LoginAsync(_emailInput.text, _passwordInput.text, _cts.Token);
-            if (res.IsSuccess)
-            {
-                NymoraLog.Info("Login", $"JWT recu (longueur {res.Data.token.Length}).");
-                SetStatus($"Connecte : {res.Data.user.displayName}");
-                ShowEnterHub();
-            }
-            else if (res.StatusCode == 426)
-            {
-                ShowUpdateRequired(null, null, _pendingDownloadUrl, _pendingSha256);
-            }
-            else
-            {
-                SetStatus($"Echec login ({res.StatusCode}) : {res.ErrorMessage}");
-            }
-        }
+        // ---------- Connexion ----------
 
-        private async void OnRegisterClicked()
+        private async void OnConnexionClicked()
         {
-            if (_versionLocked) return;
-            SetStatus("Inscription...");
-            var res = await _auth.RegisterAsync(
-                _emailInput.text, _passwordInput.text, _displayNameInput.text, _cts.Token);
-            if (res.IsSuccess)
-            {
-                NymoraLog.Info("Login", $"JWT recu (longueur {res.Data.token.Length}).");
-                SetStatus($"Inscrit + connecte : {res.Data.user.displayName}");
-                ShowEnterHub();
-            }
-            else if (res.StatusCode == 426)
-            {
-                ShowUpdateRequired(null, null, _pendingDownloadUrl, _pendingSha256);
-            }
-            else
-            {
-                SetStatus($"Echec register ({res.StatusCode}) : {res.ErrorMessage}");
-            }
-        }
+            if (_versionLocked || _busy) return;
 
-        private void OnLogoutClicked()
-        {
-            _auth.Logout();
-            SetStatus("Deconnecte.");
-            if (_enterHubButton != null) _enterHubButton.gameObject.SetActive(false);
-        }
-
-        private void OnEnterHubClicked()
-        {
-            if (!_auth.IsLoggedIn)
+            string pseudo = _pseudoInput != null ? _pseudoInput.text.Trim() : string.Empty;
+            string password = _passwordInput != null ? _passwordInput.text : string.Empty;
+            if (string.IsNullOrEmpty(pseudo) || string.IsNullOrEmpty(password))
             {
-                SetStatus("Connecte-toi avant d'entrer dans le hub.");
+                SetStatus("Renseigne ton pseudo et ton mot de passe.");
                 return;
             }
-            NymoraLog.Info("Login", $"Chargement de la scene hub '{_hubSceneName}'...");
-            SceneManager.LoadScene(_hubSceneName);
+
+            _busy = true;
+            SetButtonsInteractable(false);
+            SetStatus("Connexion...");
+
+            var res = await _auth.LoginAsync(pseudo, password, _cts.Token);
+
+            if (res.IsSuccess)
+            {
+                SaveLastPseudo(res.Data.user != null ? res.Data.user.displayName : pseudo);
+                SetStatus($"Connecte : {res.Data.user.displayName}. Entree dans le hub...");
+                NymoraLog.Info("Login", $"Connexion OK ({res.Data.user.displayName}) -> {_hubSceneName}");
+                SceneManager.LoadScene(_hubSceneName);
+                return;
+            }
+
+            _busy = false;
+            SetButtonsInteractable(true);
+            if (res.StatusCode == 426)
+            {
+                ShowUpdateRequired(null, null, _pendingDownloadUrl, _pendingSha256);
+            }
+            else if (res.StatusCode == 401)
+            {
+                SetStatus("Pseudo ou mot de passe incorrect.");
+            }
+            else
+            {
+                SetStatus($"Echec connexion ({res.StatusCode}) : {res.ErrorMessage}");
+            }
         }
 
-        private void ShowEnterHub()
+        // ---------- Inscription ----------
+
+        private void OnOpenRegisterClicked()
         {
-            if (_enterHubButton != null) _enterHubButton.gameObject.SetActive(true);
+            if (_versionLocked || _busy) return;
+            if (_loginPanel != null) _loginPanel.SetActive(false);
+            if (_registerPanel != null) _registerPanel.SetActive(true);
+            SetStatus("Inscription : remplis le formulaire.");
         }
 
-        /// <summary>
-        /// Brique L3 : telecharge le zip de MaJ en streaming, anime la barre de progression
-        /// et verifie le sha256. L'installation (extraction + relance) viendra en Brique L4.
-        /// </summary>
+        private void OnBackToLoginClicked()
+        {
+            if (_busy) return;
+            if (_registerPanel != null) _registerPanel.SetActive(false);
+            RevealLogin();
+            SetStatus(string.Empty);
+        }
+
+        private async void OnCreateAccountClicked()
+        {
+            if (_busy) return;
+
+            string email = _regEmailInput != null ? _regEmailInput.text.Trim() : string.Empty;
+            string pseudo = _regPseudoInput != null ? _regPseudoInput.text.Trim() : string.Empty;
+            string password = _regPasswordInput != null ? _regPasswordInput.text : string.Empty;
+            string confirm = _regConfirmInput != null ? _regConfirmInput.text : string.Empty;
+
+            if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(pseudo) || string.IsNullOrEmpty(password))
+            {
+                SetStatus("Remplis email, pseudo et mot de passe.");
+                return;
+            }
+            if (password.Length < 8)
+            {
+                SetStatus("Le mot de passe doit faire au moins 8 caracteres.");
+                return;
+            }
+            if (password != confirm)
+            {
+                SetStatus("Les deux mots de passe ne correspondent pas.");
+                return;
+            }
+
+            _busy = true;
+            SetButtonsInteractable(false);
+            SetStatus("Creation du compte...");
+
+            var res = await _auth.RegisterAsync(email, password, pseudo, _cts.Token);
+
+            _busy = false;
+            SetButtonsInteractable(true);
+
+            if (res.IsSuccess)
+            {
+                // Decision : on ne file pas direct dans le hub, on revient a la connexion.
+                _auth.Logout(); // on ne garde pas la session ouverte par l'inscription
+                SaveLastPseudo(pseudo);
+                if (_registerPanel != null) _registerPanel.SetActive(false);
+                RevealLogin();
+                SetStatus($"Compte '{pseudo}' cree. Connecte-toi.");
+                NymoraLog.Info("Login", $"Inscription OK ({pseudo}).");
+            }
+            else if (res.StatusCode == 426)
+            {
+                ShowUpdateRequired(null, null, _pendingDownloadUrl, _pendingSha256);
+            }
+            else if (res.StatusCode == 409)
+            {
+                SetStatus($"Deja pris : {res.ErrorMessage}");
+            }
+            else
+            {
+                SetStatus($"Echec inscription ({res.StatusCode}) : {res.ErrorMessage}");
+            }
+        }
+
+        // ---------- Launcher (telechargement + install) ----------
+
         private async void OnDownloadClicked()
         {
             if (_downloading) return;
@@ -287,17 +299,15 @@ namespace Nymora.UI.Login
                 if (_progressText != null) _progressText.text = "100 %";
                 NymoraLog.Info("Login", $"MaJ telechargee : {result.FilePath}");
 
-                // Brique L4 : lance le patch (update.bat) puis ferme le jeu pour le laisser travailler.
                 var install = LauncherInstaller.StartInstall(result.FilePath);
                 if (install.Started)
                 {
                     SetStatus("Mise a jour en cours, le jeu va redemarrer...");
-                    await UniTask.Delay(800, cancellationToken: _cts.Token); // laisse l'UI s'afficher
+                    await UniTask.Delay(800, cancellationToken: _cts.Token);
                     Application.Quit();
                 }
                 else
                 {
-                    // Editeur, plateforme non-Windows, ou echec : on n'a pas installe.
                     if (_downloadButton != null) _downloadButton.interactable = true;
                     SetStatus($"Telechargement OK ({result.FilePath}).\n{install.Message}");
                 }
@@ -305,71 +315,34 @@ namespace Nymora.UI.Login
             else
             {
                 ResetProgressBar();
-                if (_downloadButton != null) _downloadButton.interactable = true; // on peut retenter
+                if (_downloadButton != null) _downloadButton.interactable = true;
                 SetStatus($"Echec du telechargement : {result.ErrorMessage}");
                 NymoraLog.Warn("Login", $"Echec MaJ : {result.ErrorMessage}");
             }
         }
 
-        /// <summary>Callback de progression (0..1) -> barre + pourcentage. Appele sur le thread principal.</summary>
         private void OnDownloadProgress(float p)
         {
             if (_progressBarFill != null) _progressBarFill.fillAmount = p;
             if (_progressText != null) _progressText.text = $"{Mathf.RoundToInt(p * 100f)} %";
         }
 
-        private async void OnConnectPhotonClicked()
-        {
-            if (!_auth.IsLoggedIn)
-            {
-                SetStatus("Connecte-toi (Login ou Register) avant de tester Photon.");
-                return;
-            }
-            if (_photonTester == null)
-            {
-                SetStatus("PhotonConnectionTester non assigne dans l'Inspector.");
-                return;
-            }
+        // ---------- Helpers UI ----------
 
-            SetStatus("Connexion Photon (Custom Auth via webhook backend)...");
-            var result = await _photonTester.TestConnectAsync(_auth.Token, _cts.Token);
-
-            if (result.IsSuccess)
-            {
-                SetStatus($"Photon OK ! Region={result.Region} UserId={result.UserId}");
-                NymoraLog.Info("Login", $"Photon Custom Auth validee. Region={result.Region}, UserId={result.UserId}");
-            }
-            else
-            {
-                SetStatus($"Photon refuse : {result.FailureMessage}");
-                NymoraLog.Warn("Login", $"Photon connection failed: {result.FailureMessage}");
-            }
-        }
-
-        private void SetStatus(string s)
-        {
-            if (_statusText != null) _statusText.text = s;
-            NymoraLog.Info("Login", s);
-        }
-
-        /// <summary>Verdict de version persistant affiche en haut (ne se fait pas ecraser par le statut du bas).</summary>
-        private void SetVersionVerdict(string s, Color color)
-        {
-            if (_versionVerdictText == null) return;
-            _versionVerdictText.text = s;
-            _versionVerdictText.color = color;
-        }
-
-        /// <summary>Affiche le groupe de login (champs + boutons).</summary>
+        /// <summary>Affiche le panneau connexion (et masque l'inscription), pre-remplit le dernier pseudo.</summary>
         private void RevealLogin()
         {
+            if (_registerPanel != null) _registerPanel.SetActive(false);
             if (_loginPanel != null) _loginPanel.SetActive(true);
+
+            if (_pseudoInput != null)
+            {
+                string last = PlayerPrefs.GetString(LastPseudoKey, string.Empty);
+                if (!string.IsNullOrEmpty(last)) _pseudoInput.text = last;
+            }
+            if (_passwordInput != null) _passwordInput.text = string.Empty;
         }
 
-        /// <summary>
-        /// Affiche le panneau "Mise a jour requise pour jouer" et garde le login masque.
-        /// Appele soit au demarrage (MaJ dispo / version trop vieille), soit sur un 426 en cours de session.
-        /// </summary>
         private void ShowUpdateRequired(string minServerVersion, string currentServerVersion,
             string downloadUrl, string sha256)
         {
@@ -377,18 +350,15 @@ namespace Nymora.UI.Login
             _pendingDownloadUrl = downloadUrl;
             _pendingSha256 = sha256;
 
-            // Le panneau orange couvre l'ecran : on vide le verdict du haut pour eviter le doublon.
             if (_versionVerdictText != null) _versionVerdictText.text = string.Empty;
             if (_loginPanel != null) _loginPanel.SetActive(false);
+            if (_registerPanel != null) _registerPanel.SetActive(false);
 
             string msg;
             if (!string.IsNullOrEmpty(currentServerVersion))
             {
                 msg = $"Version installee : {GameVersion.Current}\nDerniere version : {currentServerVersion}";
-                if (!string.IsNullOrEmpty(minServerVersion))
-                {
-                    msg += $"\nVersion minimale : {minServerVersion}";
-                }
+                if (!string.IsNullOrEmpty(minServerVersion)) msg += $"\nVersion minimale : {minServerVersion}";
             }
             else
             {
@@ -398,7 +368,6 @@ namespace Nymora.UI.Login
             if (_updateRequiredText != null) _updateRequiredText.text = msg;
             if (_updateRequiredPanel != null) _updateRequiredPanel.SetActive(true);
 
-            // Le bouton n'est cliquable que si une URL de telechargement existe cote serveur.
             bool hasDownload = !string.IsNullOrEmpty(downloadUrl);
             if (_downloadButton != null) _downloadButton.interactable = hasDownload;
             ResetProgressBar();
@@ -408,7 +377,34 @@ namespace Nymora.UI.Login
                 : "Mise a jour requise, mais aucun lien de telechargement publie (contacte Lorenzo).");
         }
 
-        /// <summary>Remet la barre de progression a zero et masque son texte.</summary>
+        private void SetButtonsInteractable(bool on)
+        {
+            if (_connexionButton != null) _connexionButton.interactable = on;
+            if (_openRegisterButton != null) _openRegisterButton.interactable = on;
+            if (_createAccountButton != null) _createAccountButton.interactable = on;
+            if (_backToLoginButton != null) _backToLoginButton.interactable = on;
+        }
+
+        private void SaveLastPseudo(string pseudo)
+        {
+            if (string.IsNullOrEmpty(pseudo)) return;
+            PlayerPrefs.SetString(LastPseudoKey, pseudo);
+            PlayerPrefs.Save();
+        }
+
+        private void SetStatus(string s)
+        {
+            if (_statusText != null) _statusText.text = s;
+            if (!string.IsNullOrEmpty(s)) NymoraLog.Info("Login", s);
+        }
+
+        private void SetVersionVerdict(string s, Color color)
+        {
+            if (_versionVerdictText == null) return;
+            _versionVerdictText.text = s;
+            _versionVerdictText.color = color;
+        }
+
         private void ResetProgressBar()
         {
             if (_progressBarFill != null) _progressBarFill.fillAmount = 0f;

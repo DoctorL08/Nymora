@@ -18,7 +18,9 @@ namespace Nymora.Network.Backend
     [Serializable]
     public class LoginRequest
     {
-        public string email;
+        // Login par pseudo (le backend accepte aussi email pour la retrocompat, mais le
+        // client epure n'envoie que le pseudo). JsonUtility n'envoie que les champs presents.
+        public string displayName;
         public string password;
     }
 
