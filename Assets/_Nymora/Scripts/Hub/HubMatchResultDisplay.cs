@@ -150,8 +150,8 @@ namespace Nymora.Hub
         {
             string sign = d.Delta >= 0 ? "+" : "";
             string deltaColor = d.Delta >= 0 ? "#88ff88" : "#ff8888";
-            var line = $"<color=#cdb4ff>[CLASSÉ] MMR {d.Mmr}</color> <color={deltaColor}>({sign}{d.Delta})</color> " +
-                       $"<color=#999999>— {d.RankedWins}V / {d.RankedLosses}D</color>";
+            var line = $"<color=#cdb4ff>[CLASSÉ]</color> {RankLadder.ColoredName(d.Mmr)} <color=#cdb4ff>— MMR {d.Mmr}</color> " +
+                       $"<color={deltaColor}>({sign}{d.Delta})</color> <color=#999999>— {d.RankedWins}V / {d.RankedLosses}D</color>";
             Debug.Log($"[HubMatchResultDisplay] {line}");
             if (_chatUI != null) _chatUI.AppendSystemLineExternal(line);
         }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using Nymora.Core.Data;
 using Nymora.Network.Backend;
 using TMPro;
 using UnityEngine;
@@ -269,7 +270,8 @@ namespace Nymora.Hub
         private void ApplyProfileData(ProfileMeResponse data)
         {
             if (_viewDisplayName != null) _viewDisplayName.text = data.displayName ?? "(sans nom)";
-            if (_viewMmr != null) _viewMmr.text = $"MMR : {data.mmr}";
+            // 6.4 — rang derive du MMR (Bronze -> Legende).
+            if (_viewMmr != null) _viewMmr.text = $"{RankLadder.ColoredName(data.mmr)} — MMR {data.mmr}";
             if (_viewCreatedAt != null) _viewCreatedAt.text = $"Inscrit : {FormatDate(data.createdAt) ?? "—"}";
             if (_viewLastLoginAt != null) _viewLastLoginAt.text = $"Derniere connexion : {FormatDate(data.lastLoginAt) ?? "—"}";
             if (_viewStatusLine != null) _viewStatusLine.text = "";
