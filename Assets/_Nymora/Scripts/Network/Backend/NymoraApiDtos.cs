@@ -511,4 +511,53 @@ namespace Nymora.Network.Backend
     {
         public LeaderboardEntry[] entries;
     }
+
+    // ====== Brique 5.7 — Battle Pass ======
+
+    [Serializable]
+    public class BpRewardDto
+    {
+        public string kind;    // "nymos" | "cosmetic" | "" (null cote serveur)
+        public int amount;
+        public string label;
+    }
+
+    [Serializable]
+    public class BpTierDto
+    {
+        public int tier;
+        public BpRewardDto free;
+        public BpRewardDto premium;
+    }
+
+    [Serializable]
+    public class BattlePassMeResponse
+    {
+        public int seasonNumber;
+        public int xp;
+        public int tier;
+        public bool hasPremium;
+        public int[] claimedFree;
+        public int[] claimedPremium;
+        public int xpPerTier;
+        public int maxTier;
+        public BpTierDto[] tiers;
+    }
+
+    [Serializable]
+    public class BpClaimBody
+    {
+        public int tier;
+        public string track;       // "free" | "premium"
+    }
+
+    [Serializable]
+    public class BpClaimResponse
+    {
+        public string status;       // "claimed" | "error"
+        public int tier;
+        public string track;
+        public string rewardLabel;
+        public string error;        // si status == "error"
+    }
 }

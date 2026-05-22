@@ -300,6 +300,15 @@ namespace Nymora.Network.Backend
         public UniTask<ApiResult<LeaderboardResponse>> GetLeaderboardAsync(int limit = 100, CancellationToken ct = default)
             => GetJsonAsync<LeaderboardResponse>($"/ranked/leaderboard?limit={limit}", requireAuth: true, ct);
 
+        // ====== Brique 5.7 — Battle Pass ======
+
+        public UniTask<ApiResult<BattlePassMeResponse>> GetBattlePassAsync(CancellationToken ct = default)
+            => GetJsonAsync<BattlePassMeResponse>("/battlepass/me", requireAuth: true, ct);
+
+        public UniTask<ApiResult<BpClaimResponse>> ClaimBattlePassTierAsync(int tier, string track, CancellationToken ct = default)
+            => PostJsonAsync<BpClaimResponse>("/battlepass/claim",
+                new BpClaimBody { tier = tier, track = track }, requireAuth: true, ct);
+
         private async UniTask<ApiResult<TResponse>> PostJsonAsync<TResponse>(
             string path, object body, bool requireAuth, CancellationToken ct, bool sendVersionHeader = true)
         {
