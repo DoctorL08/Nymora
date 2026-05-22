@@ -35,6 +35,10 @@ namespace Nymora.Combat.View
         [Header("Couleurs de preview")]
         [SerializeField] private Color _castableColor = new Color(0.55f, 0.75f, 1.00f, 1f);
         [SerializeField] private Color _effectColor = new Color(1.00f, 0.55f, 0.55f, 1f);
+        [Tooltip("PATCH 22 mai — cases dans la portee mais derriere un obstacle (ligne de vue " +
+                 "bloquee). Grisees pour signaler qu'on ne peut pas taper derriere un mur " +
+                 "(sauf sorts qui ignorent la LoS : ligne custom, teleport, melee, self).")]
+        [SerializeField] private Color _blockedColor = new Color(0.30f, 0.30f, 0.30f, 0.75f);
 
         private Vector3 _centerOffset;
         private bool _gridReady;
@@ -74,12 +78,21 @@ namespace Nymora.Combat.View
             // La portee Manhattan complete est affichee ; Quantum filtre au cast.
             TargetingShape shape;
             int rangeMin, rangeMax;
+            // PATCH 22 mai (test designer) — sorts en LIGNE DROITE cardinale : la portee castable
+            // est restreinte aux 4 rayons (pas tout le diamant Manhattan) et le survol montre la
+            // ligne complete. Pour l'instant : Choc Sismique (Bible "portee 4 ligne").
+            bool isStraightLineSpell = false;
+            // PATCH 22 mai — grisage des cases hors ligne de vue (derriere un obstacle). Activé
+            // uniquement pour les sorts qui requierent une LoS claire cote sim (meme liste).
+            bool needsLineOfSight = false;
             if (_hudController != null && _hudController.ArmedSpell.HasValue
                 && SpellRegistry.TryGet(_hudController.ArmedSpell.Value, out SpellDef def))
             {
                 shape = def.Shape;
                 rangeMin = def.RangeMin;
                 rangeMax = def.RangeMax;
+                isStraightLineSpell = _hudController.ArmedSpell.Value == SpellId.ColossarChocSismique;
+                needsLineOfSight = SpellSystem.SpellNeedsLineOfSight(_hudController.ArmedSpell.Value);
             }
             else if (_inputController != null && _inputController.DebugShowTargeting)
             {
@@ -140,13 +153,26 @@ namespace Nymora.Combat.View
                 int idx = castableBuffer[i];
                 int gx = idx % GridConstants.Width;
                 int gy = idx / GridConstants.Width;
+                // Sorts en ligne droite : ne garder que les cases cardinalement alignees avec le
+                // caster (meme ligne OU meme colonne). Coherent avec la validation sim.
+                if (isStraightLineSpell && gx != casterX && gy != casterY) continue;
                 var tile = _gridRenderer.GetTileView(gx, gy);
-                if (tile != null)
+                if (tile == null) continue;
+
+                // PATCH 22 mai — case derriere un obstacle (LoS bloquee) : grisee + NON cliquable.
+                // On reflete exactement le rejet sim (obstacle OWN ne bloque pas, adverse bloque).
+                if (needsLineOfSight
+                    && !ObstacleHelpers.HasLineOfSight(frame, casterX, casterY, gx, gy, casterPlayerIndex))
                 {
-                    tile.ApplyHighlight(_castableColor);
+                    tile.ApplyHighlight(_blockedColor);
                     _highlighted.Add(idx);
-                    visibleCastable.Add(idx);
+                    // pas ajoute a visibleCastable -> pas de preview d'effet + clic sans effet.
+                    continue;
                 }
+
+                tile.ApplyHighlight(_castableColor);
+                _highlighted.Add(idx);
+                visibleCastable.Add(idx);
             }
 
             // 2) Hover : effect cells au survol de la case visee.
@@ -165,19 +191,44 @@ namespace Nymora.Combat.View
             // Effect zone affichee uniquement si on survole une case dans la range castable.
             if (hoverIdx >= 0 && visibleCastable.Contains(hoverIdx))
             {
-                int[] effectBuffer = new int[GridConstants.Count];
-                TargetingResolver.ResolveEffectCells(frame, casterX, casterY, hoverGx, hoverGy, shape, effectBuffer, out int effectCount);
-
-                for (int i = 0; i < effectCount; i++)
+                if (isStraightLineSpell)
                 {
-                    int idx = effectBuffer[i];
-                    int gx = idx % GridConstants.Width;
-                    int gy = idx / GridConstants.Width;
-                    var tile = _gridRenderer.GetTileView(gx, gy);
-                    if (tile != null)
+                    // Survol d'un sort en ligne : highlight la LIGNE COMPLETE (rangeMax cases) dans
+                    // la direction cardinale survolee — matche le handler sim qui tire 4 cases.
+                    int ddx = hoverGx - casterX;
+                    int ddy = hoverGy - casterY;
+                    int stepX = ddx == 0 ? 0 : (ddx > 0 ? 1 : -1);
+                    int stepY = ddy == 0 ? 0 : (ddy > 0 ? 1 : -1);
+                    int rx = casterX, ry = casterY;
+                    for (int s = 0; s < rangeMax; s++)
                     {
-                        tile.ApplyHighlight(_effectColor);
-                        _highlighted.Add(idx);
+                        rx += stepX;
+                        ry += stepY;
+                        if (rx < 0 || rx >= GridConstants.Width || ry < 0 || ry >= GridConstants.Height) break;
+                        var tile = _gridRenderer.GetTileView(rx, ry);
+                        if (tile != null)
+                        {
+                            tile.ApplyHighlight(_effectColor);
+                            _highlighted.Add(ry * GridConstants.Width + rx);
+                        }
+                    }
+                }
+                else
+                {
+                    int[] effectBuffer = new int[GridConstants.Count];
+                    TargetingResolver.ResolveEffectCells(frame, casterX, casterY, hoverGx, hoverGy, shape, effectBuffer, out int effectCount);
+
+                    for (int i = 0; i < effectCount; i++)
+                    {
+                        int idx = effectBuffer[i];
+                        int gx = idx % GridConstants.Width;
+                        int gy = idx / GridConstants.Width;
+                        var tile = _gridRenderer.GetTileView(gx, gy);
+                        if (tile != null)
+                        {
+                            tile.ApplyHighlight(_effectColor);
+                            _highlighted.Add(idx);
+                        }
                     }
                 }
             }

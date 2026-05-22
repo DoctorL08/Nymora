@@ -344,8 +344,23 @@ namespace Quantum
             // les vraies cibles dans le damage loop via le check enemy/distance).
             if (!TargetingResolver.MatchesFilter(f, cmd.TargetX, cmd.TargetY, spellDef.Filter, casterEntity, playerIndex))
             {
-                Log.Warn($"[Spell] rejet : ({cmd.TargetX},{cmd.TargetY}) ne match pas filter {spellDef.Filter}");
-                return;
+                // PATCH 22 mai (test designer) — Murs/Piliers ciblables par les sorts de degats
+                // (toutes classes). Le filtre Enemy/AnyUnit rejette une case sans unite, mais on
+                // veut pouvoir viser un OBSTACLE ADVERSE pour le detruire (Bible : Pilier/Mur
+                // destructibles). La boucle damage offensive (plus bas) applique deja les degats a
+                // l'obstacle adverse present sur une case d'effet. On laisse donc passer la
+                // validation pour un sort offensif visant une case a obstacle adverse.
+                bool offensiveObstacleTarget =
+                    spellDef.IsOffensive != 0
+                    && (spellDef.Filter == TargetingFilter.Enemy || spellDef.Filter == TargetingFilter.AnyUnit)
+                    && IsAdverseObstacleAt(f, cmd.TargetX, cmd.TargetY, playerIndex);
+
+                if (!offensiveObstacleTarget)
+                {
+                    Log.Warn($"[Spell] rejet : ({cmd.TargetX},{cmd.TargetY}) ne match pas filter {spellDef.Filter}");
+                    return;
+                }
+                Log.Info($"[Spell] cible obstacle adverse autorisee sur ({cmd.TargetX},{cmd.TargetY}) (sort offensif {cmd.Spell})");
             }
 
             // 2.15.c — Voile d'Ombre : si cible directe (filter Enemy/AnyUnit) est un combatant
@@ -429,6 +444,22 @@ namespace Quantum
                 if (brumeOverlap)
                 {
                     Log.Warn($"[Spell] rejet : Brume Toxique chevauche une Brume existante sur AoE 3x3 centree ({cmd.TargetX},{cmd.TargetY}). PA non consomme.");
+                    return;
+                }
+            }
+
+            // PATCH 22 mai (test designer) — Choc Sismique : frappe en LIGNE DROITE (Bible
+            // "PORTÉE 4 ligne"). On rejette toute cible non alignee cardinalement avec le caster
+            // (meme ligne OU meme colonne). Sans ca, une cible diagonale faisait tirer le handler
+            // dans l'axe dominant -> "range pas en ligne droite". Le handler tire ensuite les 4
+            // cases dans cet axe cardinal garanti.
+            if (cmd.Spell == SpellId.ColossarChocSismique)
+            {
+                int csdx = cmd.TargetX - caster->GridX;
+                int csdy = cmd.TargetY - caster->GridY;
+                if (csdx != 0 && csdy != 0)
+                {
+                    Log.Warn($"[Spell] rejet : Choc Sismique cible non alignee (ligne droite cardinale requise) dx={csdx} dy={csdy}");
                     return;
                 }
             }
@@ -3646,7 +3677,9 @@ namespace Quantum
         ///   - Teleport (Bible : "ignore les obstacles") : Pas Furtif, Evanescence, Traquenard.
         ///   - Sorts qui posent quelque chose a courte portee non bloque (Pilier 3.3.b range 1).
         /// </summary>
-        private static bool SpellNeedsLineOfSight(SpellId id)
+        // public (PATCH 22 mai) : la View (TargetingPreviewView) reutilise cette MEME liste pour
+        // griser les cases dont la ligne de vue est bloquee par un obstacle. Source unique.
+        public static bool SpellNeedsLineOfSight(SpellId id)
         {
             switch (id)
             {
@@ -3866,6 +3899,20 @@ namespace Quantum
                     outBuffer[count++] = GridHelpers.Index(x, y);
                 }
             }
+        }
+
+        /// <summary>
+        /// PATCH 22 mai (test designer) — True si la case (x,y) contient un obstacle
+        /// (Pilier/Mur/Faille) appartenant a un AUTRE joueur que le caster. Utilise pour
+        /// autoriser les sorts de degats a viser un mur adverse afin de le detruire. On reste
+        /// coherent avec la boucle damage offensive qui n'endommage que les obstacles adverses.
+        /// </summary>
+        private static bool IsAdverseObstacleAt(Frame f, int x, int y, int casterPlayerIndex)
+        {
+            EntityRef obs = ObstacleHelpers.GetObstacleAt(f, x, y);
+            if (obs == EntityRef.None) return false;
+            if (!f.Unsafe.TryGetPointer<Obstacle>(obs, out Obstacle* obsData)) return false;
+            return obsData->OwnerPlayerIndex != casterPlayerIndex;
         }
 
         /// <summary>

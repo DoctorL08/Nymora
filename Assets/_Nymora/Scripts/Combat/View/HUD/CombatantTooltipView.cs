@@ -141,6 +141,10 @@ namespace Nymora.Combat.View.HUD
         public void Show(EntityRef entity, int hpCurrent, int hpMax, Transform anchorSprite)
         {
             if (_tooltipText == null || _tooltipRoot == null) return;
+            // PATCH 22 mai (test designer) — Voile d'Ombre : un Nightseer Untargetable est
+            // invisible cote adversaire (cf CombatantRenderer.SetCloaked). On ne doit donc
+            // pas reveler sa presence via le tooltip de survol si l'adversaire devine sa case.
+            if (IsCloakedFromLocalViewer(entity)) { Hide(); return; }
             _currentEntity = entity;
             ApplyContent(BuildContent(entity, hpCurrent, hpMax));
             _anchoredSprite = anchorSprite;
@@ -181,6 +185,9 @@ namespace Nymora.Combat.View.HUD
                 Hide();
                 return;
             }
+            // PATCH 22 mai — si le combattant survole devient Untargetable (Voile d'Ombre)
+            // pendant qu'on le survole cote adversaire, on cache le tooltip immediatement.
+            if (IsCloakedFromLocalViewer(_currentEntity)) { Hide(); return; }
             ApplyContent(BuildContent(_currentEntity, hp, maxHp));
         }
 
@@ -304,6 +311,33 @@ namespace Nymora.Combat.View.HUD
                 if (c.PlayerIndex == playerIndex) return e;
             }
             return default;
+        }
+
+        /// <summary>
+        /// PATCH 22 mai (test designer) — True si `entity` est un combattant ENNEMI du viewer
+        /// local, vivant, et porteur de StatusKind.Untargetable (Voile d'Ombre Nightseer).
+        /// Dans ce cas le tooltip ne doit pas s'afficher (invisibilite cote adversaire). Le
+        /// Nightseer voit toujours son propre tooltip (own unit -> false).
+        /// </summary>
+        private static bool IsCloakedFromLocalViewer(EntityRef entity)
+        {
+            var runner = QuantumRunner.Default;
+            if (runner == null || runner.Game == null) return false;
+            var frame = runner.Game.Frames.Verified;
+            if (frame == null || !frame.Exists(entity) || !frame.Has<Combatant>(entity)) return false;
+
+            var c = frame.Get<Combatant>(entity);
+            if (c.HP <= 0) return false;
+            if (c.PlayerIndex == LocalPlayerResolver.Resolve()) return false; // sa propre unite
+
+            for (int s = 0; s < StatusHelper.SlotCount; s++)
+            {
+                if (c.Statuses[s].Kind == StatusKind.Untargetable && c.Statuses[s].TurnsLeft > 0)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private static int ResolvePlayerIndex(EntityRef entity)

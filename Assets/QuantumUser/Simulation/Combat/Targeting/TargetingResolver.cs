@@ -184,9 +184,13 @@ namespace Quantum
                 case TargetingFilter.EmptyTile:
                     return !occupied && GridHelpers.IsWalkable(f, cellX, cellY);
                 case TargetingFilter.TileWithObstacle:
+                    // PATCH 22 mai (test designer) — case occupee par un obstacle (Pilier/Mur/Faille).
+                    return ObstacleHelpers.HasObstacleAt(f, cellX, cellY);
                 case TargetingFilter.TileWithLure:
-                    // Pas de notion d'obstacle/leurre en Phase 2.6 (Colossar = Phase 3, Ghostra = Phase 3).
-                    Log.Warn($"[TargetingResolver] Filter {filter} non implemente en 2.6 — a faire en Phase 3 (Colossar/Ghostra).");
+                    // Leurres Ghostra : pas encore branche en filtre direct (les sorts Ghostra
+                    // ciblant un leurre resolvent dans leur propre handler). A implementer si un
+                    // sort utilise ce filtre.
+                    Log.Warn($"[TargetingResolver] Filter TileWithLure non implemente — a faire si un sort l'utilise.");
                     return false;
                 case TargetingFilter.AnyTile:
                     return true;

@@ -241,9 +241,33 @@ namespace Quantum
             }
 
 
+            // PATCH 22 mai (test designer) — Pieges declenches AU PASSAGE, pas seulement a
+            // l'arret. Bible V7.1 : "Toute unite ennemie qui ENTRE" sur la case (Filet l.498,
+            // Champ de Mines l.505). On itere les cases INTERMEDIAIRES du path dans l'ordre
+            // (pathBuffer[0..pathLength-2] ; start exclu, destination au dernier index geree
+            // juste apres) et on declenche tout piege rencontre. Si le combattant meurt en
+            // cours de route (trap qui le tue), on stoppe la chaine.
+            //
+            // Note : Manhattan==1 -> pathBuffer null, boucle skip ; seule la destination est
+            // une case entree, geree par l'appel ci-dessous.
+            if (pathBuffer != null && pathLength > 1)
+            {
+                for (int i = 0; i < pathLength - 1; i++)
+                {
+                    if (combatant->HP <= 0) break;
+                    int crossingIdx = pathBuffer[i];
+                    int cx = crossingIdx % GridConstants.Width;
+                    int cy = crossingIdx / GridConstants.Width;
+                    FogHelpers.TryTriggerTrapOnEnter(f, entity, combatant, cx, cy, currentTurn);
+                }
+            }
+
             // 2.15.b — Trigger trap eventuel sur la case d'arrivee (Filet de Ronces, Mine).
             // L'helper gere damage + Empreinte + MovementMalus + Clear trap + +1 PR au owner.
-            FogHelpers.TryTriggerTrapOnEnter(f, entity, combatant, targetX, targetY, currentTurn);
+            if (combatant->HP > 0)
+            {
+                FogHelpers.TryTriggerTrapOnEnter(f, entity, combatant, targetX, targetY, currentTurn);
+            }
 
             // 3.5.a.iii — Brume Toxique entry : -30 HP bypass shield/reduction + 1 marque venin
             // si l'unite entre sur une case BrumeToxique. Skip Necram (decision design : classe

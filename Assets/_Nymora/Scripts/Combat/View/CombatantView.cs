@@ -164,6 +164,35 @@ namespace Nymora.Combat.View
             _sprite.color = Color.white;
         }
 
+        // ======================================================================
+        // PATCH 22 mai (test designer) — Voile d'Ombre Nightseer : invisibilite
+        // cote adversaire. Le combattant porteur de StatusKind.Untargetable doit
+        // DISPARAITRE VISUELLEMENT de l'ecran adverse (Bible V7.1 l.530), tout en
+        // restant visible pour lui-meme. Le check viewer/owner est fait par le
+        // CombatantRenderer ; ici on ne fait que masquer/reveler le rendu.
+        //
+        // On toggle TOUS les Renderer enfants (sprite + marques ajoutees dynamiquement
+        // par CombatantMarksView qui sont enfants de ce GO) plutot que SetActive(false)
+        // sur le GO racine : ca evite de figer le sync de position (Update) et les
+        // coroutines (teleport) tant que le combattant reste actif cote sim.
+        //
+        // Re-query GetComponentsInChildren UNIQUEMENT au changement d'etat (rare : 1x
+        // par round) — pas d'alloc par frame.
+        // ======================================================================
+        private bool _cloaked;
+
+        public void SetCloaked(bool cloaked)
+        {
+            if (cloaked == _cloaked) return;
+            _cloaked = cloaked;
+            // include inactive = true : capture aussi les renderers de GO enfants desactives.
+            var renderers = GetComponentsInChildren<Renderer>(true);
+            for (int i = 0; i < renderers.Length; i++)
+            {
+                if (renderers[i] != null) renderers[i].enabled = !cloaked;
+            }
+        }
+
         /// <summary>
         /// 2.16.c.vi — Maj position + path cardinal cell-by-cell.
         ///

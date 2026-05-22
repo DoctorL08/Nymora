@@ -200,6 +200,18 @@ namespace Quantum
                 // 3.7.a.i.4 — un leurre Ghostra ennemi bloque la LoS (Bible-strict :
                 // "indiscernable cote adversaire" -> doit bloquer comme une vraie unité).
                 if (DecoyHelpers.HasEnemyDecoyAt(f, casterPlayerIndex, cx, cy)) return false;
+                // PATCH 22 mai (amendement Bible, decision Lorenzo) — un COMBATTANT ENNEMI vivant
+                // sur une case intermediaire bloque aussi la ligne de vue/tir (la Bible V7.1 ne
+                // citait que Pilier/Mur). Les allies ne bloquent PAS. casterPlayerIndex < 0
+                // (mode strict neutre) -> toute unite bloque.
+                EntityRef occE = GridHelpers.GetOccupant(f, cx, cy);
+                if (occE != EntityRef.None
+                    && f.Unsafe.TryGetPointer<Combatant>(occE, out var occC)
+                    && occC->HP > 0
+                    && (casterPlayerIndex < 0 || occC->PlayerIndex != casterPlayerIndex))
+                {
+                    return false;
+                }
                 // Case intermediaire : check obstacle bloquant.
                 EntityRef obsE = GetObstacleAt(f, cx, cy);
                 if (obsE == EntityRef.None) continue;

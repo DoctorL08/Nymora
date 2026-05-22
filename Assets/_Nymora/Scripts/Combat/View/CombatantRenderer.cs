@@ -118,6 +118,11 @@ namespace Nymora.Combat.View
 
             var frame = game.Frames.Verified;
 
+            // PATCH 22 mai (test designer) — Voile d'Ombre : POV du client courant pour
+            // decider quel combattant masquer (un Nightseer Untargetable disparait de
+            // l'ecran adverse, pas du sien). Meme resolveur que FogOfWarView/TrapView.
+            int localViewer = LocalPlayerResolver.Resolve();
+
             // Pass 1 : snapshot tous les combatants vivants (besoin de la position adverse
             // pour calculer le facing iso de chacun).
             _frameCombatants.Clear();
@@ -308,9 +313,37 @@ namespace Nymora.Combat.View
                     view.SetStageAndFacing(stage, view.CurrentFacing);
                 }
 
+                // PATCH 22 mai (test designer) — Voile d'Ombre Nightseer : masque le rendu
+                // cote adversaire si le combattant est Untargetable (Bible V7.1 : il
+                // "disparait visuellement de l'ecran adverse pendant 1 tour entier"). On
+                // ne masque que les ENNEMIS du viewer local (le Nightseer se voit lui-meme)
+                // et seulement s'ils sont vivants (un mort joue son anim Death normalement).
+                bool cloakedForViewer = combatant.PlayerIndex != localViewer
+                                        && combatant.HP > 0
+                                        && HasUntargetable(combatant);
+                view.SetCloaked(cloakedForViewer);
+
                 // 2.12.bis : detection des changements d'etat -> triggers anims.
                 DispatchAnimTriggers(entity, combatant, view);
             }
+        }
+
+        /// <summary>
+        /// PATCH 22 mai — True si le combattant porte StatusKind.Untargetable actif
+        /// (Voile d'Ombre Nightseer). Lecture directe du snapshot par valeur (meme pattern
+        /// que la detection Pas Spectral / Pas de l'Au-Dela plus haut).
+        /// </summary>
+        private static bool HasUntargetable(Combatant combatant)
+        {
+            for (int s = 0; s < StatusHelper.SlotCount; s++)
+            {
+                if (combatant.Statuses[s].Kind == StatusKind.Untargetable
+                    && combatant.Statuses[s].TurnsLeft > 0)
+                {
+                    return true;
+                }
+            }
+            return false;
         }
 
         /// <summary>
