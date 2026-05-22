@@ -1,8 +1,6 @@
-using System.Collections;
 using Quantum;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Button = UnityEngine.UI.Button;
 using Image = UnityEngine.UI.Image;
@@ -15,9 +13,13 @@ namespace Nymora.Combat.View.HUD
     /// ressources, cooldown signature) / Armed (sort selectionne, en attente de cible).
     ///
     /// Click flow : Button.onClick -> CombatHUDController.OnSlotClicked(_spell).
-    /// Hover flow (2.13.c) : IPointerEnter -> tooltip apres delay, IPointerExit -> hide.
+    /// Hover flow (B6, 22 mai) : detection par POLLING (Update + RectangleContainsScreenPoint)
+    /// au lieu de IPointerEnter. Raison : si la souris est deja immobile sur un slot au
+    /// chargement de la scene combat, l'EventSystem ne declenche OnPointerEnter qu'au 1er
+    /// event pointeur (clic / mouvement) -> le designer devait "cliquer un sort pour debloquer
+    /// le tooltip". Le polling l'affiche des le survol, sans clic prealable.
     /// </summary>
-    public class SpellSlotView : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
+    public class SpellSlotView : MonoBehaviour
     {
         public enum SlotState { Normal, Disabled, Armed }
 
@@ -27,13 +29,30 @@ namespace Nymora.Combat.View.HUD
         [SerializeField] private TMP_Text _cooldownLabel;
         [SerializeField] private Button _button;
 
-        [Header("Tooltip (2.13.c)")]
-        [Tooltip("Delai avant affichage de la tooltip (anti-clignotement quand on balaye).")]
-        [SerializeField] private float _tooltipDelaySeconds = 0.2f;
+        // B6 (22 mai) — Delai d'apparition du tooltip TRES court pour rester reactif. Const
+        // (plus SerializeField) : la valeur serialisee 0.2 dans la scene/prefab rendait
+        // l'affichage lent. ~0.03s = quasi instant tout en evitant le clignotement 1-frame
+        // quand on balaye la barre de sorts.
+        private const float TooltipDelaySeconds = 0.03f;
 
         private CombatHUDController _controller;
         private SpellId _spell;
-        private Coroutine _tooltipCoroutine;
+
+        // B6 — etat de hover par polling.
+        private bool _isHovered;
+        private float _hoverElapsed;
+        private bool _tooltipShown;
+
+        // B6 (22 mai) — feedback visuel de survol : le slot monte un peu + halo blanc brillant.
+        private RectTransform _rt;
+        private Image _hoverGlow;
+        private float _baseY;
+        private bool _baseRecorded;
+        private float _hoverAnim; // 0 (repos) -> 1 (survole), lerp
+        private const float HoverRiseY = 10f;        // montee en px
+        private const float HoverGlowMaxAlpha = 0.85f;
+        private const float HoverAnimSpeed = 14f;    // vitesse de lerp (atteint 1 en ~0.07s)
+        private static Sprite _glowSpriteCache;
 
         private static readonly Color FrameNormal   = new Color(0.15f, 0.15f, 0.15f, 0.85f);
         private static readonly Color FrameDisabled = new Color(0.10f, 0.10f, 0.10f, 0.85f);
@@ -43,6 +62,30 @@ namespace Nymora.Combat.View.HUD
 
         public SpellId Spell => _spell;
         public RectTransform RectTransform => transform as RectTransform;
+
+        private void Awake()
+        {
+            _rt = transform as RectTransform;
+            CreateHoverGlow();
+        }
+
+        // Halo blanc brillant derriere le slot (radial soft), alpha 0 au repos, fade-in au survol.
+        private void CreateHoverGlow()
+        {
+            if (_hoverGlow != null || _rt == null) return;
+            var glowGo = new GameObject("HoverGlow", typeof(RectTransform));
+            glowGo.transform.SetParent(_rt, false);
+            var grt = (RectTransform)glowGo.transform;
+            grt.anchorMin = Vector2.zero;
+            grt.anchorMax = Vector2.one;
+            grt.offsetMin = new Vector2(-16f, -16f); // deborde de 16px -> halo autour du slot
+            grt.offsetMax = new Vector2(16f, 16f);
+            _hoverGlow = glowGo.AddComponent<Image>();
+            _hoverGlow.sprite = GetGlowSprite();
+            _hoverGlow.color = new Color(1f, 1f, 1f, 0f);
+            _hoverGlow.raycastTarget = false;
+            grt.SetAsFirstSibling(); // derriere l'icone / le cadre
+        }
 
         public void Bind(CombatHUDController controller, SpellId spell, Sprite icon, string shortcutLabel)
         {
@@ -116,45 +159,128 @@ namespace Nymora.Combat.View.HUD
             }
         }
 
-        // -- Pointer events (2.13.c) --
-        public void OnPointerEnter(PointerEventData eventData)
+        // -- Hover par polling (B6) --
+        private void Update()
         {
-            if (_controller == null || _spell == SpellId.None) return;
-            if (_tooltipCoroutine != null) StopCoroutine(_tooltipCoroutine);
-            _tooltipCoroutine = StartCoroutine(ShowTooltipAfterDelay());
+            if (_controller == null || _spell == SpellId.None) { ClearHover(); return; }
+
+            if (IsPointerOverSlot())
+            {
+                if (!_isHovered)
+                {
+                    _isHovered = true;
+                    _hoverElapsed = 0f;
+                    _tooltipShown = false;
+                }
+                if (!_tooltipShown)
+                {
+                    _hoverElapsed += Time.unscaledDeltaTime;
+                    if (_hoverElapsed >= TooltipDelaySeconds)
+                    {
+                        _controller.ShowTooltip(_spell, RectTransform);
+                        _tooltipShown = true;
+                    }
+                }
+            }
+            else
+            {
+                ClearHover();
+            }
+
+            AnimateHover();
         }
 
-        public void OnPointerExit(PointerEventData eventData)
+        // Lerp montee + halo selon l'etat de survol. Tourne chaque frame (entree ET sortie).
+        private void AnimateHover()
         {
-            if (_tooltipCoroutine != null)
+            if (_rt == null) return;
+            if (!_baseRecorded)
             {
-                StopCoroutine(_tooltipCoroutine);
-                _tooltipCoroutine = null;
+                _baseY = _rt.anchoredPosition.y;
+                _baseRecorded = true;
             }
-            if (_controller != null) _controller.HideTooltip();
+
+            float target = _isHovered ? 1f : 0f;
+            _hoverAnim = Mathf.MoveTowards(_hoverAnim, target, Time.unscaledDeltaTime * HoverAnimSpeed);
+
+            var pos = _rt.anchoredPosition;
+            pos.y = _baseY + HoverRiseY * _hoverAnim;
+            _rt.anchoredPosition = pos;
+
+            if (_hoverGlow != null)
+            {
+                var c = _hoverGlow.color;
+                c.a = HoverGlowMaxAlpha * _hoverAnim;
+                _hoverGlow.color = c;
+            }
         }
 
-        private IEnumerator ShowTooltipAfterDelay()
+        /// <summary>Reset l'etat de hover et cache le tooltip si c'est CE slot qui l'affichait.</summary>
+        private void ClearHover()
         {
-            if (_tooltipDelaySeconds > 0f)
+            if (!_isHovered) return;
+            _isHovered = false;
+            if (_tooltipShown)
             {
-                yield return new WaitForSeconds(_tooltipDelaySeconds);
+                _tooltipShown = false;
+                if (_controller != null) _controller.HideTooltip();
             }
-            if (_controller != null && _spell != SpellId.None)
-            {
-                _controller.ShowTooltip(_spell, RectTransform);
-            }
-            _tooltipCoroutine = null;
+        }
+
+        private bool IsPointerOverSlot()
+        {
+            var rt = RectTransform;
+            if (rt == null) return false;
+            // Camera : null pour un canvas ScreenSpaceOverlay, sinon la worldCamera du canvas.
+            Camera cam = null;
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                cam = canvas.worldCamera;
+            return RectTransformUtility.RectangleContainsScreenPoint(rt, UnityEngine.Input.mousePosition, cam);
         }
 
         private void OnDisable()
         {
-            // Si le slot est cache (ex. swap de scene), kill la coroutine + hide tooltip.
-            if (_tooltipCoroutine != null)
+            // Slot cache (swap de scene, etc.) : reset hover + cache le tooltip si besoin.
+            ClearHover();
+            // Reset visuel pour ne pas rester "souleve" si desactive en plein survol.
+            _hoverAnim = 0f;
+            if (_rt != null && _baseRecorded)
             {
-                StopCoroutine(_tooltipCoroutine);
-                _tooltipCoroutine = null;
+                var pos = _rt.anchoredPosition;
+                pos.y = _baseY;
+                _rt.anchoredPosition = pos;
             }
+            if (_hoverGlow != null)
+            {
+                var c = _hoverGlow.color; c.a = 0f; _hoverGlow.color = c;
+            }
+        }
+
+        // Sprite de halo radial blanc (genere une fois, partage par tous les slots). Centre
+        // opaque -> bords transparents, ce qui donne un contour blanc brillant autour du slot.
+        private static Sprite GetGlowSprite()
+        {
+            if (_glowSpriteCache != null) return _glowSpriteCache;
+            const int size = 64;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            float half = size * 0.5f;
+            for (int y = 0; y < size; y++)
+            {
+                for (int x = 0; x < size; x++)
+                {
+                    float dx = (x + 0.5f - half) / half;
+                    float dy = (y + 0.5f - half) / half;
+                    float d = Mathf.Sqrt(dx * dx + dy * dy);
+                    float a = Mathf.Clamp01(1f - d);
+                    a = a * a; // falloff plus doux -> aspect "glow"
+                    tex.SetPixel(x, y, new Color(1f, 1f, 1f, a));
+                }
+            }
+            tex.Apply();
+            tex.filterMode = FilterMode.Bilinear;
+            _glowSpriteCache = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), 100f);
+            return _glowSpriteCache;
         }
     }
 }
