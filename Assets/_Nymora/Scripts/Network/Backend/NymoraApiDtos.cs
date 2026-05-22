@@ -551,6 +551,43 @@ namespace Nymora.Network.Backend
         public string track;       // "free" | "premium"
     }
 
+    // ====== Brique 5.8 — Quêtes ======
+
+    [Serializable]
+    public class QuestDto
+    {
+        public string id;
+        public string period;     // "daily" | "weekly" | "seasonal"
+        public string title;
+        public int target;
+        public int progress;
+        public bool completed;
+        public bool claimed;
+        public int bpXp;
+        public int nymos;
+    }
+
+    [Serializable]
+    public class QuestsMeResponse
+    {
+        public QuestDto[] quests;
+    }
+
+    [Serializable]
+    public class QuestClaimBody
+    {
+        public string questId;
+    }
+
+    [Serializable]
+    public class QuestClaimResponse
+    {
+        public string status;     // "claimed" | "error"
+        public int bpXp;
+        public int nymos;
+        public string error;
+    }
+
     [Serializable]
     public class BpClaimResponse
     {

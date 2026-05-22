@@ -309,6 +309,15 @@ namespace Nymora.Network.Backend
             => PostJsonAsync<BpClaimResponse>("/battlepass/claim",
                 new BpClaimBody { tier = tier, track = track }, requireAuth: true, ct);
 
+        // ====== Brique 5.8 — Quêtes ======
+
+        public UniTask<ApiResult<QuestsMeResponse>> GetQuestsAsync(CancellationToken ct = default)
+            => GetJsonAsync<QuestsMeResponse>("/quests/me", requireAuth: true, ct);
+
+        public UniTask<ApiResult<QuestClaimResponse>> ClaimQuestAsync(string questId, CancellationToken ct = default)
+            => PostJsonAsync<QuestClaimResponse>("/quests/claim",
+                new QuestClaimBody { questId = questId }, requireAuth: true, ct);
+
         private async UniTask<ApiResult<TResponse>> PostJsonAsync<TResponse>(
             string path, object body, bool requireAuth, CancellationToken ct, bool sendVersionHeader = true)
         {
