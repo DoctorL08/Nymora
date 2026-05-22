@@ -7,8 +7,10 @@ using UnityEngine;
 namespace Nymora.Editor.Setup
 {
     /// <summary>
-    /// Brique 5.3.g.bis — Auto-bind les 5 NymoraClassDefinition.asset sur le prefab HubAvatar
-    /// (champ _classDefinitions). Evite a Lorenzo de drag manuellement chaque ref.
+    /// Brique 5.3.g.bis + 5.5.f — Auto-bind sur le prefab HubAvatar : les 5 NymoraClassDefinition
+    /// (_classDefinitions), les CosmeticSkinDefinition (_skinDefinitions) et NymoraBackendSettings
+    /// (_backendSettings). Evite a Lorenzo de drag manuellement, ET re-cable tout apres une regen
+    /// Fusion (cf feedback-networked-field-regen-protocol : ajout de NetSkinId 5.5.f).
     ///
     /// Menu : Nymora > Setup > Patch HubAvatar Prefab.
     /// </summary>
@@ -16,6 +18,7 @@ namespace Nymora.Editor.Setup
     {
         private const string PrefabPath = "Assets/_Nymora/Prefabs/Hub/HubAvatar.prefab";
         private const string ClassesFolder = "Assets/_Nymora/ScriptableObjects/Classes";
+        private const string BackendSettingsPath = "Assets/_Nymora/Settings/NymoraBackendSettings.asset";
 
         [MenuItem("Nymora/Setup/Patch HubAvatar Prefab (Class Definitions)", priority = 39)]
         private static void Patch()
@@ -59,11 +62,37 @@ namespace Nymora.Editor.Setup
                 {
                     arr.GetArrayElementAtIndex(i).objectReferenceValue = defs[i];
                 }
+
+                // 5.5.f — Skins cosmetiques (tous les CosmeticSkinDefinition du projet).
+                int skinCount = 0;
+                var skinsProp = so.FindProperty("_skinDefinitions");
+                if (skinsProp != null)
+                {
+                    var skinGuids = AssetDatabase.FindAssets("t:CosmeticSkinDefinition");
+                    skinsProp.arraySize = skinGuids.Length;
+                    for (int i = 0; i < skinGuids.Length; i++)
+                    {
+                        var skin = AssetDatabase.LoadAssetAtPath<CosmeticSkinDefinition>(
+                            AssetDatabase.GUIDToAssetPath(skinGuids[i]));
+                        skinsProp.GetArrayElementAtIndex(i).objectReferenceValue = skin;
+                    }
+                    skinCount = skinGuids.Length;
+                }
+
+                // 5.5.f — Backend settings (pour fetch l'inventaire / skin equipe).
+                var settingsProp = so.FindProperty("_backendSettings");
+                if (settingsProp != null && settingsProp.objectReferenceValue == null)
+                {
+                    var settings = AssetDatabase.LoadMainAssetAtPath(BackendSettingsPath);
+                    if (settings != null) settingsProp.objectReferenceValue = settings;
+                }
+
                 so.ApplyModifiedPropertiesWithoutUndo();
 
                 PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
-                Debug.Log($"[Nymora.Setup] HubAvatar prefab patche : 5 ClassDefinition.asset bindes.");
-                EditorUtility.DisplayDialog("Patch HubAvatar", "5 ClassDefinition.asset bindes sur le prefab HubAvatar.", "OK");
+                Debug.Log($"[Nymora.Setup] HubAvatar prefab patche : {defs.Count} ClassDefinition + {skinCount} skin(s) + backend settings.");
+                EditorUtility.DisplayDialog("Patch HubAvatar",
+                    $"Câblé sur HubAvatar :\n- {defs.Count} ClassDefinition\n- {skinCount} CosmeticSkinDefinition\n- backend settings", "OK");
             }
             finally
             {

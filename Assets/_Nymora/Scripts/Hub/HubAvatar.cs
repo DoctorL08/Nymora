@@ -86,6 +86,13 @@ namespace Nymora.Hub
         // le bon sprite). _16 suffit pour "Soulrender"/"Nightseer"/"Colossar"/"Necram"/"Ghostra".
         [Networked, OnChangedRender(nameof(OnClassIdChanged))] public NetworkString<_16> NetClassId { get; set; }
 
+        // 5.5.f — Skin cosmetique equipe (cosmeticId backend), sync entre clients pour que les
+        // remotes voient le skin sur l'avatar. "" = aucun skin (frames de classe de base).
+        // _64 car les ids sont longs (ex "skin_soulrender_ashen_sovereign" = 31 chars).
+        // AJOUT DE CE [Networked] FIELD => regen prefab + scene + rebuild standalone obligatoire
+        // (cf feedback-networked-field-regen-protocol, sinon InvalidOperationException Invalid Length).
+        [Networked, OnChangedRender(nameof(OnSkinIdChanged))] public NetworkString<_64> NetSkinId { get; set; }
+
         // 5.3.g.bis hotfix multi (17 mai nuit) — Facing sync direct State Auth -> remotes.
         // Sans ce field, le remote calculait son facing depuis le delta NetGridX/Y, mais
         // NetGridX/Y n'est pousse qu'au END-of-step (cf HubMovementController.Update ligne 56),
@@ -211,9 +218,11 @@ namespace Nymora.Hub
             _lastMoveTime = -1000f;
             _isWalking = false;
 
-            // 5.3.g.bis — Apply class visual (local + remote) maintenant que NetClassId est sync
+            // 5.3.g.bis — Apply class visual (local + remote) maintenant que NetClassId est sync.
+            // 5.5.f — remote : applique le skin deja sync via NetSkinId. Local : NetSkinId vide
+            // au spawn, RefreshEquippedSkin fetch l'inventaire et push NetSkinId juste apres.
+            _currentSkinDef = FindSkinDef(NetSkinId.ToString());
             ApplyClassVisual();
-            // 5.5.e — resout le skin equipe (avatar local seulement, fetch inventaire).
             RefreshEquippedSkin();
         }
 
@@ -443,6 +452,18 @@ namespace Nymora.Hub
         }
 
         /// <summary>
+        /// 5.5.f — OnChanged callback NetSkinId. Cote remote : resout le skin depuis l'id reseau
+        /// et re-applique le visuel. Skip si State Authority (deja applique localement dans
+        /// RefreshEquippedSkinAsync). FindSkinDef("") -> null -> retour aux frames de classe.
+        /// </summary>
+        private void OnSkinIdChanged()
+        {
+            if (Object != null && Object.HasStateAuthority) return;
+            _currentSkinDef = FindSkinDef(NetSkinId.ToString());
+            ApplyClassVisual();
+        }
+
+        /// <summary>
         /// 5.3.g.bis — API publique pour changer la classe locale (appele depuis le
         /// HubClassSelectorPanel.ConfirmSelection). Save PlayerPrefs + push NetClassId
         /// (qui re-sync les remotes via OnChangedRender).
@@ -460,10 +481,10 @@ namespace Nymora.Hub
         }
 
         /// <summary>
-        /// 5.5.e — Resout le skin equipe pour la classe active et le branche sur l'avatar
-        /// LOCAL. Appele : au Spawn local, au changement de classe, et apres equiper/desequiper
-        /// (HubProfilePanel). Les autres joueurs voient encore la classe de base — la sync
-        /// remote necessiterait un [Networked] field + regen prefab Fusion (deferre).
+        /// 5.5.e/f — Resout le skin equipe pour la classe active et le pousse sur NetSkinId
+        /// (sync reseau -> les remotes l'appliquent via OnSkinIdChanged). Appele : au Spawn
+        /// local, au changement de classe, et apres equiper/desequiper (HubProfilePanel).
+        /// State Authority uniquement (les remotes recoivent via NetSkinId).
         /// </summary>
         public void RefreshEquippedSkin()
         {
@@ -483,18 +504,20 @@ namespace Nymora.Hub
             if (!res.IsSuccess) return;
 
             string cls = NetClassId.ToString();
-            CosmeticSkinDefinition match = null;
+            string equippedId = "";
             if (res.Data.items != null)
             {
                 foreach (var it in res.Data.items)
                 {
                     if (it == null || !it.equipped || it.type != "skin") continue;
                     if (it.classLock != cls) continue;
-                    match = FindSkinDef(it.id);
-                    if (match != null) break;
+                    equippedId = it.id;
+                    break;
                 }
             }
-            _currentSkinDef = match;
+            // 5.5.f — push reseau (les remotes recoivent OnSkinIdChanged) + applique en local.
+            if (Object != null && Object.HasStateAuthority) NetSkinId = equippedId;
+            _currentSkinDef = FindSkinDef(equippedId);
             ApplyClassVisual();
         }
 
