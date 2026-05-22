@@ -62,6 +62,10 @@ namespace Nymora.Combat.View.HUD
         public SpellId? ArmedSpell => _armedSpell;
         public event Action ArmedSpellChanged;
 
+        // B5 (22 mai) — dernier joueur actif pour lequel on a joue le bandeau de tour anime.
+        // -1 = aucun -> declenche le bandeau au 1er tour.
+        private int _lastBannerActivePlayer = -1;
+
         // POLISH-6a (19 mai) — Singleton-like accessor pour que CombatantTooltipView lise
         // l'armed spell sans drag-drop Inspector. Set au Awake, clear au OnDestroy.
         //
@@ -305,6 +309,22 @@ namespace Nymora.Combat.View.HUD
             if (_timeline != null)
             {
                 _timeline.RefreshWithCombatants(activePlayer, p0, hasP0, p1, hasP1, state.TurnNumber);
+            }
+
+            // B5 (22 mai) — Bandeau de tour TRANSITOIRE anime au changement de tour. Trigger
+            // une fois par tour quand le joueur actif change, uniquement en phase de jeu active
+            // (pas pendant l'intro pile ou face PreMatch ni a la fin du match).
+            // IMPORTANT : on compare au VRAI slot local (LocalPlayerResolver), PAS a
+            // controlPlayer — en mode IA debug, controlPlayer == activePlayer toujours (on
+            // controle les 2), ce qui affichait "C'EST TON TOUR" en permanence.
+            if (state.CurrentPhase == CombatPhase.TurnActive && activePlayer != _lastBannerActivePlayer)
+            {
+                _lastBannerActivePlayer = activePlayer;
+                var indicator = TurnIndicatorView.Instance;
+                if (indicator != null)
+                {
+                    indicator.PlayTurnBanner(activePlayer == LocalPlayerResolver.Resolve());
+                }
             }
 
             // Slots : grisage selon PA / HG dispo du combattant qu'on controle, etat armed.
