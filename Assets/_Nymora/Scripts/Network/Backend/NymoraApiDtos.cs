@@ -463,4 +463,22 @@ namespace Nymora.Network.Backend
         public WalletSnapshotDto wallet;
         public int balanceAfter;
     }
+
+    // ====== Brique 6.3 — Resultat ranked ======
+
+    [Serializable]
+    public class RankedReportBody
+    {
+        public string matchId;
+        public string opponentUserId;
+        public string classId;        // classe jouee (pour l'XP par classe)
+        public string result;         // "win" | "loss" | "draw"
+    }
+
+    [Serializable]
+    public class RankedReportResponse
+    {
+        public string status;         // "pending" | "settled" | "already_settled" | "conflict"
+        public int yourNewMmr;        // valable si status == "settled"
+    }
 }

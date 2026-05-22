@@ -46,6 +46,10 @@ namespace Nymora.Core.Data
         // POLISH-7 (20 mai) — pseudo opponent pour retour hub (system line "VICTOIRE vs X").
         public static string LastOpponentDisplayName { get; private set; }
         public static string LastMatchId { get; private set; }
+        // 6.3 — sub (UUID) de l'adversaire + flag ranked, conserves jusqu'au retour hub
+        // pour reporter le resultat classe au backend (POST /ranked/report-result).
+        public static string LastOpponentSub { get; private set; }
+        public static bool LastIsRanked { get; private set; }
         public static bool HasPendingResult => LastMatchResult != MatchResult.None;
 
         public static void SetPendingMatch(string matchId, string opponentSub, string opponentEmail,
@@ -75,6 +79,9 @@ namespace Nymora.Core.Data
             LastOpponentDisplayName = !string.IsNullOrEmpty(opponentDisplayName)
                 ? opponentDisplayName
                 : OpponentDisplayName;
+            // 6.3 — capture le sub adverse + le flag ranked AVANT de clear le pending.
+            LastOpponentSub = OpponentSub;
+            LastIsRanked = IsRanked;
             // On clear la pending match — le match a été consommé.
             PendingMatchId = null;
             OpponentSub = null;
@@ -83,16 +90,21 @@ namespace Nymora.Core.Data
         }
 
         public static MatchResult ConsumeLastResult(out string matchId, out string opponentEmail,
-                                                    out string opponentDisplayName)
+                                                    out string opponentDisplayName,
+                                                    out string opponentSub, out bool isRanked)
         {
             var r = LastMatchResult;
             matchId = LastMatchId;
             opponentEmail = LastOpponentEmail;
             opponentDisplayName = LastOpponentDisplayName;
+            opponentSub = LastOpponentSub;
+            isRanked = LastIsRanked;
             LastMatchResult = MatchResult.None;
             LastMatchId = null;
             LastOpponentEmail = null;
             LastOpponentDisplayName = null;
+            LastOpponentSub = null;
+            LastIsRanked = false;
             return r;
         }
 
@@ -110,6 +122,8 @@ namespace Nymora.Core.Data
             LastMatchId = null;
             LastOpponentEmail = null;
             LastOpponentDisplayName = null;
+            LastOpponentSub = null;
+            LastIsRanked = false;
         }
     }
 }

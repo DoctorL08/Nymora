@@ -71,6 +71,17 @@ namespace Nymora.Hub
         public event Action<string, string, string> OnRankedMatchFound;        // matchId, opponentSub, opponentDisplayName
         public event Action<int> OnRankedQueueJoined;                          // mmr (ack entree en file)
         public event Action OnRankedQueueLeft;                                 // ack sortie de file
+        // 6.3 — MMR mis a jour apres un match ranked settle.
+        public event Action<MmrUpdateData> OnMmrUpdated;
+
+        public struct MmrUpdateData
+        {
+            public int Mmr;
+            public int Delta;
+            public int RankedGames;
+            public int RankedWins;
+            public int RankedLosses;
+        }
         public event Action<string> OnReportSent;                              // targetDisplayName (4.13)
         public event Action<string, long> OnModerationNotice;                  // kind (reported|muted), muteUntil ms (4.13)
         // 4.10 — Friend events
@@ -136,7 +147,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate }
 
         private struct IncomingEvent
         {
@@ -194,8 +205,12 @@ namespace Nymora.Hub
             public int Shards;
             public string DeltaCurrency;
             public int DeltaAmount;
-            // 6.2 — matchmaking ranked
+            // 6.2 / 6.3 — matchmaking + MMR ranked
             public int Mmr;
+            public int MmrDelta;
+            public int RankedGames;
+            public int RankedWins;
+            public int RankedLosses;
         }
 
         private void Awake()
@@ -424,6 +439,17 @@ namespace Nymora.Hub
                         break;
                     case "RANKED_QUEUE_LEFT":
                         _queue.Enqueue(new IncomingEvent { Kind = EventKind.RankedQueueLeft });
+                        break;
+                    case "MMR_UPDATED":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.MmrUpdated,
+                            Mmr = msg.payload?.mmr ?? 0,
+                            MmrDelta = msg.payload?.mmrDelta ?? 0,
+                            RankedGames = msg.payload?.rankedGames ?? 0,
+                            RankedWins = msg.payload?.rankedWins ?? 0,
+                            RankedLosses = msg.payload?.rankedLosses ?? 0,
+                        });
                         break;
                     case "REPORT_SENT":
                         _queue.Enqueue(new IncomingEvent
@@ -698,8 +724,12 @@ namespace Nymora.Hub
             public int nymos;
             public int shards;
             public WalletDeltaPayload delta;
-            // 6.2 — matchmaking ranked
+            // 6.2 / 6.3 — matchmaking + MMR ranked
             public int mmr;
+            public int mmrDelta;
+            public int rankedGames;
+            public int rankedWins;
+            public int rankedLosses;
         }
 
         [Serializable]
@@ -784,6 +814,16 @@ namespace Nymora.Hub
                         break;
                     case EventKind.RankedQueueLeft:
                         OnRankedQueueLeft?.Invoke();
+                        break;
+                    case EventKind.MmrUpdated:
+                        OnMmrUpdated?.Invoke(new MmrUpdateData
+                        {
+                            Mmr = ev.Mmr,
+                            Delta = ev.MmrDelta,
+                            RankedGames = ev.RankedGames,
+                            RankedWins = ev.RankedWins,
+                            RankedLosses = ev.RankedLosses,
+                        });
                         break;
                     case EventKind.ReportSent:
                         // POLISH-7 : param = toDisplayName au lieu de toEmail.

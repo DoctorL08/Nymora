@@ -282,6 +282,16 @@ namespace Nymora.Network.Backend
                 new WalletSpendBody { currency = currency, amount = amount, reason = reason, idempotencyKey = idempotencyKey },
                 requireAuth: true, ct);
 
+        // ====== Brique 6.3 — Resultat ranked ======
+
+        /// <summary>POST /ranked/report-result — reporte le resultat d'un match classe.
+        /// Le backend settle quand les 2 joueurs ont reporte (double-accord) : MMR + XP + Nymos.</summary>
+        public UniTask<ApiResult<RankedReportResponse>> ReportRankedResultAsync(
+            string matchId, string opponentUserId, string classId, string result, CancellationToken ct = default)
+            => PostJsonAsync<RankedReportResponse>("/ranked/report-result",
+                new RankedReportBody { matchId = matchId, opponentUserId = opponentUserId, classId = classId, result = result },
+                requireAuth: true, ct);
+
         private async UniTask<ApiResult<TResponse>> PostJsonAsync<TResponse>(
             string path, object body, bool requireAuth, CancellationToken ct, bool sendVersionHeader = true)
         {

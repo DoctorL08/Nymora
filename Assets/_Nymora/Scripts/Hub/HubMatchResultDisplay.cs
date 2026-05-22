@@ -7,40 +7,72 @@ using UnityEngine;
 namespace Nymora.Hub
 {
     /// <summary>
-    /// Brique 4.9 (stub) — Au Start de la scène hub, consume MatchBridge.LastMatchResult
-    /// si présent et l'affiche comme system line dans le chat.
+    /// Brique 4.9 — Au Start de la scène hub, consume MatchBridge.LastMatchResult et l'affiche
+    /// en system line dans le chat.
     ///
-    /// Brique 5.1.e — TEMP MVP : award XP de classe selon le résultat (V=50, D=15, Draw=25).
-    /// Brique 5.4.c — TEMP MVP : award Nymos selon le résultat (V=200, D=50, Draw=100).
-    /// À RETIRER tous les 2 quand Phase 6 ranked livré (cf project-xp-source-ranked-only).
-    /// Idempotence Nymos via `match_<id>_<result>` : si le scene est relancé, pas de double-credit.
+    /// Brique 6.3.b/c — RANKED-ONLY :
+    ///   - Si le match était CLASSÉ (MatchBridge.LastIsRanked) → POST /ranked/report-result.
+    ///     Le backend settle (double-accord) : MMR + XP + Nymos + push WS. Le client ne fait
+    ///     PLUS d'award lui-même.
+    ///   - L'ancien wiring MVP temporaire (award XP/Nymos client-side pour casual + IA) est RETIRÉ
+    ///     (décision verrouillée : XP/Nymos = ranked-only en prod, cf project-xp-source-ranked-only).
+    ///   - Affiche le nouveau MMR (event WS MMR_UPDATED) en system line.
     /// </summary>
     public sealed class HubMatchResultDisplay : MonoBehaviour
     {
         [SerializeField] private HubChatUI _chatUI;
 
-        // 5.1.e TEMP MVP — à retirer quand ranked Phase 6 prendra le relais
-        [Header("XP MVP (TEMP — retirer quand ranked Phase 6)")]
+        [Header("Backend (report ranked)")]
         [SerializeField] private NymoraBackendSettings _backendSettings;
-        // Bug 20 mai (POLISH-7 polish) : _devClassId etait hardcode "Soulrender" en SerializeField,
-        // donc l'XP fin de match allait TOUJOURS sur Soulrender peu importe la classe jouee.
-        // Garde comme fallback ultime si DeckBridge.PendingClassId + SelectedClassPreferences sont vides.
+        // Fallback de classe si DeckBridge.PendingClassId + SelectedClassPreferences sont vides.
         [SerializeField] private string _fallbackClassId = "Soulrender";
-        [SerializeField] private int _xpVictory = 50;
-        [SerializeField] private int _xpDefeat = 15;
-        [SerializeField] private int _xpDraw = 25;
-
-        // 5.4.c TEMP MVP — award Nymos fin de match casual (à retirer Phase 6 ranked)
-        [Header("Nymos MVP (TEMP — retirer quand ranked Phase 6)")]
-        [SerializeField] private int _nymosVictory = 200;
-        [SerializeField] private int _nymosDefeat = 50;
-        [SerializeField] private int _nymosDraw = 100;
 
         private NymoraApiClient _api;
 
         private void Awake()
         {
             if (_backendSettings != null) _api = new NymoraApiClient(_backendSettings);
+            var chat = HubChatClient.Instance;
+            if (chat != null)
+            {
+                chat.OnMmrUpdated += HandleMmrUpdated;
+                // 6.3.b — feedback XP/Nymos ranked piloté par les events WS du backend
+                // (le backend award et push ; on affiche). Filtré sur source/reason "ranked".
+                chat.OnXpAwarded += HandleXpAwarded;
+                chat.OnWalletUpdate += HandleWalletUpdate;
+            }
+        }
+
+        private void OnDestroy()
+        {
+            var chat = HubChatClient.Instance;
+            if (chat != null)
+            {
+                chat.OnMmrUpdated -= HandleMmrUpdated;
+                chat.OnXpAwarded -= HandleXpAwarded;
+                chat.OnWalletUpdate -= HandleWalletUpdate;
+            }
+        }
+
+        private void HandleXpAwarded(HubChatClient.XpAwardedData d)
+        {
+            if (string.IsNullOrEmpty(d.Source) || !d.Source.StartsWith("ranked")) return;
+            string line = d.NewLevel > d.OldLevel
+                ? $"<color=#ffd700>+{d.Gained} XP {d.ClassId} — NIVEAU {d.NewLevel} !</color>"
+                : $"<color=#aaffaa>+{d.Gained} XP {d.ClassId}</color>";
+            Debug.Log($"[HubMatchResultDisplay] {line}");
+            if (_chatUI != null) _chatUI.AppendSystemLineExternal(line);
+        }
+
+        private void HandleWalletUpdate(HubChatClient.WalletUpdateData d)
+        {
+            if (string.IsNullOrEmpty(d.Reason) || !d.Reason.StartsWith("ranked")) return;
+            if (d.DeltaAmount == 0) return;
+            string sign = d.DeltaAmount >= 0 ? "+" : "";
+            // ◆ ASCII (cf feedback-tmp-no-emoji-liberationsans)
+            var line = $"<color=#f5dc66>{sign}{d.DeltaAmount} ◆ {d.DeltaCurrency}</color>";
+            Debug.Log($"[HubMatchResultDisplay] {line}");
+            if (_chatUI != null) _chatUI.AppendSystemLineExternal(line);
         }
 
         private void Start()
@@ -53,129 +85,75 @@ namespace Nymora.Hub
         {
             yield return new WaitForEndOfFrame();
 
-            // POLISH-7 (20 mai) : ConsumeLastResult retourne maintenant opponentDisplayName en plus.
-            var result = MatchBridge.ConsumeLastResult(out var matchId, out var opponentEmail, out var opponentDisplayName);
+            var result = MatchBridge.ConsumeLastResult(out var matchId, out var opponentEmail,
+                out var opponentDisplayName, out var opponentSub, out var isRanked);
+
             string color;
             string label;
-            int xpGained;
-            int nymosGained;
             switch (result)
             {
-                case MatchResult.Victory:
-                    color = "#88ff88";
-                    label = "VICTOIRE";
-                    xpGained = _xpVictory;
-                    nymosGained = _nymosVictory;
-                    break;
-                case MatchResult.Defeat:
-                    color = "#ff8888";
-                    label = "DÉFAITE";
-                    xpGained = _xpDefeat;
-                    nymosGained = _nymosDefeat;
-                    break;
-                case MatchResult.Draw:
-                    color = "#cccccc";
-                    label = "ÉGALITÉ";
-                    xpGained = _xpDraw;
-                    nymosGained = _nymosDraw;
-                    break;
-                default:
-                    yield break;
+                case MatchResult.Victory: color = "#88ff88"; label = "VICTOIRE"; break;
+                case MatchResult.Defeat:  color = "#ff8888"; label = "DÉFAITE"; break;
+                case MatchResult.Draw:    color = "#cccccc"; label = "ÉGALITÉ"; break;
+                default: yield break;
             }
 
-            // POLISH-7 : affichage pseudo officiel ; fallback email si vieux match (champ vide).
-            // Le "(id=xxxx)" cote chat a ete retire (vestige debug 4.8.b/c) ; le matchId reste
-            // visible dans la console via le Debug.Log ci-dessous pour le diagnostic.
             string opponentLabel = !string.IsNullOrEmpty(opponentDisplayName) ? opponentDisplayName : opponentEmail;
-            var line = $"<color={color}>[MATCH] {label} vs {opponentLabel}</color>";
-            Debug.Log($"[HubMatchResultDisplay] {line} (matchId={SafeShortId(matchId)})");
+            string rankedTag = isRanked ? "[CLASSÉ] " : "[MATCH] ";
+            var line = $"<color={color}>{rankedTag}{label} vs {opponentLabel}</color>";
+            Debug.Log($"[HubMatchResultDisplay] {line} (matchId={SafeShortId(matchId)} ranked={isRanked})");
+            if (_chatUI != null) _chatUI.AppendSystemLineExternal(line);
 
-            if (_chatUI != null)
+            // 6.3.b — report ranked au backend (qui award MMR + XP + Nymos via double-accord).
+            // Casual / IA : aucun award (6.3.c — XP/Nymos = ranked-only).
+            if (isRanked)
             {
-                _chatUI.AppendSystemLineExternal(line);
-            }
-
-            // 5.1.e TEMP MVP — award XP via REST (fire-and-forget UniTask)
-            if (_api != null && xpGained > 0)
-            {
-                AwardXpAsync(xpGained, $"casual_{result}").Forget();
-            }
-
-            // 5.4.c TEMP MVP — award Nymos via REST avec idempotencyKey pour bloquer double-credit
-            if (_api != null && nymosGained > 0)
-            {
-                AwardNymosAsync(nymosGained, matchId, result).Forget();
-            }
-        }
-
-        private async UniTask AwardXpAsync(int amount, string source)
-        {
-            string token = HubChatClient.Instance?.DevToken;
-            if (string.IsNullOrEmpty(token)) return;
-            _api.SetBearerToken(token);
-
-            // POLISH-7 polish (20 mai) — resoud la classe REELLEMENT jouee pendant le combat :
-            //   1. DeckBridge.PendingClassId : set par HubArenaPanel/HubMatchTransition au depart
-            //      du combat, persistant apres (Clear jamais appele cf DeckBridge.cs). Source la
-            //      plus fiable car capture la classe lockee au moment du combat.
-            //   2. SelectedClassPreferences.Get() : classe selectionnee via Class Selector (peut
-            //      avoir change apres le combat mais avant le retour hub — improbable mais safe).
-            //   3. _fallbackClassId Inspector ("Soulrender" defaut) : ultime fallback dev.
-            string classId = !string.IsNullOrEmpty(DeckBridge.PendingClassId)
-                ? DeckBridge.PendingClassId
-                : (!string.IsNullOrEmpty(SelectedClassPreferences.Get())
-                    ? SelectedClassPreferences.Get()
-                    : _fallbackClassId);
-
-            var res = await _api.AwardXpAsync(classId, amount, source);
-            if (res.IsSuccess)
-            {
-                Debug.Log($"[HubMatchResultDisplay] XP awarded +{amount} {classId} → L{res.Data.level} ({res.Data.xp}/{res.Data.xpToNext})");
-                if (_chatUI != null)
+                if (_api == null || string.IsNullOrEmpty(opponentSub))
                 {
-                    string xpLine = res.Data.leveledUp
-                        ? $"<color=#ffd700>+{amount} XP {classId} — NIVEAU {res.Data.level} !</color>"
-                        : $"<color=#aaffaa>+{amount} XP {classId}</color>";
-                    _chatUI.AppendSystemLineExternal(xpLine);
+                    Debug.LogWarning($"[HubMatchResultDisplay] Report ranked impossible (api={_api != null}, opponentSub='{opponentSub}').");
+                }
+                else
+                {
+                    string resultStr = result == MatchResult.Victory ? "win"
+                        : result == MatchResult.Defeat ? "loss" : "draw";
+                    ReportRankedAsync(matchId, opponentSub, ResolveClassId(), resultStr).Forget();
                 }
             }
-            else
-            {
-                Debug.LogWarning($"[HubMatchResultDisplay] AwardXp failed: {res.StatusCode} {res.ErrorMessage}");
-            }
         }
 
-        private async UniTask AwardNymosAsync(int amount, string matchId, MatchResult result)
+        private string ResolveClassId()
+        {
+            if (!string.IsNullOrEmpty(DeckBridge.PendingClassId)) return DeckBridge.PendingClassId;
+            string sel = SelectedClassPreferences.Get();
+            return !string.IsNullOrEmpty(sel) ? sel : _fallbackClassId;
+        }
+
+        private async UniTask ReportRankedAsync(string matchId, string opponentSub, string classId, string result)
         {
             string token = HubChatClient.Instance?.DevToken;
             if (string.IsNullOrEmpty(token)) return;
             _api.SetBearerToken(token);
 
-            // Idempotency : match_<id>_<result>. Si le scene relance ou si un retry a lieu,
-            // le backend retourne alreadyApplied=true et le solde reste inchange.
-            // Si matchId vide (cas combat IA sans matchId Photon), on degrade vers timestamp.
-            string idem = !string.IsNullOrEmpty(matchId)
-                ? $"match_{matchId}_{result}"
-                : $"match_local_{System.DateTime.UtcNow.Ticks}_{result}";
-            string reason = $"casual_{result}";
-
-            var res = await _api.AwardCurrencyAsync("Nymos", amount, reason, idem);
+            var res = await _api.ReportRankedResultAsync(matchId, opponentSub, classId, result);
             if (!res.IsSuccess)
             {
-                Debug.LogWarning($"[HubMatchResultDisplay] AwardNymos failed: {res.StatusCode} {res.ErrorMessage}");
+                Debug.LogWarning($"[HubMatchResultDisplay] ReportRankedResult failed: {res.StatusCode} {res.ErrorMessage}");
                 return;
             }
-            if (res.Data.alreadyApplied)
-            {
-                Debug.Log($"[HubMatchResultDisplay] AwardNymos idempotent skip (already credited for {idem})");
-                return;
-            }
-            Debug.Log($"[HubMatchResultDisplay] Nymos awarded +{amount} (solde {res.Data.wallet.nymos})");
-            if (_chatUI != null)
-            {
-                // ◆ Nymos (cf feedback-tmp-no-emoji-liberationsans)
-                _chatUI.AppendSystemLineExternal($"<color=#f5dc66>+{amount} ◆ Nymos</color>");
-            }
+            Debug.Log($"[HubMatchResultDisplay] Ranked report → status={res.Data.status} (matchId={SafeShortId(matchId)})");
+            // Le MMR final + XP + Nymos arrivent via WS (MMR_UPDATED / XP_AWARDED / WALLET_UPDATE)
+            // une fois que l'adversaire a aussi reporté (double-accord).
+        }
+
+        // 6.3.b — affiche le nouveau MMR + son delta quand le match ranked est settle.
+        private void HandleMmrUpdated(HubChatClient.MmrUpdateData d)
+        {
+            string sign = d.Delta >= 0 ? "+" : "";
+            string deltaColor = d.Delta >= 0 ? "#88ff88" : "#ff8888";
+            var line = $"<color=#cdb4ff>[CLASSÉ] MMR {d.Mmr}</color> <color={deltaColor}>({sign}{d.Delta})</color> " +
+                       $"<color=#999999>— {d.RankedWins}V / {d.RankedLosses}D</color>";
+            Debug.Log($"[HubMatchResultDisplay] {line}");
+            if (_chatUI != null) _chatUI.AppendSystemLineExternal(line);
         }
 
         private static string SafeShortId(string id)
