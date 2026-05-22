@@ -11,8 +11,14 @@ using UnityEngine.UI;
 namespace Nymora.UI.Login
 {
     /// <summary>
-    /// Pilote la scene 00_Login : 3 champs (email, password, displayName), 3 boutons (Login, Register, Logout)
-    /// et un texte de statut. Au demarrage, si un JWT est persiste, fait un /me pour valider la session.
+    /// Pilote la scene 00_Login devenue LAUNCHER (Brique L2).
+    ///
+    /// Au demarrage, le login est MASQUE. On interroge /version puis :
+    ///   - A jour (compatible ET aucune MaJ dispo) -> "Votre version de Nymora est a jour" + on revele le login.
+    ///   - MaJ disponible OU version trop vieille  -> panneau "Mise a jour requise pour jouer", login reste masque.
+    ///     (Le bouton de telechargement sera cable en Brique L3 ; ici il est present mais inerte.)
+    ///   - Backend injoignable -> message d'erreur, login revele quand meme (mode degrade, evite de bricker
+    ///     le seul testeur si le serveur a un hoquet).
     ///
     /// Cable via l'Editor Script "Nymora &gt; Setup &gt; Create Login Scene" qui assigne toutes les references.
     /// </summary>
@@ -21,7 +27,9 @@ namespace Nymora.UI.Login
         [Header("Backend")]
         [SerializeField] private NymoraBackendSettings _backendSettings;
 
-        [Header("Inputs")]
+        [Header("Login (groupe masque tant que pas a jour)")]
+        [Tooltip("Conteneur de tout l'UI de login (champs + boutons). Active uniquement quand le client est a jour.")]
+        [SerializeField] private GameObject _loginPanel;
         [SerializeField] private TMP_InputField _emailInput;
         [SerializeField] private TMP_InputField _passwordInput;
         [SerializeField] private TMP_InputField _displayNameInput;
@@ -42,16 +50,28 @@ namespace Nymora.UI.Login
 
         [Header("Status")]
         [SerializeField] private TMP_Text _statusText;
+        [Tooltip("Verdict de version PERSISTANT, affiche en haut (vert = a jour). Distinct du statut du bas.")]
+        [SerializeField] private TMP_Text _versionVerdictText;
 
         [Header("Update Required panel")]
         [SerializeField] private GameObject _updateRequiredPanel;
         [SerializeField] private TMP_Text _updateRequiredText;
+        [Tooltip("Bouton 'Telecharger la mise a jour'. Comportement cable en Brique L3.")]
+        [SerializeField] private Button _downloadButton;
+        [Tooltip("Image en mode Filled (Horizontal) servant de barre de progression. Remplie en L3.")]
+        [SerializeField] private Image _progressBarFill;
+        [Tooltip("Texte sous la barre (ex: '42 %'). Mis a jour en L3.")]
+        [SerializeField] private TMP_Text _progressText;
 
         private NymoraApiClient _api;
         private AuthService _auth;
         private NymoraVersionClient _versionClient;
         private CancellationTokenSource _cts;
         private bool _versionLocked;
+
+        // Memorise pour la Brique L3 (telechargement) : URL + hash du zip de la derniere version.
+        private string _pendingDownloadUrl;
+        private string _pendingSha256;
 
         private void Awake()
         {
@@ -67,8 +87,12 @@ namespace Nymora.UI.Login
             _versionClient = new NymoraVersionClient(_api);
             _cts = new CancellationTokenSource();
 
+            // Etat initial du launcher : tout masque, on attend le check de version.
             if (_updateRequiredPanel != null) _updateRequiredPanel.SetActive(false);
+            if (_loginPanel != null) _loginPanel.SetActive(false);
             if (_enterHubButton != null) _enterHubButton.gameObject.SetActive(false);
+            if (_versionVerdictText != null) _versionVerdictText.text = string.Empty;
+            ResetProgressBar();
         }
 
         private void OnEnable()
@@ -78,6 +102,7 @@ namespace Nymora.UI.Login
             if (_logoutButton != null) _logoutButton.onClick.AddListener(OnLogoutClicked);
             if (_connectPhotonButton != null) _connectPhotonButton.onClick.AddListener(OnConnectPhotonClicked);
             if (_enterHubButton != null) _enterHubButton.onClick.AddListener(OnEnterHubClicked);
+            if (_downloadButton != null) _downloadButton.onClick.AddListener(OnDownloadClicked);
         }
 
         private void OnDisable()
@@ -87,32 +112,47 @@ namespace Nymora.UI.Login
             if (_logoutButton != null) _logoutButton.onClick.RemoveListener(OnLogoutClicked);
             if (_connectPhotonButton != null) _connectPhotonButton.onClick.RemoveListener(OnConnectPhotonClicked);
             if (_enterHubButton != null) _enterHubButton.onClick.RemoveListener(OnEnterHubClicked);
+            if (_downloadButton != null) _downloadButton.onClick.RemoveListener(OnDownloadClicked);
         }
 
         private async void Start()
         {
-            // Etape 1 : check version client vs serveur AVANT toute autre requete.
-            SetStatus("Verification de la version client...");
+            // Etape 1 : check version client vs serveur AVANT de reveler quoi que ce soit.
+            SetStatus($"Verification de la version (client {GameVersion.Current})...");
             var versionCheck = await _versionClient.CheckAsync(_cts.Token);
 
             if (!versionCheck.IsReachable)
             {
-                SetStatus($"Backend injoignable : {versionCheck.ErrorMessage}");
+                // Mode degrade : impossible de confirmer la version. On previent mais on
+                // debloque le login pour ne pas bloquer le seul testeur si le serveur hoquette.
+                SetVersionVerdict("Serveur de version injoignable (mode hors-ligne).", new Color(0.95f, 0.7f, 0.3f));
+                SetStatus($"{versionCheck.ErrorMessage}\n(login debloque malgre tout)");
+                RevealLogin();
+                await TryResumeSessionAsync();
                 return;
             }
 
-            if (!versionCheck.IsCompatible)
+            // Toute MaJ disponible (ou version trop vieille) verrouille le login : Kyami
+            // doit etre a jour avant de jouer (anti-mismatch de version en PvP).
+            bool updateRequired = !versionCheck.IsCompatible || versionCheck.IsUpdateAvailable;
+            if (updateRequired)
             {
-                LockUiForUpdate(versionCheck.MinClientVersion, versionCheck.CurrentClientVersion);
+                ShowUpdateRequired(versionCheck.MinClientVersion, versionCheck.CurrentClientVersion,
+                    versionCheck.DownloadUrl, versionCheck.Sha256);
                 return;
             }
 
-            if (versionCheck.IsUpdateAvailable)
-            {
-                NymoraLog.Info("Login", $"Mise a jour disponible : client={GameVersion.Current}, serveur={versionCheck.CurrentClientVersion}");
-            }
+            // Etape 2 : a jour -> verdict vert PERSISTANT, on revele le login, on reprend la session.
+            SetVersionVerdict("Votre version de Nymora est a jour.", new Color(0.4f, 0.85f, 0.5f));
+            RevealLogin();
+            await TryResumeSessionAsync();
+        }
 
-            // Etape 2 : flow normal (verification de session si token persiste).
+        /// <summary>Si un JWT est persiste, valide la session cote serveur et propose d'entrer dans le hub.</summary>
+        private async UniTask TryResumeSessionAsync()
+        {
+            if (_versionLocked) return;
+
             if (_auth.IsLoggedIn)
             {
                 SetStatus("Token detecte, verification cote serveur...");
@@ -124,7 +164,7 @@ namespace Nymora.UI.Login
                 }
                 else if (me.StatusCode == 426)
                 {
-                    LockUiForUpdate(versionCheck.MinClientVersion, versionCheck.CurrentClientVersion);
+                    ShowUpdateRequired(null, null, _pendingDownloadUrl, _pendingSha256);
                 }
                 else
                 {
@@ -134,7 +174,7 @@ namespace Nymora.UI.Login
             }
             else
             {
-                SetStatus("Aucune session active. Inscris-toi ou connecte-toi.");
+                SetStatus("Version a jour. Inscris-toi ou connecte-toi.");
             }
         }
 
@@ -161,7 +201,7 @@ namespace Nymora.UI.Login
             }
             else if (res.StatusCode == 426)
             {
-                LockUiForUpdate(null, null);
+                ShowUpdateRequired(null, null, _pendingDownloadUrl, _pendingSha256);
             }
             else
             {
@@ -183,7 +223,7 @@ namespace Nymora.UI.Login
             }
             else if (res.StatusCode == 426)
             {
-                LockUiForUpdate(null, null);
+                ShowUpdateRequired(null, null, _pendingDownloadUrl, _pendingSha256);
             }
             else
             {
@@ -212,6 +252,16 @@ namespace Nymora.UI.Login
         private void ShowEnterHub()
         {
             if (_enterHubButton != null) _enterHubButton.gameObject.SetActive(true);
+        }
+
+        /// <summary>
+        /// Comportement cable en Brique L3 (telechargement reel du zip + barre de progression).
+        /// Pour l'instant : feedback honnete que le telechargement n'est pas encore branche.
+        /// </summary>
+        private void OnDownloadClicked()
+        {
+            NymoraLog.Info("Login", $"[L2] Clic Telecharger (url='{_pendingDownloadUrl}'). Telechargement branche en Brique L3.");
+            SetStatus("Telechargement disponible a la prochaine etape (Brique L3).");
         }
 
         private async void OnConnectPhotonClicked()
@@ -248,34 +298,67 @@ namespace Nymora.UI.Login
             NymoraLog.Info("Login", s);
         }
 
+        /// <summary>Verdict de version persistant affiche en haut (ne se fait pas ecraser par le statut du bas).</summary>
+        private void SetVersionVerdict(string s, Color color)
+        {
+            if (_versionVerdictText == null) return;
+            _versionVerdictText.text = s;
+            _versionVerdictText.color = color;
+        }
+
+        /// <summary>Affiche le groupe de login (champs + boutons).</summary>
+        private void RevealLogin()
+        {
+            if (_loginPanel != null) _loginPanel.SetActive(true);
+        }
+
         /// <summary>
-        /// Affiche le panel "Mise a jour requise" et desactive les boutons.
-        /// Appele soit au demarrage (version client &lt; min serveur), soit si une requete
-        /// HTTP retourne 426 en cours de session (pas censé arriver mais defense-in-depth).
+        /// Affiche le panneau "Mise a jour requise pour jouer" et garde le login masque.
+        /// Appele soit au demarrage (MaJ dispo / version trop vieille), soit sur un 426 en cours de session.
         /// </summary>
-        private void LockUiForUpdate(string minServerVersion, string currentServerVersion)
+        private void ShowUpdateRequired(string minServerVersion, string currentServerVersion,
+            string downloadUrl, string sha256)
         {
             _versionLocked = true;
+            _pendingDownloadUrl = downloadUrl;
+            _pendingSha256 = sha256;
 
-            if (_loginButton != null) _loginButton.interactable = false;
-            if (_registerButton != null) _registerButton.interactable = false;
-            if (_logoutButton != null) _logoutButton.interactable = false;
-            if (_connectPhotonButton != null) _connectPhotonButton.interactable = false;
+            // Le panneau orange couvre l'ecran : on vide le verdict du haut pour eviter le doublon.
+            if (_versionVerdictText != null) _versionVerdictText.text = string.Empty;
+            if (_loginPanel != null) _loginPanel.SetActive(false);
 
             string msg;
-            if (!string.IsNullOrEmpty(minServerVersion))
+            if (!string.IsNullOrEmpty(currentServerVersion))
             {
-                msg = $"Mise a jour requise.\n\nVersion installee : {GameVersion.Current}\nVersion minimale : {minServerVersion}\nDerniere version : {currentServerVersion}";
+                msg = $"Version installee : {GameVersion.Current}\nDerniere version : {currentServerVersion}";
+                if (!string.IsNullOrEmpty(minServerVersion))
+                {
+                    msg += $"\nVersion minimale : {minServerVersion}";
+                }
             }
             else
             {
-                msg = $"Mise a jour requise.\n\nTa version client ({GameVersion.Current}) n'est plus supportee.";
+                msg = $"Ta version client ({GameVersion.Current}) doit etre mise a jour pour jouer.";
             }
 
             if (_updateRequiredText != null) _updateRequiredText.text = msg;
             if (_updateRequiredPanel != null) _updateRequiredPanel.SetActive(true);
 
-            SetStatus("Client trop ancien : mise a jour requise.");
+            // Le bouton n'est cliquable que si une URL de telechargement existe cote serveur.
+            bool hasDownload = !string.IsNullOrEmpty(downloadUrl);
+            if (_downloadButton != null) _downloadButton.interactable = hasDownload;
+            ResetProgressBar();
+
+            SetStatus(hasDownload
+                ? "Mise a jour requise pour jouer."
+                : "Mise a jour requise, mais aucun lien de telechargement publie (contacte Lorenzo).");
+        }
+
+        /// <summary>Remet la barre de progression a zero et masque son texte.</summary>
+        private void ResetProgressBar()
+        {
+            if (_progressBarFill != null) _progressBarFill.fillAmount = 0f;
+            if (_progressText != null) _progressText.text = string.Empty;
         }
     }
 }

@@ -21,22 +21,31 @@ namespace Nymora.Network.Backend
         public string CurrentClientVersion { get; }
         public string ErrorMessage { get; }
 
+        /// <summary>URL du zip de la derniere version (vide si rien publie). Utilise par le launcher (L3).</summary>
+        public string DownloadUrl { get; }
+
+        /// <summary>Hash sha256 (hex lowercase) du zip, verifie apres telechargement (L3).</summary>
+        public string Sha256 { get; }
+
         private VersionCheckResult(bool reachable, bool compatible, bool updateAvailable,
-            string min, string current, string err)
+            string min, string current, string downloadUrl, string sha256, string err)
         {
             IsReachable = reachable;
             IsCompatible = compatible;
             IsUpdateAvailable = updateAvailable;
             MinClientVersion = min;
             CurrentClientVersion = current;
+            DownloadUrl = downloadUrl;
+            Sha256 = sha256;
             ErrorMessage = err;
         }
 
-        public static VersionCheckResult Reachable(bool compatible, bool updateAvailable, string min, string current)
-            => new VersionCheckResult(true, compatible, updateAvailable, min, current, null);
+        public static VersionCheckResult Reachable(bool compatible, bool updateAvailable,
+            string min, string current, string downloadUrl, string sha256)
+            => new VersionCheckResult(true, compatible, updateAvailable, min, current, downloadUrl, sha256, null);
 
         public static VersionCheckResult Unreachable(string err)
-            => new VersionCheckResult(false, false, false, null, null, err);
+            => new VersionCheckResult(false, false, false, null, null, null, null, err);
     }
 
     /// <summary>
@@ -74,7 +83,8 @@ namespace Nymora.Network.Backend
 
             bool compatible = CompareSemver(client, min) >= 0;
             bool updateAvailable = CompareSemver(client, current) < 0;
-            return VersionCheckResult.Reachable(compatible, updateAvailable, minVer, currentVer);
+            return VersionCheckResult.Reachable(compatible, updateAvailable, minVer, currentVer,
+                res.Data.downloadUrl, res.Data.sha256);
         }
 
         private struct Semver

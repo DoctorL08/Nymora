@@ -77,6 +77,11 @@ namespace Nymora.Network.Backend
         public string minClientVersion;
         public string currentClientVersion;
         public int minCombatRulesVersion;
+
+        // Brique L1 (launcher) : URL du zip de la derniere version (vide si rien publie)
+        // et son hash sha256 (hex lowercase) verifie apres telechargement.
+        public string downloadUrl;
+        public string sha256;
     }
 
     // ====== Brique 4.10 — Amis (Friendships) ======
