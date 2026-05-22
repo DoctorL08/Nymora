@@ -285,9 +285,22 @@ namespace Nymora.UI.Login
             {
                 if (_progressBarFill != null) _progressBarFill.fillAmount = 1f;
                 if (_progressText != null) _progressText.text = "100 %";
-                // L'installation auto (extraction + relance) arrive en Brique L4.
-                SetStatus($"Telechargement termine et verifie.\nFichier : {result.FilePath}\n(installation auto : Brique L4)");
                 NymoraLog.Info("Login", $"MaJ telechargee : {result.FilePath}");
+
+                // Brique L4 : lance le patch (update.bat) puis ferme le jeu pour le laisser travailler.
+                var install = LauncherInstaller.StartInstall(result.FilePath);
+                if (install.Started)
+                {
+                    SetStatus("Mise a jour en cours, le jeu va redemarrer...");
+                    await UniTask.Delay(800, cancellationToken: _cts.Token); // laisse l'UI s'afficher
+                    Application.Quit();
+                }
+                else
+                {
+                    // Editeur, plateforme non-Windows, ou echec : on n'a pas installe.
+                    if (_downloadButton != null) _downloadButton.interactable = true;
+                    SetStatus($"Telechargement OK ({result.FilePath}).\n{install.Message}");
+                }
             }
             else
             {
