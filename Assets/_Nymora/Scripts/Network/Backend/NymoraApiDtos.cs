@@ -481,4 +481,14 @@ namespace Nymora.Network.Backend
         public string status;         // "pending" | "settled" | "already_settled" | "conflict"
         public int yourNewMmr;        // valable si status == "settled"
     }
+
+    // ====== Brique 6.5 — Saison ======
+
+    [Serializable]
+    public class SeasonResponse
+    {
+        public int number;
+        public string endsAt;         // ISO 8601
+        public int daysRemaining;
+    }
 }

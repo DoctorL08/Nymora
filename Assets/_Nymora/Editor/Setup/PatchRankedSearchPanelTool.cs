@@ -165,6 +165,18 @@ namespace Nymora.Editor.Setup
             so.FindProperty("_searchButton").objectReferenceValue = searchGo.GetComponent<Button>();
             so.FindProperty("_cancelButton").objectReferenceValue = cancelGo.GetComponent<Button>();
             so.FindProperty("_statusText").objectReferenceValue = statusTmp;
+            // 6.5 — wire l'asset NymoraBackendSettings (pour GET /ranked/season).
+            var settingsGuids = AssetDatabase.FindAssets("t:NymoraBackendSettings");
+            if (settingsGuids.Length > 0)
+            {
+                var path = AssetDatabase.GUIDToAssetPath(settingsGuids[0]);
+                so.FindProperty("_backendSettings").objectReferenceValue = AssetDatabase.LoadMainAssetAtPath(path);
+                actions.Add($"_backendSettings wire ({System.IO.Path.GetFileName(path)})");
+            }
+            else
+            {
+                actions.Add("⚠ NymoraBackendSettings introuvable — _backendSettings non wire (saison non affichee)");
+            }
             so.ApplyModifiedPropertiesWithoutUndo();
             actions.Add("RankedSearchPanel SerializedFields wires");
 

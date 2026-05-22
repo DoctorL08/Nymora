@@ -1,4 +1,6 @@
+using Cysharp.Threading.Tasks;
 using Nymora.Core.Data;
+using Nymora.Network.Backend;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -29,16 +31,22 @@ namespace Nymora.Hub
         [SerializeField] private Button _cancelButton;
         [SerializeField] private TMP_Text _statusText;
 
+        [Header("Backend (saison)")]
+        [SerializeField] private NymoraBackendSettings _backendSettings;
+
         public static HubRankedSearchPanel Instance { get; private set; }
 
         public bool IsOpen => _panelRoot != null && _panelRoot.activeSelf;
 
         private bool _searching;
+        private NymoraApiClient _api;
+        private string _seasonLabel = "";
 
         private void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(this); return; }
             Instance = this;
+            if (_backendSettings != null) _api = new NymoraApiClient(_backendSettings);
             if (_panelRoot != null) _panelRoot.SetActive(false);
         }
 
@@ -83,6 +91,20 @@ namespace Nymora.Hub
         {
             if (_panelRoot != null) _panelRoot.SetActive(true);
             SetIdleState();
+            FetchSeasonAsync().Forget(); // 6.5 — affiche "Saison N — Xj restants"
+        }
+
+        private async UniTaskVoid FetchSeasonAsync()
+        {
+            if (_api == null) return;
+            string token = HubChatClient.Instance?.DevToken;
+            if (string.IsNullOrEmpty(token)) return;
+            _api.SetBearerToken(token);
+            var res = await _api.GetSeasonAsync();
+            if (!res.IsSuccess) return;
+            _seasonLabel = $"Saison {res.Data.number} — {res.Data.daysRemaining}j restants";
+            // Rafraichit l'affichage si on est encore a l'etat repos.
+            if (!_searching) SetIdleState();
         }
 
         public void Close()
@@ -97,7 +119,8 @@ namespace Nymora.Hub
         private void SetIdleState()
         {
             _searching = false;
-            SetStatus("Prêt à chercher une partie classée 1v1.");
+            string seasonLine = string.IsNullOrEmpty(_seasonLabel) ? "" : $"\n<color=#cdb4ff>{_seasonLabel}</color>";
+            SetStatus($"Prêt à chercher une partie classée 1v1.{seasonLine}");
             ShowSearchButton(true);
         }
 

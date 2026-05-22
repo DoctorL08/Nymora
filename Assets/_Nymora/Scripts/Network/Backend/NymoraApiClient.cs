@@ -292,6 +292,10 @@ namespace Nymora.Network.Backend
                 new RankedReportBody { matchId = matchId, opponentUserId = opponentUserId, classId = classId, result = result },
                 requireAuth: true, ct);
 
+        /// <summary>GET /ranked/season — saison ranked courante (numero + jours restants).</summary>
+        public UniTask<ApiResult<SeasonResponse>> GetSeasonAsync(CancellationToken ct = default)
+            => GetJsonAsync<SeasonResponse>("/ranked/season", requireAuth: true, ct);
+
         private async UniTask<ApiResult<TResponse>> PostJsonAsync<TResponse>(
             string path, object body, bool requireAuth, CancellationToken ct, bool sendVersionHeader = true)
         {
