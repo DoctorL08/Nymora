@@ -150,6 +150,19 @@ namespace Nymora.UI.Login
             }
         }
 
+        private void Update()
+        {
+            // Entree (clavier + pave numerique) = valide le panneau actif, comme un clic
+            // sur son bouton principal. Les handlers gerent eux-memes les gardes busy/version.
+            if (!Input.GetKeyDown(KeyCode.Return) && !Input.GetKeyDown(KeyCode.KeypadEnter)) return;
+            if (_versionLocked || _busy) return;
+
+            if (_registerPanel != null && _registerPanel.activeInHierarchy)
+                OnCreateAccountClicked();
+            else if (_loginPanel != null && _loginPanel.activeInHierarchy)
+                OnConnexionClicked();
+        }
+
         // ---------- Connexion ----------
 
         private async void OnConnexionClicked()

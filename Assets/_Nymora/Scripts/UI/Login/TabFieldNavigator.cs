@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
@@ -12,6 +13,10 @@ namespace Nymora.UI.Login
     /// A poser SUR le panneau qui contient les champs : comme un GameObject inactif ne tourne pas
     /// son Update, seul le panneau actif (Connexion OU Inscription) reagit a Tab.
     /// La liste _fields est ordonnee ; le focus cycle (wrap) en sautant les champs inactifs/non-interactables.
+    ///
+    /// IMPORTANT (TMP) : on differe la prise de focus d'une frame (coroutine). Sinon le TMP_InputField
+    /// encore focus traite SA propre touche Tab dans la meme frame (OnUpdateSelected) et se re-empare
+    /// du focus / annule notre ActivateInputField -> visuellement rien ne bouge.
     /// </summary>
     public class TabFieldNavigator : MonoBehaviour
     {
@@ -41,11 +46,27 @@ namespace Nymora.UI.Login
                 var sel = _fields[next];
                 if (sel != null && sel.gameObject.activeInHierarchy && sel.interactable)
                 {
-                    sel.Select();
-                    if (sel is TMP_InputField tmp) tmp.ActivateInputField();
+                    // Coupe le focus du champ courant tout de suite, puis active la cible la frame d'apres.
+                    if (idx >= 0 && _fields[idx] is TMP_InputField cur) cur.DeactivateInputField();
+                    StartCoroutine(FocusNextFrame(sel));
                     return;
                 }
                 next = Step(next, back);
+            }
+        }
+
+        // Differe d'une frame : laisse le TMP_InputField sortant finir son traitement clavier
+        // avant de poser le focus sur la cible (sinon la course de frame annule l'activation).
+        private IEnumerator FocusNextFrame(Selectable sel)
+        {
+            yield return null;
+            if (sel == null || !sel.gameObject.activeInHierarchy || !sel.interactable) yield break;
+
+            sel.Select();
+            if (sel is TMP_InputField tmp)
+            {
+                tmp.ActivateInputField();
+                tmp.caretPosition = tmp.text.Length; // caret en fin de texte (pseudo pre-rempli)
             }
         }
 
