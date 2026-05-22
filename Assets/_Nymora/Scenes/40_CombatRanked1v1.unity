@@ -524,7 +524,6 @@ MonoBehaviour:
   _keyLabel: {fileID: 160637321}
   _cooldownLabel: {fileID: 661229099}
   _button: {fileID: 110698111}
-  _tooltipDelaySeconds: 0.2
 --- !u!114 &110698111
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2511,7 +2510,6 @@ MonoBehaviour:
   _keyLabel: {fileID: 678382407}
   _cooldownLabel: {fileID: 696349973}
   _button: {fileID: 373659960}
-  _tooltipDelaySeconds: 0.2
 --- !u!114 &373659960
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4289,6 +4287,7 @@ MonoBehaviour:
   AppVersion: 0.1.0
   ConnectTimeoutSec: 30
   VerboseLog: 1
+  _expectedSceneName: 40_CombatRanked1v1
 --- !u!1 &885939971
 GameObject:
   m_ObjectHideFlags: 0
@@ -4941,7 +4940,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _library: {fileID: 11400000, guid: 31e8aae2ec07655419fe3ff85d058a83, type: 2}
   _framesPerSecond: 4
-  _markScale: 0.7
+  _markTargetWorldSize: 0.45
   _baseOffset: {x: 0, y: 1.4}
   _markSpacingX: 0.4
   _sortingOrder: 1500
@@ -5050,7 +5049,6 @@ MonoBehaviour:
   _keyLabel: {fileID: 1402655413}
   _cooldownLabel: {fileID: 83083039}
   _button: {fileID: 964764462}
-  _tooltipDelaySeconds: 0.2
 --- !u!114 &964764462
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5978,7 +5976,6 @@ MonoBehaviour:
   _keyLabel: {fileID: 2103790437}
   _cooldownLabel: {fileID: 1844101186}
   _button: {fileID: 1059098748}
-  _tooltipDelaySeconds: 0.2
 --- !u!114 &1059098748
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7048,7 +7045,6 @@ MonoBehaviour:
   _keyLabel: {fileID: 1942901796}
   _cooldownLabel: {fileID: 1009479928}
   _button: {fileID: 1313472751}
-  _tooltipDelaySeconds: 0.2
 --- !u!114 &1313472751
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7549,7 +7545,6 @@ MonoBehaviour:
   _keyLabel: {fileID: 1231079770}
   _cooldownLabel: {fileID: 923516098}
   _button: {fileID: 1454123874}
-  _tooltipDelaySeconds: 0.2
 --- !u!114 &1454123874
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7937,6 +7932,7 @@ MonoBehaviour:
   _hudController: {fileID: 326232873}
   _castableColor: {r: 0.55, g: 0.75, b: 1, a: 1}
   _effectColor: {r: 1, g: 0.55, b: 0.55, a: 1}
+  _blockedColor: {r: 0.3, g: 0.3, b: 0.3, a: 0.75}
 --- !u!4 &1496806051
 Transform:
   m_ObjectHideFlags: 0
@@ -8372,7 +8368,6 @@ MonoBehaviour:
   _keyLabel: {fileID: 1722359742}
   _cooldownLabel: {fileID: 885939973}
   _button: {fileID: 1637475169}
-  _tooltipDelaySeconds: 0.2
 --- !u!114 &1637475169
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -8520,6 +8515,7 @@ MonoBehaviour:
   _portraitActive: {r: 1, g: 1, b: 1, a: 1}
   _portraitInactive: {r: 0.55, g: 0.55, b: 0.6, a: 1}
   _frameBorderPx: 3
+  _verticalNudge: 80
 --- !u!114 &1649189431
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -94,15 +94,21 @@ namespace Nymora.Combat.Bootstrap
         // Quantum auto-load de QuantumMap.Scene), on no-op. Plus robuste que la comparaison
         // active vs gameObject.scene car les deux peuvent avoir le meme nom dans certains
         // cas de chargement additif (cf incident 18 mai bis).
-        private const string ExpectedSceneName = "33_CombatCasual";
+        //
+        // 6.2.b — desormais un SerializeField : ce meme bootstrap pilote la scene casual
+        // (33_CombatCasual) ET la scene ranked (40_CombatRanked1v1), qui en est un clone.
+        // Mettre "40_CombatRanked1v1" sur le bootstrap de la scene ranked (tool dedie).
+        [Header("Scene guard")]
+        [Tooltip("Nom de la scene ou ce bootstrap doit s'activer : 33_CombatCasual (casual) ou 40_CombatRanked1v1 (ranked).")]
+        [SerializeField] private string _expectedSceneName = "33_CombatCasual";
 
         private async void Start()
         {
             // Garde par nom de scene en dur : ce bootstrap n'a de sens QUE dans
             // 33_CombatCasual. Si on est ailleurs (additif fantome ou autre), no-op.
-            if (gameObject.scene.name != ExpectedSceneName)
+            if (gameObject.scene.name != _expectedSceneName)
             {
-                Log($"Bootstrap skip : ce component est dans la scene '{gameObject.scene.name}' mais ne doit s'activer que dans '{ExpectedSceneName}'.");
+                Log($"Bootstrap skip : ce component est dans la scene '{gameObject.scene.name}' mais ne doit s'activer que dans '{_expectedSceneName}'.");
                 return;
             }
 
@@ -110,9 +116,9 @@ namespace Nymora.Combat.Bootstrap
             // mais qu'une AUTRE scene combat (typiquement 30_CombatIA) est active,
             // on no-op aussi pour ne pas interferer avec le combat IA en cours.
             var activeScene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-            if (activeScene.name != ExpectedSceneName)
+            if (activeScene.name != _expectedSceneName)
             {
-                Log($"Bootstrap skip : scene active='{activeScene.name}' != '{ExpectedSceneName}' (probable multi-scene editing avec une autre scene combat).");
+                Log($"Bootstrap skip : scene active='{activeScene.name}' != '{_expectedSceneName}' (probable multi-scene editing avec une autre scene combat).");
                 return;
             }
 

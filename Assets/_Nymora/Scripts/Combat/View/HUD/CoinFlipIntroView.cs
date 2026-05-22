@@ -17,8 +17,8 @@ namespace Nymora.Combat.View.HUD
     /// gagnant, suivie d'un bandeau "[Pseudo] commence !".
     ///
     /// Caracteristiques :
-    ///   - CASUAL uniquement : auto-instancie via [RuntimeInitializeOnLoadMethod] seulement
-    ///     si la scene active contient "Casual" (donc pas en IA / hub / menu).
+    ///   - PvP HUMAIN uniquement (casual + ranked) : auto-instancie via [RuntimeInitializeOnLoadMethod]
+    ///     seulement si la scene active contient "Casual" ou "Ranked" (donc pas en IA / hub / menu).
     ///   - Zero impact simulation (lecture seule de ActivePlayerIndex) -> pas de bump
     ///     CombatRulesVersion.
     ///   - Bloque l'input local pendant l'anim via le flag statique IsIntroActive (lu par
@@ -89,7 +89,11 @@ namespace Nymora.Combat.View.HUD
 
         private static void TryCreateForScene(Scene scene)
         {
-            if (!scene.IsValid() || !scene.name.Contains("Casual")) return; // casual uniquement
+            // PvP humain uniquement : scenes Casual (33_CombatCasual) et Ranked (40_CombatRanked1v1).
+            // Pas en IA / hub / menu. Le belt-and-suspenders OnGameStarted verifie en plus la
+            // presence de CombatBootstrapCasual.Instance (present dans les 2 scenes PvP).
+            bool isPvpScene = scene.IsValid() && (scene.name.Contains("Casual") || scene.name.Contains("Ranked"));
+            if (!isPvpScene) return;
             if (_current != null) return; // deja cree pour cette scene
             var go = new GameObject("CoinFlipIntroView");
             _current = go.AddComponent<CoinFlipIntroView>();

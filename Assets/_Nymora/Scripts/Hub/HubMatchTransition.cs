@@ -20,6 +20,8 @@ namespace Nymora.Hub
     public sealed class HubMatchTransition : MonoBehaviour
     {
         [SerializeField] private string _combatSceneName = "33_CombatCasual";
+        // 6.2.b — scene chargee pour un match CLASSE (ranked 1v1).
+        [SerializeField] private string _rankedSceneName = "40_CombatRanked1v1";
         [SerializeField, Range(0f, 10f)] private float _transitionDelaySeconds = 2f;
         [SerializeField] private bool _logVerbose = true;
 
@@ -30,6 +32,7 @@ namespace Nymora.Hub
             if (HubChatClient.Instance != null)
             {
                 HubChatClient.Instance.OnMatchReady += HandleMatchReady;
+                HubChatClient.Instance.OnRankedMatchFound += HandleRankedMatchFound;
             }
         }
 
@@ -38,14 +41,24 @@ namespace Nymora.Hub
             if (HubChatClient.Instance != null)
             {
                 HubChatClient.Instance.OnMatchReady -= HandleMatchReady;
+                HubChatClient.Instance.OnRankedMatchFound -= HandleRankedMatchFound;
             }
         }
 
-        private async void HandleMatchReady(string matchId, string opponentSub, string opponentDisplayName)
+        // Defi casual (4.8.d.i) -> scene casual, non classe.
+        private void HandleMatchReady(string matchId, string opponentSub, string opponentDisplayName)
+            => BeginMatchTransition(matchId, opponentSub, opponentDisplayName, ranked: false, _combatSceneName);
+
+        // Matchmaking ranked (6.2) -> scene ranked, classe (impacte le MMR en 6.3).
+        private void HandleRankedMatchFound(string matchId, string opponentSub, string opponentDisplayName)
+            => BeginMatchTransition(matchId, opponentSub, opponentDisplayName, ranked: true, _rankedSceneName);
+
+        private async void BeginMatchTransition(string matchId, string opponentSub, string opponentDisplayName,
+                                                bool ranked, string sceneName)
         {
             if (_transitionInProgress)
             {
-                if (_logVerbose) Debug.LogWarning($"[HubMatchTransition] Transition déjà en cours, MATCH_READY ignoré (matchId={matchId})");
+                if (_logVerbose) Debug.LogWarning($"[HubMatchTransition] Transition déjà en cours, match ignoré (matchId={matchId}, ranked={ranked})");
                 return;
             }
             _transitionInProgress = true;
@@ -110,6 +123,8 @@ namespace Nymora.Hub
             // l'identite reseau Photon utilise sub uniquement).
             MatchBridge.SetPendingMatch(matchId, opponentSub, "", localSub, localEmail,
                                          opponentDisplayName, localDisplayName);
+            // 6.2.b — marque le match comme classe (ranked) ou non. Lu en 6.3 (MMR).
+            MatchBridge.SetRanked(ranked);
 
             // 19 mai — Push pseudo/clan pour le tooltip combat. POLISH-7 : displayName officiel
             // au lieu d'extract email. Clan opponent inconnu cote client (pas de cache sub->clan
@@ -119,13 +134,13 @@ namespace Nymora.Hub
             PlayerProfileBridge.SetLocal(localDisplayName, localClan);
             PlayerProfileBridge.SetOpponent(opponentDisplayName, "");
 
-            if (_logVerbose) Debug.Log($"[HubMatchTransition] MatchBridge set matchId={matchId} opponent='{opponentDisplayName}' " +
-                                       $"local='{localDisplayName}' deck={deck.classId}/'{deck.name}'. Transition vers '{_combatSceneName}' dans {_transitionDelaySeconds}s.");
+            if (_logVerbose) Debug.Log($"[HubMatchTransition] MatchBridge set matchId={matchId} ranked={ranked} opponent='{opponentDisplayName}' " +
+                                       $"local='{localDisplayName}' deck={deck.classId}/'{deck.name}'. Transition vers '{sceneName}' dans {_transitionDelaySeconds}s.");
 
-            await TransitionAsync();
+            await TransitionAsync(sceneName);
         }
 
-        private async Task TransitionAsync()
+        private async Task TransitionAsync(string sceneName)
         {
             await Task.Delay(Mathf.RoundToInt(_transitionDelaySeconds * 1000));
 
@@ -143,8 +158,8 @@ namespace Nymora.Hub
                 }
             }
 
-            if (_logVerbose) Debug.Log($"[HubMatchTransition] LoadScene → {_combatSceneName}");
-            SceneManager.LoadScene(_combatSceneName, LoadSceneMode.Single);
+            if (_logVerbose) Debug.Log($"[HubMatchTransition] LoadScene → {sceneName}");
+            SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
         }
     }
 }

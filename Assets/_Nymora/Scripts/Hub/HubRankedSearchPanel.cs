@@ -1,3 +1,4 @@
+using Nymora.Core.Data;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -5,19 +6,17 @@ using UnityEngine.UI;
 namespace Nymora.Hub
 {
     /// <summary>
-    /// Brique 6.1 — Panneau "Recherche de partie classee" (Ranked 1v1).
+    /// Brique 6.1 / 6.2.b — Panneau "Recherche de partie classee" (Ranked 1v1).
     ///
     /// Ouvert depuis le menu Arene (HubArenaPanel) quand on clique "Ranked 1v1".
     ///
-    /// EN 6.1 : coquille UI uniquement (bouton Rechercher / Annuler + statut).
-    /// Le clic "Rechercher" passe l'UI en etat "recherche en cours" mais NE lance
-    /// PAS encore de matchmaking reel : le branchement backend (queue Redis par MMR
-    /// + appairage + lancement de la scene 40_CombatRanked1v1) arrive en brique 6.2.
+    /// 6.2.b : "Rechercher" verifie qu'un deck est equipe pour la classe selectionnee,
+    /// puis envoie ENQUEUE_RANKED au backend. Le serveur appaire par MMR (fenetre adaptative)
+    /// et renvoie RANKED_MATCH_FOUND -> c'est HubMatchTransition qui pilote la transition vers
+    /// la scene 40_CombatRanked1v1 (set MatchBridge.IsRanked=true + DeckBridge). Ce panneau
+    /// se contente de l'UI de file (statut + bouton Annuler).
     ///
-    /// Singleton (pattern miroir HubArenaPanel / HubDeckBuilderPanel) : HubArenaPanel
-    /// l'ouvre via HubRankedSearchPanel.Instance?.Open() sans reference serialisee.
-    ///
-    /// Cable via "Nymora > Setup > Patch Ranked Search Panel".
+    /// Singleton (pattern miroir HubArenaPanel). Cable via "Nymora > Setup > Patch Ranked Search Panel".
     /// </summary>
     public sealed class HubRankedSearchPanel : MonoBehaviour
     {
@@ -34,8 +33,6 @@ namespace Nymora.Hub
 
         public bool IsOpen => _panelRoot != null && _panelRoot.activeSelf;
 
-        // true pendant qu'une recherche est "en cours" (UI). En 6.2 ce sera l'etat
-        // reel de la file d'attente matchmaking.
         private bool _searching;
 
         private void Awake()
@@ -59,8 +56,26 @@ namespace Nymora.Hub
             if (_cancelButton != null) _cancelButton.onClick.RemoveAllListeners();
         }
 
+        private void Start()
+        {
+            var chat = HubChatClient.Instance;
+            if (chat != null)
+            {
+                chat.OnRankedQueueJoined += HandleQueueJoined;
+                chat.OnRankedMatchFound += HandleMatchFound;
+                chat.OnRankedQueueLeft += HandleQueueLeft;
+            }
+        }
+
         private void OnDestroy()
         {
+            var chat = HubChatClient.Instance;
+            if (chat != null)
+            {
+                chat.OnRankedQueueJoined -= HandleQueueJoined;
+                chat.OnRankedMatchFound -= HandleMatchFound;
+                chat.OnRankedQueueLeft -= HandleQueueLeft;
+            }
             if (Instance == this) Instance = null;
         }
 
@@ -72,7 +87,7 @@ namespace Nymora.Hub
 
         public void Close()
         {
-            // Si on ferme en pleine recherche, on annule d'abord (en 6.2 : leave queue backend).
+            // Si on ferme en pleine recherche, on quitte la file backend d'abord.
             if (_searching) OnCancelClicked();
             if (_panelRoot != null) _panelRoot.SetActive(false);
         }
@@ -83,28 +98,95 @@ namespace Nymora.Hub
         {
             _searching = false;
             SetStatus("Prêt à chercher une partie classée 1v1.");
-            if (_searchButton != null) _searchButton.gameObject.SetActive(true);
-            if (_searchButton != null) _searchButton.interactable = true;
-            if (_cancelButton != null) _cancelButton.gameObject.SetActive(false);
+            ShowSearchButton(true);
         }
 
-        private void OnSearchClicked()
+        private void ShowSearchButton(bool searchVisible)
+        {
+            if (_searchButton != null) _searchButton.gameObject.SetActive(searchVisible);
+            if (_cancelButton != null) _cancelButton.gameObject.SetActive(!searchVisible);
+        }
+
+        // ---------- Recherche ----------
+
+        private async void OnSearchClicked()
         {
             if (_searching) return;
-            _searching = true;
 
-            // 6.1 : on bascule juste l'UI en mode "recherche". Le matchmaking reel
-            // (file Redis MMR + appairage + load 40_CombatRanked1v1) = brique 6.2.
-            SetStatus("Recherche d'un adversaire en cours...\n(matchmaking branché en brique 6.2)");
-            if (_searchButton != null) _searchButton.gameObject.SetActive(false);
-            if (_cancelButton != null) _cancelButton.gameObject.SetActive(true);
-            if (_cancelButton != null) _cancelButton.interactable = true;
+            var chat = HubChatClient.Instance;
+            if (chat == null || !chat.IsConnected)
+            {
+                SetStatus("Pas connecté au serveur. Réessaie dans un instant.");
+                return;
+            }
+
+            // Verifie qu'un deck est equipe pour la classe selectionnee AVANT d'entrer en file
+            // (sinon on apparie un adversaire qui poireaute pendant qu'on annule cote local).
+            // Meme garde que HubArenaPanel.OnTrainingClicked / HubMatchTransition.
+            var dbp = HubDeckBuilderPanel.Instance;
+            if (dbp == null)
+            {
+                SetStatus("Ouvre le Deck Builder une fois avant de chercher une partie.");
+                return;
+            }
+
+            string selectedClass = SelectedClassPreferences.Get();
+            if (string.IsNullOrEmpty(selectedClass)) selectedClass = "Soulrender";
+
+            _searching = true;
+            SetStatus($"Vérification du deck {selectedClass}...");
+            try
+            {
+                await dbp.EnsureClassLoadedAsync(selectedClass);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[RankedSearch] EnsureClassLoadedAsync({selectedClass}) echec : {ex.Message}");
+                _searching = false;
+                SetStatus("Erreur de chargement du deck. Réessaie.");
+                return;
+            }
+
+            if (dbp.MyDecks == null || dbp.MyDecks.Count == 0 || dbp.SelectedDeck == null)
+            {
+                _searching = false;
+                SetStatus($"Aucun deck '{selectedClass}' équipé.\nCrée un deck dans le Deck Builder d'abord.");
+                return;
+            }
+
+            // OK -> entre en file. Le backend lit le MMR et renvoie RANKED_QUEUE_JOINED.
+            ShowSearchButton(false);
+            SetStatus("Connexion à la file classée...");
+            chat.SendEnqueueRanked();
         }
 
         private void OnCancelClicked()
         {
-            // 6.2 : ici on quittera la file matchmaking backend.
+            _searching = false;
+            HubChatClient.Instance?.SendDequeueRanked();
             SetIdleState();
+        }
+
+        // ---------- Events backend ----------
+
+        private void HandleQueueJoined(int mmr)
+        {
+            if (!IsOpen) return;
+            _searching = true;
+            ShowSearchButton(false);
+            SetStatus($"Recherche d'un adversaire... (MMR {mmr})\nTon classement s'élargit avec le temps d'attente.");
+        }
+
+        private void HandleMatchFound(string matchId, string opponentSub, string opponentDisplayName)
+        {
+            _searching = false;
+            // La transition vers la scene ranked est pilotee par HubMatchTransition.
+            SetStatus($"Adversaire trouvé : {opponentDisplayName} !\nLancement du combat...");
+        }
+
+        private void HandleQueueLeft()
+        {
+            if (IsOpen) SetIdleState();
         }
 
         private void SetStatus(string s)

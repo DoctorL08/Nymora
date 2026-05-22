@@ -67,6 +67,10 @@ namespace Nymora.Hub
         public event Action<string, string, string> OnChallengeSent;     // challengeId, toUserId, toDisplayName
         public event Action<string, bool, string, string> OnChallengeResponse; // challengeId, accepted, fromUserId (responder), fromDisplayName
         public event Action<string, string, string> OnMatchReady;              // matchId, opponentSub, opponentDisplayName (4.8.d.i)
+        // 6.2 — Matchmaking ranked 1v1
+        public event Action<string, string, string> OnRankedMatchFound;        // matchId, opponentSub, opponentDisplayName
+        public event Action<int> OnRankedQueueJoined;                          // mmr (ack entree en file)
+        public event Action OnRankedQueueLeft;                                 // ack sortie de file
         public event Action<string> OnReportSent;                              // targetDisplayName (4.13)
         public event Action<string, long> OnModerationNotice;                  // kind (reported|muted), muteUntil ms (4.13)
         // 4.10 — Friend events
@@ -132,7 +136,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate }
 
         private struct IncomingEvent
         {
@@ -190,6 +194,8 @@ namespace Nymora.Hub
             public int Shards;
             public string DeltaCurrency;
             public int DeltaAmount;
+            // 6.2 — matchmaking ranked
+            public int Mmr;
         }
 
         private void Awake()
@@ -392,6 +398,33 @@ namespace Nymora.Hub
                         });
                         break;
                     }
+                    case "RANKED_MATCH_FOUND":
+                    {
+                        var ropps = msg.payload?.opponents;
+                        if (ropps == null || ropps.Length < 2) break;
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.RankedMatchFound,
+                            ChallengeId = msg.payload?.matchId ?? "",
+                            From = ropps[0]?.sub ?? "",
+                            FromEmail = ropps[0]?.email ?? "",
+                            FromDisplayName = !string.IsNullOrEmpty(ropps[0]?.displayName)
+                                ? ropps[0].displayName
+                                : SplitEmailLocal(ropps[0]?.email),
+                            To = ropps[1]?.sub ?? "",
+                            ToEmail = ropps[1]?.email ?? "",
+                            ToDisplayName = !string.IsNullOrEmpty(ropps[1]?.displayName)
+                                ? ropps[1].displayName
+                                : SplitEmailLocal(ropps[1]?.email),
+                        });
+                        break;
+                    }
+                    case "RANKED_QUEUE_JOINED":
+                        _queue.Enqueue(new IncomingEvent { Kind = EventKind.RankedQueueJoined, Mmr = msg.payload?.mmr ?? 0 });
+                        break;
+                    case "RANKED_QUEUE_LEFT":
+                        _queue.Enqueue(new IncomingEvent { Kind = EventKind.RankedQueueLeft });
+                        break;
                     case "REPORT_SENT":
                         _queue.Enqueue(new IncomingEvent
                         {
@@ -665,6 +698,8 @@ namespace Nymora.Hub
             public int nymos;
             public int shards;
             public WalletDeltaPayload delta;
+            // 6.2 — matchmaking ranked
+            public int mmr;
         }
 
         [Serializable]
@@ -734,6 +769,22 @@ namespace Nymora.Hub
                         OnMatchReady?.Invoke(ev.ChallengeId, oppSub, oppDisplayName);
                         break;
                     }
+                    case EventKind.RankedMatchFound:
+                    {
+                        // Resoudre l'opponent : celui dont le sub != MyUserId (mirror MatchReady).
+                        bool localIsFirst = (ev.From == MyUserId);
+                        string oppSub = localIsFirst ? ev.To : ev.From;
+                        string oppDisplayName = localIsFirst ? ev.ToDisplayName : ev.FromDisplayName;
+                        Debug.Log($"[ChatClient] RANKED_MATCH_FOUND matchId={ev.ChallengeId} opponent={oppDisplayName} sub={oppSub}");
+                        OnRankedMatchFound?.Invoke(ev.ChallengeId, oppSub, oppDisplayName);
+                        break;
+                    }
+                    case EventKind.RankedQueueJoined:
+                        OnRankedQueueJoined?.Invoke(ev.Mmr);
+                        break;
+                    case EventKind.RankedQueueLeft:
+                        OnRankedQueueLeft?.Invoke();
+                        break;
                     case EventKind.ReportSent:
                         // POLISH-7 : param = toDisplayName au lieu de toEmail.
                         OnReportSent?.Invoke(ev.ToDisplayName);
@@ -851,6 +902,22 @@ namespace Nymora.Hub
             string acceptedStr = accepted ? "true" : "false";
             string json = $"{{\"type\":\"RESPOND_CHALLENGE\",\"payload\":{{\"challengeId\":\"{escapedId}\",\"accepted\":{acceptedStr}}}}}";
             await SendJsonAsync(json);
+        }
+
+        // ====== Brique 6.2 — Matchmaking ranked 1v1 ======
+
+        /// <summary>Rejoint la file de matchmaking ranked 1v1. Le MMR est lu cote serveur (Profile.mmr).</summary>
+        public async void SendEnqueueRanked()
+        {
+            if (!IsConnected) return;
+            await SendJsonAsync("{\"type\":\"ENQUEUE_RANKED\"}");
+        }
+
+        /// <summary>Quitte la file de matchmaking ranked 1v1.</summary>
+        public async void SendDequeueRanked()
+        {
+            if (!IsConnected) return;
+            await SendJsonAsync("{\"type\":\"DEQUEUE_RANKED\"}");
         }
 
         public async void SendReport(string targetUser)
