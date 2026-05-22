@@ -59,6 +59,24 @@ namespace Quantum
         {
             var state = f.Unsafe.GetPointerSingleton<CombatState>();
 
+            // B8 (22 mai) — Abandon volontaire. Si un slot envoie ForfeitCommand, il perd
+            // immediatement et l'autre joueur gagne (1v1). Verifie chaque tick, hors MatchEnd.
+            // Fonctionne en IA (Lorenzo slot 0 forfait -> bot gagne = defaite) et en casual PvP.
+            if (state->CurrentPhase != CombatPhase.MatchEnd)
+            {
+                for (int slot = 0; slot < TurnConstants.PlayerCount; slot++)
+                {
+                    if (f.GetPlayerCommand(slot) is ForfeitCommand)
+                    {
+                        int winner = (slot == 0) ? 1 : 0;
+                        state->WinnerPlayerIndex = winner;
+                        state->CurrentPhase = CombatPhase.MatchEnd;
+                        Log.Info($"[TurnSystem] Forfait par P{slot} -> P{winner} gagne.");
+                        return;
+                    }
+                }
+            }
+
             // 4.14.g hotfix — Early MatchEnd check chaque tick. Bug PvP : si un joueur kill
             // l'adversaire en plein milieu de son tour et n'appelle pas EndTurn (et n'attend
             // pas les 15s timer), le MatchEnd n'etait jamais declenche car EnterTurnEnd seul

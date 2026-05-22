@@ -48,8 +48,20 @@ namespace Nymora.Combat.View.HUD
         private bool _hasP1;
         private int _currentTurnNumber;
 
+        [Header("B8 (22 mai) — Position")]
+        [Tooltip("Remonte la timeline de N px pour loger le bouton Abandonner en dessous. " +
+                 "Applique une fois au chargement. Mets 0 pour ne pas bouger.")]
+        [SerializeField] private float _verticalNudge = 80f;
+
         private void Awake()
         {
+            // B8 (22 mai) — remonte la timeline d'un cran pour loger le bouton Abandonner sous elle.
+            var selfRt = transform as RectTransform;
+            if (selfRt != null && !Mathf.Approximately(_verticalNudge, 0f))
+            {
+                selfRt.anchoredPosition += new Vector2(0f, _verticalNudge);
+            }
+
             // Auto-find le label legacy si pas drag-drop dans Inspector. Sans ce cleanup,
             // l'ancien TMP "P0 | P1" hardcode dans la scene reste visible sous les nouveaux
             // slots animes (fix 19 mai).

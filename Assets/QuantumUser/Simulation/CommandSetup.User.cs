@@ -11,6 +11,8 @@
             factories.Add(new MoveCommand());
             factories.Add(new CastSpellCommand());
             factories.Add(new EndTurnCommand());
+            // B8 (22 mai) — abandon volontaire (bouton Abandonner combat).
+            factories.Add(new ForfeitCommand());
             // 2.14 — debug fog (sera retire en 2.15+ quand sorts Nightseer livres).
             factories.Add(new DebugApplyVeilCommand());
             // 3.1 — debug obstacles (touches P/U). Sera retire en 3.3.b quand sorts
