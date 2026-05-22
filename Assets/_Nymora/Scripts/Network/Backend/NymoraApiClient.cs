@@ -318,6 +318,32 @@ namespace Nymora.Network.Backend
             => PostJsonAsync<QuestClaimResponse>("/quests/claim",
                 new QuestClaimBody { questId = questId }, requireAuth: true, ct);
 
+        // ====== Brique 5.5 — Boutique ======
+
+        /// <summary>GET /shop — catalogue en vente cette semaine (rotation) + flags owned/equipped + solde.</summary>
+        public UniTask<ApiResult<ShopResponse>> GetShopAsync(CancellationToken ct = default)
+            => GetJsonAsync<ShopResponse>("/shop", requireAuth: true, ct);
+
+        /// <summary>GET /shop/inventory — cosmetiques possedes.</summary>
+        public UniTask<ApiResult<ShopInventoryResponse>> GetInventoryAsync(CancellationToken ct = default)
+            => GetJsonAsync<ShopInventoryResponse>("/shop/inventory", requireAuth: true, ct);
+
+        /// <summary>POST /shop/buy — achat (debit wallet). 402 INSUFFICIENT_FUNDS, 409 ALREADY_OWNED.</summary>
+        public UniTask<ApiResult<ShopBuyResponse>> BuyItemAsync(string itemId, string currency, CancellationToken ct = default)
+            => PostJsonAsync<ShopBuyResponse>("/shop/buy",
+                new ShopBuyBody { itemId = itemId, currency = currency }, requireAuth: true, ct);
+
+        /// <summary>POST /shop/equip — equipe un cosmetique possede. activeClass = classe active
+        /// du joueur ; 403 CLASS_MISMATCH si le skin est lie a une autre classe.</summary>
+        public UniTask<ApiResult<ShopEquipResponse>> EquipItemAsync(string itemId, string activeClass, CancellationToken ct = default)
+            => PostJsonAsync<ShopEquipResponse>("/shop/equip",
+                new ShopEquipBody { itemId = itemId, activeClass = activeClass }, requireAuth: true, ct);
+
+        /// <summary>POST /shop/unequip — desequipe un cosmetique.</summary>
+        public UniTask<ApiResult<ShopEquipResponse>> UnequipItemAsync(string itemId, CancellationToken ct = default)
+            => PostJsonAsync<ShopEquipResponse>("/shop/unequip",
+                new ShopUnequipBody { itemId = itemId }, requireAuth: true, ct);
+
         private async UniTask<ApiResult<TResponse>> PostJsonAsync<TResponse>(
             string path, object body, bool requireAuth, CancellationToken ct, bool sendVersionHeader = true)
         {

@@ -597,4 +597,82 @@ namespace Nymora.Network.Backend
         public string rewardLabel;
         public string error;        // si status == "error"
     }
+
+    // ====== Brique 5.5 — Boutique ======
+
+    [Serializable]
+    public class ShopItemDto
+    {
+        public string id;
+        public string type;         // "skin" | "banner" | "title" | "emote"
+        public string name;
+        public string description;
+        public string rarity;       // "common" | "rare" | "epic" | "legendary"
+        public int priceNymos;      // 0 = non achetable en Nymos (champ absent cote serveur)
+        public int priceShards;     // 0 = non achetable en Shards
+        public string classLock;    // classe requise pour equiper, "" si aucune
+        public string previewKey;   // cle Resources (ex "cosmetics/ashen_sovereign")
+        public bool rotating;
+        public bool owned;
+        public bool equipped;
+    }
+
+    [Serializable]
+    public class ShopRotationDto
+    {
+        public string key;          // "2026-W21"
+        public string endsAt;       // ISO 8601 (lundi UTC suivant)
+    }
+
+    [Serializable]
+    public class ShopResponse
+    {
+        public WalletSnapshotDto wallet;
+        public ShopRotationDto rotation;
+        public ShopItemDto[] items;
+    }
+
+    [Serializable]
+    public class ShopInventoryResponse
+    {
+        public ShopItemDto[] items;
+    }
+
+    [Serializable]
+    public class ShopBuyBody
+    {
+        public string itemId;
+        public string currency;     // "Nymos" | "Shards"
+    }
+
+    [Serializable]
+    public class ShopBuyResponse
+    {
+        public bool ok;
+        public WalletSnapshotDto wallet;
+        public string itemId;
+        public string error;        // si !ok : INSUFFICIENT_FUNDS | ALREADY_OWNED | NOT_IN_ROTATION | ...
+    }
+
+    [Serializable]
+    public class ShopEquipBody
+    {
+        public string itemId;
+        public string activeClass;  // classe active du joueur (toujours envoyee, valide)
+    }
+
+    [Serializable]
+    public class ShopUnequipBody
+    {
+        public string itemId;
+    }
+
+    [Serializable]
+    public class ShopEquipResponse
+    {
+        public bool ok;
+        public string itemId;
+        public string error;         // si !ok : NOT_OWNED | CLASS_MISMATCH | CLASS_REQUIRED
+        public string requiredClass; // classe requise si CLASS_MISMATCH/CLASS_REQUIRED
+    }
 }

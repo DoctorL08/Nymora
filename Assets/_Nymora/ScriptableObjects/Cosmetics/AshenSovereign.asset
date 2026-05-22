@@ -1,0 +1,53 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbfc0f0c946e0ad4ab656d873a31abb9, type: 3}
+  m_Name: AshenSovereign
+  m_EditorClassIdentifier: 
+  CosmeticId: skin_soulrender_ashen_sovereign
+  ClassId: 1
+  DisplayName: Ashen Sovereign
+  IdleFrames:
+  - {fileID: 21300000, guid: 49997a173f88ccf4d993277d7e905b55, type: 3}
+  - {fileID: 21300000, guid: 7dac88236db138d4086634816cd13e78, type: 3}
+  - {fileID: 21300000, guid: 4158ec4b7f537ad43aac79d164c50b6b, type: 3}
+  - {fileID: 21300000, guid: b6da36476f2a37446a2f63d46e07d0f5, type: 3}
+  - {fileID: 21300000, guid: a4f9a4e414e85b4429d54efcbe1e46c6, type: 3}
+  - {fileID: 21300000, guid: 141652fec2c1e69419a113abdefa4bf0, type: 3}
+  IdleFramesNE:
+  - {fileID: 21300000, guid: 9dacb05a99f35e34abfc9953c16e5aea, type: 3}
+  - {fileID: 21300000, guid: b8bec2588e0882b4e8966149bb632e4b, type: 3}
+  - {fileID: 21300000, guid: 5aafbdbacc8e0ab4c8b00b1b23242ced, type: 3}
+  - {fileID: 21300000, guid: 3ebe6eb5b38332449b6aad64cf99389d, type: 3}
+  - {fileID: 21300000, guid: cb20dcad52bb662449ad6255ece83930, type: 3}
+  - {fileID: 21300000, guid: 3beb033803f43e9499a4fea1bba750be, type: 3}
+  IdleFps: 8
+  WalkFrames:
+  - {fileID: 21300000, guid: 60393d186eeab624485ae9b7b0fd68a2, type: 3}
+  - {fileID: 21300000, guid: c0ad7d94091325448ae4717253fbaf17, type: 3}
+  - {fileID: 21300000, guid: b1a8112582b8f0e4c9081c30e8e787ac, type: 3}
+  - {fileID: 21300000, guid: 3ab6e30eaac5d0042941e9e07ec5705d, type: 3}
+  - {fileID: 21300000, guid: 270b2532510c3e742ad3dd764ee98d45, type: 3}
+  - {fileID: 21300000, guid: 0d2239271f10e3946b11a4968adbdba4, type: 3}
+  - {fileID: 21300000, guid: 81dc503880c69e24ea6ab45657e513b5, type: 3}
+  - {fileID: 21300000, guid: e1d55f3f32df5a24eb15c52511b3dde0, type: 3}
+  WalkFramesNE:
+  - {fileID: 21300000, guid: 90a99ada137c34f4bab4036b1ffd699d, type: 3}
+  - {fileID: 21300000, guid: a0106791f2a782b4fbd7a10813cd0567, type: 3}
+  - {fileID: 21300000, guid: 170d1355ceb8a9e4b80510afa1e95ce1, type: 3}
+  - {fileID: 21300000, guid: 7a02aac828f332948939f667faa9765a, type: 3}
+  - {fileID: 21300000, guid: 7b73649b88e8f9446b5a5a064ae01f6c, type: 3}
+  - {fileID: 21300000, guid: c64e58db7f790394eac4715c80ed1474, type: 3}
+  - {fileID: 21300000, guid: b9319c21fed27964992ee20bce4f07ca, type: 3}
+  - {fileID: 21300000, guid: 76404ebe1fa798d44994e33ec518f2f5, type: 3}
+  WalkFps: 12
+  HubVisualScale: 1
+  HubVisualYOffset: 0.5

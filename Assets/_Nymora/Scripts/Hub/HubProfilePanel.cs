@@ -112,6 +112,14 @@ namespace Nymora.Hub
         private bool _hasFetchedWalletOnce;
         private readonly List<GameObject> _spawnedWalletGOs = new List<GameObject>();
 
+        // ====== Brique 5.5.d — Cosmetics tab (inventaire + equiper) ======
+        [Header("Cosmetics tab")]
+        [SerializeField] private TextMeshProUGUI _cosmeticsHeader;
+        [SerializeField] private RectTransform _cosmeticsContainer;
+        [SerializeField] private float _cosmeticItemHeight = 60f;
+        [SerializeField] private Color _cosmeticRowBg = new Color(0.16f, 0.17f, 0.21f, 1f);
+        private readonly List<GameObject> _spawnedCosmeticGOs = new List<GameObject>();
+
         public bool IsOpen => _panelRoot != null && _panelRoot.activeSelf;
 
         private void Awake()
@@ -224,6 +232,12 @@ namespace Nymora.Hub
             if (tab == ProfileTab.Wallet && !_hasFetchedWalletOnce)
             {
                 FetchWalletAsync().Forget();
+            }
+            // 5.5.d — Refetch inventaire cosmetiques a CHAQUE ouverture (la classe active
+            // peut avoir change entre 2 ouvertures -> garde-fou d'equipement a rafraichir).
+            if (tab == ProfileTab.Cosmetics)
+            {
+                FetchCosmeticsAsync().Forget();
             }
         }
 
@@ -705,6 +719,208 @@ namespace Nymora.Hub
             if (_hasFetchedWalletOnce && _activeTab == ProfileTab.Wallet)
             {
                 FetchWalletAsync().Forget();
+            }
+        }
+
+        // ====== Brique 5.5.d — Cosmetics tab logic ======
+
+        private bool _cosmeticBusy;
+
+        private async UniTask FetchCosmeticsAsync()
+        {
+            string token = ResolveDevToken();
+            if (string.IsNullOrEmpty(token)) return;
+            _api.SetBearerToken(token);
+
+            var res = await _api.GetInventoryAsync();
+            if (!res.IsSuccess)
+            {
+                Debug.LogWarning($"[ProfilePanel] /shop/inventory failed: {res.StatusCode} {res.ErrorMessage}");
+                return;
+            }
+            RebuildCosmeticsUI(res.Data.items ?? new ShopItemDto[0]);
+        }
+
+        private void RebuildCosmeticsUI(ShopItemDto[] items)
+        {
+            if (_cosmeticsContainer == null) return;
+
+            foreach (var go in _spawnedCosmeticGOs) if (go != null) Destroy(go);
+            _spawnedCosmeticGOs.Clear();
+
+            if (_cosmeticsHeader != null)
+            {
+                string activeClass = SelectedClassPreferences.Get();
+                _cosmeticsHeader.text = items.Length == 0
+                    ? "<b>Cosmétiques</b> — inventaire vide"
+                    : $"<b>Cosmétiques</b> ({items.Length}) · classe active : <color=#8be0ff>{activeClass}</color>";
+            }
+
+            if (items.Length == 0)
+            {
+                SpawnCosmeticInfoRow("<i>Aucun cosmétique. Direction la Boutique !</i>");
+                return;
+            }
+
+            // Groupé par type, ordre fixe.
+            string[] typeOrder = { "skin", "banner", "title", "emote" };
+            string[] typeLabels = { "Skins", "Bannières", "Titres", "Emotes" };
+            for (int t = 0; t < typeOrder.Length; t++)
+            {
+                var inType = new List<ShopItemDto>();
+                foreach (var it in items) if (it.type == typeOrder[t]) inType.Add(it);
+                if (inType.Count == 0) continue;
+                SpawnCosmeticTypeHeader(typeLabels[t], inType.Count);
+                foreach (var it in inType) SpawnCosmeticRow(it);
+            }
+        }
+
+        private void SpawnCosmeticTypeHeader(string label, int count)
+        {
+            var go = new GameObject($"CosmeticCat_{label}", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            go.transform.SetParent(_cosmeticsContainer, false);
+            var tmp = go.GetComponent<TextMeshProUGUI>();
+            tmp.text = $"<b>{label}</b> ({count})";
+            tmp.fontSize = 18; tmp.color = new Color(0.85f, 0.85f, 0.9f);
+            tmp.alignment = TextAlignmentOptions.MidlineLeft; tmp.richText = true;
+            go.GetComponent<LayoutElement>().preferredHeight = 28f;
+            _spawnedCosmeticGOs.Add(go);
+        }
+
+        private void SpawnCosmeticInfoRow(string richText)
+        {
+            var go = new GameObject("CosmeticInfo", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            go.transform.SetParent(_cosmeticsContainer, false);
+            var tmp = go.GetComponent<TextMeshProUGUI>();
+            tmp.text = richText; tmp.fontSize = 14; tmp.color = new Color(0.7f, 0.7f, 0.75f);
+            tmp.alignment = TextAlignmentOptions.Center; tmp.richText = true;
+            go.GetComponent<LayoutElement>().preferredHeight = 48f;
+            _spawnedCosmeticGOs.Add(go);
+        }
+
+        private void SpawnCosmeticRow(ShopItemDto item)
+        {
+            string activeClass = SelectedClassPreferences.Get();
+            bool classOk = string.IsNullOrEmpty(item.classLock) || item.classLock == activeClass;
+
+            var row = new GameObject($"Cosmetic_{item.id}",
+                typeof(RectTransform), typeof(Image), typeof(HorizontalLayoutGroup), typeof(LayoutElement));
+            row.transform.SetParent(_cosmeticsContainer, false);
+            row.GetComponent<Image>().color = _cosmeticRowBg;
+            var hl = row.GetComponent<HorizontalLayoutGroup>();
+            hl.padding = new RectOffset(10, 10, 6, 6);
+            hl.spacing = 10;
+            hl.childForceExpandHeight = true; hl.childControlHeight = true; hl.childControlWidth = true;
+            hl.childAlignment = TextAnchor.MiddleLeft;
+            row.GetComponent<LayoutElement>().preferredHeight = _cosmeticItemHeight;
+
+            // Vignette
+            var prevGo = new GameObject("Preview", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            prevGo.transform.SetParent(row.transform, false);
+            var prevImg = prevGo.GetComponent<Image>();
+            prevImg.preserveAspect = true;
+            var prevSprite = Resources.Load<Sprite>(item.previewKey);
+            prevImg.sprite = prevSprite;
+            prevImg.enabled = prevSprite != null;
+            var prevLe = prevGo.GetComponent<LayoutElement>();
+            prevLe.preferredWidth = 48f; prevLe.preferredHeight = 48f;
+
+            // Nom + sous-titre (classe/rareté)
+            var infoGo = new GameObject("Info", typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            infoGo.transform.SetParent(row.transform, false);
+            var infoTmp = infoGo.GetComponent<TextMeshProUGUI>();
+            string sub = string.IsNullOrEmpty(item.classLock) ? RarityLabel(item.rarity) : $"{RarityLabel(item.rarity)} · {item.classLock}";
+            infoTmp.text = $"{item.name}\n<size=70%><color=#9aa0ac>{sub}</color></size>";
+            infoTmp.fontSize = 16; infoTmp.color = Color.white;
+            infoTmp.alignment = TextAlignmentOptions.MidlineLeft; infoTmp.richText = true;
+            infoGo.GetComponent<LayoutElement>().flexibleWidth = 1f;
+
+            // Bouton action
+            var btnGo = new GameObject("Action", typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            btnGo.transform.SetParent(row.transform, false);
+            var btnImg = btnGo.GetComponent<Image>();
+            var btn = btnGo.GetComponent<Button>();
+            btn.targetGraphic = btnImg;
+            btnGo.GetComponent<LayoutElement>().preferredWidth = 150f;
+
+            var btnLabelGo = new GameObject("Label", typeof(RectTransform), typeof(TextMeshProUGUI));
+            btnLabelGo.transform.SetParent(btnGo.transform, false);
+            var btnLabel = btnLabelGo.GetComponent<TextMeshProUGUI>();
+            btnLabel.fontSize = 15; btnLabel.color = Color.white;
+            btnLabel.alignment = TextAlignmentOptions.Center; btnLabel.fontStyle = FontStyles.Bold;
+            var blRt = btnLabel.GetComponent<RectTransform>();
+            blRt.anchorMin = Vector2.zero; blRt.anchorMax = Vector2.one;
+            blRt.offsetMin = Vector2.zero; blRt.offsetMax = Vector2.zero;
+
+            string id = item.id;
+            if (item.equipped)
+            {
+                btnImg.color = new Color(0.22f, 0.40f, 0.26f);
+                btnLabel.text = "✓ Équipé";
+                btn.onClick.AddListener(() => HandleUnequip(id));
+            }
+            else if (classOk)
+            {
+                btnImg.color = new Color(0.30f, 0.50f, 0.32f);
+                btnLabel.text = "Équiper";
+                btn.onClick.AddListener(() => HandleEquip(id, activeClass));
+            }
+            else
+            {
+                btnImg.color = new Color(0.26f, 0.27f, 0.32f);
+                btnLabel.text = $"Passe en {item.classLock}";
+                btn.interactable = false;
+            }
+
+            _spawnedCosmeticGOs.Add(row);
+        }
+
+        private async void HandleEquip(string itemId, string activeClass)
+        {
+            if (_cosmeticBusy) return;
+            string token = ResolveDevToken();
+            if (string.IsNullOrEmpty(token)) return;
+            _api.SetBearerToken(token);
+            _cosmeticBusy = true;
+            var res = await _api.EquipItemAsync(itemId, activeClass);
+            _cosmeticBusy = false;
+            if (res.IsSuccess && res.Data.ok)
+            {
+                Debug.Log($"[Cosmetics] Équipé {itemId}");
+                HubAvatar.Local?.RefreshEquippedSkin(); // 5.5.e — applique le skin sur l'avatar hub
+                FetchCosmeticsAsync().Forget();
+            }
+            else
+            {
+                string err = res.IsSuccess ? res.Data.error : res.ErrorMessage;
+                Debug.LogWarning($"[Cosmetics] Équiper refusé {itemId} : {err}");
+            }
+        }
+
+        private async void HandleUnequip(string itemId)
+        {
+            if (_cosmeticBusy) return;
+            string token = ResolveDevToken();
+            if (string.IsNullOrEmpty(token)) return;
+            _api.SetBearerToken(token);
+            _cosmeticBusy = true;
+            var res = await _api.UnequipItemAsync(itemId);
+            _cosmeticBusy = false;
+            if (res.IsSuccess)
+            {
+                HubAvatar.Local?.RefreshEquippedSkin(); // 5.5.e — retire le skin de l'avatar hub
+                FetchCosmeticsAsync().Forget();
+            }
+        }
+
+        private static string RarityLabel(string rarity)
+        {
+            switch (rarity)
+            {
+                case "legendary": return "<color=#ffa733>Légendaire</color>";
+                case "epic":      return "<color=#c773ff>Épique</color>";
+                case "rare":      return "<color=#66b3ff>Rare</color>";
+                default:           return "<color=#d8d8e0>Commun</color>";
             }
         }
     }

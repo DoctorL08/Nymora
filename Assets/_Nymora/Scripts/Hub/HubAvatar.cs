@@ -1,7 +1,9 @@
+using Cysharp.Threading.Tasks;
 using Fusion;
 using Nymora.Core.Data;
 using Nymora.Core.Enums;
 using Nymora.Core.ScriptableObjects;
+using Nymora.Network.Backend;
 using UnityEngine;
 
 namespace Nymora.Hub
@@ -30,6 +32,11 @@ namespace Nymora.Hub
         [Header("Class visuals (5.3.g.bis — drag les 5 NymoraClassDefinition.asset)")]
         [SerializeField] private NymoraClassDefinition[] _classDefinitions;
 
+        [Header("Cosmetic skins (5.5.e — drag les CosmeticSkinDefinition.asset)")]
+        [SerializeField] private CosmeticSkinDefinition[] _skinDefinitions;
+        [Tooltip("Pour fetch l'inventaire et résoudre le skin équipé (avatar local uniquement).")]
+        [SerializeField] private NymoraBackendSettings _backendSettings;
+
         // 5.3.g.bis — SceneSpriteAnimator auto-add pour anim Idle pixel art (frames Sprite[]
         // extraites de l'AnimatorController Stage0_SE et stockees dans NymoraClassDefinition.IdleFrames).
         private SceneSpriteAnimator _spriteAnimator;
@@ -39,6 +46,10 @@ namespace Nymora.Hub
         private enum HubFacing { SE, NE, SW, NW }
         private HubFacing _currentFacing = HubFacing.SE;
         private NymoraClassDefinition _currentClassDef;
+        // 5.5.e — skin equipe pour la classe courante (local only). Si non-null, l'avatar joue
+        // SES frames au lieu de celles de _currentClassDef.
+        private CosmeticSkinDefinition _currentSkinDef;
+        private NymoraApiClient _skinApi;
         private int _prevGridXForFacing = int.MinValue;
         private int _prevGridYForFacing = int.MinValue;
 
@@ -202,6 +213,8 @@ namespace Nymora.Hub
 
             // 5.3.g.bis — Apply class visual (local + remote) maintenant que NetClassId est sync
             ApplyClassVisual();
+            // 5.5.e — resout le skin equipe (avatar local seulement, fetch inventaire).
+            RefreshEquippedSkin();
         }
 
         /// <summary>
@@ -231,15 +244,20 @@ namespace Nymora.Hub
             if (def == null) return;
             _currentClassDef = def;
 
+            // 5.5.e — un skin equipe pour une AUTRE classe ne s'applique pas a la classe courante.
+            if (_currentSkinDef != null && _currentSkinDef.ClassId != cls) _currentSkinDef = null;
+
             // Port calibration combat -> hub : Y offset + Scale appliques au child Visual
             // (jamais au transform root, qui est l'ancre tile pilotee par HubMovementController).
             // Fallback no-op si on tourne sur l'ancien prefab mono-GO (Visual == root) pour
-            // eviter de bouger l'avatar entier hors de sa tile.
+            // eviter de bouger l'avatar entier hors de sa tile. Le skin override la calibration.
             if (_visualTransform != null && _visualTransform != transform)
             {
-                float scale = def.HubVisualScale > 0f ? def.HubVisualScale : 1f;
+                float rawScale = _currentSkinDef != null ? _currentSkinDef.HubVisualScale : def.HubVisualScale;
+                float yOff = _currentSkinDef != null ? _currentSkinDef.HubVisualYOffset : def.HubVisualYOffset;
+                float scale = rawScale > 0f ? rawScale : 1f;
                 Vector3 lp = _visualTransform.localPosition;
-                _visualTransform.localPosition = new Vector3(lp.x, def.HubVisualYOffset, lp.z);
+                _visualTransform.localPosition = new Vector3(lp.x, yOff, lp.z);
                 _visualTransform.localScale = new Vector3(scale, scale, 1f);
             }
 
@@ -264,23 +282,32 @@ namespace Nymora.Hub
             bool useNE = (_currentFacing == HubFacing.NE || _currentFacing == HubFacing.NW);
             bool flipX = (_currentFacing == HubFacing.SW || _currentFacing == HubFacing.NW);
 
+            // 5.5.e — source des frames : le skin equipe override la classe.
+            bool useSkin = _currentSkinDef != null;
+            Sprite[] idleSE = useSkin ? _currentSkinDef.IdleFrames : _currentClassDef.IdleFrames;
+            Sprite[] idleNE = useSkin ? _currentSkinDef.IdleFramesNE : _currentClassDef.IdleFramesNE;
+            Sprite[] walkSE = useSkin ? _currentSkinDef.WalkFrames : _currentClassDef.WalkFrames;
+            Sprite[] walkNE = useSkin ? _currentSkinDef.WalkFramesNE : _currentClassDef.WalkFramesNE;
+            float idleFpsV = useSkin ? _currentSkinDef.IdleFps : _currentClassDef.IdleFps;
+            float walkFpsV = useSkin ? _currentSkinDef.WalkFps : _currentClassDef.WalkFps;
+
             Sprite[] frames;
             float fps;
             if (_isWalking)
             {
-                frames = useNE ? _currentClassDef.WalkFramesNE : _currentClassDef.WalkFrames;
-                fps = _currentClassDef.WalkFps;
-                // Fallback Idle si Walk pas peuple (asset designer pas encore livre).
+                frames = useNE ? walkNE : walkSE;
+                fps = walkFpsV;
+                // Fallback Idle si Walk pas peuple.
                 if (frames == null || frames.Length == 0)
                 {
-                    frames = useNE ? _currentClassDef.IdleFramesNE : _currentClassDef.IdleFrames;
-                    fps = _currentClassDef.IdleFps;
+                    frames = useNE ? idleNE : idleSE;
+                    fps = idleFpsV;
                 }
             }
             else
             {
-                frames = useNE ? _currentClassDef.IdleFramesNE : _currentClassDef.IdleFrames;
-                fps = _currentClassDef.IdleFps;
+                frames = useNE ? idleNE : idleSE;
+                fps = idleFpsV;
             }
 
             if (frames != null && frames.Length > 0 && _spriteAnimator != null)
@@ -428,7 +455,55 @@ namespace Nymora.Hub
             {
                 NetClassId = classId;
                 ApplyClassVisual(); // local immediate (au cas où OnChangedRender n'est pas déclenchée pour soi)
+                RefreshEquippedSkin(); // re-resoudre le skin equipe pour la nouvelle classe
             }
+        }
+
+        /// <summary>
+        /// 5.5.e — Resout le skin equipe pour la classe active et le branche sur l'avatar
+        /// LOCAL. Appele : au Spawn local, au changement de classe, et apres equiper/desequiper
+        /// (HubProfilePanel). Les autres joueurs voient encore la classe de base — la sync
+        /// remote necessiterait un [Networked] field + regen prefab Fusion (deferre).
+        /// </summary>
+        public void RefreshEquippedSkin()
+        {
+            if (Object == null || !Object.HasStateAuthority) return;
+            RefreshEquippedSkinAsync().Forget();
+        }
+
+        private async UniTaskVoid RefreshEquippedSkinAsync()
+        {
+            if (_backendSettings == null) return;
+            string token = HubChatClient.Instance?.DevToken;
+            if (string.IsNullOrEmpty(token)) return;
+            if (_skinApi == null) _skinApi = new NymoraApiClient(_backendSettings);
+            _skinApi.SetBearerToken(token);
+
+            var res = await _skinApi.GetInventoryAsync();
+            if (!res.IsSuccess) return;
+
+            string cls = NetClassId.ToString();
+            CosmeticSkinDefinition match = null;
+            if (res.Data.items != null)
+            {
+                foreach (var it in res.Data.items)
+                {
+                    if (it == null || !it.equipped || it.type != "skin") continue;
+                    if (it.classLock != cls) continue;
+                    match = FindSkinDef(it.id);
+                    if (match != null) break;
+                }
+            }
+            _currentSkinDef = match;
+            ApplyClassVisual();
+        }
+
+        private CosmeticSkinDefinition FindSkinDef(string cosmeticId)
+        {
+            if (_skinDefinitions == null) return null;
+            foreach (var s in _skinDefinitions)
+                if (s != null && s.CosmeticId == cosmeticId) return s;
+            return null;
         }
 
         // 4.4.b — Couleur deterministe par joueur pour distinguer self/other en multi-instance.
