@@ -26,9 +26,11 @@ namespace Nymora.Combat.View.Animation
         [Tooltip("FPS de lecture des marques (4 frames a 4 fps = ~1s par cycle).")]
         [SerializeField, Min(1f)] private float _framesPerSecond = 4f;
 
-        [Tooltip("Scale du GameObject de la marque. 1.0 = 64x64 @ PPU 128 = 0.5 unit. " +
-                 "Augmente pour la lisibilite (1.5 ou 2.0 pour des marques bien visibles).")]
-        [SerializeField, Min(0.1f)] private float _markScale = 1.2f;
+        [Tooltip("B7 (22 mai) — Taille MONDE cible (dimension max) commune a TOUTES les marques. " +
+                 "Le scale est calcule par marque = cette taille / dimension native du sprite, " +
+                 "pour des marques UNIFORMES quelle que soit leur taille/PPU native. " +
+                 "0.45 unit = lisible sans etre trop gros (avant : scale fixe 1.2 -> tailles inegales).")]
+        [SerializeField, Min(0.05f)] private float _markTargetWorldSize = 0.45f;
 
         [Tooltip("Offset local par rapport au combatant. Y positif = au-dessus de la tete. " +
                  "POLISH-5b (17 mai) : bumped de 0.7 -> 1.4 car les sprites Phase 3 sont scales " +
@@ -201,7 +203,7 @@ namespace Nymora.Combat.View.Animation
             if (_verboseLog)
             {
                 string firstName = frames[0] != null ? frames[0].name : "<null>";
-                Debug.Log($"[Nymora.Marks] Spawn {nameSuffix} on {view.name} : {frames.Length} frame(s), nullCount={nullCount}, first='{firstName}', pos={_baseOffset}, scale={_markScale}, sortingOrder={_sortingOrder}");
+                Debug.Log($"[Nymora.Marks] Spawn {nameSuffix} on {view.name} : {frames.Length} frame(s), nullCount={nullCount}, first='{firstName}', pos={_baseOffset}, targetSize={_markTargetWorldSize}, sortingOrder={_sortingOrder}");
                 if (nullCount > 0)
                 {
                     Debug.LogError($"[Nymora.Marks] /!\\ {nameSuffix} a {nullCount}/{frames.Length} sprite null (asset fantome). Relance Nymora > Validation > Normalize Combat Assets > Do All.");
@@ -211,11 +213,17 @@ namespace Nymora.Combat.View.Animation
             var go = new GameObject(nameSuffix);
             go.transform.SetParent(view.transform, false);
             go.transform.localPosition = new Vector3(_baseOffset.x, _baseOffset.y, 0f);
-            go.transform.localScale = new Vector3(_markScale, _markScale, 1f);
 
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sortingLayerName = "Default";
             sr.sortingOrder = _sortingOrder;
+            sr.sprite = frames[0]; // pose la 1ere frame pour lire ses bounds (taille native monde)
+
+            // B7 — normalise la taille : toutes les marques sont rendues a _markTargetWorldSize
+            // (dimension max), independamment de la taille/PPU native du sprite -> UNIFORMES.
+            float nativeMax = Mathf.Max(frames[0].bounds.size.x, frames[0].bounds.size.y);
+            float uniformScale = nativeMax > 0.0001f ? _markTargetWorldSize / nativeMax : 1f;
+            go.transform.localScale = new Vector3(uniformScale, uniformScale, 1f);
 
             var anim = go.AddComponent<SpriteAnimator>();
             anim.SetFrames(frames, _framesPerSecond, loop: true);
