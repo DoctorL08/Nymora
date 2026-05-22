@@ -66,8 +66,10 @@ namespace Nymora.UI.Login
         private NymoraApiClient _api;
         private AuthService _auth;
         private NymoraVersionClient _versionClient;
+        private LauncherUpdateService _updateService;
         private CancellationTokenSource _cts;
         private bool _versionLocked;
+        private bool _downloading;
 
         // Memorise pour la Brique L3 (telechargement) : URL + hash du zip de la derniere version.
         private string _pendingDownloadUrl;
@@ -85,6 +87,7 @@ namespace Nymora.UI.Login
             _api = new NymoraApiClient(_backendSettings);
             _auth = new AuthService(_api);
             _versionClient = new NymoraVersionClient(_api);
+            _updateService = new LauncherUpdateService();
             _cts = new CancellationTokenSource();
 
             // Etat initial du launcher : tout masque, on attend le check de version.
@@ -255,13 +258,51 @@ namespace Nymora.UI.Login
         }
 
         /// <summary>
-        /// Comportement cable en Brique L3 (telechargement reel du zip + barre de progression).
-        /// Pour l'instant : feedback honnete que le telechargement n'est pas encore branche.
+        /// Brique L3 : telecharge le zip de MaJ en streaming, anime la barre de progression
+        /// et verifie le sha256. L'installation (extraction + relance) viendra en Brique L4.
         /// </summary>
-        private void OnDownloadClicked()
+        private async void OnDownloadClicked()
         {
-            NymoraLog.Info("Login", $"[L2] Clic Telecharger (url='{_pendingDownloadUrl}'). Telechargement branche en Brique L3.");
-            SetStatus("Telechargement disponible a la prochaine etape (Brique L3).");
+            if (_downloading) return;
+            if (string.IsNullOrEmpty(_pendingDownloadUrl))
+            {
+                SetStatus("Aucun lien de telechargement disponible.");
+                return;
+            }
+
+            _downloading = true;
+            if (_downloadButton != null) _downloadButton.interactable = false;
+            ResetProgressBar();
+            SetStatus("Telechargement de la mise a jour...");
+
+            var progress = new System.Progress<float>(OnDownloadProgress);
+            var result = await _updateService.DownloadAndVerifyAsync(
+                _pendingDownloadUrl, _pendingSha256, progress, _cts.Token);
+
+            _downloading = false;
+
+            if (result.IsSuccess)
+            {
+                if (_progressBarFill != null) _progressBarFill.fillAmount = 1f;
+                if (_progressText != null) _progressText.text = "100 %";
+                // L'installation auto (extraction + relance) arrive en Brique L4.
+                SetStatus($"Telechargement termine et verifie.\nFichier : {result.FilePath}\n(installation auto : Brique L4)");
+                NymoraLog.Info("Login", $"MaJ telechargee : {result.FilePath}");
+            }
+            else
+            {
+                ResetProgressBar();
+                if (_downloadButton != null) _downloadButton.interactable = true; // on peut retenter
+                SetStatus($"Echec du telechargement : {result.ErrorMessage}");
+                NymoraLog.Warn("Login", $"Echec MaJ : {result.ErrorMessage}");
+            }
+        }
+
+        /// <summary>Callback de progression (0..1) -> barre + pourcentage. Appele sur le thread principal.</summary>
+        private void OnDownloadProgress(float p)
+        {
+            if (_progressBarFill != null) _progressBarFill.fillAmount = p;
+            if (_progressText != null) _progressText.text = $"{Mathf.RoundToInt(p * 100f)} %";
         }
 
         private async void OnConnectPhotonClicked()
