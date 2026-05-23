@@ -139,13 +139,23 @@ namespace Nymora.Combat.View.HUD
                 _subtitleText.text = $"Round {turnNumber}";
             }
 
-            // A2 — SFX de fin de match (une seule fois, _shown garde l'idempotence au-dessus).
+            // A2/A4 — SFX + musique de fin de match (une seule fois, _shown garde l'idempotence
+            // au-dessus). La musique victoire/défaite prime sur MusicCombat ; le retour au hub
+            // repassera sur MusicHub via SceneMusicDirector.
             var audio = Nymora.Core.Audio.NymoraAudioManager.Instance;
             if (audio != null)
             {
                 if (winnerPlayerIndex < 0) { /* match nul : pas de stinger dédié pour l'instant */ }
-                else if (winnerPlayerIndex == localPlayerIndex) audio.PlaySfx(Nymora.Core.Audio.SoundId.Victory);
-                else audio.PlaySfx(Nymora.Core.Audio.SoundId.Defeat);
+                else if (winnerPlayerIndex == localPlayerIndex)
+                {
+                    audio.PlaySfx(Nymora.Core.Audio.SoundId.Victory);
+                    audio.PlayMusic(Nymora.Core.Audio.SoundId.MusicVictory);
+                }
+                else
+                {
+                    audio.PlaySfx(Nymora.Core.Audio.SoundId.Defeat);
+                    audio.PlayMusic(Nymora.Core.Audio.SoundId.MusicDefeat);
+                }
             }
 
             Show();

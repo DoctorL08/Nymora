@@ -240,15 +240,19 @@ namespace Nymora.Core.Audio
 
         public void PlayMusic(SoundId id, float fadeSeconds = 0.6f)
         {
-            if (_bank == null || id == _currentMusic) return;
-            if (!_bank.TryResolve(id, out var clip, out var entryVol, out _, out _)) return;
-
-            _currentMusic = id;
-            _currentMusicEntryVolume = entryVol;
-            float target = entryVol * EffectiveBusVolume(AudioBus.Music);
-
-            if (_musicFade != null) StopCoroutine(_musicFade);
-            _musicFade = StartCoroutine(CrossfadeMusic(clip, target, Mathf.Max(0f, fadeSeconds)));
+            if (id == _currentMusic) return;
+            if (_bank != null && _bank.TryResolve(id, out var clip, out var entryVol, out _, out _))
+            {
+                _currentMusic = id;
+                _currentMusicEntryVolume = entryVol;
+                float target = entryVol * EffectiveBusVolume(AudioBus.Music);
+                if (_musicFade != null) StopCoroutine(_musicFade);
+                _musicFade = StartCoroutine(CrossfadeMusic(clip, target, Mathf.Max(0f, fadeSeconds)));
+                return;
+            }
+            // Clip manquant : routing OK mais inaudible jusqu'à A6. Log + blip debug (1×/transition).
+            Debug.Log($"[Audio] PlayMusic({id}) — clip absent (audible après A6).");
+            if (DebugBeepOnMissing) PlayMissingClipBeep(id);
         }
 
         public void StopMusic(float fadeSeconds = 0.6f)
@@ -291,13 +295,17 @@ namespace Nymora.Core.Audio
 
         public void PlayAmbience(SoundId id)
         {
-            if (_bank == null || id == _currentAmbience) return;
-            if (!_bank.TryResolve(id, out var clip, out var entryVol, out _, out _)) return;
-            _currentAmbience = id;
-            _currentAmbienceEntryVolume = entryVol;
-            _ambienceSource.clip = clip;
-            _ambienceSource.volume = entryVol * EffectiveBusVolume(AudioBus.Ambience);
-            _ambienceSource.Play();
+            if (id == _currentAmbience) return;
+            if (_bank != null && _bank.TryResolve(id, out var clip, out var entryVol, out _, out _))
+            {
+                _currentAmbience = id;
+                _currentAmbienceEntryVolume = entryVol;
+                _ambienceSource.clip = clip;
+                _ambienceSource.volume = entryVol * EffectiveBusVolume(AudioBus.Ambience);
+                _ambienceSource.Play();
+                return;
+            }
+            Debug.Log($"[Audio] PlayAmbience({id}) — clip absent (audible après A6).");
         }
 
         public void StopAmbience()
