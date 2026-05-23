@@ -3,6 +3,16 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
+**SESSION 23 mai 2026 (🎨 POST-FX SUR LES MAPS COMBAT — LIVRÉ) :** le pack post-process (cf [[project-postfx-pack]]) est appliqué aux 3 scènes combat.
+
+- **Pack** = `_Nymora/Settings/PostProcessing/` : `Hub_PostFX` + **`Combat_PostFX`** (clone créé par le nouveau `CombatPostFXTool`) + 4 LUT (`Neutral/Cinematic/Cold/Warm`).
+- **`CombatPostFXTool`** (`Nymora > Setup > Setup Combat PostFX (IA)`) : clone `Hub_PostFX`→`Combat_PostFX`, pose Global Volume "PostFX Volume" + active post-process caméra sur `30_CombatIA`. Pattern calqué sur `HubVisualPolishTool`.
+- **Lorenzo a finalement fait à la main** : copier/coller du `PostFX Volume` + `Scene Lighting 2D` du hub vers **les 3 scènes combat** (`30_CombatIA`, `33_CombatCasual`, `40_CombatRanked1v1`) — « perfect ». Donc **pas d'injectable de propagation** (abandonné). ⚠️ Le `PostFX Volume` copié référence probablement **`Hub_PostFX`** (partagé hub↔combat) ; pour rendre le combat indépendant → pointer son Volume sur `Combat_PostFX`. À trancher plus tard, on commit **en l'état**.
+- **`CombatPostFXTool` + `Combat_PostFX` gardés** (réutilisables) même si Lorenzo a fait le copier/coller manuel.
+- 100% View (Volume + lighting 2D), **pas de bump CombatRulesVersion**. ⚠️ Scènes combat modifiées → le designer devra **rebuild son standalone** pour voir le rendu en casual/PvP.
+
+---
+
 **SESSION 23 mai 2026 (🏷️ TITRES DANS LE TOOLTIP AVATAR — LIVRÉ) :** le tooltip hover avatar passe à **3 lignes : clan (haut, rouge) / pseudo (milieu, crème) / titre (bas, doré italique +petit)**. Validé par Lorenzo.
 
 - **Source** = cosmétique type `title` équipé (backend 5.5 déjà prêt : équipement générique sans class-lock, slot `title`). Titres au catalogue : `title_the_unbroken` (« l'Inébranlable »), `title_soulbound` (« Âme Liée »).
