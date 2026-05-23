@@ -406,7 +406,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -29.999939}
+  m_AnchoredPosition: {x: 0, y: -29.999908}
   m_SizeDelta: {x: 0, y: -60}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &18263080
@@ -1634,6 +1634,7 @@ GameObject:
   m_Component:
   - component: {fileID: 52298743}
   - component: {fileID: 52298744}
+  - component: {fileID: 52298745}
   m_Layer: 0
   m_Name: Magic Halo (sample) (2)
   m_TagString: Untagged
@@ -1649,7 +1650,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 52298742}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: 0.9997534, w: -0.022208605}
+  m_LocalRotation: {x: -0, y: -0, z: 0.99974287, w: -0.022675918}
   m_LocalPosition: {x: 0.02, y: 11.63, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -1671,9 +1672,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0
-  m_Color: {r: 0.23584908, g: 0.23584908, b: 0.23584908, a: 1}
-  m_Intensity: 0.015
+  m_FalloffIntensity: 0.541
+  m_Color: {r: 0.3018868, g: 0.3018868, b: 0.3018868, a: 1}
+  m_Intensity: 0.03
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -1692,10 +1693,10 @@ MonoBehaviour:
   m_LocalBounds:
     m_Center: {x: 0, y: -0.00000011920929, z: 0}
     m_Extent: {x: 0.9985302, y: 0.99853027, z: 0}
-  m_PointLightInnerAngle: 177.05
-  m_PointLightOuterAngle: 180.56
-  m_PointLightInnerRadius: 0.39000002
-  m_PointLightOuterRadius: 20.340288
+  m_PointLightInnerAngle: 174.44559
+  m_PointLightOuterAngle: 360
+  m_PointLightInnerRadius: 0.34
+  m_PointLightOuterRadius: 22.021526
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -1706,6 +1707,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &52298745
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 52298742}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &53784824
 GameObject:
   m_ObjectHideFlags: 0
@@ -7148,6 +7167,7 @@ GameObject:
   m_Component:
   - component: {fileID: 218024141}
   - component: {fileID: 218024142}
+  - component: {fileID: 218024143}
   m_Layer: 0
   m_Name: Torch Light (sample) (7)
   m_TagString: Untagged
@@ -7185,9 +7205,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.82
+  m_FalloffIntensity: 0.4
   m_Color: {r: 1, g: 0.62, b: 0.28, a: 1}
-  m_Intensity: 1.25
+  m_Intensity: 0.5
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -7209,7 +7229,7 @@ MonoBehaviour:
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.1
-  m_PointLightOuterRadius: 0.5
+  m_PointLightOuterRadius: 0.34
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -7220,6 +7240,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &218024143
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 218024140}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &220293407
 GameObject:
   m_ObjectHideFlags: 0
@@ -25578,6 +25616,7 @@ GameObject:
   m_Component:
   - component: {fileID: 790461899}
   - component: {fileID: 790461900}
+  - component: {fileID: 790461901}
   m_Layer: 0
   m_Name: Torch Light (sample) (1)
   m_TagString: Untagged
@@ -25615,9 +25654,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.82
+  m_FalloffIntensity: 0.4
   m_Color: {r: 1, g: 0.62, b: 0.28, a: 1}
-  m_Intensity: 1.25
+  m_Intensity: 0.5
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -25639,7 +25678,7 @@ MonoBehaviour:
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.1
-  m_PointLightOuterRadius: 0.5
+  m_PointLightOuterRadius: 0.34
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -25650,6 +25689,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &790461901
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 790461898}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &791756454
 GameObject:
   m_ObjectHideFlags: 0
@@ -30852,6 +30909,7 @@ GameObject:
   m_Component:
   - component: {fileID: 920661322}
   - component: {fileID: 920661323}
+  - component: {fileID: 920661324}
   m_Layer: 0
   m_Name: Torch Light (sample) (6)
   m_TagString: Untagged
@@ -30889,9 +30947,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.82
+  m_FalloffIntensity: 0.4
   m_Color: {r: 1, g: 0.62, b: 0.28, a: 1}
-  m_Intensity: 1.25
+  m_Intensity: 0.5
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -30913,7 +30971,7 @@ MonoBehaviour:
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.1
-  m_PointLightOuterRadius: 0.5
+  m_PointLightOuterRadius: 0.34
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -30924,6 +30982,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &920661324
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 920661321}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &921782582
 GameObject:
   m_ObjectHideFlags: 0
@@ -36264,7 +36340,7 @@ MonoBehaviour:
   m_BlendStyleIndex: 0
   m_FalloffIntensity: 0.5
   m_Color: {r: 1, g: 0.8081254, b: 0.5424528, a: 1}
-  m_Intensity: 0.55
+  m_Intensity: 0.6
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -41458,6 +41534,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1186315988}
   - component: {fileID: 1186315989}
+  - component: {fileID: 1186315990}
   m_Layer: 0
   m_Name: Torch Light (sample) (2)
   m_TagString: Untagged
@@ -41495,9 +41572,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.82
+  m_FalloffIntensity: 0.4
   m_Color: {r: 1, g: 0.62, b: 0.28, a: 1}
-  m_Intensity: 1.25
+  m_Intensity: 0.5
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -41519,7 +41596,7 @@ MonoBehaviour:
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.1
-  m_PointLightOuterRadius: 0.5
+  m_PointLightOuterRadius: 0.34
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -41530,6 +41607,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &1186315990
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1186315987}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &1187123145
 GameObject:
   m_ObjectHideFlags: 0
@@ -42315,6 +42410,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1216383724}
   - component: {fileID: 1216383725}
+  - component: {fileID: 1216383726}
   m_Layer: 0
   m_Name: Magic Halo (sample)
   m_TagString: Untagged
@@ -42330,7 +42426,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1216383723}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: 0.9384216, w: -0.34549224}
+  m_LocalRotation: {x: -0, y: -0, z: 0.89255214, w: -0.45094422}
   m_LocalPosition: {x: -18.27, y: 11.4, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -42352,9 +42448,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.995
-  m_Color: {r: 0.46, g: 0.4, b: 0.95, a: 1}
-  m_Intensity: 1.63
+  m_FalloffIntensity: 0.701
+  m_Color: {r: 0.64760596, g: 0.9339623, b: 0.9141611, a: 1}
+  m_Intensity: 0.03
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -42373,10 +42469,10 @@ MonoBehaviour:
   m_LocalBounds:
     m_Center: {x: 0, y: -0.00000011920929, z: 0}
     m_Extent: {x: 0.9985302, y: 0.99853027, z: 0}
-  m_PointLightInnerAngle: 98.76
-  m_PointLightOuterAngle: 124.58
-  m_PointLightInnerRadius: 0.39000002
-  m_PointLightOuterRadius: 22.04336
+  m_PointLightInnerAngle: 174.44559
+  m_PointLightOuterAngle: 360
+  m_PointLightInnerRadius: 0.34
+  m_PointLightOuterRadius: 40.816746
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -42387,6 +42483,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &1216383726
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1216383723}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &1225457202
 GameObject:
   m_ObjectHideFlags: 0
@@ -44639,6 +44753,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1275157746}
   - component: {fileID: 1275157747}
+  - component: {fileID: 1275157748}
   m_Layer: 0
   m_Name: Torch Light (sample) (8)
   m_TagString: Untagged
@@ -44676,9 +44791,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.82
-  m_Color: {r: 0.27843142, g: 0.6065326, b: 1, a: 1}
-  m_Intensity: 1.25
+  m_FalloffIntensity: 0.4
+  m_Color: {r: 0.08627451, g: 0.7254902, b: 0.9607843, a: 1}
+  m_Intensity: 0.5
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -44700,7 +44815,7 @@ MonoBehaviour:
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.1
-  m_PointLightOuterRadius: 0.5
+  m_PointLightOuterRadius: 0.34
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -44711,6 +44826,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &1275157748
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1275157745}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &1276550759
 GameObject:
   m_ObjectHideFlags: 0
@@ -46924,6 +47057,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1372561485}
   - component: {fileID: 1372561486}
+  - component: {fileID: 1372561487}
   m_Layer: 0
   m_Name: Torch Light (sample) (11)
   m_TagString: Untagged
@@ -46961,9 +47095,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.82
-  m_Color: {r: 0.27843142, g: 0.6065326, b: 1, a: 1}
-  m_Intensity: 1.25
+  m_FalloffIntensity: 0.4
+  m_Color: {r: 0.08627451, g: 0.7254902, b: 0.9607843, a: 1}
+  m_Intensity: 0.5
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -46985,7 +47119,7 @@ MonoBehaviour:
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.1
-  m_PointLightOuterRadius: 0.5
+  m_PointLightOuterRadius: 0.34
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -46996,6 +47130,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &1372561487
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1372561484}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &1373436942
 GameObject:
   m_ObjectHideFlags: 0
@@ -49031,6 +49183,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1414608544}
   - component: {fileID: 1414608545}
+  - component: {fileID: 1414608546}
   m_Layer: 0
   m_Name: Magic Halo (sample) (1)
   m_TagString: Untagged
@@ -49046,7 +49199,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1414608543}
   serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: 0.87571067, w: 0.48283625}
+  m_LocalRotation: {x: -0, y: -0, z: 0.841823, w: 0.53975374}
   m_LocalPosition: {x: 20.97, y: 10.2, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
@@ -49068,9 +49221,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.98
-  m_Color: {r: 0.46, g: 0.4, b: 0.95, a: 1}
-  m_Intensity: 2.42
+  m_FalloffIntensity: 0.806
+  m_Color: {r: 0.13163047, g: 0.5471698, b: 0.37837517, a: 1}
+  m_Intensity: 0.25
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -49089,10 +49242,10 @@ MonoBehaviour:
   m_LocalBounds:
     m_Center: {x: 0, y: -0.00000011920929, z: 0}
     m_Extent: {x: 0.9985302, y: 0.99853027, z: 0}
-  m_PointLightInnerAngle: 112.53
-  m_PointLightOuterAngle: 124.58
-  m_PointLightInnerRadius: 0.39000002
-  m_PointLightOuterRadius: 26.80435
+  m_PointLightInnerAngle: 174.44559
+  m_PointLightOuterAngle: 360
+  m_PointLightInnerRadius: 0.34
+  m_PointLightOuterRadius: 41.906693
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -49103,6 +49256,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &1414608546
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1414608543}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &1422188201
 GameObject:
   m_ObjectHideFlags: 0
@@ -52192,6 +52363,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1539809397}
   - component: {fileID: 1539809398}
+  - component: {fileID: 1539809399}
   m_Layer: 0
   m_Name: Torch Light (sample)
   m_TagString: Untagged
@@ -52229,9 +52401,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.82
+  m_FalloffIntensity: 0.4
   m_Color: {r: 1, g: 0.62, b: 0.28, a: 1}
-  m_Intensity: 1.25
+  m_Intensity: 0.5
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -52253,7 +52425,7 @@ MonoBehaviour:
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.1
-  m_PointLightOuterRadius: 0.5
+  m_PointLightOuterRadius: 0.34
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -52264,6 +52436,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &1539809399
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1539809396}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &1540724088
 GameObject:
   m_ObjectHideFlags: 0
@@ -53905,6 +54095,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1588045056}
   - component: {fileID: 1588045057}
+  - component: {fileID: 1588045058}
   m_Layer: 0
   m_Name: Torch Light (sample) (4)
   m_TagString: Untagged
@@ -53942,9 +54133,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.82
+  m_FalloffIntensity: 0.4
   m_Color: {r: 1, g: 0.62, b: 0.28, a: 1}
-  m_Intensity: 1.25
+  m_Intensity: 0.5
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -53966,7 +54157,7 @@ MonoBehaviour:
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.1
-  m_PointLightOuterRadius: 0.5
+  m_PointLightOuterRadius: 0.34
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -53977,6 +54168,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &1588045058
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1588045055}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &1589684341
 GameObject:
   m_ObjectHideFlags: 0
@@ -54388,6 +54597,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1606110989}
   - component: {fileID: 1606110990}
+  - component: {fileID: 1606110991}
   m_Layer: 0
   m_Name: Torch Light (sample) (3)
   m_TagString: Untagged
@@ -54425,9 +54635,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.82
+  m_FalloffIntensity: 0.4
   m_Color: {r: 1, g: 0.62, b: 0.28, a: 1}
-  m_Intensity: 1.25
+  m_Intensity: 0.5
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -54449,7 +54659,7 @@ MonoBehaviour:
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.1
-  m_PointLightOuterRadius: 0.5
+  m_PointLightOuterRadius: 0.34
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -54460,6 +54670,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &1606110991
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1606110988}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &1609345534
 GameObject:
   m_ObjectHideFlags: 0
@@ -54998,6 +55226,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1632479449}
   - component: {fileID: 1632479450}
+  - component: {fileID: 1632479451}
   m_Layer: 0
   m_Name: Torch Light (sample) (5)
   m_TagString: Untagged
@@ -55035,9 +55264,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.82
+  m_FalloffIntensity: 0.4
   m_Color: {r: 1, g: 0.62, b: 0.28, a: 1}
-  m_Intensity: 1.25
+  m_Intensity: 0.5
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -55059,7 +55288,7 @@ MonoBehaviour:
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.1
-  m_PointLightOuterRadius: 0.5
+  m_PointLightOuterRadius: 0.34
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -55070,6 +55299,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &1632479451
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1632479448}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &1635271112
 GameObject:
   m_ObjectHideFlags: 0
@@ -57772,6 +58019,7 @@ GameObject:
   m_Component:
   - component: {fileID: 1698533235}
   - component: {fileID: 1698533236}
+  - component: {fileID: 1698533237}
   m_Layer: 0
   m_Name: Torch Light (sample) (10)
   m_TagString: Untagged
@@ -57809,9 +58057,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.82
-  m_Color: {r: 0.27843142, g: 0.6065326, b: 1, a: 1}
-  m_Intensity: 1.25
+  m_FalloffIntensity: 0.4
+  m_Color: {r: 0.086240634, g: 0.72575665, b: 0.9622642, a: 1}
+  m_Intensity: 0.5
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -57833,7 +58081,7 @@ MonoBehaviour:
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.1
-  m_PointLightOuterRadius: 0.5
+  m_PointLightOuterRadius: 0.34
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -57844,6 +58092,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &1698533237
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1698533234}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &1698751372
 GameObject:
   m_ObjectHideFlags: 0
@@ -70643,6 +70909,7 @@ GameObject:
   m_Component:
   - component: {fileID: 2025050278}
   - component: {fileID: 2025050279}
+  - component: {fileID: 2025050280}
   m_Layer: 0
   m_Name: Torch Light (sample) (9)
   m_TagString: Untagged
@@ -70680,9 +70947,9 @@ MonoBehaviour:
   m_ComponentVersion: 1
   m_LightType: 3
   m_BlendStyleIndex: 1
-  m_FalloffIntensity: 0.82
-  m_Color: {r: 0.27843142, g: 0.6065326, b: 1, a: 1}
-  m_Intensity: 1.25
+  m_FalloffIntensity: 0.4
+  m_Color: {r: 0.08627451, g: 0.7254902, b: 0.9607843, a: 1}
+  m_Intensity: 0.5
   m_LightVolumeIntensity: 1
   m_LightVolumeIntensityEnabled: 0
   m_ApplyToSortingLayers: 00000000
@@ -70704,7 +70971,7 @@ MonoBehaviour:
   m_PointLightInnerAngle: 360
   m_PointLightOuterAngle: 360
   m_PointLightInnerRadius: 0.1
-  m_PointLightOuterRadius: 0.5
+  m_PointLightOuterRadius: 0.34
   m_ShapeLightParametricSides: 5
   m_ShapeLightParametricAngleOffset: 0
   m_ShapeLightParametricRadius: 1
@@ -70715,6 +70982,24 @@ MonoBehaviour:
   - {x: 0.5, y: -0.5, z: 0}
   - {x: 0.5, y: 0.5, z: 0}
   - {x: -0.5, y: 0.5, z: 0}
+--- !u!114 &2025050280
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2025050277}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 66f64994ca436df468d2284664e490cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseIntensity: 0.5
+  _flickerAmount: 0.25
+  _flickerSpeed: 6
+  _jitterX: 0.03
+  _jitterY: 0.05
+  _autoCaptureBase: 1
 --- !u!1 &2030322454
 GameObject:
   m_ObjectHideFlags: 0
