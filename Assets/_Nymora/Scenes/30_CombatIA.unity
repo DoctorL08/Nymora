@@ -48131,10 +48131,12 @@ MonoBehaviour:
   _camera: {fileID: 1662786571}
   _zoomSpeed: 2
   _minOrthoSize: 1.5
-  _maxOrthoSize: 4.2
+  _maxOrthoSize: 4
   _panSensitivity: 1
   _resetKey: 278
   _doubleClickResetWindow: 0.35
+  _clampToMap: 1
+  _boundsPadding: 0
 --- !u!114 &1662786575
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -43259,7 +43259,7 @@ MonoBehaviour:
     m_Bits: 1
   m_VolumeTrigger: {fileID: 0}
   m_VolumeFrameworkUpdateModeOption: 2
-  m_RenderPostProcessing: 0
+  m_RenderPostProcessing: 1
   m_Antialiasing: 0
   m_AntialiasingQuality: 2
   m_StopNaN: 0
@@ -43299,6 +43299,8 @@ MonoBehaviour:
   _panSensitivity: 1
   _resetKey: 278
   _doubleClickResetWindow: 0.35
+  _clampToMap: 1
+  _boundsPadding: 0
 --- !u!114 &1662786575
 MonoBehaviour:
   m_ObjectHideFlags: 0

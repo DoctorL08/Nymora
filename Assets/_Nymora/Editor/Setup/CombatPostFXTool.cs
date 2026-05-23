@@ -74,6 +74,57 @@ namespace Nymora.Editor.Setup
             Debug.Log("[CombatPostFXTool] " + summary);
         }
 
+        /// <summary>
+        /// Propage le post-FX combat vers 33_CombatCasual + 40_CombatRanked1v1 : garantit le
+        /// Global Volume -> Combat_PostFX ET surtout active le post-processing camera (le copier/
+        /// coller manuel du Volume ne touchait pas la camera -> grading non applique -> teinte
+        /// differente de l'IA). Ouvre/sauve chaque scene, puis rouvre 30_CombatIA.
+        /// </summary>
+        [MenuItem("Nymora/Setup/Propagate Combat PostFX (casual + ranked)", priority = 74)]
+        private static void Propagate()
+        {
+            if (Application.isPlaying)
+            {
+                EditorUtility.DisplayDialog("Propagate Combat PostFX", "Impossible pendant Play Mode.", "OK");
+                return;
+            }
+
+            var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(CombatProfilePath);
+            if (profile == null)
+            {
+                EditorUtility.DisplayDialog("Propagate Combat PostFX",
+                    "Combat_PostFX introuvable. Lance d'abord 'Setup Combat PostFX (IA)'.", "OK");
+                return;
+            }
+
+            string[] targets =
+            {
+                "Assets/_Nymora/Scenes/33_CombatCasual.unity",
+                "Assets/_Nymora/Scenes/40_CombatRanked1v1.unity",
+            };
+
+            var report = new List<string>();
+            foreach (var scenePath in targets)
+            {
+                var scene = EditorSceneManager.OpenScene(scenePath, OpenSceneMode.Single);
+                var actions = new List<string>();
+                EnsureVolume(profile, actions);
+                EnableCameraPostProcessing(actions);
+                EditorSceneManager.MarkSceneDirty(scene);
+                EditorSceneManager.SaveScene(scene);
+                report.Add($"{System.IO.Path.GetFileNameWithoutExtension(scenePath)} : " +
+                           (actions.Count == 0 ? "deja OK" : string.Join(" / ", actions)));
+            }
+
+            // Rouvre l'IA pour ne pas laisser Lorenzo sur une autre scene.
+            EditorSceneManager.OpenScene(IaScenePath, OpenSceneMode.Single);
+
+            string summary = "Propagation post-FX combat :\n\n" + string.Join("\n", report) +
+                             "\n\nLes 3 scenes combat ont desormais le meme grading (Combat_PostFX + post-process camera).";
+            EditorUtility.DisplayDialog("Propagate Combat PostFX", summary, "OK");
+            Debug.Log("[CombatPostFXTool] " + summary);
+        }
+
         /// <summary>Combat_PostFX = clone de Hub_PostFX (meme stack + meme LUT au depart), reutilise si deja la.</summary>
         private static VolumeProfile EnsureCombatProfile(List<string> actions)
         {

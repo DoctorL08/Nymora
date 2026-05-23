@@ -156,6 +156,43 @@ namespace Nymora.Combat.View
         }
 
         /// <summary>
+        /// Bounds monde (AABB) de la map iso, dilatees d'une demi-tuile pour couvrir le footprint
+        /// visible des cases extremes. Sert au clamp camera (CameraController) pour ne pas paner
+        /// hors map. Calcule depuis GridConstants + GridSettings + transform.position (meme math
+        /// que le gizmo / le spawn) -> dispo des que _settings est assigne, sans attendre le spawn.
+        /// Retourne false si _settings manquant.
+        /// </summary>
+        public bool TryGetWorldBounds(out Bounds bounds)
+        {
+            bounds = default;
+            if (_settings == null) return false;
+
+            int w = Quantum.GridConstants.Width;
+            int h = Quantum.GridConstants.Height;
+            float tw = _settings.TileWorldWidth;
+            float th = _settings.TileWorldHeight;
+            Vector3 offset = _settings.CenterGrid
+                ? IsoProjection.CenterOffset(w, h, tw, th)
+                : Vector3.zero;
+            Vector3 origin = transform.position;
+
+            Vector3 cBL = origin + IsoProjection.GridToWorld(0,     0,     tw, th) + offset;
+            Vector3 cBR = origin + IsoProjection.GridToWorld(w - 1, 0,     tw, th) + offset;
+            Vector3 cTR = origin + IsoProjection.GridToWorld(w - 1, h - 1, tw, th) + offset;
+            Vector3 cTL = origin + IsoProjection.GridToWorld(0,     h - 1, tw, th) + offset;
+
+            float minX = Mathf.Min(Mathf.Min(cBL.x, cBR.x), Mathf.Min(cTR.x, cTL.x)) - tw * 0.5f;
+            float maxX = Mathf.Max(Mathf.Max(cBL.x, cBR.x), Mathf.Max(cTR.x, cTL.x)) + tw * 0.5f;
+            float minY = Mathf.Min(Mathf.Min(cBL.y, cBR.y), Mathf.Min(cTR.y, cTL.y)) - th * 0.5f;
+            float maxY = Mathf.Max(Mathf.Max(cBL.y, cBR.y), Mathf.Max(cTR.y, cTL.y)) + th * 0.5f;
+
+            bounds = new Bounds(
+                new Vector3((minX + maxX) * 0.5f, (minY + maxY) * 0.5f, 0f),
+                new Vector3(maxX - minX, maxY - minY, 0f));
+            return true;
+        }
+
+        /// <summary>
         /// Recupere le TileView a une position grille donnee. Retourne null si hors bornes
         /// ou si la grille n'a pas encore ete spawn.
         /// </summary>

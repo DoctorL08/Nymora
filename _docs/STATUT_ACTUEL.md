@@ -3,6 +3,15 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
+**SESSION 23 mai 2026 (🎥 CAMÉRA COMBAT — CLAMP PAN + TEINTE HARMONISÉE) :**
+
+- **Clamp pan caméra** : le pan (clic-molette + drag) est désormais **borné aux limites de la map** → plus de vide aux bords. `GridRenderer.TryGetWorldBounds` (AABB iso depuis `GridConstants`+`GridSettings`+transform, +½ tuile) ; `CameraController.ClampToBounds` clampe **uniquement la position** (zoom laissé intact, cf retour Lorenzo : 1ère version cappait le zoom-out par erreur → retirée). Champs `_clampToMap` (def true) + `_boundsPadding` (def 0). **S'applique aux 3 scènes combat automatiquement** (logique de script + `_clampToMap` défaut true + GridRenderer auto-trouvé, pas de flag sérialisé par scène).
+- **Teinte post-FX harmonisée** : les 3 scènes pointaient déjà sur `Combat_PostFX`, MAIS le post-process caméra (`renderPostProcessing`) n'était activé que sur l'IA → casual/ranked sans grading → teinte différente. Tool **`Propagate Combat PostFX (casual + ranked)`** (`CombatPostFXTool`) active le flag caméra + garantit le profil sur les 2 scènes. Validé : 3 scènes raccord.
+- ⚠️ Différence à retenir : le **clamp** = logique script (pas de réglage par scène) ; le **post-process** = flag sérialisé par caméra (donc à activer scène par scène). 
+- 100% View → pas de bump CombatRulesVersion. Scènes casual/ranked modifiées (flag caméra) → designer doit **rebuild standalone**.
+
+---
+
 **SESSION 23 mai 2026 (🎨 POST-FX SUR LES MAPS COMBAT — LIVRÉ) :** le pack post-process (cf [[project-postfx-pack]]) est appliqué aux 3 scènes combat.
 
 - **Pack** = `_Nymora/Settings/PostProcessing/` : `Hub_PostFX` + **`Combat_PostFX`** (clone créé par le nouveau `CombatPostFXTool`) + 4 LUT (`Neutral/Cinematic/Cold/Warm`).

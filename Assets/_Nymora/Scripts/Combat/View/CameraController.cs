@@ -33,11 +33,22 @@ namespace Nymora.Combat.View
         [Tooltip("Fenetre en secondes entre 2 clics molette pour declencher le reset.")]
         [SerializeField] private float _doubleClickResetWindow = 0.35f;
 
+        [Header("Clamp aux limites de la map")]
+        [Tooltip("Bloque le pan/zoom pour que le viewport ne sorte pas de la map (plus de vide aux bords).")]
+        [SerializeField] private bool _clampToMap = true;
+        [Tooltip("Marge monde ajoutee aux bounds de la grille. Monte-la si ton background deborde " +
+                 "de la grille iso et que tu veux voir son liseré ; baisse-la si tu vois encore du vide.")]
+        [SerializeField] private float _boundsPadding = 0f;
+
         private Vector3 _initialPosition;
         private float _initialOrthoSize;
         private Vector3 _panAnchorWorld;
         private bool _panning;
         private float _lastMiddleClickTime = -1f;
+
+        private GridRenderer _grid;
+        private Bounds _mapBounds;
+        private bool _mapBoundsValid;
 
         private void Awake()
         {
@@ -60,6 +71,43 @@ namespace Nymora.Combat.View
             HandleZoom();
             HandlePan();
             HandleReset();
+            ClampToBounds();
+        }
+
+        /// <summary>
+        /// Borne UNIQUEMENT la position de la camera pour que son viewport ne sorte pas de la map
+        /// (plus de vide quand on pane). Ne touche PAS au zoom (orthographicSize laisse intact).
+        /// Si la map est plus petite que le viewport sur un axe, on centre sur cet axe (le pan n'a
+        /// nulle part ou aller). Bounds lues une fois sur le GridRenderer puis cachees.
+        /// </summary>
+        private void ClampToBounds()
+        {
+            if (!_clampToMap || !_camera.orthographic) return;
+            if (!EnsureBounds()) return;
+
+            Vector2 min = (Vector2)_mapBounds.min - Vector2.one * _boundsPadding;
+            Vector2 max = (Vector2)_mapBounds.max + Vector2.one * _boundsPadding;
+            float mapW = max.x - min.x;
+            float mapH = max.y - min.y;
+            float aspect = _camera.aspect > 0.0001f ? _camera.aspect : 1f;
+
+            float halfH = _camera.orthographicSize;
+            float halfW = halfH * aspect;
+            Vector3 p = _camera.transform.position;
+            p.x = (mapW <= halfW * 2f) ? (min.x + max.x) * 0.5f : Mathf.Clamp(p.x, min.x + halfW, max.x - halfW);
+            p.y = (mapH <= halfH * 2f) ? (min.y + max.y) * 0.5f : Mathf.Clamp(p.y, min.y + halfH, max.y - halfH);
+            _camera.transform.position = p;
+        }
+
+        /// <summary>Trouve le GridRenderer et cache ses bounds monde (constantes une fois la scene chargee).</summary>
+        private bool EnsureBounds()
+        {
+            if (_mapBoundsValid) return true;
+            if (_grid == null) _grid = FindFirstObjectByType<GridRenderer>();
+            if (_grid == null) return false;
+            if (!_grid.TryGetWorldBounds(out _mapBounds)) return false;
+            _mapBoundsValid = true;
+            return true;
         }
 
         private void HandleZoom()
