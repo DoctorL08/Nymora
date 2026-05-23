@@ -73,6 +73,8 @@ namespace Nymora.Hub
             _currentFromDisplayName = fromDisplayName;
             if (_label != null) _label.text = $"{fromDisplayName}\nvous défie !";
             if (_panel != null) _panel.SetActive(true);
+            // A3 — son de notification de défi entrant.
+            Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(Nymora.Core.Audio.SoundId.ChallengeReceived);
         }
 
         private void OnAcceptClicked()

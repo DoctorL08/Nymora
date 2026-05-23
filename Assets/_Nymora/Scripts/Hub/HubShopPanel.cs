@@ -117,11 +117,13 @@ namespace Nymora.Hub
 
             if (res.IsSuccess && res.Data.ok)
             {
+                Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(Nymora.Core.Audio.SoundId.PurchaseSuccess);
                 Debug.Log($"[Shop] Acheté {itemId} en {currency}. Solde : {res.Data.wallet.nymos} Nymos / {res.Data.wallet.shards} Shards");
                 FetchAsync().Forget(); // refresh owned + prix
             }
             else
             {
+                Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(Nymora.Core.Audio.SoundId.UiError);
                 string err = res.IsSuccess ? res.Data.error : res.ErrorMessage;
                 Debug.LogWarning($"[Shop] Achat refusé {itemId} : {err} (HTTP {res.StatusCode})");
                 SetHeader(err == "INSUFFICIENT_FUNDS"

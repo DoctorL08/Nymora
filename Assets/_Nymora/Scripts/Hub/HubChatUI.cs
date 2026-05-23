@@ -102,6 +102,9 @@ namespace Nymora.Hub
         private void HandleMessage(string channel, string from, string text)
         {
             if (channel != _channel) return;
+            // A3 — son de message reçu, sauf pour mes propres messages (anti-spam quand je tape).
+            if (from != Nymora.Core.Data.PlayerProfileBridge.LocalPseudo)
+                Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(Nymora.Core.Audio.SoundId.MessageReceived);
             // POLISH-7 polish (20 mai) : pseudo wrappe dans link cliquable pour ouvrir
             // le menu contextuel chat (MP / Ami / Inviter clan / Signaler).
             AppendLine(ChatTab.Global, $"{WrapPseudoLink(from)}: {text}");

@@ -62,6 +62,8 @@ namespace Nymora.Hub
                 return;
             }
             _transitionInProgress = true;
+            // A3 — son de match trouvé (défi accepté en casual, ou matchmaking ranked).
+            Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(Nymora.Core.Audio.SoundId.MatchFound);
 
             // 4.14.e — Verifie deck equipe avant LoadScene. Sans deck, CombatBootstrapCasual
             // spawnerait avec ClassId fallback (Soulrender) + deck 6 sorts = 0 → injouable.
