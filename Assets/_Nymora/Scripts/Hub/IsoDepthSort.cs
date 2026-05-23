@@ -31,6 +31,10 @@ namespace Nymora.Hub
                  "Negatif = la torche passe plus facilement DERRIERE le perso.")]
         [SerializeField] private int _orderBias;
 
+        [Tooltip("Sorting layer du sprite torche. DOIT matcher celui du perso (HubAvatar = " +
+                 "'Personnages') pour s'iso-trier avec lui. Vide = ne touche pas le layer.")]
+        [SerializeField] private string _sortingLayerName = "Personnages";
+
         private SpriteRenderer _sr;
         private HubGridRenderer _grid;
 
@@ -56,6 +60,11 @@ namespace Nymora.Hub
             Vector3 p = _depthPivot != null ? _depthPivot.position : transform.position;
             var (gx, gy) = IsoProjection.WorldToGrid(p, _grid.TileWorldWidth, _grid.TileWorldHeight, _grid.CenterOffset);
             _sr.sortingOrder = _baseOrder - (gx + gy) + _orderBias;
+
+            // Meme layer que le perso pour s'iso-trier avec lui (et sortir de "Default" pour
+            // ne pas etre eclaire par les Torch Lights). Vide = on ne touche pas.
+            if (!string.IsNullOrEmpty(_sortingLayerName) && _sr.sortingLayerName != _sortingLayerName)
+                _sr.sortingLayerName = _sortingLayerName;
         }
     }
 }

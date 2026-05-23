@@ -29,6 +29,12 @@ namespace Nymora.Hub
         [SerializeField] private Sprite _avatarSprite;
         [SerializeField] private int _baseSortingOrder = 100;
 
+        [Tooltip("Sorting layer du perso (corps + ombre). Doit etre AU-DESSUS de 'Default' dans " +
+                 "la liste des Sorting Layers, et exclu des Target Sorting Layers des Torch Lights " +
+                 "(seule la Global Light doit le cibler). Permet au perso de ne plus etre lave par " +
+                 "les torches tout en s'iso-triant avec le sprite torche (meme layer, meme base).")]
+        [SerializeField] private string _hubSortingLayer = "Personnages";
+
         [Header("Class visuals (5.3.g.bis — drag les 5 NymoraClassDefinition.asset)")]
         [SerializeField] private NymoraClassDefinition[] _classDefinitions;
 
@@ -146,6 +152,7 @@ namespace Nymora.Hub
             // Y offset + Scale per-class sans toucher au transform root tile-anchor).
             _sr = GetComponentInChildren<SpriteRenderer>(true);
             _visualTransform = _sr != null ? _sr.transform : transform;
+            ApplyHubSortingLayer();
             if (_sr != null && _avatarSprite != null) _sr.sprite = _avatarSprite;
             // 5.3.g.bis — reset color blanche pour pas teinter le sprite classe (Color tint
             // par player rendait tout rouge/HSV-flashy quand on cherche a voir le vrai
@@ -224,6 +231,22 @@ namespace Nymora.Hub
             _currentSkinDef = FindSkinDef(NetSkinId.ToString());
             ApplyClassVisual();
             RefreshEquippedSkin();
+        }
+
+        /// <summary>
+        /// Place TOUS les SpriteRenderers du perso (corps "Visual" + "ShadowBlob") sur le
+        /// sorting layer dedie. Le perso quitte ainsi "Default" -> n'est plus eclaire par les
+        /// Torch Lights (qui ne ciblent que Default), seulement par la Global Light. L'iso-tri
+        /// avec le sprite torche reste correct car IsoDepthSort pose le sprite torche sur le
+        /// MEME layer avec la meme base order. View-only, aucun impact sim.
+        /// </summary>
+        private void ApplyHubSortingLayer()
+        {
+            if (string.IsNullOrEmpty(_hubSortingLayer)) return;
+            foreach (var r in GetComponentsInChildren<SpriteRenderer>(true))
+            {
+                if (r != null) r.sortingLayerName = _hubSortingLayer;
+            }
         }
 
         /// <summary>
