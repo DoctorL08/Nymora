@@ -26,6 +26,9 @@ namespace Nymora.Hub
         // Padding interne du cadre noir autour du texte (en unites world).
         private const float BgPaddingX = 0.18f;
         private const float BgPaddingY = 0.08f;
+        // Sorting layer du tooltip — doit matcher celui des avatars (HubAvatar = "Personnages")
+        // pour que le sortingOrder eleve (4999/5000) le place reellement DEVANT les persos.
+        private const string TooltipSortingLayer = "Personnages";
 
         private TextMeshPro _tooltipText;
         private SpriteRenderer _tooltipBg;
@@ -88,6 +91,11 @@ namespace Nymora.Hub
             _tooltipBg = bgGo.AddComponent<SpriteRenderer>();
             _tooltipBg.sprite = CreateWhitePixelSprite();
             _tooltipBg.color = new Color(0f, 0f, 0f, 0.75f); // noir semi-transparent
+            // Meme sorting layer que les avatars ("Personnages", le plus haut de la liste).
+            // Sinon le tooltip reste sur "Default" et, comme "Personnages" est rendu PAR-DESSUS
+            // "Default", il passe derriere les persos quoi qu'on mette comme sortingOrder
+            // (le sortingOrder ne departage QU'A l'interieur d'un meme sorting layer).
+            _tooltipBg.sortingLayerName = TooltipSortingLayer;
             _tooltipBg.sortingOrder = 4999;
             // Drawmode Simple : on scale le transform pour ajuster la taille du cadre selon le texte.
 
@@ -99,6 +107,10 @@ namespace Nymora.Hub
             _tooltipText.color = new Color(1f, 0.96f, 0.85f, 1f);
             _tooltipText.alignment = TextAlignmentOptions.Center;
             _tooltipText.fontStyle = FontStyles.Bold;
+            // Aere les 3 lignes (clan / pseudo / titre). Valeur en % de la hauteur de ligne,
+            // le cadre noir se redimensionne tout seul via preferredHeight.
+            _tooltipText.lineSpacing = 22f;
+            _tooltipText.sortingLayerID = SortingLayer.NameToID(TooltipSortingLayer);
             _tooltipText.sortingOrder = 5000;
             _tooltipText.enableWordWrapping = false;
             _tooltipText.raycastTarget = false;
