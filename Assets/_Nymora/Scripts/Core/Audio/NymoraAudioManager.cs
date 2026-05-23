@@ -34,6 +34,13 @@ namespace Nymora.Core.Audio
         /// </summary>
         public static bool DebugBeepOnMissing;
 
+        /// <summary>
+        /// Facteur de volume des sons UI "doux" (UiBack, PurchaseSuccess, RewardClaim) : on les
+        /// veut feutrés, pas agressifs. À passer en 2e arg de PlaySfx. Le hover a son propre
+        /// facteur (encore plus bas) côté UiSfxHook.
+        /// </summary>
+        public const float SoftUiVolume = 0.1f;
+
         private const int SfxVoiceCount = 8;
         private const string BankResourcePath = "Audio/MainSoundBank";
         private const string PrefKeyPrefix = "nymora.audio.vol.";
@@ -69,8 +76,8 @@ namespace Nymora.Core.Audio
             { AudioBus.Master, 0.9f },
             { AudioBus.Music, 0.55f },
             { AudioBus.Sfx, 1f },
-            { AudioBus.Ambience, 0.5f },
-            { AudioBus.Ui, 0.85f },
+            { AudioBus.Ambience, 0.25f },
+            { AudioBus.Ui, 0.6f },
         };
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
@@ -195,12 +202,19 @@ namespace Nymora.Core.Audio
 
         // ---------------------------------------------------------------- SFX / UI
 
-        public void PlaySfx(SoundId id)
+        public void PlaySfx(SoundId id) => PlaySfx(id, 1f);
+
+        /// <summary>
+        /// Joue un SFX avec un facteur de volume additionnel (0..1+) en plus du volume d'entrée
+        /// et du bus. Sert aux sons devant rester très discrets (ex: survol UI) sans toucher le
+        /// volume du bus entier (qui porte aussi les clics).
+        /// </summary>
+        public void PlaySfx(SoundId id, float volumeScale)
         {
             if (id == SoundId.None) return;
             if (_bank != null && _bank.TryResolve(id, out var clip, out var entryVol, out var bus, out var pitch))
             {
-                PlayOnVoice(clip, entryVol * EffectiveBusVolume(bus), pitch);
+                PlayOnVoice(clip, entryVol * Mathf.Max(0f, volumeScale) * EffectiveBusVolume(bus), pitch);
                 return;
             }
             // Clip manquant : silence en prod, bip de debug si activé (A2).
@@ -250,8 +264,12 @@ namespace Nymora.Core.Audio
                 _musicFade = StartCoroutine(CrossfadeMusic(clip, target, Mathf.Max(0f, fadeSeconds)));
                 return;
             }
-            // Clip manquant : routing OK mais inaudible jusqu'à A6. Log + blip debug (1×/transition).
-            Debug.Log($"[Audio] PlayMusic({id}) — clip absent (audible après A6).");
+            // Clip manquant : on COUPE la musique courante (on ne garde pas la scène précédente).
+            // On mémorise l'id cible pour ne pas re-déclencher chaque frame.
+            Debug.Log($"[Audio] PlayMusic({id}) — clip absent : musique coupée (audible après A6).");
+            _currentMusic = id;
+            if (_musicFade != null) StopCoroutine(_musicFade);
+            _musicFade = StartCoroutine(CrossfadeMusic(null, 0f, Mathf.Max(0f, fadeSeconds)));
             if (DebugBeepOnMissing) PlayMissingClipBeep(id);
         }
 
@@ -305,7 +323,10 @@ namespace Nymora.Core.Audio
                 _ambienceSource.Play();
                 return;
             }
-            Debug.Log($"[Audio] PlayAmbience({id}) — clip absent (audible après A6).");
+            // Clip manquant : on coupe l'ambiance courante (pas de carry-over entre scènes).
+            Debug.Log($"[Audio] PlayAmbience({id}) — clip absent : ambiance coupée (audible après A6).");
+            _currentAmbience = id;
+            if (_ambienceSource != null) _ambienceSource.Stop();
         }
 
         public void StopAmbience()

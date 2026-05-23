@@ -113,7 +113,10 @@ namespace Nymora.Hub
             var res = await _api.ClaimQuestAsync(questId);
             _busy = false;
             if (res.IsSuccess && res.Data.status == "claimed")
+            {
+                Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(Nymora.Core.Audio.SoundId.RewardClaim, Nymora.Core.Audio.NymoraAudioManager.SoftUiVolume);
                 Debug.Log($"[Quests] Réclamé {questId} : +{res.Data.bpXp} XP Pass, +{res.Data.nymos} Nymos");
+            }
             else
                 Debug.LogWarning($"[Quests] Claim refusé {questId} : {res.Data?.error ?? res.ErrorMessage}");
             FetchAsync().Forget();

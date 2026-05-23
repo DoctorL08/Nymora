@@ -22,7 +22,12 @@ namespace Nymora.UI.Audio
         private static UiSfxHook _instance;
         private static readonly List<RaycastResult> _hits = new List<RaycastResult>(16);
 
+        // Le survol est volontairement TRÈS discret (bruit de fond) et anti-spammé.
+        private const float HoverVolumeScale = 0.06f;
+        private const float HoverMinInterval = 0.06f;
+
         private Selectable _lastHovered;
+        private float _lastHoverTime = -10f;
         private PointerEventData _ped;
         private EventSystem _pedOwner;
 
@@ -53,17 +58,30 @@ namespace Nymora.UI.Audio
 
             Selectable current = RaycastSelectable(es);
 
-            // Survol : son uniquement à l'ENTRÉE sur un nouvel élément interactif.
+            // Survol : son discret + anti-spam, uniquement à l'ENTRÉE sur un nouvel élément.
             if (current != _lastHovered)
             {
-                if (current != null && current.IsInteractable())
-                    NymoraAudioManager.Instance?.PlaySfx(SoundId.UiHover);
+                if (current != null && current.IsInteractable()
+                    && Time.unscaledTime - _lastHoverTime >= HoverMinInterval)
+                {
+                    NymoraAudioManager.Instance?.PlaySfx(SoundId.UiHover, HoverVolumeScale);
+                    _lastHoverTime = Time.unscaledTime;
+                }
                 _lastHovered = current;
             }
 
-            // Clic gauche sur un élément interactif.
-            if (Input.GetMouseButtonDown(0) && current != null && current.IsInteractable())
-                NymoraAudioManager.Instance?.PlaySfx(SoundId.UiClick);
+            // Pas de son de clic générique (choix design). On joue UNIQUEMENT UiBack quand
+            // l'élément cliqué est un bouton de fermeture/retour (détecté au nom).
+            if (Input.GetMouseButtonDown(0) && current != null && current.IsInteractable() && IsBackButton(current))
+                NymoraAudioManager.Instance?.PlaySfx(SoundId.UiBack, NymoraAudioManager.SoftUiVolume);
+        }
+
+        private static bool IsBackButton(Selectable sel)
+        {
+            string n = sel.gameObject.name.ToLowerInvariant();
+            return n == "x"
+                || n.Contains("close") || n.Contains("fermer")
+                || n.Contains("retour") || n.Contains("back") || n.Contains("quitter");
         }
 
         private Selectable RaycastSelectable(EventSystem es)

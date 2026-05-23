@@ -142,6 +142,7 @@ namespace Nymora.Hub
             _busy = false;
             if (res.IsSuccess && res.Data.status == "claimed")
             {
+                Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(Nymora.Core.Audio.SoundId.RewardClaim, Nymora.Core.Audio.NymoraAudioManager.SoftUiVolume);
                 Debug.Log($"[BattlePass] Réclamé palier {tier} ({track}) : {res.Data.rewardLabel}");
             }
             else

@@ -15,67 +15,82 @@ MonoBehaviour:
   _entries:
   - Id: 100
     Bus: 4
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: 0fabfadeee2ee7742baa1ec05e24b857, type: 3}
+    - {fileID: 8300000, guid: 30d69812fdc00704baab1c00d07529ae, type: 3}
+    - {fileID: 8300000, guid: 357a22d994739d44bb28e2b6a49f5686, type: 3}
     Volume: 1
     PitchRange: {x: 0.95, y: 1.05}
   - Id: 101
     Bus: 4
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: 872885bb3c9cc494291dd367acdb50e3, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 102
     Bus: 4
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: c57d7b7b95f81f14da323a5c7c3f1b37, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 103
     Bus: 4
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: d0676b0a63dfd9a4fb7bafa0809a2033, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 104
     Bus: 4
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: a96d27dc672678541b7246a60ba1666c, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 105
     Bus: 4
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: fdee09c2aaddba647b712e27c780affc, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 106
     Bus: 4
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: a1c9270f4cb5d8e4eb962c3d7002aea3, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 107
     Bus: 4
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: c5fa7773021ac784eb77fa77beb05b63, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 200
     Bus: 4
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: ea1d210f65cf53143b846eb3fed903d1, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 201
     Bus: 4
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: 1a2d82d193367f24c9d67df6aa8330ea, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 202
     Bus: 4
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: d85a6ac09d5655a449aeccfe10985852, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 203
     Bus: 4
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: 11377c09d2b809642973387813a73697, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 300
     Bus: 2
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: f5c54c08a19a2e34d997d54176d12f8c, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 301
@@ -85,27 +100,32 @@ MonoBehaviour:
     PitchRange: {x: 1, y: 1}
   - Id: 302
     Bus: 2
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: 5357e724605aaaf44be099c3cd6394dd, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 303
     Bus: 2
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: ae3c5a46e2abe2846a32048cf7184893, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 304
     Bus: 2
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: 1c2e4919311b1b540b103e6521087c15, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 305
     Bus: 2
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: f6489624165724b4ab58b4159b8ea128, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 306
     Bus: 2
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: f43e8f11bc357f64481a39ea0aa42ea8, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 400
@@ -160,17 +180,20 @@ MonoBehaviour:
     PitchRange: {x: 1, y: 1}
   - Id: 500
     Bus: 1
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: 4304c2a73d10f0f4880fd1f9cc761da1, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 501
     Bus: 1
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: bb9f93402910e5947aa401e55655dfea, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 502
     Bus: 1
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: c15785c44ea0829458a6986666e63b63, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 503
@@ -185,7 +208,8 @@ MonoBehaviour:
     PitchRange: {x: 1, y: 1}
   - Id: 600
     Bus: 3
-    Clips: []
+    Clips:
+    - {fileID: 8300000, guid: a246499cd673b1a40834b4ed9052fbb9, type: 3}
     Volume: 1
     PitchRange: {x: 1, y: 1}
   - Id: 601
