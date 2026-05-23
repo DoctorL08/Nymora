@@ -88,7 +88,10 @@ namespace Nymora.Editor.Setup
             var iso = go.GetComponent<IsoDepthSort>();
             if (iso == null) iso = Undo.AddComponent<IsoDepthSort>(go);
 
-            // Enfant DepthPivot place au bas du sprite (les "pieds").
+            // Enfant DepthPivot place au bas du sprite (les "pieds"). On ne repositionne QUE
+            // si on vient de le creer : un DepthPivot deja present a pu etre regle a la main
+            // (cf Bug 1, 23 mai) -> ne jamais ecraser ce reglage. Pour re-aligner les autres
+            // torches sur un pivot regle a la main, utiliser HubTorchPivotSyncTool.
             var pivot = go.transform.Find(PivotName);
             if (pivot == null)
             {
@@ -96,10 +99,12 @@ namespace Nymora.Editor.Setup
                 Undo.RegisterCreatedObjectUndo(p, "Create DepthPivot");
                 p.transform.SetParent(go.transform, false);
                 pivot = p.transform;
-            }
 
-            float feetY = sr.bounds.min.y; // bas du sprite en monde
-            pivot.position = new Vector3(go.transform.position.x, feetY, go.transform.position.z);
+                // bounds.min.y = bas du RECTANGLE du sprite (padding inclus) : heuristique
+                // grossiere, a affiner a la main puis propager via HubTorchPivotSyncTool.
+                float feetY = sr.bounds.min.y;
+                pivot.position = new Vector3(go.transform.position.x, feetY, go.transform.position.z);
+            }
 
             // Branche le pivot dans IsoDepthSort (_depthPivot prive).
             var so = new SerializedObject(iso);
