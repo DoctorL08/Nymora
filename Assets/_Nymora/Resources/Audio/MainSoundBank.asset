@@ -1,0 +1,195 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc4a571f79bcc734f9e9b512724eaee6, type: 3}
+  m_Name: MainSoundBank
+  m_EditorClassIdentifier: 
+  _entries:
+  - Id: 100
+    Bus: 4
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 0.95, y: 1.05}
+  - Id: 101
+    Bus: 4
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 102
+    Bus: 4
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 103
+    Bus: 4
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 104
+    Bus: 4
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 105
+    Bus: 4
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 106
+    Bus: 4
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 107
+    Bus: 4
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 200
+    Bus: 4
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 201
+    Bus: 4
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 202
+    Bus: 4
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 203
+    Bus: 4
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 300
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 301
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 302
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 303
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 304
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 305
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 306
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 400
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 401
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 0.95, y: 1.05}
+  - Id: 402
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 0.95, y: 1.05}
+  - Id: 403
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 0.95, y: 1.05}
+  - Id: 404
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 405
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 406
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 407
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 408
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 409
+    Bus: 2
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 500
+    Bus: 1
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 501
+    Bus: 1
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 502
+    Bus: 1
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 503
+    Bus: 1
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 504
+    Bus: 1
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 600
+    Bus: 3
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
+  - Id: 601
+    Bus: 3
+    Clips: []
+    Volume: 1
+    PitchRange: {x: 1, y: 1}
