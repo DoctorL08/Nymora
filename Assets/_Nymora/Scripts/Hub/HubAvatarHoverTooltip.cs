@@ -200,12 +200,13 @@ namespace Nymora.Hub
         }
 
         /// <summary>
-        /// Resoud le contenu du tooltip pour un avatar : pseudo (Profile.displayName) lu via
-        /// le [Networked] NetDisplayName de HubAvatar. Si vide (race au Spawn), fallback "?".
-        /// Si le joueur est dans un clan (NetClanName non vide), prepend une ligne rouge.
+        /// Resoud le contenu du tooltip pour un avatar, sur 3 lignes :
+        ///   - haut   : clan (NetClanName) en rouge entre crochets, si present
+        ///   - milieu : pseudo (NetDisplayName, Profile.displayName), fallback "?"
+        ///   - bas    : titre (NetTitle, cosmetique 'title' equipe) en or italique plus petit, si present
+        /// Les lignes clan/titre sont omises si vides -> le pseudo reste centre quand il est seul.
         ///
-        /// POLISH-7 (20 mai) : avant cette brique, le local utilisait email.split('@')[0] et
-        /// les remotes affichaient "Joueur <sub raccourci>". Maintenant single source = backend.
+        /// POLISH-7 (20 mai) : pseudo = single source backend. Brique titres : ajout 3e ligne.
         /// </summary>
         private static string ResolveDisplayName(HubAvatar avatar)
         {
@@ -216,7 +217,13 @@ namespace Nymora.Hub
             string clanLine = string.IsNullOrEmpty(clanName)
                 ? ""
                 : $"<color=#e85060>[{clanName}]</color>\n";
-            return clanLine + pseudo;
+
+            string title = avatar.NetTitle.ToString();
+            string titleLine = string.IsNullOrEmpty(title)
+                ? ""
+                : $"\n<size=80%><i><color=#ffd700>{title}</color></i></size>";
+
+            return clanLine + pseudo + titleLine;
         }
     }
 }

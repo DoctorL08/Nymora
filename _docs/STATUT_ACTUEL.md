@@ -3,6 +3,16 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
+**SESSION 23 mai 2026 (🏷️ TITRES DANS LE TOOLTIP AVATAR — LIVRÉ) :** le tooltip hover avatar passe à **3 lignes : clan (haut, rouge) / pseudo (milieu, crème) / titre (bas, doré italique +petit)**. Validé par Lorenzo.
+
+- **Source** = cosmétique type `title` équipé (backend 5.5 déjà prêt : équipement générique sans class-lock, slot `title`). Titres au catalogue : `title_the_unbroken` (« l'Inébranlable »), `title_soulbound` (« Âme Liée »).
+- **`HubAvatar`** : nouveau champ **`[Networked] NetTitle`** (NetworkString<_64>), résolu dans `RefreshEquippedSkinAsync` (même fetch inventaire que le skin, pas de 2ᵉ appel) ; helper `ExtractTitleText` extrait le texte entre « » (« Titre : « l'Inébranlable » » → `l'Inébranlable`). Équiper/déséquiper un titre dans le profil le re-push (les 2 handlers appellent déjà `RefreshEquippedSkin`).
+- **`HubAvatarHoverTooltip.ResolveDisplayName`** : 3 lignes, lignes clan/titre omises si vides (pseudo reste centré seul). Rich text TMP `<size=80%><i><color=#ffd700>`.
+- **⚠️ Regen `[Networked]`** : procédure SÛRE = Reimport du prefab `HubAvatar.prefab` (PAS `Create Hub Avatar Prefab` qui le recrée à zéro et écrase les refs class/skin/backend — vérifié dans le code) + **rebuild standalone** (étape critique, sinon Invalid Length en multi). Pas de régén de scène (avatar spawné runtime). Mémoire `feedback-networked-field-regen-protocol` à amender sur ce point.
+- **Fichiers** (commit Unity LOCAL à faire) : `HubAvatar.cs` (NetTitle + ExtractTitleText + résolution), `HubAvatarHoverTooltip.cs` (3 lignes), + le prefab `HubAvatar.prefab` re-baké. 100% View/hub → **pas de bump CombatRulesVersion**.
+
+---
+
 **SESSION 23 mai 2026 (🔥 TRI ISO TORCHES — RÉSOLU DE BOUT EN BOUT) :** suite du debug torches ci-dessous, les 2 bugs sont **clos**.
 
 - **Bug 2 halo Light2D : ✅ RÉSOLU.** Cause = TOUTES les point lights (12 Torch + 3 Magic Halo) ciblaient `Default + Personnages` dans leur *Target Sorting Layers* → elles lavaient le perso (qui vit sur `Personnages`). Fix = tool `HubLightTargetLayersTool` (`Nymora > Setup > Fix Torch Light Target Layers`) qui remet toutes les **point lights** sur `Default`-only ; seule la **Global Light** garde `Default + Personnages`. Ne touche QUE `m_ApplyToSortingLayers` (intensité/couleur/position préservées). Validé par Lorenzo.

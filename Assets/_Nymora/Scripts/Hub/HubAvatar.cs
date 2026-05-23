@@ -99,6 +99,14 @@ namespace Nymora.Hub
         // (cf feedback-networked-field-regen-protocol, sinon InvalidOperationException Invalid Length).
         [Networked, OnChangedRender(nameof(OnSkinIdChanged))] public NetworkString<_64> NetSkinId { get; set; }
 
+        // Titre cosmetique equipe (texte deja "propre", ex "l'Inebranlable"), sync entre clients
+        // pour la 3e ligne du HubAvatarHoverTooltip (clan / pseudo / titre). "" = aucun titre.
+        // Resolu depuis l'inventaire dans RefreshEquippedSkinAsync (cosmetique type "title" equipe).
+        // _64 chars (les titres sont courts mais on garde de la marge).
+        // AJOUT DE CE [Networked] FIELD => regen prefab + scene + rebuild standalone obligatoire
+        // (cf feedback-networked-field-regen-protocol, sinon InvalidOperationException Invalid Length).
+        [Networked] public NetworkString<_64> NetTitle { get; set; }
+
         // 5.3.g.bis hotfix multi (17 mai nuit) — Facing sync direct State Auth -> remotes.
         // Sans ce field, le remote calculait son facing depuis le delta NetGridX/Y, mais
         // NetGridX/Y n'est pousse qu'au END-of-step (cf HubMovementController.Update ligne 56),
@@ -528,18 +536,25 @@ namespace Nymora.Hub
 
             string cls = NetClassId.ToString();
             string equippedId = "";
+            string equippedTitle = "";
             if (res.Data.items != null)
             {
                 foreach (var it in res.Data.items)
                 {
-                    if (it == null || !it.equipped || it.type != "skin") continue;
-                    if (it.classLock != cls) continue;
-                    equippedId = it.id;
-                    break;
+                    if (it == null || !it.equipped) continue;
+                    if (it.type == "skin" && it.classLock == cls && string.IsNullOrEmpty(equippedId))
+                        equippedId = it.id;
+                    // Titre : pas de class-lock, un seul equipe a la fois. Texte "propre" extrait du nom.
+                    else if (it.type == "title" && string.IsNullOrEmpty(equippedTitle))
+                        equippedTitle = ExtractTitleText(it.name);
                 }
             }
             // 5.5.f — push reseau (les remotes recoivent OnSkinIdChanged) + applique en local.
-            if (Object != null && Object.HasStateAuthority) NetSkinId = equippedId;
+            if (Object != null && Object.HasStateAuthority)
+            {
+                NetSkinId = equippedId;
+                NetTitle = equippedTitle; // sync titre pour le tooltip (3e ligne)
+            }
             _currentSkinDef = FindSkinDef(equippedId);
             ApplyClassVisual();
         }
@@ -550,6 +565,20 @@ namespace Nymora.Hub
             foreach (var s in _skinDefinitions)
                 if (s != null && s.CosmeticId == cosmeticId) return s;
             return null;
+        }
+
+        /// <summary>
+        /// Extrait le texte propre d'un nom de titre catalogue. Les titres sont nommes
+        /// « Titre : « l'Inebranlable » » cote backend -> on ne garde que le contenu entre
+        /// les guillemets « ». Fallback = nom complet si pas de guillemets.
+        /// </summary>
+        private static string ExtractTitleText(string raw)
+        {
+            if (string.IsNullOrEmpty(raw)) return raw;
+            int a = raw.IndexOf('«'); // «
+            int b = raw.LastIndexOf('»'); // »
+            if (a >= 0 && b > a + 1) return raw.Substring(a + 1, b - a - 1).Trim();
+            return raw;
         }
 
         // 4.4.b — Couleur deterministe par joueur pour distinguer self/other en multi-instance.
