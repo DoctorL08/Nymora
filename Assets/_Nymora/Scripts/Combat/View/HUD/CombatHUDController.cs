@@ -320,11 +320,15 @@ namespace Nymora.Combat.View.HUD
             if (state.CurrentPhase == CombatPhase.TurnActive && activePlayer != _lastBannerActivePlayer)
             {
                 _lastBannerActivePlayer = activePlayer;
+                bool myTurn = activePlayer == LocalPlayerResolver.Resolve();
                 var indicator = TurnIndicatorView.Instance;
                 if (indicator != null)
                 {
-                    indicator.PlayTurnBanner(activePlayer == LocalPlayerResolver.Resolve());
+                    indicator.PlayTurnBanner(myTurn);
                 }
+                // A2 — SFX de début de tour (mien / adverse).
+                Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(
+                    myTurn ? Nymora.Core.Audio.SoundId.TurnStartMine : Nymora.Core.Audio.SoundId.TurnStartEnemy);
             }
 
             // Slots : grisage selon PA / HG dispo du combattant qu'on controle, etat armed.

@@ -26,6 +26,14 @@ namespace Nymora.Core.Audio
     {
         public static NymoraAudioManager Instance { get; private set; }
 
+        /// <summary>
+        /// Mode debug (A2) : quand un SoundId n'a PAS de clip assigné dans la banque, joue un
+        /// petit bip de tonalité distincte par event au lieu du silence. Permet de valider à
+        /// l'oreille que les events combat/UI se câblent bien AVANT d'avoir les vrais sons (A6).
+        /// Togglé via « Nymora > Audio > Toggle Debug Beep (missing clips) ». OFF par défaut.
+        /// </summary>
+        public static bool DebugBeepOnMissing;
+
         private const int SfxVoiceCount = 8;
         private const string BankResourcePath = "Audio/MainSoundBank";
         private const string PrefKeyPrefix = "nymora.audio.vol.";
@@ -46,6 +54,7 @@ namespace Nymora.Core.Audio
 
         private Coroutine _musicFade;
         private AudioClip _beepClip;
+        private readonly Dictionary<int, AudioClip> _beepCache = new Dictionary<int, AudioClip>();
 
         // AudioListener de secours : certaines scènes (ex. 00_Login) n'en ont pas sur leur
         // caméra → sans listener, AUCUN son ne sort. On en pose un sur le manager et on
@@ -77,6 +86,12 @@ namespace Nymora.Core.Audio
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
+
+#if UNITY_EDITOR
+            // Restaure le toggle debug (persisté par SetupAudioTool) — sinon le static repart
+            // à false au domain reload de l'entrée en Play.
+            DebugBeepOnMissing = UnityEditor.EditorPrefs.GetBool("nymora.audio.debugBeep", false);
+#endif
 
             LoadBusVolumes();
 
@@ -182,9 +197,26 @@ namespace Nymora.Core.Audio
 
         public void PlaySfx(SoundId id)
         {
-            if (_bank == null || id == SoundId.None) return;
-            if (!_bank.TryResolve(id, out var clip, out var entryVol, out var bus, out var pitch)) return;
-            PlayOnVoice(clip, entryVol * EffectiveBusVolume(bus), pitch);
+            if (id == SoundId.None) return;
+            if (_bank != null && _bank.TryResolve(id, out var clip, out var entryVol, out var bus, out var pitch))
+            {
+                PlayOnVoice(clip, entryVol * EffectiveBusVolume(bus), pitch);
+                return;
+            }
+            // Clip manquant : silence en prod, bip de debug si activé (A2).
+            if (DebugBeepOnMissing) PlayMissingClipBeep(id);
+        }
+
+        private void PlayMissingClipBeep(SoundId id)
+        {
+            AudioBus bus = _bank != null ? _bank.ResolveBus(id) : AudioBus.Sfx;
+            int freq = 320 + ((int)id % 18) * 32; // tonalité distincte par event
+            if (!_beepCache.TryGetValue(freq, out var clip) || clip == null)
+            {
+                clip = GenerateBeep(freq, 0.08f);
+                _beepCache[freq] = clip;
+            }
+            PlaySfxClip(clip, bus, 0.3f, 1f);
         }
 
         /// <summary>Joue un clip arbitraire sur une voix SFX poolée (sert au bip de test + cas spéciaux).</summary>

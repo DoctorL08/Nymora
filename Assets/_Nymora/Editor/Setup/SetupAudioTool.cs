@@ -95,6 +95,24 @@ namespace Nymora.Editor.Setup
             NymoraAudioManager.Instance.PlayTestBeep();
         }
 
+        private const string DebugBeepMenu = "Nymora/Audio/Toggle Debug Beep (missing clips)";
+
+        [MenuItem(DebugBeepMenu)]
+        public static void ToggleDebugBeep()
+        {
+            NymoraAudioManager.DebugBeepOnMissing = !NymoraAudioManager.DebugBeepOnMissing;
+            EditorPrefs.SetBool("nymora.audio.debugBeep", NymoraAudioManager.DebugBeepOnMissing);
+            Menu.SetChecked(DebugBeepMenu, NymoraAudioManager.DebugBeepOnMissing);
+            Debug.Log($"[Audio] Debug Beep on missing clips : {(NymoraAudioManager.DebugBeepOnMissing ? "ON" : "OFF")}");
+        }
+
+        [MenuItem(DebugBeepMenu, true)]
+        public static bool ToggleDebugBeepValidate()
+        {
+            Menu.SetChecked(DebugBeepMenu, EditorPrefs.GetBool("nymora.audio.debugBeep", false));
+            return true;
+        }
+
         /// <summary>Bus par défaut déduit de la plage numérique du SoundId (voir SoundId.cs).</summary>
         private static AudioBus DefaultBusFor(SoundId id)
         {

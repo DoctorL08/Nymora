@@ -139,6 +139,15 @@ namespace Nymora.Combat.View.HUD
                 _subtitleText.text = $"Round {turnNumber}";
             }
 
+            // A2 — SFX de fin de match (une seule fois, _shown garde l'idempotence au-dessus).
+            var audio = Nymora.Core.Audio.NymoraAudioManager.Instance;
+            if (audio != null)
+            {
+                if (winnerPlayerIndex < 0) { /* match nul : pas de stinger dédié pour l'instant */ }
+                else if (winnerPlayerIndex == localPlayerIndex) audio.PlaySfx(Nymora.Core.Audio.SoundId.Victory);
+                else audio.PlaySfx(Nymora.Core.Audio.SoundId.Defeat);
+            }
+
             Show();
         }
 

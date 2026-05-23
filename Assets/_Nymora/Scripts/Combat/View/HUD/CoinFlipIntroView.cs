@@ -209,6 +209,8 @@ namespace Nymora.Combat.View.HUD
         private IEnumerator PlayIntro()
         {
             IsIntroActive = true;
+            // A2 — SFX du lancer de pièce.
+            Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(Nymora.Core.Audio.SoundId.CoinFlip);
 
             // --- Phase 1 : spin de la piece (decelere) ---
             float t = 0f;
