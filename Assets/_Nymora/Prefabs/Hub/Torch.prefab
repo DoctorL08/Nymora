@@ -11,6 +11,7 @@ GameObject:
   - component: {fileID: 8648068865966944712}
   - component: {fileID: 7287518002569565523}
   - component: {fileID: 8491025491669535921}
+  - component: {fileID: 1281191547884799019}
   m_Layer: 0
   m_Name: Torch
   m_TagString: Untagged
@@ -73,7 +74,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 0
   m_SortingLayer: 0
-  m_SortingOrder: 50
+  m_SortingOrder: 150
   m_Sprite: {fileID: 21300000, guid: 8374911f2d4f43d4dba35e8d89500a59, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -106,3 +107,17 @@ Animator:
   m_AllowConstantClipSamplingOptimization: 1
   m_KeepAnimatorStateOnDisable: 0
   m_WriteDefaultValuesOnDisable: 0
+--- !u!114 &1281191547884799019
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5001715895425353948}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2313b7b53dd2f854484f2d3e9fcf1d41, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _baseOrder: 100
+  _depthPivot: {fileID: 0}
