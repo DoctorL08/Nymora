@@ -119,7 +119,7 @@ namespace Nymora.Hub
         {
             // Si on ferme en pleine recherche, on quitte la file backend d'abord.
             if (_searching) OnCancelClicked();
-            if (_panelRoot != null) _panelRoot.SetActive(false);
+            UiPanelAnimator.CloseAnimated(_panelRoot);
         }
 
         // ---------- Etats UI ----------

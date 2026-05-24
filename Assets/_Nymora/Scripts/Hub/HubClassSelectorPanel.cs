@@ -99,7 +99,7 @@ namespace Nymora.Hub
 
         public void Close()
         {
-            if (_panelRoot != null) _panelRoot.SetActive(false);
+            UiPanelAnimator.CloseAnimated(_panelRoot);
         }
 
         public void Toggle()

@@ -72,7 +72,7 @@ namespace Nymora.Hub
             FetchAsync().Forget();
         }
 
-        public void Close() { if (_panelRoot != null) _panelRoot.SetActive(false); }
+        public void Close() { UiPanelAnimator.CloseAnimated(_panelRoot); }
 
         private void Nudge(float delta)
         {
