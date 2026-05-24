@@ -17,6 +17,9 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/_Nymora/Scenes/33_CombatCasual.unity
     guid: f4c67066bdcd66f49a947694ab0aaaac
+  - enabled: 1
+    path: Assets/_Nymora/Scenes/40_CombatRanked1v1.unity
+    guid: 72ddb551a39ebc446bf13c92b51f1f31
   - enabled: 0
     path: Assets/Photon/QuantumMenu/QuantumSampleMenu.unity
     guid: f23d3edd333e1dc449a4688e04123759
@@ -26,7 +29,4 @@ EditorBuildSettings:
   - enabled: 0
     path: Assets/_Nymora/Scenes/33_CombatCasual_BACKUP_20260517_215936.unity
     guid: 6c9a7871490012d41a899c0f318e0868
-  - enabled: 1
-    path: Assets/_Nymora/Scenes/40_CombatRanked1v1.unity
-    guid: 72ddb551a39ebc446bf13c92b51f1f31
   m_configObjects: {}

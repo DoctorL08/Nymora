@@ -43,6 +43,18 @@ namespace Nymora.Combat.Bootstrap
         [Tooltip("Session config (asset partage avec 33_CombatCasual). Laisse null pour utiliser le default global.")]
         public QuantumDeterministicSessionConfigAsset SessionConfig;
 
+        // Map dediee IA. Necessaire pour empecher Quantum d'auto-load 33_CombatCasual
+        // additivement via QuantumMap.ScenePath (incident 19 mai 2026 bis : la map
+        // partagee QuantumMap.asset pointe vers Casual, donc en bootstrap IA, Quantum
+        // chargeait Casual par-dessus, son CombatBootstrapCasual.Start() voyait pas
+        // de match pending et faisait ReturnToHub -> retour hub immediat).
+        // Cette map clone pointe vers 30_CombatIA elle-meme : auto-load no-op.
+        [Tooltip("QuantumMap_IA.asset (Assets/QuantumUser/Resources/QuantumMap_IA.asset). " +
+                 "Clone de QuantumMap.asset dont la ScenePath pointe vers 30_CombatIA au " +
+                 "lieu de 33_CombatCasual, empechant Quantum d'auto-load la scene Casual " +
+                 "additivement (qui retournerait au hub via son bootstrap sans match pending).")]
+        public Map IAMap;
+
         [Header("Data")]
         [Tooltip("SpellCatalog asset (Assets/_Nymora/ScriptableObjects/Spells/SpellCatalog.asset). " +
                  "Sert a convertir DeckBridge.PendingSpellIds (string snake_case) en int[] " +
@@ -163,11 +175,26 @@ namespace Nymora.Combat.Bootstrap
             // 30_CombatIA (offline) avec 33_CombatCasual (Photon Realtime PvP).
             Log("MODE OFFLINE LOCAL — instance isolee, aucune connexion reseau pour la sim.");
 
-            // ===== 1. Clone runtime config + bind map from scene QuantumMapData =====
+            // ===== 1. Clone runtime config + bind map IA dediee =====
+            // On NE FAIT PAS FindAnyObjectByType<QuantumMapData>() car ca retomberait
+            // sur la QuantumMap.asset globale dont la ScenePath = 33_CombatCasual ->
+            // Quantum auto-load Casual en additif -> ReturnToHub immediat.
+            // Cf docstring du field IAMap au-dessus.
             var runtimeConfig = new QuantumUnityJsonSerializer().CloneConfig(RuntimeConfig);
 
-            var mapData = FindAnyObjectByType<QuantumMapData>();
-            if (mapData != null) runtimeConfig.Map = mapData.AssetRef;
+            if (IAMap != null)
+            {
+                runtimeConfig.Map = IAMap;
+            }
+            else
+            {
+                Debug.LogWarning("[CombatBootstrapIA] IAMap non assigne dans l'Inspector — " +
+                                 "fallback FindAnyObjectByType<QuantumMapData> (risque charger " +
+                                 "33_CombatCasual additivement via QuantumMap.ScenePath). " +
+                                 "Drag QuantumMap_IA.asset sur le component CombatBootstrapIA.");
+                var mapData = FindAnyObjectByType<QuantumMapData>();
+                if (mapData != null) runtimeConfig.Map = mapData.AssetRef;
+            }
 
             if (runtimeConfig.SimulationConfig.Id.IsValid == false
                 && QuantumDefaultConfigs.TryGetGlobal(out var defaultConfigs))
@@ -178,6 +205,13 @@ namespace Nymora.Combat.Bootstrap
             // Safety net : force IsBotMatch=true pour cette scene IA, meme si l'asset
             // RuntimeConfig en inspector avait ete laisse a false par erreur.
             runtimeConfig.IsBotMatch = true;
+
+            // PATCH 22 mai (test designer) — Seed RNG aleatoire par match (meme bug latent qu'en
+            // casual : Seed=0 -> initiative toujours P0). Local single-client : Guid suffit.
+            if (runtimeConfig.Seed == 0)
+            {
+                runtimeConfig.Seed = System.Guid.NewGuid().GetHashCode();
+            }
 
             // ===== 2. Start Quantum session (Local, 2 slots) =====
             // ClientId GUID unique par instance (5.4.b hardening) : meme si l'AppIdQuantum
