@@ -3,6 +3,21 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
+**SESSION 24 mai 2026 (🚀 MAJ 0.1.3 PUBLIÉE + L4 VALIDÉ + SHARDS + REPO UNITY POUSSÉ) :**
+
+- **MaJ client 0.1.3 publiée en prod** : build Lorenzo (`Publish Update`) → zip + manifeste `_publish/publish-0.1.3.json` (sha256 `bf89274d…`, 62.6 Mo). Procédure suivie (cf [[project-launcher-publish-workflow]]) : `scp` vers OVH `/opt/nymora-backend/downloads/` (taille + sha256 vérifiés côté serveur), `version.service.ts` bumpé (`CURRENT_CLIENT_VERSION` 0.1.2→0.1.3 + zip + sha256 ENSEMBLE), commit backend `1f82e5b` poussé + `deploy.sh`. Validé : `curl /version` → 0.1.3 + downloadUrl + sha256 ; `HEAD` zip → 200 + bonne taille. `MIN_CLIENT_VERSION` reste 0.1.0 (pas de breaking change).
+- **✅ L4 AUTO-INSTALL VALIDÉ POUR DE VRAI** : la MaJ 0.1.2 → 0.1.3 a confirmé le flow complet (détection → download → vérif sha256 → quit → `update.bat` swap → relance en 0.1.3) testé par Lorenzo (« ça fonctionne »). **Fini les installs manuelles** : les MaJ de Lorenzo + Kyami sont désormais 100% automatiques. Mémoire launcher mise à jour (incident 23 mai clos).
+- **5000 Shards octroyés en prod** à **Kyami** (`1910e29c…`, solde → 5000) et **Nocturn** (`a9a383c3…`, solde → 5000) via `shards:grant` (raison `admin_grant`). NB : Nocturn était à 0 avant (les 3000 antérieurs avaient été dépensés/reset lors des tests 5.5).
+- **Repo Unity — WIP désormais COMMITÉ + POUSSÉ** (résout le « WIP non commité volontaire » noté en session 5.5) : 10 commits poussés sur `origin/main` (`d563b46`), working tree clean, LFS OK. Détail des 3 nouveaux commits :
+  - `fix(combat)` `99b6480` : **QuantumMap_IA dédiée** (`Assets/QuantumUser/Resources/QuantumMap_IA.asset`) pointant vers `30_CombatIA` → empêche Quantum d'auto-load `33_CombatCasual` additivement via la ScenePath de la map globale (qui faisait retour hub immédiat en mode IA). `CombatBootstrapIA.cs` : nouveau champ `IAMap` (bind direct au lieu de `FindAnyObjectByType<QuantumMapData>`) + seed RNG aléatoire par match (`Seed==0` → `Guid.GetHashCode()`, sinon initiative toujours P0). Cf [[project-quantum-map-per-combat-mode]] + [[project-combat-scene-bootstrap-isolation]]. **Pas de bump CombatRulesVersion** (bootstrap, hors Simulation).
+  - `chore(build)` `55d9d83` : **bundleVersion 0.1.1 → 0.1.3** (`ProjectSettings.asset`) + maj font fallback TMP.
+  - `docs` `d563b46` : brief musique (`Nymora_Brief_Musique.html/pdf` + `build_music_brief.py`) + nettoyage 3 captures bug obsolètes + nouvelle `bug tooltip player.png`.
+  - (+ les 7 commits audio A1→A6 qui étaient déjà commités localement mais non poussés.)
+- **⚠️ À RETENIR** : Lorenzo croyait « tout commité » mais le working tree contenait du vrai boulot non commité (combat IA + version bump) — réflexe en fin de session : `git status` AVANT de pousser, ne pas se fier au ressenti. Le designer doit **rebuild son standalone** pour la map IA (scène/asset combat modifiés).
+- **PROCHAIN STEP** : inchangé — nouveau chantier à décider (2v2/3v3 ou autre) ; skin en combat (5.10) repris quand Kyami a fini les stages ; reliquat Bug 2 halo Light2D hub (cf session 23 mai torches) si on y revient.
+
+---
+
 **SESSION 23 mai 2026 (🎥 CAMÉRA COMBAT — CLAMP PAN + TEINTE HARMONISÉE) :**
 
 - **Clamp pan caméra** : le pan (clic-molette + drag) est désormais **borné aux limites de la map** → plus de vide aux bords. `GridRenderer.TryGetWorldBounds` (AABB iso depuis `GridConstants`+`GridSettings`+transform, +½ tuile) ; `CameraController.ClampToBounds` clampe **uniquement la position** (zoom laissé intact, cf retour Lorenzo : 1ère version cappait le zoom-out par erreur → retirée). Champs `_clampToMap` (def true) + `_boundsPadding` (def 0). **S'applique aux 3 scènes combat automatiquement** (logique de script + `_clampToMap` défaut true + GridRenderer auto-trouvé, pas de flag sérialisé par scène).
