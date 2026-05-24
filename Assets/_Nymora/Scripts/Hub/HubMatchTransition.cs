@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using Fusion;
 using Nymora.Core.Data;
+using Nymora.Core.SceneFlow;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
@@ -144,24 +145,28 @@ namespace Nymora.Hub
 
         private async Task TransitionAsync(string sceneName)
         {
+            // Délai volontaire : laisse l'utilisateur lire la system line [MATCH] avant le fondu.
             await Task.Delay(Mathf.RoundToInt(_transitionDelaySeconds * 1000));
 
-            var runner = FindFirstObjectByType<NetworkRunner>();
-            if (runner != null && runner.IsRunning)
+            // T1 — fondu doux. Le shutdown Fusion s'exécute sous le voile opaque (hook async),
+            // donc plus aucun tick résiduel visible ni coupure sèche vers la scène combat.
+            if (_logVerbose) Debug.Log($"[HubMatchTransition] Transition (fondu) → {sceneName}");
+            await SceneTransition.LoadAsync(sceneName, async () =>
             {
-                if (_logVerbose) Debug.Log("[HubMatchTransition] Shutdown NetworkRunner Fusion avant LoadScene");
-                try
+                var runner = FindFirstObjectByType<NetworkRunner>();
+                if (runner != null && runner.IsRunning)
                 {
-                    await runner.Shutdown();
+                    if (_logVerbose) Debug.Log("[HubMatchTransition] Shutdown NetworkRunner Fusion sous le voile");
+                    try
+                    {
+                        await runner.Shutdown();
+                    }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning($"[HubMatchTransition] Shutdown a throw : {ex.Message} — on continue le LoadScene quand même.");
+                    }
                 }
-                catch (System.Exception ex)
-                {
-                    Debug.LogWarning($"[HubMatchTransition] Shutdown a throw : {ex.Message} — on continue le LoadScene quand même.");
-                }
-            }
-
-            if (_logVerbose) Debug.Log($"[HubMatchTransition] LoadScene → {sceneName}");
-            SceneManager.LoadScene(sceneName, LoadSceneMode.Single);
+            }, waitForReady: true);
         }
     }
 }

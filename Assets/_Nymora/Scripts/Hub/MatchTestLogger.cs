@@ -1,4 +1,5 @@
 using Nymora.Core.Data;
+using Nymora.Core.SceneFlow;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -70,7 +71,7 @@ namespace Nymora.Hub
         {
             Debug.Log($"[MatchTestLogger] Fin de match : {result} (matchId={_matchId}). LoadScene → {_hubSceneName}");
             MatchBridge.SetMatchResult(result, _matchId, _opponentEmail);
-            SceneManager.LoadScene(_hubSceneName, LoadSceneMode.Single);
+            SceneTransition.Load(_hubSceneName);
         }
     }
 }

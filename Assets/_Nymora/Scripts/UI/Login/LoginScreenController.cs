@@ -2,6 +2,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using Nymora.Core.Data;
 using Nymora.Core.Logging;
+using Nymora.Core.SceneFlow;
 using Nymora.Network.Backend;
 using TMPro;
 using UnityEngine;
@@ -188,7 +189,7 @@ namespace Nymora.UI.Login
                 SaveLastPseudo(res.Data.user != null ? res.Data.user.displayName : pseudo);
                 SetStatus($"Connecte : {res.Data.user.displayName}. Entree dans le hub...");
                 NymoraLog.Info("Login", $"Connexion OK ({res.Data.user.displayName}) -> {_hubSceneName}");
-                SceneManager.LoadScene(_hubSceneName);
+                SceneTransition.Load(_hubSceneName);
                 return;
             }
 

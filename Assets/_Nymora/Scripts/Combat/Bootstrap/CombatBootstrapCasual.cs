@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using Nymora.Core.Data;
+using Nymora.Core.SceneFlow;
 using Nymora.Core.ScriptableObjects;
 using Photon.Deterministic;
 using Photon.Realtime;
@@ -467,7 +468,7 @@ namespace Nymora.Combat.Bootstrap
             Debug.LogWarning($"[CombatBootstrapCasual] ReturnToHub reason='{reason}'.");
             // Reset MatchBridge pour eviter une boucle si l'utilisateur clique a nouveau.
             MatchBridge.Reset();
-            SceneManager.LoadScene("10_CommunityHub");
+            SceneTransition.Load("10_CommunityHub");
         }
 
         private void Log(string msg)

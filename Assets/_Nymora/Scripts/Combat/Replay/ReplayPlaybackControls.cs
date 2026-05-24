@@ -1,3 +1,4 @@
+using Nymora.Core.SceneFlow;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -164,9 +165,11 @@ namespace Nymora.Combat.Replay
             // self-disable -> retour au mode match normal.
             ReplayPlaybackBridge.RequestedReplayPath = null;
             var active = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-            try { Quantum.QuantumRunner.ShutdownAll(); }
-            catch { }
-            UnityEngine.SceneManagement.SceneManager.LoadScene(active.name);
+            SceneTransition.Load(active.name, () =>
+            {
+                try { Quantum.QuantumRunner.ShutdownAll(); }
+                catch { }
+            });
         }
     }
 }

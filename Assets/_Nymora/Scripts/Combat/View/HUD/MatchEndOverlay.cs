@@ -1,5 +1,6 @@
 using Nymora.Combat.Replay;
 using Nymora.Core.Data;
+using Nymora.Core.SceneFlow;
 using Quantum;
 using TMPro;
 using UnityEngine;
@@ -250,10 +251,9 @@ namespace Nymora.Combat.View.HUD
             // etc.) et garde le QuantumRunner actif a travers les scene loads. Sans
             // ShutdownAll() avant le reload, le nouveau scene ressort un runner mort
             // et la sim ne s'init pas. C'est le pattern officiel Photon (cf QuantumUnityEditor).
-            Debug.Log($"[Nymora.HUD] MatchEnd Rejouer ({difficulty}) cliquee — ShutdownAll + reload scene");
-            QuantumRunner.ShutdownAll();
+            Debug.Log($"[Nymora.HUD] MatchEnd Rejouer ({difficulty}) cliquee — fondu + ShutdownAll sous le voile + reload scene");
             var scene = SceneManager.GetActiveScene();
-            SceneManager.LoadScene(scene.name);
+            SceneTransition.Load(scene.name, () => QuantumRunner.ShutdownAll(), waitForReady: true);
         }
 
         /// <summary>
@@ -287,8 +287,7 @@ namespace Nymora.Combat.View.HUD
                 Debug.Log("[Nymora.HUD] Retour Hub clique (IA) — pas de SetMatchResult, pas d'XP MVP");
             }
 
-            QuantumRunner.ShutdownAll();
-            SceneManager.LoadScene("10_CommunityHub");
+            SceneTransition.Load("10_CommunityHub", () => QuantumRunner.ShutdownAll());
         }
     }
 }

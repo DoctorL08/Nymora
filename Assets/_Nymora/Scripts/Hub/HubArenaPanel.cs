@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using Fusion;
 using Nymora.Core.Data;
+using Nymora.Core.SceneFlow;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -162,14 +163,17 @@ namespace Nymora.Hub
 
         private async Task GoToTrainingAsync()
         {
-            // Shutdown propre du NetworkRunner Fusion si actif (cf HubMatchTransition pattern)
-            var runner = FindFirstObjectByType<NetworkRunner>();
-            if (runner != null && runner.IsRunning)
+            // T1 — fondu doux. Le shutdown Fusion se fait sous le voile opaque (hook async),
+            // pas pendant le fondu (cf HubMatchTransition pattern).
+            await SceneTransition.LoadAsync(_trainingSceneName, async () =>
             {
-                try { await runner.Shutdown(); }
-                catch (System.Exception ex) { Debug.LogWarning($"[ArenaPanel] Shutdown a throw : {ex.Message} — on continue."); }
-            }
-            SceneManager.LoadScene(_trainingSceneName, LoadSceneMode.Single);
+                var runner = FindFirstObjectByType<NetworkRunner>();
+                if (runner != null && runner.IsRunning)
+                {
+                    try { await runner.Shutdown(); }
+                    catch (System.Exception ex) { Debug.LogWarning($"[ArenaPanel] Shutdown a throw : {ex.Message} — on continue."); }
+                }
+            }, waitForReady: true);
         }
     }
 }

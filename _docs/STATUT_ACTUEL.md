@@ -3,6 +3,16 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
+**SESSION 24 mai 2026 (✨ POLISH — TRANSITIONS DE SCÈNE AVEC FONDU + ÉCRAN DE CHARGEMENT) :** fini les coupures sèches / écrans noirs entre scènes. Chantier validé Play Mode (T1 + T2). Commit Unity **local** (push GitHub en fin de session). **Pas de bump CombatRulesVersion** (100% View/UI).
+
+- **T1 — Routeur de fondu** : nouveau singleton `SceneTransition` (`Assets/_Nymora/Scripts/Core/SceneFlow/SceneTransition.cs`, namespace `Nymora.Core.SceneFlow`). Persistant (`DontDestroyOnLoad`, bootstrap `BeforeSceneLoad`), overlay Canvas + Image **auto-créés en code** (zéro setup scène). API : `Load(scene, whileCovered, waitForReady)` + `LoadAsync(scene, Func<Task>, waitForReady)`. Fondu sortant (0.3s) → load async → fondu entrant (0.3s). **Voile noir neutre** `(0.03,0.03,0.03)` (1ʳᵉ version trop bleutée, corrigée) + **spinner** roue de points blancs avec traîne, généré en code, tournant en sens horaire (`SpinnerSizePx=90`, `SpinnerSpeedDegPerSec=240`). Le hook `whileCovered` exécute le shutdown réseau **sous le voile opaque** (sync `QuantumRunner.ShutdownAll()` ou async `await runner.Shutdown()` Fusion) → plus de tick résiduel visible.
+- **8 points d'appel rebranchés** (tous les `SceneManager.LoadScene` du jeu passent par le routeur) : `LoginScreenController` (login→hub), `HubMatchTransition` (hub→casual/ranked), `HubArenaPanel` (hub→IA), `MatchEndOverlay` (rejouer + retour hub), `CombatBootstrapCasual` (garde-fou), `ReplayPlaybackControls` (quitter replay), `MatchTestLogger` (stub). Chacun a reçu `using Nymora.Core.SceneFlow;`.
+- **T2 — Attente "combat prêt"** : nouveau `CombatReadyBeacon` (`Assets/_Nymora/Scripts/Combat/View/CombatReadyBeacon.cs`) auto-créé dans toute scène « Combat », s'abonne à **`CallbackGameStarted`** (Quantum) et appelle `SceneTransition.SignalReady()`. Le mode `waitForReady` garde le voile + spinner après le load jusqu'à ce signal (sim vraiment démarrée) + 0.2s de settle, **avant** de révéler → plus de flash de scène combat vide pendant la connexion Photon/Quantum. **Latch armé AVANT le load** (corrige la course IA offline où la sim démarre au 1er frame). **Timeout sécurité 12s** → jamais bloqué si le signal n'arrive pas. Activé `waitForReady: true` sur les 3 transitions vers le combat (casual/ranked, IA, rejouer) ; retours hub = fondu simple.
+- **À RETENIR** : signal "combat prêt" = `CallbackGameStarted` (commun IA/casual/ranked, déjà utilisé par `CoinFlipIntroView`). Réglages spinner/durées/timeout en `const` dans `SceneTransition`. Pour enrichir l'écran de chargement (astuces/barre de progression), il faudra ajouter `"Unity.TextMeshPro"` aux refs de `Nymora.Core.asmdef` (TMP n'y est pas, contrairement à UGUI qui est auto-référencé).
+- **PROCHAIN STEP** : chantier polish suivant à décider (SFX + musique combat dispo sans Kyami) ; option d'enrichir l'écran de chargement (astuces rotatives) si souhaité.
+
+---
+
 **SESSION 24 mai 2026 (🚀 MAJ 0.1.3 PUBLIÉE + L4 VALIDÉ + SHARDS + REPO UNITY POUSSÉ) :**
 
 - **MaJ client 0.1.3 publiée en prod** : build Lorenzo (`Publish Update`) → zip + manifeste `_publish/publish-0.1.3.json` (sha256 `bf89274d…`, 62.6 Mo). Procédure suivie (cf [[project-launcher-publish-workflow]]) : `scp` vers OVH `/opt/nymora-backend/downloads/` (taille + sha256 vérifiés côté serveur), `version.service.ts` bumpé (`CURRENT_CLIENT_VERSION` 0.1.2→0.1.3 + zip + sha256 ENSEMBLE), commit backend `1f82e5b` poussé + `deploy.sh`. Validé : `curl /version` → 0.1.3 + downloadUrl + sha256 ; `HEAD` zip → 200 + bonne taille. `MIN_CLIENT_VERSION` reste 0.1.0 (pas de breaking change).
@@ -14,7 +24,7 @@
   - `docs` `d563b46` : brief musique (`Nymora_Brief_Musique.html/pdf` + `build_music_brief.py`) + nettoyage 3 captures bug obsolètes + nouvelle `bug tooltip player.png`.
   - (+ les 7 commits audio A1→A6 qui étaient déjà commités localement mais non poussés.)
 - **⚠️ À RETENIR** : Lorenzo croyait « tout commité » mais le working tree contenait du vrai boulot non commité (combat IA + version bump) — réflexe en fin de session : `git status` AVANT de pousser, ne pas se fier au ressenti. Le designer doit **rebuild son standalone** pour la map IA (scène/asset combat modifiés).
-- **PROCHAIN STEP** : inchangé — nouveau chantier à décider (2v2/3v3 ou autre) ; skin en combat (5.10) repris quand Kyami a fini les stages ; reliquat Bug 2 halo Light2D hub (cf session 23 mai torches) si on y revient.
+- **PROCHAIN STEP** : inchangé — nouveau chantier à décider (2v2/3v3 ou autre) ; skin en combat (5.10) repris quand Kyami a fini les stages. (Bug 2 halo Light2D torches hub = **RÉSOLU**, confirmé Lorenzo 24 mai — n'est plus un reliquat.)
 
 ---
 
