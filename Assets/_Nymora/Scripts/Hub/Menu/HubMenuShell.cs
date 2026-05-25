@@ -283,6 +283,7 @@ namespace Nymora.Hub.Menu
             else if (id == "matchmaking") BuildMatchmaking();
             else if (id == "leaderboard") BuildLeaderboard();
             else if (id == "character") BuildPersonnage();
+            else if (id == "social") BuildSocial();
             else BuildPlaceholder(id);
         }
 
@@ -852,6 +853,34 @@ namespace Nymora.Hub.Menu
         {
             string c = SelectedClassPreferences.Get();
             return string.IsNullOrEmpty(c) ? "Soulrender" : c;
+        }
+
+        // ===== M4 — Écran Social (Amis + Clan) =====
+
+        private void BuildSocial()
+        {
+            var holder = _f.MakeRect("Social", _contentArea);
+            HubMenuUIFactory.Stretch(holder);
+
+            if (_api != null)
+            {
+                // Panneau centré borné (comme Personnage/Matchmaking) : la liste vit DEDANS,
+                // clippée, au lieu de baver pleine largeur sur le hub.
+                var panel = _f.MakePanel(holder);
+                var prt = panel.rectTransform;
+                prt.anchorMin = new Vector2(0.5f, 0f); prt.anchorMax = new Vector2(0.5f, 1f); prt.pivot = new Vector2(0.5f, 0.5f);
+                prt.sizeDelta = new Vector2(1040f, -8f);
+                prt.anchoredPosition = Vector2.zero;
+                new HubMenuSocial(_theme, _f, _api).Build(prt);
+            }
+            else
+            {
+                PlaceholderMsg(holder, "Social indisponible (backend manquant sur HubMenuCanvas).");
+            }
+
+            // Retour par-dessus, dans la marge à gauche du panneau.
+            AddBackButton(holder);
+            _currentScreen = holder.gameObject;
         }
 
         private void BuildHome()

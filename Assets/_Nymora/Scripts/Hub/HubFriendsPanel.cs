@@ -59,6 +59,11 @@ namespace Nymora.Hub
         public int PendingIncomingCount { get; private set; }
         public event Action<int> OnPendingCountChanged;
 
+        /// <summary>M4 — Snapshot online d'un ami (réutilisé par le nouveau menu hub
+        /// HubMenuSocial). Le set est entretenu en continu via les events WS, même panel
+        /// fermé, donc l'appel renvoie l'état courant. Renvoie false si userId inconnu/null.</summary>
+        public bool IsFriendOnline(string userId) => !string.IsNullOrEmpty(userId) && _onlineFriendIds.Contains(userId);
+
         private NymoraApiClient _api;
         private readonly List<GameObject> _spawnedItems = new List<GameObject>();
         private bool _refreshing;
