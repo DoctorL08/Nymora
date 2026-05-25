@@ -109,6 +109,14 @@ namespace Nymora.Combat.View.HUD
             _text.enableWordWrapping = true;
             _text.richText = true;
             _text.raycastTarget = false;
+
+            // 26 mai — Masquer le panneau DÈS sa création. Sinon il reste actif à vide
+            // (texte vide -> hauteur = padding seul = ~28px) parqué à sa position par défaut
+            // (0,0) = coin bas-gauche -> "bout de cadre noir" parasite en combat. Hide() en
+            // Awake ne suffisait pas : son garde `if (_visible)` est false au démarrage et
+            // n'appelait donc jamais SetActive(false). On aligne l'état (_visible=false) sur
+            // un panneau inactif dès le départ.
+            panelGo.SetActive(false);
         }
 
         /// <summary>
