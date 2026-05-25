@@ -10,7 +10,9 @@ namespace Nymora.Editor.Setup
 {
     /// <summary>
     /// Re-skin du HUD combat pour matcher la DA du menu hub (monochrome + police Ari + coins
-    /// arrondis). BRIQUE 1 : barre de sorts (6 + signature) + bouton Fin de tour.
+    /// arrondis). Couvre, au fil des briques :
+    ///   - B1 : barre de sorts (6 + signature) + bouton Fin de tour.
+    ///   - B2 : panneaux ressources P0/P1 (police Ari, fond arrondi façon hub).
     ///
     /// Ce que fait l'outil, sur les 3 scènes combat, en lisant les refs du CombatHUDController
     /// (pas de devinette de noms d'objets) :
@@ -19,11 +21,14 @@ namespace Nymora.Editor.Setup
     ///      CombatUiKit ; rien à sérialiser ici.)
     ///   - Bouton Fin de tour : pilule claire (Accent) + texte sombre Ari + coins arrondis
     ///     (composant CombatUiRounder) + ColorBlock monochrome (grisé quand désactivé).
+    ///   - Panneaux ressources : police Ari sur label + ligne de statuts ; fond translucide
+    ///     arrondi (si le panneau porte une Image). Les couleurs actif/inactif du label sont
+    ///     gérées au runtime par ResourcePanelView / CombatUiKit.
     ///
     /// Idempotent (relançable). Les scènes sont modifiées -> le designer doit rebuild son
     /// standalone. 100% View -> PAS de bump CombatRulesVersion.
     ///
-    /// Menu : Nymora &gt; Setup &gt; UI Menu &gt; Restyle Combat HUD (spell bar)
+    /// Menu : Nymora &gt; Setup &gt; UI Menu &gt; Restyle Combat HUD
     /// </summary>
     public static class RestyleCombatHudTool
     {
@@ -37,7 +42,7 @@ namespace Nymora.Editor.Setup
         private const string AriPath = "Assets/_Nymora/Art/Fonts/Ari W9500 SDF.asset";
         private const string AriBoldPath = "Assets/_Nymora/Art/Fonts/Ari W9500 Bold SDF.asset";
 
-        [MenuItem("Nymora/Setup/UI Menu/Restyle Combat HUD (spell bar)", priority = 37)]
+        [MenuItem("Nymora/Setup/UI Menu/Restyle Combat HUD", priority = 37)]
         private static void Run()
         {
             if (!EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo()) return;
@@ -47,7 +52,7 @@ namespace Nymora.Editor.Setup
             if (ari == null)
                 Debug.LogWarning($"[RestyleCombatHud] Police Ari introuvable à {AriPath} — police conservée.");
 
-            int scenesDone = 0, slotsDone = 0, buttonsDone = 0;
+            int scenesDone = 0, slotsDone = 0, buttonsDone = 0, panelsDone = 0;
 
             foreach (var path in CombatScenes)
             {
@@ -84,16 +89,23 @@ namespace Nymora.Editor.Setup
                 var endBtn = endProp != null ? endProp.objectReferenceValue as Button : null;
                 if (RestyleEndTurnButton(endBtn, ariBold ?? ari)) buttonsDone++;
 
+                // --- Panneaux ressources P0 / P1 ---
+                foreach (var prop in new[] { "_p0Panel", "_p1Panel" })
+                {
+                    var panel = so.FindProperty(prop)?.objectReferenceValue as ResourcePanelView;
+                    if (RestyleResourcePanel(panel, ari, ariBold)) panelsDone++;
+                }
+
                 EditorSceneManager.MarkSceneDirty(scene);
                 EditorSceneManager.SaveScene(scene);
                 scenesDone++;
             }
 
-            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} bouton(s) Fin de tour.");
+            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} Fin de tour, {panelsDone} panneau(x) ressources.");
             EditorUtility.DisplayDialog("Restyle Combat HUD",
-                $"Barre de sorts + Fin de tour re-skinnés (DA hub).\n\n" +
-                $"- Scènes traitées : {scenesDone}\n- Slots : {slotsDone}\n- Boutons Fin de tour : {buttonsDone}\n\n" +
-                "Test : Play sur 30_CombatIA -> barre de sorts arrondie monochrome + bouton clair.\n" +
+                $"HUD combat re-skinné (DA hub).\n\n" +
+                $"- Scènes traitées : {scenesDone}\n- Slots : {slotsDone}\n- Boutons Fin de tour : {buttonsDone}\n- Panneaux ressources : {panelsDone}\n\n" +
+                "Test : Play sur 30_CombatIA -> barre + panneaux ressources monochromes Ari.\n" +
                 "⚠️ Scènes modifiées -> rebuild standalone côté designer.",
                 "OK");
         }
@@ -110,6 +122,32 @@ namespace Nymora.Editor.Setup
             SetLabel(key, ariBold ?? ari, CombatUiKit.TextSecondary);
             // Cooldown "Nt" : lisible clair (reste distinct via sa position, monochrome).
             SetLabel(cd, ariBold ?? ari, CombatUiKit.TextPrimary);
+            return true;
+        }
+
+        /// <summary>Police Ari sur le label + la ligne de statuts ; fond translucide arrondi si présent.
+        /// Les couleurs actif/inactif du label restent gérées au runtime (ResourcePanelView).</summary>
+        private static bool RestyleResourcePanel(ResourcePanelView panel, TMP_FontAsset ari, TMP_FontAsset ariBold)
+        {
+            if (panel == null) return false;
+            var soPanel = new SerializedObject(panel);
+            var label = soPanel.FindProperty("_label")?.objectReferenceValue as TMP_Text;
+            var statusLine = soPanel.FindProperty("_statusLine")?.objectReferenceValue as TMP_Text;
+
+            // Label : police seulement (couleur pilotée par Refresh).
+            if (label != null && (ariBold ?? ari) != null) { label.font = ariBold ?? ari; EditorUtility.SetDirty(label); }
+            // Ligne de statuts : police + couleur secondaire (non pilotée par le code).
+            SetLabel(statusLine, ari, CombatUiKit.TextSecondary);
+
+            // Fond du panneau : si une Image porte le panneau, on l'arrondit + teinte hub.
+            var bg = panel.GetComponent<Image>();
+            if (bg != null)
+            {
+                bg.color = new Color(0.07f, 0.072f, 0.085f, 0.85f); // chip sombre translucide (façon barres hub)
+                if (bg.GetComponent<CombatUiRounder>() == null)
+                    bg.gameObject.AddComponent<CombatUiRounder>();
+                EditorUtility.SetDirty(bg);
+            }
             return true;
         }
 

@@ -21,8 +21,9 @@ namespace Nymora.Combat.View.HUD
 
         private SpellIconRegistry _registry;
 
-        private static readonly Color ActiveColor   = new Color(1.00f, 0.95f, 0.55f, 1f);
-        private static readonly Color InactiveColor = new Color(0.78f, 0.78f, 0.78f, 1f);
+        // Re-skin DA hub (monochrome) : actif = texte clair primaire, inactif = secondaire estompé.
+        private static readonly Color ActiveColor   = CombatUiKit.TextPrimary;
+        private static readonly Color InactiveColor = CombatUiKit.TextSecondary;
 
         public void Init(SpellIconRegistry registry)
         {
