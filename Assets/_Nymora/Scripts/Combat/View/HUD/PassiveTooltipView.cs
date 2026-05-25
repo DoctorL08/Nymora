@@ -35,14 +35,16 @@ namespace Nymora.Combat.View.HUD
             }
         }
 
-        [Header("Style")]
+        [Header("Style (re-skin DA hub)")]
         [SerializeField] private float _fixedWidth = 420f;
         [SerializeField] private int _panelPadding = 14;
         [SerializeField] private float _panelSpacing = 6f;
         [SerializeField] private int _fontSize = 16;
         [SerializeField] private Vector2 _anchorOffset = new Vector2(20f, 0f);
-        [SerializeField] private Color _bgColor = new Color(0.05f, 0.06f, 0.08f, 0.97f);
+        [SerializeField] private Color _bgColor = new Color(0.10f, 0.105f, 0.12f, 0.96f);
         [SerializeField] private int _sortingOrder = 5000;
+        [Tooltip("Optionnel : police Ari (DA hub), câblée par 'Restyle Combat HUD' sur l'instance de scène. Défaut TMP sinon.")]
+        [SerializeField] private TMP_FontAsset _font;
 
         private Canvas _canvas;
         private RectTransform _panel;
@@ -80,7 +82,9 @@ namespace Nymora.Combat.View.HUD
             _panel.anchorMax = new Vector2(0f, 0f);
             _panel.pivot = new Vector2(0f, 0f);
             _panel.sizeDelta = new Vector2(_fixedWidth, 0f);
-            panelGo.GetComponent<Image>().color = _bgColor;
+            var panelImg = panelGo.GetComponent<Image>();
+            panelImg.color = _bgColor;
+            CombatUiKit.ApplyRounded(panelImg, CombatUiKit.CornerRadius); // coins arrondis DA hub
 
             var vlg = panelGo.GetComponent<VerticalLayoutGroup>();
             vlg.padding = new RectOffset(_panelPadding, _panelPadding, _panelPadding, _panelPadding);
@@ -98,8 +102,9 @@ namespace Nymora.Combat.View.HUD
             var textGo = new GameObject("Text", typeof(RectTransform));
             textGo.transform.SetParent(panelGo.transform, false);
             _text = textGo.AddComponent<TextMeshProUGUI>();
+            if (_font != null) _text.font = _font;
             _text.fontSize = _fontSize;
-            _text.color = Color.white;
+            _text.color = CombatUiKit.TextPrimary;
             _text.alignment = TextAlignmentOptions.TopLeft;
             _text.enableWordWrapping = true;
             _text.richText = true;

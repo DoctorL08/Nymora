@@ -17,6 +17,10 @@ namespace Nymora.Editor.Setup
     ///     câblée avec la police Ari, neutralise l'auto-instance par défaut).
     ///   - B4 : timeline d'initiative (couleurs monochromes : cadre actif = accent clair,
     ///     inactif = surface carte ; cadres arrondis gérés au runtime).
+    ///   - B5 : tooltips. SpellTooltipView (scène) : police Ari + couleurs + fond arrondi
+    ///     PanelBg. PassiveTooltipView (code) : instance de scène câblée Ari (arrondi + palette
+    ///     gérés au runtime). CombatantTooltipView (nameplate world-space) laissé tel quel
+    ///     (il reproduit déjà le tooltip avatar du hub).
     ///
     /// Ce que fait l'outil, sur les 3 scènes combat, en lisant les refs du CombatHUDController
     /// (pas de devinette de noms d'objets) :
@@ -56,7 +60,7 @@ namespace Nymora.Editor.Setup
             if (ari == null)
                 Debug.LogWarning($"[RestyleCombatHud] Police Ari introuvable à {AriPath} — police conservée.");
 
-            int scenesDone = 0, slotsDone = 0, buttonsDone = 0, panelsDone = 0, timersDone = 0, bannersDone = 0, timelinesDone = 0;
+            int scenesDone = 0, slotsDone = 0, buttonsDone = 0, panelsDone = 0, timersDone = 0, bannersDone = 0, timelinesDone = 0, tooltipsDone = 0;
 
             foreach (var path in CombatScenes)
             {
@@ -111,17 +115,22 @@ namespace Nymora.Editor.Setup
                 var timeline = so.FindProperty("_timeline")?.objectReferenceValue as TimelineView;
                 if (RestyleTimeline(timeline)) timelinesDone++;
 
+                // --- Tooltips ---
+                var spellTooltip = so.FindProperty("_tooltip")?.objectReferenceValue as SpellTooltipView;
+                if (RestyleSpellTooltip(spellTooltip, ari, ariBold)) tooltipsDone++;
+                if (EnsurePassiveTooltip(ari)) tooltipsDone++;
+
                 EditorSceneManager.MarkSceneDirty(scene);
                 EditorSceneManager.SaveScene(scene);
                 scenesDone++;
             }
 
-            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} Fin de tour, {panelsDone} panneau(x) ressources, {timersDone} timer(s), {bannersDone} bandeau(x), {timelinesDone} timeline(s).");
+            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} Fin de tour, {panelsDone} panneau(x) ressources, {timersDone} timer(s), {bannersDone} bandeau(x), {timelinesDone} timeline(s), {tooltipsDone} tooltip(s).");
             EditorUtility.DisplayDialog("Restyle Combat HUD",
                 $"HUD combat re-skinné (DA hub).\n\n" +
                 $"- Scènes traitées : {scenesDone}\n- Slots : {slotsDone}\n- Boutons Fin de tour : {buttonsDone}\n" +
-                $"- Panneaux ressources : {panelsDone}\n- Timers : {timersDone}\n- Bandeaux de tour : {bannersDone}\n- Timelines : {timelinesDone}\n\n" +
-                "Test : Play sur 30_CombatIA -> tout le HUD en Ari monochrome.\n" +
+                $"- Panneaux ressources : {panelsDone}\n- Timers : {timersDone}\n- Bandeaux de tour : {bannersDone}\n- Timelines : {timelinesDone}\n- Tooltips : {tooltipsDone}\n\n" +
+                "Test : Play sur 30_CombatIA -> survole un sort + l'icône passif.\n" +
                 "⚠️ Scènes modifiées -> rebuild standalone côté designer.",
                 "OK");
         }
@@ -210,6 +219,49 @@ namespace Nymora.Editor.Setup
         {
             var p = so.FindProperty(prop);
             if (p != null) p.colorValue = c;
+        }
+
+        /// <summary>Tooltip de sorts (scène) : police Ari + couleurs + fond arrondi PanelBg.</summary>
+        private static bool RestyleSpellTooltip(SpellTooltipView tooltip, TMP_FontAsset ari, TMP_FontAsset ariBold)
+        {
+            if (tooltip == null) return false;
+            var so = new SerializedObject(tooltip);
+            var panel = so.FindProperty("_panel")?.objectReferenceValue as RectTransform;
+            var title = so.FindProperty("_titleText")?.objectReferenceValue as TMP_Text;
+            var cost = so.FindProperty("_costText")?.objectReferenceValue as TMP_Text;
+            var desc = so.FindProperty("_descriptionText")?.objectReferenceValue as TMP_Text;
+
+            if (panel != null)
+            {
+                var bg = panel.GetComponent<Image>();
+                if (bg != null)
+                {
+                    bg.color = CombatUiKit.PanelBg;
+                    CombatUiKit.ApplyRounded(bg, CombatUiKit.CornerRadius);
+                    EditorUtility.SetDirty(bg);
+                }
+            }
+            SetLabel(title, ariBold ?? ari, CombatUiKit.TextPrimary);
+            SetLabel(cost, ari, CombatUiKit.TextSecondary);
+            SetLabel(desc, ari, CombatUiKit.TextSecondary);
+            return true;
+        }
+
+        /// <summary>Pose (ou re-câble) une instance PassiveTooltipView dans la scène, avec la police Ari.
+        /// À runtime elle gagne le singleton lazy -> l'auto-création par défaut (police TMP) est évitée.</summary>
+        private static bool EnsurePassiveTooltip(TMP_FontAsset font)
+        {
+            var tip = Object.FindAnyObjectByType<PassiveTooltipView>(FindObjectsInactive.Include);
+            if (tip == null)
+            {
+                var go = new GameObject("PassiveTooltipView", typeof(PassiveTooltipView));
+                tip = go.GetComponent<PassiveTooltipView>();
+            }
+            var so = new SerializedObject(tip);
+            var p = so.FindProperty("_font");
+            if (p != null && font != null) p.objectReferenceValue = font;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return true;
         }
 
         /// <summary>Pose (ou re-câble) une instance TurnIndicatorView dans la scène, avec la police Ari.
