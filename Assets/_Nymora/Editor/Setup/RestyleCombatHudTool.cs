@@ -208,6 +208,16 @@ namespace Nymora.Editor.Setup
             if (label != null && font != null) { label.font = font; EditorUtility.SetDirty(label); }
             // "Tour N" : police + couleur secondaire (non pilotée par le code).
             SetLabel(turn, font, CombatUiKit.TextSecondary);
+
+            // Fond du timer (Image carrée noire sur le GO du TimerView) -> chip sombre arrondi.
+            var bg = timer.GetComponent<Image>();
+            if (bg != null && bg.color.a > 0.05f)
+            {
+                bg.color = new Color(0.07f, 0.072f, 0.085f, 0.85f);
+                if (bg.GetComponent<CombatUiRounder>() == null)
+                    bg.gameObject.AddComponent<CombatUiRounder>();
+                EditorUtility.SetDirty(bg);
+            }
             return true;
         }
 

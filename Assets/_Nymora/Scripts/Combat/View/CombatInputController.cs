@@ -196,13 +196,16 @@ namespace Nymora.Combat.View
             // Dispatch via CombatHUDController.TryArmSlotByIndex : equivalent au clic souris
             // sur le slot. Le sort arme attend ensuite un clic souris sur la grille pour
             // designer la cible (cf bloc mouseDown plus bas).
-            bool slot1 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha1);
-            bool slot2 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha2);
-            bool slot3 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha3);
-            bool slot4 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha4);
-            bool slot5 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha5);
-            bool slot6 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha6);
-            bool slot7 = UnityEngine.Input.GetKeyDown(KeyCode.Alpha7); // signature
+            // Si le joueur tape dans un champ de saisie (chat combat), on NE lit PAS les hotkeys
+            // de sorts : sinon taper "1" armerait le sort 1 en plus d'écrire dans le chat.
+            bool typing = IsTypingInInputField();
+            bool slot1 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha1);
+            bool slot2 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha2);
+            bool slot3 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha3);
+            bool slot4 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha4);
+            bool slot5 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha5);
+            bool slot6 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha6);
+            bool slot7 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha7); // signature
 
             bool anySlotKey = slot1 || slot2 || slot3 || slot4 || slot5 || slot6 || slot7;
 
@@ -322,6 +325,17 @@ namespace Nymora.Combat.View
                 }
             }
             return false;
+        }
+
+        /// <summary>True si un champ de saisie TMP a actuellement le focus (ex : chat combat) —
+        /// on suspend alors les hotkeys clavier de sorts pour ne pas les déclencher en tapant.</summary>
+        private static bool IsTypingInInputField()
+        {
+            var es = UnityEngine.EventSystems.EventSystem.current;
+            var sel = es != null ? es.currentSelectedGameObject : null;
+            if (sel == null) return false;
+            var tmp = sel.GetComponent<TMPro.TMP_InputField>();
+            return tmp != null && tmp.isFocused;
         }
     }
 }
