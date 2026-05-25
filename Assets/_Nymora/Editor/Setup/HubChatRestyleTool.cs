@@ -61,8 +61,18 @@ namespace Nymora.Editor.Setup
             {
                 StyleRounded(panelBg, theme.PanelBg, theme);
                 // Rend le chat déplaçable + redimensionnable (poignée haut-droite), persisté.
-                if (panelBg.GetComponent<UiResizableWindow>() == null)
-                    Undo.AddComponent<UiResizableWindow>(panelBg.gameObject);
+                var win = panelBg.GetComponent<UiResizableWindow>();
+                if (win == null) win = Undo.AddComponent<UiResizableWindow>(panelBg.gameObject);
+                // Ancre de largeur min = onglet Clan (sinon Privé) : le resize horizontal s'arrête
+                // juste après, pour ne jamais couper/faire dépasser l'onglet.
+                var anchor = tabClan != null ? (RectTransform)tabClan.transform
+                           : tabP != null ? (RectTransform)tabP.transform : null;
+                if (win != null && anchor != null)
+                {
+                    var wso = new SerializedObject(win);
+                    var p = wso.FindProperty("_minWidthAnchor");
+                    if (p != null) { p.objectReferenceValue = anchor; wso.ApplyModifiedProperties(); }
+                }
             }
             else Debug.LogWarning("[ChatRestyle] Fond du panneau chat non trouvé — stylé partiellement (composants OK).");
 

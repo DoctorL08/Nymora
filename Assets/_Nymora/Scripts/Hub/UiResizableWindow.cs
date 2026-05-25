@@ -18,6 +18,10 @@ namespace Nymora.Hub
         [SerializeField] private Vector2 _minSize = new Vector2(340f, 170f);
         [SerializeField] private Vector2 _maxSize = new Vector2(980f, 760f);
         [SerializeField] private float _gripSize = 20f;
+        // Largeur min dynamique : la fenêtre ne peut pas devenir plus étroite que le bord droit de
+        // cet élément (ex : onglet Clan) + marge, pour ne jamais le couper/le faire dépasser.
+        [SerializeField] private RectTransform _minWidthAnchor;
+        [SerializeField] private float _minWidthAnchorMargin = 14f;
 
         private const string PrefPrefix = "nymora.uiwin.";
 
@@ -52,7 +56,7 @@ namespace Nymora.Hub
             Vector2 d = deltaScreen / Scale;
             Vector2 old = _rt.sizeDelta;
             Vector2 ns = new Vector2(
-                Mathf.Clamp(old.x + d.x, _minSize.x, _maxSize.x),
+                Mathf.Clamp(old.x + d.x, EffectiveMinWidth(), _maxSize.x),
                 Mathf.Clamp(old.y + d.y, _minSize.y, _maxSize.y));
             Vector2 realDelta = ns - old;
             // garde le coin bas-gauche fixe (la fenêtre grandit vers le haut-droite)
@@ -62,6 +66,17 @@ namespace Nymora.Hub
         }
 
         public void SaveStatePublic() => SaveState();
+
+        // Largeur min effective = max(_minSize.x, bord droit de l'ancre relatif au bord gauche du
+        // panneau + marge). Garantit que l'ancre (onglet Clan) n'est jamais coupée/dépassée.
+        private float EffectiveMinWidth()
+        {
+            if (_minWidthAnchor == null) return _minSize.x;
+            var ac = new Vector3[4]; _minWidthAnchor.GetWorldCorners(ac); // 2 = top-right
+            var pc = new Vector3[4]; _rt.GetWorldCorners(pc);             // 0 = bottom-left
+            float needed = (ac[2].x - pc[0].x) / Scale + _minWidthAnchorMargin;
+            return Mathf.Max(_minSize.x, needed);
+        }
 
         private void BuildGrip()
         {
@@ -116,7 +131,7 @@ namespace Nymora.Hub
             string k = PrefPrefix + gameObject.name;
             if (!PlayerPrefs.HasKey(k + ".sw")) return;
             var size = new Vector2(
-                Mathf.Clamp(PlayerPrefs.GetFloat(k + ".sw"), _minSize.x, _maxSize.x),
+                Mathf.Clamp(PlayerPrefs.GetFloat(k + ".sw"), EffectiveMinWidth(), _maxSize.x),
                 Mathf.Clamp(PlayerPrefs.GetFloat(k + ".sh"), _minSize.y, _maxSize.y));
             _rt.sizeDelta = size;
             _rt.anchoredPosition = new Vector2(PlayerPrefs.GetFloat(k + ".px"), PlayerPrefs.GetFloat(k + ".py"));
