@@ -286,6 +286,7 @@ namespace Nymora.Hub.Menu
             else if (id == "social") BuildSocial();
             else if (id == "progression") BuildProgression();
             else if (id == "settings") BuildSettings();
+            else if (id == "shop") BuildShop();
             else BuildPlaceholder(id);
         }
 
@@ -926,6 +927,39 @@ namespace Nymora.Hub.Menu
             prt.sizeDelta = new Vector2(760f, -8f);
             prt.anchoredPosition = Vector2.zero;
             new HubMenuSettings(_theme, _f).Build(prt);
+
+            AddBackButton(holder);
+            _currentScreen = holder.gameObject;
+        }
+
+        // ===== M7a — Écran Boutique =====
+
+        private void BuildShop()
+        {
+            var holder = _f.MakeRect("Shop", _contentArea);
+            HubMenuUIFactory.Stretch(holder);
+
+            // Titre (pas de sous-onglets)
+            var title = _f.MakeText("Title", holder, "Boutique", _theme.FontSizeHeader, _theme.TextPrimary, _theme.FontBold, TextAlignmentOptions.Center);
+            title.raycastTarget = false;
+            var ttrt = title.rectTransform;
+            ttrt.anchorMin = new Vector2(0.5f, 1f); ttrt.anchorMax = new Vector2(0.5f, 1f); ttrt.pivot = new Vector2(0.5f, 1f);
+            ttrt.sizeDelta = new Vector2(400f, 40f); ttrt.anchoredPosition = new Vector2(0f, -8f);
+
+            if (_api != null)
+            {
+                // Boutique = vitrine quasi plein écran (occupe toute la zone de contenu sous le titre)
+                var panel = _f.MakePanel(holder);
+                panel.sprite = HubMenuUIFactory.RoundedSprite(28f); panel.type = UnityEngine.UI.Image.Type.Sliced;
+                var prt = panel.rectTransform;
+                prt.anchorMin = new Vector2(0f, 0f); prt.anchorMax = new Vector2(1f, 1f); prt.pivot = new Vector2(0.5f, 0.5f);
+                prt.offsetMin = new Vector2(0f, 0f); prt.offsetMax = new Vector2(0f, -48f);
+                new HubMenuShop(_theme, _f, _api).Build(prt);
+            }
+            else
+            {
+                PlaceholderMsg(holder, "Boutique indisponible (backend manquant sur HubMenuCanvas).");
+            }
 
             AddBackButton(holder);
             _currentScreen = holder.gameObject;
