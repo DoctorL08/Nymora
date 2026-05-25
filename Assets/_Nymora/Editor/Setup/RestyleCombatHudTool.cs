@@ -23,6 +23,7 @@ namespace Nymora.Editor.Setup
     ///     (il reproduit déjà le tooltip avatar du hub).
     ///   - B6 : overlay fin de match (scène : titre/sous-titre Ari, backdrop sombre, boutons
     ///     pilule/ghost) + bouton Abandonner (instance de scène câblée Ari, monochrome arrondi).
+    ///   - B7 : panneau passif (police Ari + couleurs sur compteur/label, fond arrondi si visible).
     ///
     /// Ce que fait l'outil, sur les 3 scènes combat, en lisant les refs du CombatHUDController
     /// (pas de devinette de noms d'objets) :
@@ -62,7 +63,7 @@ namespace Nymora.Editor.Setup
             if (ari == null)
                 Debug.LogWarning($"[RestyleCombatHud] Police Ari introuvable à {AriPath} — police conservée.");
 
-            int scenesDone = 0, slotsDone = 0, buttonsDone = 0, panelsDone = 0, timersDone = 0, bannersDone = 0, timelinesDone = 0, tooltipsDone = 0, overlaysDone = 0;
+            int scenesDone = 0, slotsDone = 0, buttonsDone = 0, panelsDone = 0, timersDone = 0, bannersDone = 0, timelinesDone = 0, tooltipsDone = 0, overlaysDone = 0, passivesDone = 0;
 
             foreach (var path in CombatScenes)
             {
@@ -127,17 +128,22 @@ namespace Nymora.Editor.Setup
                 if (RestyleMatchEnd(matchEnd, ari, ariBold)) overlaysDone++;
                 if (EnsureForfeitButton(ariBold ?? ari)) overlaysDone++;
 
+                // --- Panneau passif ---
+                var passive = so.FindProperty("_passive")?.objectReferenceValue as PassivePanelView;
+                if (RestylePassivePanel(passive, ari, ariBold)) passivesDone++;
+
                 EditorSceneManager.MarkSceneDirty(scene);
                 EditorSceneManager.SaveScene(scene);
                 scenesDone++;
             }
 
-            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} Fin de tour, {panelsDone} panneau(x) ressources, {timersDone} timer(s), {bannersDone} bandeau(x), {timelinesDone} timeline(s), {tooltipsDone} tooltip(s), {overlaysDone} overlay/abandon.");
+            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} Fin de tour, {panelsDone} panneau(x) ressources, {timersDone} timer(s), {bannersDone} bandeau(x), {timelinesDone} timeline(s), {tooltipsDone} tooltip(s), {overlaysDone} overlay/abandon, {passivesDone} passif(s).");
             EditorUtility.DisplayDialog("Restyle Combat HUD",
-                $"HUD combat re-skinné (DA hub).\n\n" +
-                $"- Scènes traitées : {scenesDone}\n- Slots : {slotsDone}\n- Boutons Fin de tour : {buttonsDone}\n" +
-                $"- Panneaux ressources : {panelsDone}\n- Timers : {timersDone}\n- Bandeaux de tour : {bannersDone}\n- Timelines : {timelinesDone}\n- Tooltips : {tooltipsDone}\n- Overlay/Abandon : {overlaysDone}\n\n" +
-                "Test : Play sur 30_CombatIA -> joue jusqu'à la fin + teste Abandonner.\n" +
+                $"HUD combat re-skinné (DA hub) — chantier complet.\n\n" +
+                $"- Scènes : {scenesDone} | Slots : {slotsDone} | Fin de tour : {buttonsDone}\n" +
+                $"- Ressources : {panelsDone} | Timers : {timersDone} | Bandeaux : {bannersDone}\n" +
+                $"- Timelines : {timelinesDone} | Tooltips : {tooltipsDone} | Overlay/Abandon : {overlaysDone} | Passif : {passivesDone}\n\n" +
+                "Test : Play sur 30_CombatIA.\n" +
                 "⚠️ Scènes modifiées -> rebuild standalone côté designer.",
                 "OK");
         }
@@ -364,6 +370,30 @@ namespace Nymora.Editor.Setup
             StyleButtonPill(saveReplay, primary: false, ari);
             StyleButtonPill(restartE, primary: false, ari);
             StyleButtonPill(restartM, primary: false, ari);
+            return true;
+        }
+
+        /// <summary>Panneau passif (scène) : police Ari + couleurs sur compteur/label ; fond arrondi
+        /// si une Image visible le porte (le capteur de raycast transparent est créé au runtime).</summary>
+        private static bool RestylePassivePanel(PassivePanelView passive, TMP_FontAsset ari, TMP_FontAsset ariBold)
+        {
+            if (passive == null) return false;
+            var so = new SerializedObject(passive);
+            var counter = so.FindProperty("_counter")?.objectReferenceValue as TMP_Text;
+            var label = so.FindProperty("_label")?.objectReferenceValue as TMP_Text;
+
+            SetLabel(counter, ariBold ?? ari, CombatUiKit.TextPrimary);
+            SetLabel(label, ari, CombatUiKit.TextSecondary);
+
+            // Fond visible éventuel -> chip sombre arrondi (on ignore un capteur quasi-transparent).
+            var bg = passive.GetComponent<Image>();
+            if (bg != null && bg.color.a > 0.05f)
+            {
+                bg.color = new Color(0.07f, 0.072f, 0.085f, 0.85f);
+                if (bg.GetComponent<CombatUiRounder>() == null)
+                    bg.gameObject.AddComponent<CombatUiRounder>();
+                EditorUtility.SetDirty(bg);
+            }
             return true;
         }
 
