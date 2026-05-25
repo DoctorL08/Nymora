@@ -53,7 +53,7 @@ namespace Nymora.Hub.Menu
         private GameObject _menuRoot;
         private RectTransform _contentArea;
         private GameObject _hamburger;
-        private TextMeshProUGUI _nymosLabel;
+        private TextMeshProUGUI _nymosLabel;   // devise persistante (canvas menu, toujours visible)
         private TextMeshProUGUI _shardsLabel;
 
         private bool _isOpen;
@@ -108,7 +108,11 @@ namespace Nymora.Hub.Menu
                 chat.OnRankedMatchFound += HandleMatchFound;
                 chat.OnRankedQueueLeft += HandleQueueLeft;
             }
-            RefreshCurrency();
+
+            // La devise du menu remplace l'ancien wallet hub : on masque celui-ci (évite le doublon)
+            // et on alimente notre affichage (fetch initial + push WS).
+            if (HubWalletWidget.Instance != null) HubWalletWidget.Instance.gameObject.SetActive(false);
+            FetchWalletAsync();
         }
 
         private void OnDestroy()
@@ -138,7 +142,6 @@ namespace Nymora.Hub.Menu
             if (_isOpen || _menuRoot == null) return;
             _isOpen = true;
             ShowScreen("home");
-            RefreshCurrency();
             _menuRoot.SetActive(true); // UiPanelAnimator joue le fondu+pop
         }
 
@@ -191,9 +194,6 @@ namespace Nymora.Hub.Menu
             drt.sizeDelta = new Vector2(-120f, 1.5f);
             drt.anchoredPosition = new Vector2(0f, -(22f + _theme.TabHeight + 6f));
 
-            // Monnaies haut-droite
-            BuildCurrency(mrt);
-
             // Zone de contenu (sous la barre, au-dessus du hint)
             _contentArea = _f.MakeRect("Content", mrt);
             _contentArea.anchorMin = new Vector2(0f, 0f); _contentArea.anchorMax = new Vector2(1f, 1f);
@@ -212,33 +212,41 @@ namespace Nymora.Hub.Menu
             BuildHamburger(canvasRT);
             if (_hamburger != null) _hamburger.transform.SetAsFirstSibling();
 
+            // Devise persistante (hors MenuRoot, sur le canvas menu = toujours visible, au-dessus
+            // de tout y compris le voile). Icônes ash/blood + valeurs live.
+            BuildPersistentCurrency(canvasRT);
+
             _menuRoot.SetActive(false);
         }
 
         private void AddTab(RectTransform bar, string id, string label)
         {
             var btn = _f.MakeTabButton(bar, label, out var lbl, out var ico);
+
+            // Icône SVG (Resources/UI/Icons) si présente, sinon le placeholder reste.
+            var sprite = HubMenuUIFactory.LoadIcon(IconNameForTab(id));
+            if (sprite != null && ico != null)
+            {
+                ico.sprite = sprite;
+                ico.type = Image.Type.Simple;
+                ico.preserveAspect = true;
+            }
+
             btn.onClick.AddListener(() => ShowScreen(id));
             _tabs.Add(new TabRef { Id = id, Label = lbl, Icon = ico });
         }
 
-        private void BuildCurrency(RectTransform parent)
+        private static string IconNameForTab(string id)
         {
-            var row = _f.MakeRect("Currency", parent);
-            row.anchorMin = new Vector2(1f, 1f); row.anchorMax = new Vector2(1f, 1f); row.pivot = new Vector2(1f, 1f);
-            row.anchoredPosition = new Vector2(-40f, -26f);
-            row.sizeDelta = new Vector2(340f, 36f);
-            var hlg = row.gameObject.AddComponent<HorizontalLayoutGroup>();
-            hlg.spacing = 22f; hlg.childAlignment = TextAnchor.MiddleRight;
-            hlg.childControlWidth = true; hlg.childControlHeight = true; hlg.childForceExpandWidth = false;
-
-            _nymosLabel = _f.MakeText("Nymos", row, "◆ 0", _theme.FontSizeBody, new Color(0.96f, 0.86f, 0.40f, 1f), _theme.FontBold, TextAlignmentOptions.MidlineRight);
-            _nymosLabel.enableWordWrapping = false;
-            _nymosLabel.gameObject.AddComponent<LayoutElement>().minWidth = 100f;
-
-            _shardsLabel = _f.MakeText("Shards", row, "◇ 0", _theme.FontSizeBody, new Color(0.55f, 0.88f, 1f, 1f), _theme.FontBold, TextAlignmentOptions.MidlineRight);
-            _shardsLabel.enableWordWrapping = false;
-            _shardsLabel.gameObject.AddComponent<LayoutElement>().minWidth = 100f;
+            switch (id)
+            {
+                case "social": return "ui_icon_social";
+                case "progression": return "ui_icon_progression";
+                case "settings": return "ui_icon_settings";
+                case "report": return "ui_icon_report_bug";
+                case "logout": return "ui_icon_logout";
+                default: return null;
+            }
         }
 
         private void BuildHamburger(RectTransform parent)
@@ -269,6 +277,65 @@ namespace Nymora.Hub.Menu
                 line.raycastTarget = false;
             }
             _hamburger = btnImg.gameObject;
+        }
+
+        // ===== Devise persistante (ash = Nymos / blood = Shards) =====
+
+        private void BuildPersistentCurrency(RectTransform canvasRT)
+        {
+            var row = _f.MakeRect("Currency", canvasRT);
+            row.anchorMin = new Vector2(1f, 1f); row.anchorMax = new Vector2(1f, 1f); row.pivot = new Vector2(1f, 1f);
+            row.anchoredPosition = new Vector2(-28f, -20f);
+            row.sizeDelta = new Vector2(380f, 48f);
+            var hlg = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 22f; hlg.childAlignment = TextAnchor.MiddleRight;
+            hlg.childControlWidth = true; hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
+            var fit = row.gameObject.AddComponent<ContentSizeFitter>();
+            fit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize; fit.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+            MakeCurrencyEntry(row, "ui_icon_nymos", out _nymosLabel);
+            MakeCurrencyEntry(row, "ui_icon_shards", out _shardsLabel);
+        }
+
+        private void MakeCurrencyEntry(RectTransform parent, string iconName, out TextMeshProUGUI label)
+        {
+            var cell = _f.MakeRect("Cur_" + iconName, parent);
+            var chlg = cell.gameObject.AddComponent<HorizontalLayoutGroup>();
+            chlg.spacing = 7f; chlg.childAlignment = TextAnchor.MiddleLeft;
+            chlg.childControlWidth = true; chlg.childControlHeight = true;
+            chlg.childForceExpandWidth = false; chlg.childForceExpandHeight = false;
+            var cfit = cell.gameObject.AddComponent<ContentSizeFitter>();
+            cfit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize; cfit.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+            // Icône (PNG couleur ash/blood -> pas de teinte : blanc = art original)
+            var icon = _f.MakeImage("Icon", cell, Color.white, rounded: false);
+            icon.preserveAspect = true; icon.raycastTarget = false;
+            var sp = HubMenuUIFactory.LoadIcon(iconName);
+            if (sp != null) icon.sprite = sp; else icon.color = new Color(1f, 1f, 1f, 0.15f);
+            var ile = icon.gameObject.AddComponent<LayoutElement>(); ile.preferredWidth = 40f; ile.preferredHeight = 40f;
+
+            label = _f.MakeText("Val", cell, "0", _theme.FontSizeBody, _theme.TextPrimary, _theme.FontBold, TextAlignmentOptions.MidlineLeft);
+            label.enableWordWrapping = false;
+            label.gameObject.AddComponent<LayoutElement>().minWidth = 44f;
+        }
+
+        private void HandleWallet(HubChatClient.WalletUpdateData d) => SetCurrency(d.Nymos, d.Shards);
+
+        private void SetCurrency(int nymos, int shards)
+        {
+            if (_nymosLabel != null) _nymosLabel.text = nymos.ToString();
+            if (_shardsLabel != null) _shardsLabel.text = shards.ToString();
+        }
+
+        private async void FetchWalletAsync()
+        {
+            if (_api == null) return;
+            string token = HubChatClient.Instance?.DevToken;
+            if (string.IsNullOrEmpty(token)) return;
+            _api.SetBearerToken(token);
+            var res = await _api.GetWalletMeAsync();
+            if (res.IsSuccess) SetCurrency(res.Data.nymos, res.Data.shards);
         }
 
         // ===== Navigation (M1 : home + placeholders) =====
@@ -1165,21 +1232,5 @@ namespace Nymora.Hub.Menu
             }
         }
 
-        // ===== Monnaies =====
-
-        private void HandleWallet(HubChatClient.WalletUpdateData d) => SetCurrency(d.Nymos, d.Shards);
-
-        private void RefreshCurrency()
-        {
-            int n = 0, s = 0;
-            if (HubWalletWidget.Instance != null) { n = HubWalletWidget.Instance.Nymos; s = HubWalletWidget.Instance.Shards; }
-            SetCurrency(n, s);
-        }
-
-        private void SetCurrency(int nymos, int shards)
-        {
-            if (_nymosLabel != null) _nymosLabel.text = $"◆ {nymos}";
-            if (_shardsLabel != null) _shardsLabel.text = $"◇ {shards}";
-        }
     }
 }

@@ -33,7 +33,7 @@ namespace Nymora.Hub.Menu
 
         private RectTransform _listContent;
         private TextMeshProUGUI _status;
-        private readonly List<(string key, Image bg, TextMeshProUGUI label)> _tabs = new List<(string, Image, TextMeshProUGUI)>();
+        private readonly List<(string key, Image bg, TextMeshProUGUI label, Image icon)> _tabs = new List<(string, Image, TextMeshProUGUI, Image)>();
         private readonly List<GameObject> _spawned = new List<GameObject>();
         private bool _busy;
 
@@ -93,14 +93,27 @@ namespace Nymora.Hub.Menu
             var le = img.gameObject.AddComponent<LayoutElement>(); le.preferredWidth = 150f; le.preferredHeight = 40f;
             var btn = img.gameObject.AddComponent<Button>(); btn.targetGraphic = img;
             var lbl = _f.MakeText("L", img.rectTransform, label, _t.FontSizeBody, _t.TextSecondary, _t.Font, TextAlignmentOptions.Center);
-            HubMenuUIFactory.Stretch(lbl.rectTransform); lbl.raycastTarget = false; lbl.enableWordWrapping = false;
+            HubMenuUIFactory.Stretch(lbl.rectTransform, 30f, 8f, 0f, 0f); lbl.raycastTarget = false; lbl.enableWordWrapping = false;
+
+            // Icône de type (SVG) à gauche, sinon rien (label seul).
+            Image icon = null;
+            var sp = HubMenuUIFactory.LoadIcon("ui_icon_type_" + key);
+            if (sp != null)
+            {
+                icon = _f.MakeImage("Icon", img.rectTransform, _t.TextSecondary, rounded: false);
+                icon.sprite = sp; icon.type = Image.Type.Simple; icon.preserveAspect = true; icon.raycastTarget = false;
+                var irt = icon.rectTransform;
+                irt.anchorMin = new Vector2(0f, 0.5f); irt.anchorMax = new Vector2(0f, 0.5f); irt.pivot = new Vector2(0.5f, 0.5f);
+                irt.sizeDelta = new Vector2(20f, 20f); irt.anchoredPosition = new Vector2(18f, 0f);
+            }
+
             btn.onClick.AddListener(() => { _activeType = key; UpdateTabStyles(); RenderList(); });
-            _tabs.Add((key, img, lbl));
+            _tabs.Add((key, img, lbl, icon));
         }
 
         private void UpdateTabStyles()
         {
-            foreach (var (key, bg, label) in _tabs)
+            foreach (var (key, bg, label, icon) in _tabs)
             {
                 bool active = key == _activeType;
                 if (bg != null) bg.color = active ? _t.Accent : _t.ButtonGhostBg;
@@ -109,6 +122,7 @@ namespace Nymora.Hub.Menu
                     label.color = active ? _t.TextOnLight : _t.TextSecondary;
                     label.fontStyle = active ? FontStyles.Bold : FontStyles.Normal;
                 }
+                if (icon != null) icon.color = active ? _t.TextOnLight : _t.TextSecondary;
             }
         }
 

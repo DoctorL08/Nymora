@@ -98,7 +98,86 @@ namespace Nymora.Hub.Menu
 
         private void BuildAffichage()
         {
-            SpawnToggleRow("Plein écran", Screen.fullScreen, v => Screen.fullScreen = v);
+            var disp = DisplaySettingsController.Instance;
+            if (disp == null)
+            {
+                SpawnInfoRow("<i>Réglages d'affichage indisponibles.</i>");
+                return;
+            }
+
+            // Mode d'affichage : Plein écran / Sans bordure / Fenêtré
+            SpawnSelectorRow("Mode d'affichage",
+                DisplaySettingsController.ScreenModeLabels.Length, disp.CurrentScreenModeIndex(),
+                i => DisplaySettingsController.ScreenModeLabels[i],
+                i => disp.ScreenMode = DisplaySettingsController.ScreenModes[i]);
+
+            // Résolution (recommandé = native moniteur)
+            SpawnSelectorRow("Résolution",
+                disp.Resolutions.Count, disp.CurrentResolutionIndex(),
+                i =>
+                {
+                    var r = disp.Resolutions[i];
+                    return $"{r.x} × {r.y}" + (disp.IsRecommended(r) ? "  <size=72%><color=#8be0ff>(recommandé)</color></size>" : "");
+                },
+                i => disp.SetResolution(disp.Resolutions[i]));
+
+            // Luminosité (assombrissement uniquement)
+            SpawnSliderRow("Luminosité", disp.Brightness, v => disp.Brightness = v);
+
+            // VSync
+            SpawnToggleRow("VSync", disp.VSync, v => disp.VSync = v);
+
+            // Limite FPS (ignorée si VSync activé)
+            SpawnSelectorRow("Limite FPS",
+                DisplaySettingsController.FpsLabels.Length, disp.CurrentFpsIndex(),
+                i => DisplaySettingsController.FpsLabels[i],
+                i => disp.TargetFps = DisplaySettingsController.FpsOptions[i]);
+
+            // Effets visuels (post-process URP)
+            SpawnToggleRow("Effets visuels (shaders)", disp.PostFx, v => disp.PostFx = v);
+        }
+
+        /// <summary>Ligne avec sélecteur ‹ valeur › à droite (cycle index 0..count-1, clampé).</summary>
+        private void SpawnSelectorRow(string label, int count, int current, System.Func<int, string> labelFor, System.Action<int> onChange)
+        {
+            var row = MakeListRow(54f);
+
+            var lbl = _f.MakeText("Label", row, label, _t.FontSizeBody, _t.TextPrimary, _t.Font, TextAlignmentOptions.MidlineLeft);
+            lbl.raycastTarget = false; lbl.enableWordWrapping = false;
+            var lrt = lbl.rectTransform;
+            lrt.anchorMin = new Vector2(0f, 0f); lrt.anchorMax = new Vector2(0f, 1f); lrt.pivot = new Vector2(0f, 0.5f);
+            lrt.sizeDelta = new Vector2(220f, 0f); lrt.anchoredPosition = new Vector2(16f, 0f);
+
+            var sel = _f.MakeRect("Sel", row);
+            sel.anchorMin = new Vector2(1f, 0.5f); sel.anchorMax = new Vector2(1f, 0.5f); sel.pivot = new Vector2(1f, 0.5f);
+            sel.sizeDelta = new Vector2(360f, 40f); sel.anchoredPosition = new Vector2(-12f, 0f);
+            var hlg = sel.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 8f; hlg.childAlignment = TextAnchor.MiddleRight;
+            hlg.childControlWidth = true; hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
+
+            int idx = count > 0 ? Mathf.Clamp(current, 0, count - 1) : 0;
+
+            var prev = _f.MakeButton(sel, "‹", false, out _);
+            var ple = prev.gameObject.GetComponent<LayoutElement>(); ple.minWidth = 0f; ple.preferredWidth = 38f;
+
+            var valueTxt = _f.MakeText("Value", sel, count > 0 ? labelFor(idx) : "—", _t.FontSizeBody, _t.TextSecondary, _t.FontBold, TextAlignmentOptions.Center);
+            valueTxt.raycastTarget = false; valueTxt.enableWordWrapping = false;
+            valueTxt.gameObject.AddComponent<LayoutElement>().preferredWidth = 240f;
+
+            var next = _f.MakeButton(sel, "›", false, out _);
+            var nle = next.gameObject.GetComponent<LayoutElement>(); nle.minWidth = 0f; nle.preferredWidth = 38f;
+
+            void Set(int newIdx)
+            {
+                if (count <= 0) return;
+                idx = Mathf.Clamp(newIdx, 0, count - 1);
+                onChange(idx);
+                valueTxt.text = labelFor(idx);
+            }
+
+            prev.onClick.AddListener(() => Set(idx - 1));
+            next.onClick.AddListener(() => Set(idx + 1));
         }
 
         // ===== Onglet Audio =====
@@ -111,12 +190,16 @@ namespace Nymora.Hub.Menu
                 SpawnInfoRow("<i>Gestionnaire audio indisponible.</i>");
                 return;
             }
-            for (int i = 0; i < Buses.Length; i++) SpawnSliderRow(BusLabels[i], Buses[i], audio);
+            for (int i = 0; i < Buses.Length; i++)
+            {
+                var bus = Buses[i];
+                SpawnSliderRow(BusLabels[i], audio.GetBusVolume(bus), v => audio.SetBusVolume(bus, v));
+            }
         }
 
         // ===== Lignes =====
 
-        private void SpawnSliderRow(string label, AudioBus bus, NymoraAudioManager audio)
+        private void SpawnSliderRow(string label, float value01, System.Action<float> onChange)
         {
             var row = MakeListRow(54f);
 
@@ -126,23 +209,21 @@ namespace Nymora.Hub.Menu
             lrt.anchorMin = new Vector2(0f, 0f); lrt.anchorMax = new Vector2(0f, 1f); lrt.pivot = new Vector2(0f, 0.5f);
             lrt.sizeDelta = new Vector2(220f, 0f); lrt.anchoredPosition = new Vector2(16f, 0f);
 
-            var val = _f.MakeText("Val", row, "", _t.FontSizeBody, _t.TextSecondary, _t.FontBold, TextAlignmentOptions.MidlineRight);
+            var val = _f.MakeText("Val", row, Pct(value01), _t.FontSizeBody, _t.TextSecondary, _t.FontBold, TextAlignmentOptions.MidlineRight);
             val.raycastTarget = false; val.enableWordWrapping = false;
             var vrt = val.rectTransform;
             vrt.anchorMin = new Vector2(1f, 0.5f); vrt.anchorMax = new Vector2(1f, 0.5f); vrt.pivot = new Vector2(1f, 0.5f);
             vrt.sizeDelta = new Vector2(64f, 28f); vrt.anchoredPosition = new Vector2(-16f, 0f);
 
-            float v0 = audio.GetBusVolume(bus);
-            var slider = MakeSlider(row, v0);
+            var slider = MakeSlider(row, value01);
             var srt = (RectTransform)slider.transform;
             srt.anchorMin = new Vector2(0f, 0.5f); srt.anchorMax = new Vector2(1f, 0.5f); srt.pivot = new Vector2(0.5f, 0.5f);
             srt.sizeDelta = new Vector2(-(250f + 100f), 20f);   // marge gauche label (250) + droite valeur (100)
             srt.anchoredPosition = new Vector2((250f - 100f) * 0.5f, 0f);
 
-            val.text = Pct(v0);
             slider.onValueChanged.AddListener(v =>
             {
-                audio.SetBusVolume(bus, v);
+                onChange(v);
                 val.text = Pct(v);
             });
         }

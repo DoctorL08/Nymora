@@ -196,6 +196,24 @@ namespace Nymora.Hub.Menu
             brt2.anchorMin = new Vector2(0f, 0f); brt2.anchorMax = new Vector2(1f, 0f); brt2.pivot = new Vector2(0.5f, 0f);
             brt2.sizeDelta = new Vector2(0f, 20f); brt2.anchoredPosition = new Vector2(0f, 6f);
 
+            // Icône d'angle (check réclamé / cadenas verrouillé ou premium)
+            string cornerIcon = state == CellState.Claimed ? "ui_icon_check"
+                              : (state == CellState.Locked || state == CellState.PremiumLocked) ? "ui_icon_lock" : null;
+            if (cornerIcon != null)
+            {
+                var sp = HubMenuUIFactory.LoadIcon(cornerIcon);
+                if (sp != null)
+                {
+                    Color tint = state == CellState.Claimed ? new Color(0.55f, 0.95f, 0.60f, 1f)
+                               : state == CellState.PremiumLocked ? PremiumColor : _t.TextMuted;
+                    var ic = _f.MakeImage("StateIcon", brt, tint, rounded: false);
+                    ic.sprite = sp; ic.type = Image.Type.Simple; ic.preserveAspect = true; ic.raycastTarget = false;
+                    var irt = ic.rectTransform;
+                    irt.anchorMin = new Vector2(1f, 1f); irt.anchorMax = new Vector2(1f, 1f); irt.pivot = new Vector2(1f, 1f);
+                    irt.sizeDelta = new Vector2(26f, 26f); irt.anchoredPosition = new Vector2(-8f, -8f);
+                }
+            }
+
             if (state == CellState.Claimable)
             {
                 var btn = box.gameObject.AddComponent<Button>();

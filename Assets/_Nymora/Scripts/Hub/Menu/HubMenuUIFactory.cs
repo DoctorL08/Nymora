@@ -22,6 +22,12 @@ namespace Nymora.Hub.Menu
         public HubMenuUIFactory(HubMenuTheme theme) { _t = theme; }
         public HubMenuTheme Theme => _t;
 
+        /// <summary>Charge une icône SVG (importée en Sprite) depuis Resources/UI/Icons/.
+        /// Renvoie null si absente (placeholder conservé) — ex : tant que le package Vector
+        /// Graphics / l'import n'est pas fait. Les SVG sont blancs : teinte via Image.color.</summary>
+        public static Sprite LoadIcon(string name)
+            => string.IsNullOrEmpty(name) ? null : Resources.Load<Sprite>("UI/Icons/" + name);
+
         // ===== Primitives =====
 
         public RectTransform MakeRect(string name, Transform parent)

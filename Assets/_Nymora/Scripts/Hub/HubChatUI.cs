@@ -13,7 +13,7 @@ namespace Nymora.Hub
     /// </summary>
     public sealed class HubChatUI : MonoBehaviour
     {
-        public enum ChatTab { Global, Private }
+        public enum ChatTab { Global, Private, Clan }
 
         [Header("Refs")]
         [SerializeField] private TMP_InputField _inputField;
@@ -22,18 +22,20 @@ namespace Nymora.Hub
         [SerializeField] private TextMeshProUGUI _historyText;
         [SerializeField] private Button _tabGlobalButton;
         [SerializeField] private Button _tabPrivateButton;
+        [SerializeField] private Button _tabClanButton; // créé/assigné par le tool de restyle (optionnel)
 
         [Header("Config")]
         [SerializeField] private string _channel = "global";
-        [SerializeField, Range(20, 500)] private int _maxLines = 100;
 
         [Header("Tab style")]
         [SerializeField] private Color _tabActiveColor = new Color(0.25f, 0.4f, 0.65f, 1f);
         [SerializeField] private Color _tabInactiveColor = new Color(0.2f, 0.2f, 0.24f, 1f);
+        // Couleur du LABEL selon l'état (sinon texte blanc sur onglet actif clair = illisible).
+        [SerializeField] private Color _tabActiveTextColor = new Color(0.10f, 0.10f, 0.12f, 1f);
+        [SerializeField] private Color _tabInactiveTextColor = new Color(0.78f, 0.80f, 0.85f, 1f);
 
-        private readonly List<string> _globalHistory = new List<string>();
-        private readonly List<string> _privateHistory = new List<string>();
         private ChatTab _activeTab = ChatTab.Global;
+        private string _joinedClanChannel; // "clan:<clanId>" si rejoint, sinon null
 
         private void OnEnable()
         {
@@ -41,6 +43,7 @@ namespace Nymora.Hub
             if (_inputField != null) _inputField.onSubmit.AddListener(OnInputSubmit);
             if (_tabGlobalButton != null) _tabGlobalButton.onClick.AddListener(() => SwitchTab(ChatTab.Global));
             if (_tabPrivateButton != null) _tabPrivateButton.onClick.AddListener(() => SwitchTab(ChatTab.Private));
+            if (_tabClanButton != null) _tabClanButton.onClick.AddListener(() => SwitchTab(ChatTab.Clan));
         }
 
         private void OnDisable()
@@ -49,11 +52,15 @@ namespace Nymora.Hub
             if (_inputField != null) _inputField.onSubmit.RemoveListener(OnInputSubmit);
             if (_tabGlobalButton != null) _tabGlobalButton.onClick.RemoveAllListeners();
             if (_tabPrivateButton != null) _tabPrivateButton.onClick.RemoveAllListeners();
+            if (_tabClanButton != null) _tabClanButton.onClick.RemoveAllListeners();
         }
 
         private void Start()
         {
-            AppendSystemLine(ChatTab.Global, "--- Chat connecting ---");
+            // Feed persistant : on n'ajoute la ligne d'accueil qu'au tout premier affichage,
+            // sinon elle se duplique à chaque retour dans le hub.
+            if (ChatFeed.Global.Count == 0)
+                AppendSystemLine(ChatTab.Global, "--- Chat connecting ---");
             UpdateTabStyles();
             RefreshHistoryText();
             EnsureHistoryClickHandler();
@@ -70,6 +77,10 @@ namespace Nymora.Hub
                 HubChatClient.Instance.OnReportSent += HandleReportSent;
                 HubChatClient.Instance.OnModerationNotice += HandleModerationNotice;
             }
+
+            // Canal clan : rejoindre dès qu'on connaît le clan + se ré-abonner aux changements d'état.
+            if (HubClanPanel.Instance != null) HubClanPanel.Instance.OnClanStateChanged += TryJoinClanChannel;
+            TryJoinClanChannel();
         }
 
         private void OnDestroy()
@@ -87,6 +98,19 @@ namespace Nymora.Hub
                 HubChatClient.Instance.OnReportSent -= HandleReportSent;
                 HubChatClient.Instance.OnModerationNotice -= HandleModerationNotice;
             }
+            if (HubClanPanel.Instance != null) HubClanPanel.Instance.OnClanStateChanged -= TryJoinClanChannel;
+        }
+
+        // Rejoint le canal de chat du clan courant (clan:<clanId>) si on est dans un clan.
+        // ⚠️ Nécessite que le backend relaie ce canal aux membres.
+        private void TryJoinClanChannel()
+        {
+            string id = HubClanPanel.Instance != null ? HubClanPanel.Instance.MyClanId : null;
+            string ch = string.IsNullOrEmpty(id) ? null : "clan:" + id;
+            if (ch == _joinedClanChannel) return;
+            _joinedClanChannel = ch;
+            if (!string.IsNullOrEmpty(ch) && HubChatClient.Instance != null)
+                HubChatClient.Instance.JoinChannel(ch);
         }
 
         private void HandleConnected()
@@ -101,17 +125,24 @@ namespace Nymora.Hub
 
         private void HandleMessage(string channel, string from, string text)
         {
-            if (channel != _channel) return;
-            // A3 — son de message reçu, sauf pour mes propres messages (anti-spam quand je tape).
-            if (from != Nymora.Core.Data.PlayerProfileBridge.LocalPseudo)
-                Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(Nymora.Core.Audio.SoundId.MessageReceived);
+            // Routage par canal : global -> onglet Global, canal clan rejoint -> onglet Clan.
+            ChatTab tab;
+            if (channel == _channel) tab = ChatTab.Global;
+            else if (!string.IsNullOrEmpty(_joinedClanChannel) && channel == _joinedClanChannel) tab = ChatTab.Clan;
+            else return; // canal non suivi
+            // Pas de son ici : la notification est réservée aux MP REÇUS (cf HandleWhisper).
             // POLISH-7 polish (20 mai) : pseudo wrappe dans link cliquable pour ouvrir
             // le menu contextuel chat (MP / Ami / Inviter clan / Signaler).
-            AppendLine(ChatTab.Global, $"{WrapPseudoLink(from)}: {text}");
+            AppendLine(tab, $"{WrapPseudoLink(from)}: {text}");
         }
 
         private void HandleWhisper(string from, string to, string text)
         {
+            // Notification SON : uniquement sur MP REÇU (pas mes propres MP envoyés). Compare au
+            // displayName officiel (HubChatClient) plutôt qu'à PlayerProfileBridge.LocalPseudo.
+            string me = HubChatClient.Instance != null ? HubChatClient.Instance.MyDisplayName : null;
+            if (!string.IsNullOrEmpty(from) && from != me)
+                Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(Nymora.Core.Audio.SoundId.MessageReceived);
             // POLISH-7 polish : 2 pseudos cliquables dans la ligne whisper (sender + receiver).
             AppendLine(ChatTab.Private, $"<color=#d8a4ff>[{WrapPseudoLink(from)} → {WrapPseudoLink(to)}]</color> {text}");
         }
@@ -196,6 +227,16 @@ namespace Nymora.Hub
             {
                 TrySendWhisperCommand(text);
             }
+            else if (_activeTab == ChatTab.Clan)
+            {
+                if (!string.IsNullOrEmpty(_joinedClanChannel))
+                    HubChatClient.Instance.SendChatMessage(_joinedClanChannel, text);
+                else
+                {
+                    AppendSystemLine(ChatTab.Clan, "<color=#ff7777>Rejoins un clan pour discuter ici.</color>");
+                    return;
+                }
+            }
             else
             {
                 HubChatClient.Instance.SendChatMessage(_channel, text);
@@ -248,6 +289,7 @@ namespace Nymora.Hub
         {
             ApplyTabColor(_tabGlobalButton, _activeTab == ChatTab.Global);
             ApplyTabColor(_tabPrivateButton, _activeTab == ChatTab.Private);
+            ApplyTabColor(_tabClanButton, _activeTab == ChatTab.Clan);
         }
 
         private void ApplyTabColor(Button btn, bool active)
@@ -255,6 +297,8 @@ namespace Nymora.Hub
             if (btn == null) return;
             var img = btn.GetComponent<Image>();
             if (img != null) img.color = active ? _tabActiveColor : _tabInactiveColor;
+            var lbl = btn.GetComponentInChildren<TextMeshProUGUI>(true);
+            if (lbl != null) lbl.color = active ? _tabActiveTextColor : _tabInactiveTextColor;
         }
 
         private void AppendSystemLine(ChatTab tab, string line)
@@ -270,17 +314,14 @@ namespace Nymora.Hub
 
         private void AppendLine(ChatTab tab, string richLine)
         {
-            var list = tab == ChatTab.Global ? _globalHistory : _privateHistory;
-            list.Add(richLine);
-            if (list.Count > _maxLines) list.RemoveRange(0, list.Count - _maxLines);
+            ChatFeed.Append(tab, richLine); // store persistant (survit aux changements de scène)
             if (tab == _activeTab) RefreshHistoryText();
         }
 
         private void RefreshHistoryText()
         {
             if (_historyText == null) return;
-            var list = _activeTab == ChatTab.Global ? _globalHistory : _privateHistory;
-            _historyText.text = string.Join("\n", list);
+            _historyText.text = string.Join("\n", ChatFeed.For(_activeTab));
             Canvas.ForceUpdateCanvases();
             if (_scrollRect != null) _scrollRect.verticalNormalizedPosition = 0f;
         }

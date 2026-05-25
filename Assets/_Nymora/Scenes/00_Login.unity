@@ -1085,7 +1085,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 2997262745
   m_fontColor: {r: 0.6, g: 0.6, b: 0.65, a: 0.7}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -1098,7 +1098,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -1284,7 +1284,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -2103,7 +2103,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 2997262745
   m_fontColor: {r: 0.6, g: 0.6, b: 0.65, a: 0.7}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -2116,7 +2116,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -2708,7 +2708,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4294110187
   m_fontColor: {r: 0.92, g: 0.92, b: 0.95, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -2721,7 +2721,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -3010,7 +3010,6 @@ MonoBehaviour:
   - {fileID: 759281985}
   - {fileID: 368997450}
   - {fileID: 2000559497}
-  _debug: 1
 --- !u!1 &1033110414
 GameObject:
   m_ObjectHideFlags: 0
@@ -3469,7 +3468,6 @@ MonoBehaviour:
   _fields:
   - {fileID: 2027616790}
   - {fileID: 233238481}
-  _debug: 1
 --- !u!1 &1111008436
 GameObject:
   m_ObjectHideFlags: 0
@@ -3863,7 +3861,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -4552,7 +4550,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: "\u200B"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 9c8a8667e2352a841a77df1104136a55, type: 2}
   m_sharedMaterial: {fileID: 7700272497058392182, guid: 9c8a8667e2352a841a77df1104136a55, type: 2}
@@ -4561,7 +4559,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4294636274
   m_fontColor: {r: 0.95, g: 0.95, b: 0.98, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -4574,7 +4572,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -5136,7 +5134,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2
@@ -5946,7 +5944,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 
+  m_text: "\u200B"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 9c8a8667e2352a841a77df1104136a55, type: 2}
   m_sharedMaterial: {fileID: 7700272497058392182, guid: 9c8a8667e2352a841a77df1104136a55, type: 2}
@@ -5955,7 +5953,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4294967295
+    rgba: 4294636274
   m_fontColor: {r: 0.95, g: 0.95, b: 0.98, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -5968,7 +5966,7 @@ MonoBehaviour:
   m_spriteAsset: {fileID: 0}
   m_tintAllSprites: 0
   m_StyleSheet: {fileID: 0}
-  m_TextStyleHashCode: 0
+  m_TextStyleHashCode: -1183493901
   m_overrideHtmlColors: 0
   m_faceColor:
     serializedVersion: 2

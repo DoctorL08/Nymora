@@ -145,13 +145,25 @@ namespace Nymora.Hub.Menu
             if (item.owned)
             {
                 var tag = _f.MakeImage("Owned", buyRow, new Color(0.27f, 0.55f, 0.36f, 0.35f));
-                var ol = _f.MakeText("L", tag.rectTransform, "✓ Possédé", _t.FontSizeBody, new Color(0.7f, 0.95f, 0.75f, 1f), _t.FontBold, TextAlignmentOptions.Center);
-                HubMenuUIFactory.Stretch(ol.rectTransform); ol.raycastTarget = false;
+                var ownedColor = new Color(0.7f, 0.95f, 0.75f, 1f);
+                var sp = HubMenuUIFactory.LoadIcon("ui_icon_check");
+                var ol = _f.MakeText("L", tag.rectTransform, sp != null ? "Possédé" : "✓ Possédé", _t.FontSizeBody, ownedColor, _t.FontBold, TextAlignmentOptions.Center);
+                ol.raycastTarget = false;
+                if (sp != null)
+                {
+                    HubMenuUIFactory.Stretch(ol.rectTransform, 22f, 4f, 0f, 0f);
+                    var ck = _f.MakeImage("Check", tag.rectTransform, ownedColor, rounded: false);
+                    ck.sprite = sp; ck.type = Image.Type.Simple; ck.preserveAspect = true; ck.raycastTarget = false;
+                    var ckrt = ck.rectTransform;
+                    ckrt.anchorMin = new Vector2(0f, 0.5f); ckrt.anchorMax = new Vector2(0f, 0.5f); ckrt.pivot = new Vector2(0f, 0.5f);
+                    ckrt.sizeDelta = new Vector2(20f, 20f); ckrt.anchoredPosition = new Vector2(12f, 0f);
+                }
+                else HubMenuUIFactory.Stretch(ol.rectTransform);
             }
             else if (item.priceNymos > 0 || item.priceShards > 0)
             {
-                if (item.priceNymos > 0) SpawnBuyButton(buyRow, item.id, "Nymos", $"◆ {item.priceNymos}", NymosColor);
-                if (item.priceShards > 0) SpawnBuyButton(buyRow, item.id, "Shards", $"◇ {item.priceShards}", ShardsColor);
+                if (item.priceNymos > 0) SpawnBuyButton(buyRow, item.id, "Nymos", item.priceNymos, "ui_icon_nymos", "◆", NymosColor);
+                if (item.priceShards > 0) SpawnBuyButton(buyRow, item.id, "Shards", item.priceShards, "ui_icon_shards", "◇", ShardsColor);
             }
             else
             {
@@ -160,9 +172,9 @@ namespace Nymora.Hub.Menu
             }
         }
 
-        private void SpawnBuyButton(RectTransform parent, string itemId, string currency, string label, Color tint)
+        private void SpawnBuyButton(RectTransform parent, string itemId, string currency, int price, string iconName, string glyph, Color tint)
         {
-            var btn = _f.MakeButton(parent, label, false, out var lbl);
+            var btn = _f.MakeButton(parent, price.ToString(), false, out var lbl);
             var img = btn.GetComponent<Image>(); if (img != null) img.color = Color.white;
             var c = btn.colors;
             Color baseCol = new Color(tint.r * 0.30f, tint.g * 0.30f, tint.b * 0.30f, 1f);
@@ -172,6 +184,23 @@ namespace Nymora.Hub.Menu
             c.selectedColor = baseCol; c.fadeDuration = 0.1f;
             btn.colors = c;
             lbl.color = tint; lbl.enableWordWrapping = false;
+
+            // Icône de devise (ash/blood) à gauche ; fallback glyphe (◆/◇) si sprite absent.
+            var sp = HubMenuUIFactory.LoadIcon(iconName);
+            if (sp != null)
+            {
+                HubMenuUIFactory.Stretch(lbl.rectTransform, 40f, 6f, 0f, 0f);
+                var icon = _f.MakeImage("CurIcon", btn.transform, Color.white, rounded: false);
+                icon.sprite = sp; icon.type = Image.Type.Simple; icon.preserveAspect = true; icon.raycastTarget = false;
+                var irt = icon.rectTransform;
+                irt.anchorMin = new Vector2(0f, 0.5f); irt.anchorMax = new Vector2(0f, 0.5f); irt.pivot = new Vector2(0f, 0.5f);
+                irt.sizeDelta = new Vector2(30f, 30f); irt.anchoredPosition = new Vector2(10f, 0f);
+            }
+            else
+            {
+                lbl.text = $"{glyph} {price}";
+            }
+
             btn.onClick.AddListener(() => Buy(itemId, currency));
         }
 

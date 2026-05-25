@@ -257,12 +257,25 @@ namespace Nymora.Hub.Menu
 
             var row = MakeListRow(72f);
 
-            // Icône état (cercle ✓ / ○) à gauche
-            var icon = _f.MakeText("Icon", row, unlocked ? "✓" : "○", _t.FontSizeHeader, unlocked ? UnlockedColor : _t.TextMuted, _t.FontBold, TextAlignmentOptions.Center);
-            icon.raycastTarget = false;
-            var icrt = icon.rectTransform;
-            icrt.anchorMin = new Vector2(0f, 0.5f); icrt.anchorMax = new Vector2(0f, 0.5f); icrt.pivot = new Vector2(0.5f, 0.5f);
-            icrt.sizeDelta = new Vector2(36f, 36f); icrt.anchoredPosition = new Vector2(28f, 0f);
+            // Icône état (check si débloqué / cadenas sinon) à gauche — sprite SVG + fallback glyphe.
+            Color iconColor = unlocked ? UnlockedColor : _t.TextMuted;
+            var iconSprite = HubMenuUIFactory.LoadIcon(unlocked ? "ui_icon_check" : "ui_icon_lock");
+            if (iconSprite != null)
+            {
+                var icon = _f.MakeImage("Icon", row, iconColor, rounded: false);
+                icon.sprite = iconSprite; icon.type = Image.Type.Simple; icon.preserveAspect = true; icon.raycastTarget = false;
+                var icrt = icon.rectTransform;
+                icrt.anchorMin = new Vector2(0f, 0.5f); icrt.anchorMax = new Vector2(0f, 0.5f); icrt.pivot = new Vector2(0.5f, 0.5f);
+                icrt.sizeDelta = new Vector2(26f, 26f); icrt.anchoredPosition = new Vector2(30f, 0f);
+            }
+            else
+            {
+                var icon = _f.MakeText("Icon", row, unlocked ? "✓" : "○", _t.FontSizeHeader, iconColor, _t.FontBold, TextAlignmentOptions.Center);
+                icon.raycastTarget = false;
+                var icrt = icon.rectTransform;
+                icrt.anchorMin = new Vector2(0f, 0.5f); icrt.anchorMax = new Vector2(0f, 0.5f); icrt.pivot = new Vector2(0.5f, 0.5f);
+                icrt.sizeDelta = new Vector2(36f, 36f); icrt.anchoredPosition = new Vector2(28f, 0f);
+            }
 
             // Titre + description (la progression "x/y" est intégrée à la description si verrouillé,
             // pour rester lisible — la barre n'est qu'un repère visuel)

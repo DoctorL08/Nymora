@@ -46,6 +46,10 @@ namespace Nymora.UI.Audio
             if (_instance != null) return;
             string scene = SceneManager.GetActiveScene().name;
             if (scene.Contains("Combat")) return; // pas de réglages volume en plein combat
+            // Nettoyage menu Échap (M8) : dans le hub, l'audio est désormais géré par le menu
+            // (Paramètres > Audio). On n'y crée plus le bouton « AUDIO » redondant. Conservé
+            // ailleurs (ex : 00_Login) qui n'a pas le menu Échap.
+            if (scene.Contains("CommunityHub")) return;
             var go = new GameObject("AudioSettingsPanel");
             _instance = go.AddComponent<AudioSettingsPanel>();
         }

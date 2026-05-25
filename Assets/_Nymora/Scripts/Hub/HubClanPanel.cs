@@ -65,6 +65,7 @@ namespace Nymora.Hub
         public bool HasClan => _myClan != null;
         public string MyClanRole => _myClan?.myRole;
         public string MyClanName => _myClan?.name;
+        public string MyClanId => _myClan?.clanId;
         public bool CanInviteToClan => HasClan && (_myClan.myRole == "Leader" || _myClan.myRole == "Officer");
         public event Action OnClanStateChanged;
 

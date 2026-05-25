@@ -918,6 +918,15 @@ namespace Nymora.Hub
             await SendJsonAsync(json);
         }
 
+        /// <summary>Rejoint un canal de chat (ex : "global", "clan:&lt;clanId&gt;"). Nécessite que le
+        /// backend relaie ce canal aux membres qui l'ont rejoint.</summary>
+        public async void JoinChannel(string channel)
+        {
+            if (!IsConnected || string.IsNullOrWhiteSpace(channel)) return;
+            string escaped = EscapeJsonString(channel);
+            await SendJsonAsync($"{{\"type\":\"JOIN_CHANNEL\",\"channel\":\"{escaped}\"}}");
+        }
+
         public async void SendWhisper(string targetUser, string text)
         {
             if (!IsConnected || string.IsNullOrWhiteSpace(text) || string.IsNullOrWhiteSpace(targetUser)) return;
