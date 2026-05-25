@@ -54,11 +54,13 @@ namespace Nymora.Combat.View.HUD
         private const float HoverAnimSpeed = 14f;    // vitesse de lerp (atteint 1 en ~0.07s)
         private static Sprite _glowSpriteCache;
 
-        private static readonly Color FrameNormal   = new Color(0.15f, 0.15f, 0.15f, 0.85f);
-        private static readonly Color FrameDisabled = new Color(0.10f, 0.10f, 0.10f, 0.85f);
-        private static readonly Color FrameArmed    = new Color(0.95f, 0.75f, 0.20f, 1.00f);
+        // Re-skin DA hub (monochrome) : frame = surface carte / désactivée plus sombre /
+        // armée = accent clair (signal "sélectionné" identique au hub). Cf CombatUiKit.
+        private static readonly Color FrameNormal   = CombatUiKit.CardBg;
+        private static readonly Color FrameDisabled = new Color(0.10f, 0.105f, 0.12f, 0.92f);
+        private static readonly Color FrameArmed    = CombatUiKit.Accent;
         private static readonly Color IconNormal    = Color.white;
-        private static readonly Color IconDisabled  = new Color(0.35f, 0.35f, 0.35f, 1f);
+        private static readonly Color IconDisabled  = new Color(0.40f, 0.41f, 0.44f, 1f);
 
         public SpellId Spell => _spell;
         public RectTransform RectTransform => transform as RectTransform;
@@ -66,6 +68,9 @@ namespace Nymora.Combat.View.HUD
         private void Awake()
         {
             _rt = transform as RectTransform;
+            // Frame arrondie (sprite généré -> appliqué au runtime, non sérialisable en scène).
+            // SetState ne change que la couleur, la forme arrondie persiste.
+            if (_frameImage != null) CombatUiKit.ApplyRounded(_frameImage, CombatUiKit.CornerRadius);
             CreateHoverGlow();
         }
 
