@@ -28,6 +28,7 @@ namespace Nymora.UI.Login
     public class LoginScreenController : MonoBehaviour
     {
         private const string LastPseudoKey = "nymora.auth.lastPseudo";
+        private const string RememberKey = "nymora.auth.remember";
 
         [Header("Backend")]
         [SerializeField] private NymoraBackendSettings _backendSettings;
@@ -38,6 +39,8 @@ namespace Nymora.UI.Login
         [SerializeField] private TMP_InputField _passwordInput;
         [SerializeField] private Button _connexionButton;
         [SerializeField] private Button _openRegisterButton;
+        [Tooltip("Case 'Memoriser mes identifiants' : si cochee, la session (token JWT) est reprise au prochain lancement.")]
+        [SerializeField] private Toggle _rememberToggle;
 
         [Header("Inscription (panneau separe)")]
         [SerializeField] private GameObject _registerPanel;
@@ -71,6 +74,7 @@ namespace Nymora.UI.Login
         private bool _versionLocked;
         private bool _downloading;
         private bool _busy;
+        private bool _rememberedSession;
 
         private string _pendingDownloadUrl;
         private string _pendingSha256;
@@ -138,7 +142,30 @@ namespace Nymora.UI.Login
 
             SetVersionVerdict("Votre version de Nymora est a jour.", new Color(0.4f, 0.85f, 0.5f));
             SetStatus(string.Empty); // efface "Verification de la version..."
-            RevealLogin();
+            TryResumeOrReveal();
+        }
+
+        /// <summary>
+        /// Si "Memoriser mes identifiants" etait coche ET qu'un token JWT est present, on prepare
+        /// une reprise de session en 1 clic (pseudo pre-rempli, mdp masque "memorise") : le bouton
+        /// Connexion validera le token via /me. Sinon, login classique (et on purge un token
+        /// residuel d'une session non memorisee).
+        /// </summary>
+        private void TryResumeOrReveal()
+        {
+            bool remember = PlayerPrefs.GetInt(RememberKey, 0) == 1;
+            if (remember && _auth.IsLoggedIn)
+            {
+                _rememberedSession = true;
+                RevealLogin();
+                SetStatus("Identifiants memorises — clique sur Connexion.");
+            }
+            else
+            {
+                if (!remember) _auth.Logout(); // une session non memorisee ne doit pas survivre au relancement
+                _rememberedSession = false;
+                RevealLogin();
+            }
         }
 
         private void OnDestroy()
@@ -172,6 +199,15 @@ namespace Nymora.UI.Login
 
             string pseudo = _pseudoInput != null ? _pseudoInput.text.Trim() : string.Empty;
             string password = _passwordInput != null ? _passwordInput.text : string.Empty;
+
+            // Reprise de session memorisee : pseudo connu, mdp non saisi, token present.
+            // On valide le token via /me avant d'entrer dans le hub.
+            if (_rememberedSession && string.IsNullOrEmpty(password) && _auth.IsLoggedIn)
+            {
+                await ResumeSessionAsync();
+                return;
+            }
+
             if (string.IsNullOrEmpty(pseudo) || string.IsNullOrEmpty(password))
             {
                 SetStatus("Renseigne ton pseudo et ton mot de passe.");
@@ -187,6 +223,7 @@ namespace Nymora.UI.Login
             if (res.IsSuccess)
             {
                 SaveLastPseudo(res.Data.user != null ? res.Data.user.displayName : pseudo);
+                SaveRememberPreference(_rememberToggle != null && _rememberToggle.isOn);
                 SetStatus($"Connecte : {res.Data.user.displayName}. Entree dans le hub...");
                 NymoraLog.Info("Login", $"Connexion OK ({res.Data.user.displayName}) -> {_hubSceneName}");
                 SceneTransition.Load(_hubSceneName);
@@ -207,6 +244,35 @@ namespace Nymora.UI.Login
             {
                 SetStatus($"Echec connexion ({res.StatusCode}) : {res.ErrorMessage}");
             }
+        }
+
+        /// <summary>Valide le token JWT memorise via /me ; succes -> hub, echec -> retour login mot de passe.</summary>
+        private async UniTask ResumeSessionAsync()
+        {
+            _busy = true;
+            SetButtonsInteractable(false);
+            SetStatus("Reconnexion...");
+
+            var me = await _auth.GetMeAsync(_cts.Token);
+            if (me.IsSuccess)
+            {
+                string name = me.Data != null ? me.Data.displayName : string.Empty;
+                SaveLastPseudo(name);
+                SaveRememberPreference(_rememberToggle == null || _rememberToggle.isOn);
+                SetStatus($"Reconnecte : {name}. Entree dans le hub...");
+                NymoraLog.Info("Login", $"Reprise session memorisee ({name}) -> {_hubSceneName}");
+                SceneTransition.Load(_hubSceneName);
+                return;
+            }
+
+            // Token expire / invalide : on repasse en login classique.
+            _auth.Logout();
+            _rememberedSession = false;
+            SaveRememberPreference(false);
+            ResetPasswordPlaceholder();
+            _busy = false;
+            SetButtonsInteractable(true);
+            SetStatus("Session expiree — retape ton mot de passe.");
         }
 
         // ---------- Inscription ----------
@@ -354,7 +420,26 @@ namespace Nymora.UI.Login
                 string last = PlayerPrefs.GetString(LastPseudoKey, string.Empty);
                 if (!string.IsNullOrEmpty(last)) _pseudoInput.text = last;
             }
+            if (_rememberToggle != null) _rememberToggle.isOn = PlayerPrefs.GetInt(RememberKey, 0) == 1;
             if (_passwordInput != null) _passwordInput.text = string.Empty;
+            ResetPasswordPlaceholder();
+        }
+
+        /// <summary>En session memorisee, le placeholder du mdp indique que la session sera reprise (pas de mdp a saisir).</summary>
+        private void ResetPasswordPlaceholder()
+        {
+            if (_passwordInput == null) return;
+            if (_passwordInput.placeholder is TMP_Text ph)
+                ph.text = _rememberedSession ? "•••••••• (memorise)" : "Mot de passe";
+        }
+
+        private void SaveRememberPreference(bool remember)
+        {
+            // On stocke uniquement la PREFERENCE ; le token JWT reste en PlayerPrefs pour CETTE
+            // session (le hub le relit a son demarrage). Une session non memorisee est purgee au
+            // prochain lancement par TryResumeOrReveal (-> _auth.Logout()).
+            PlayerPrefs.SetInt(RememberKey, remember ? 1 : 0);
+            PlayerPrefs.Save();
         }
 
         private void ShowUpdateRequired(string minServerVersion, string currentServerVersion,
