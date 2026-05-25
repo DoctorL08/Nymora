@@ -24,6 +24,8 @@ namespace Nymora.Editor.Setup
     ///   - B6 : overlay fin de match (scène : titre/sous-titre Ari, backdrop sombre, boutons
     ///     pilule/ghost) + bouton Abandonner (instance de scène câblée Ari, monochrome arrondi).
     ///   - B7 : panneau passif (police Ari + couleurs sur compteur/label, fond arrondi si visible).
+    ///   - B8 : intro pile-ou-face (police Ari sur labels ; pièce bleu/orange conservée car
+    ///     fonctionnelle = distinction PILE/FACE). Casual + Ranked uniquement (pas en IA).
     ///
     /// Ce que fait l'outil, sur les 3 scènes combat, en lisant les refs du CombatHUDController
     /// (pas de devinette de noms d'objets) :
@@ -63,7 +65,7 @@ namespace Nymora.Editor.Setup
             if (ari == null)
                 Debug.LogWarning($"[RestyleCombatHud] Police Ari introuvable à {AriPath} — police conservée.");
 
-            int scenesDone = 0, slotsDone = 0, buttonsDone = 0, panelsDone = 0, timersDone = 0, bannersDone = 0, timelinesDone = 0, tooltipsDone = 0, overlaysDone = 0, passivesDone = 0;
+            int scenesDone = 0, slotsDone = 0, buttonsDone = 0, panelsDone = 0, timersDone = 0, bannersDone = 0, timelinesDone = 0, tooltipsDone = 0, overlaysDone = 0, passivesDone = 0, coinflipsDone = 0;
 
             foreach (var path in CombatScenes)
             {
@@ -132,18 +134,23 @@ namespace Nymora.Editor.Setup
                 var passive = so.FindProperty("_passive")?.objectReferenceValue as PassivePanelView;
                 if (RestylePassivePanel(passive, ari, ariBold)) passivesDone++;
 
+                // --- Intro pile-ou-face (PvP : Casual + Ranked uniquement, pas en IA) ---
+                bool isPvpScene = scene.name.Contains("Casual") || scene.name.Contains("Ranked");
+                if (isPvpScene && EnsureCoinFlip(ariBold ?? ari)) coinflipsDone++;
+
                 EditorSceneManager.MarkSceneDirty(scene);
                 EditorSceneManager.SaveScene(scene);
                 scenesDone++;
             }
 
-            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} Fin de tour, {panelsDone} panneau(x) ressources, {timersDone} timer(s), {bannersDone} bandeau(x), {timelinesDone} timeline(s), {tooltipsDone} tooltip(s), {overlaysDone} overlay/abandon, {passivesDone} passif(s).");
+            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} Fin de tour, {panelsDone} ressources, {timersDone} timer(s), {bannersDone} bandeau(x), {timelinesDone} timeline(s), {tooltipsDone} tooltip(s), {overlaysDone} overlay/abandon, {passivesDone} passif(s), {coinflipsDone} coinflip(s).");
             EditorUtility.DisplayDialog("Restyle Combat HUD",
                 $"HUD combat re-skinné (DA hub) — chantier complet.\n\n" +
                 $"- Scènes : {scenesDone} | Slots : {slotsDone} | Fin de tour : {buttonsDone}\n" +
                 $"- Ressources : {panelsDone} | Timers : {timersDone} | Bandeaux : {bannersDone}\n" +
-                $"- Timelines : {timelinesDone} | Tooltips : {tooltipsDone} | Overlay/Abandon : {overlaysDone} | Passif : {passivesDone}\n\n" +
-                "Test : Play sur 30_CombatIA.\n" +
+                $"- Timelines : {timelinesDone} | Tooltips : {tooltipsDone} | Overlay/Abandon : {overlaysDone}\n" +
+                $"- Passif : {passivesDone} | Intro pile-ou-face : {coinflipsDone}\n\n" +
+                "Test : Play sur 30_CombatIA (HUD) + 33_CombatCasual (intro pile-ou-face).\n" +
                 "⚠️ Scènes modifiées -> rebuild standalone côté designer.",
                 "OK");
         }
@@ -394,6 +401,23 @@ namespace Nymora.Editor.Setup
                     bg.gameObject.AddComponent<CombatUiRounder>();
                 EditorUtility.SetDirty(bg);
             }
+            return true;
+        }
+
+        /// <summary>Pose (ou re-câble) une instance CoinFlipIntroView (PvP) dans la scène, police Ari.
+        /// À runtime elle gagne le singleton -> l'auto-instance par défaut (police TMP) est évitée.</summary>
+        private static bool EnsureCoinFlip(TMP_FontAsset font)
+        {
+            var coin = Object.FindAnyObjectByType<CoinFlipIntroView>(FindObjectsInactive.Include);
+            if (coin == null)
+            {
+                var go = new GameObject("CoinFlipIntroView", typeof(CoinFlipIntroView));
+                coin = go.GetComponent<CoinFlipIntroView>();
+            }
+            var so = new SerializedObject(coin);
+            var p = so.FindProperty("_font");
+            if (p != null && font != null) p.objectReferenceValue = font;
+            so.ApplyModifiedPropertiesWithoutUndo();
             return true;
         }
 

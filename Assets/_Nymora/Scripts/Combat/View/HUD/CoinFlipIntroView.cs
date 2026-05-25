@@ -35,6 +35,9 @@ namespace Nymora.Combat.View.HUD
         /// pour bloquer l'input grille local). Static : un seul combat a la fois.</summary>
         public static bool IsIntroActive { get; private set; }
 
+        [Tooltip("Optionnel : police Ari (DA hub), câblée par 'Restyle Combat HUD' sur l'instance de scène. Défaut TMP sinon.")]
+        [SerializeField] private TMP_FontAsset _font;
+
         // --- Timings (secondes, temps non-scale). Total cale sur TurnConstants.IntroDelaySeconds
         //     (= 3s) cote sim : spin 1.5 + pop 0.15 + hold 0.9 + fade 0.35 = ~2.9s <= 3s. Ainsi
         //     l'overlay disparait au moment ou le sim demarre le tour 1 (timer 15s frais). ---
@@ -185,6 +188,7 @@ namespace Nymora.Combat.View.HUD
             var labelGo = NewUIChild("CoinLabel", _coinRect);
             Stretch(labelGo);
             _coinLabel = labelGo.gameObject.AddComponent<TextMeshProUGUI>();
+            if (_font != null) _coinLabel.font = _font;
             _coinLabel.fontSize = 64f;
             _coinLabel.alignment = TextAlignmentOptions.Center;
             _coinLabel.fontStyle = FontStyles.Bold;
@@ -198,6 +202,7 @@ namespace Nymora.Combat.View.HUD
             result.anchoredPosition = new Vector2(0f, -150f);
             result.sizeDelta = new Vector2(1400f, 200f);
             _resultText = result.gameObject.AddComponent<TextMeshProUGUI>();
+            if (_font != null) _resultText.font = _font;
             _resultText.fontSize = 84f;
             _resultText.alignment = TextAlignmentOptions.Center;
             _resultText.fontStyle = FontStyles.Bold;
