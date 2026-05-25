@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Nymora.Core.Data;
+using Nymora.Core.SceneFlow;
 using Nymora.Core.ScriptableObjects;
 using Nymora.Network.Backend;
 using TMPro;
@@ -39,6 +40,12 @@ namespace Nymora.Hub.Menu
 
         // Boost d'échelle du sprite quand un skin est équipé (frames natives + petites que la classe).
         private const float SkinPortraitBoost = 1.4f;
+
+        // M8 — Lien Discord Nymora (section report de bug), ouvert dans le navigateur.
+        private const string BugReportUrl = "https://discord.gg/haRtXKCERx";
+
+        // Scène de connexion (retour sur Déconnexion).
+        private const string LoginSceneName = "00_Login";
 
         public static HubMenuShell Instance { get; private set; }
 
@@ -288,6 +295,8 @@ namespace Nymora.Hub.Menu
             else if (id == "settings") BuildSettings();
             else if (id == "shop") BuildShop();
             else if (id == "battlepass") BuildBattlePass();
+            else if (id == "report") BuildReport();
+            else if (id == "logout") BuildLogout();
             else BuildPlaceholder(id);
         }
 
@@ -1024,6 +1033,90 @@ namespace Nymora.Hub.Menu
             if (_cardArt == null) return null;
             foreach (var c in _cardArt) if (c.Id == id) return c.Sprite;
             return null;
+        }
+
+        // ===== M8 — Report bug + Déconnexion =====
+
+        /// <summary>Panneau de dialogue centré (titre + message + bouton Retour). Renvoie le
+        /// RectTransform du panneau pour y ajouter des boutons d'action.</summary>
+        private RectTransform BuildCenterDialog(string title, string message)
+        {
+            var holder = _f.MakeRect("Dialog", _contentArea);
+            HubMenuUIFactory.Stretch(holder);
+
+            var panel = _f.MakePanel(holder);
+            panel.sprite = HubMenuUIFactory.RoundedSprite(28f); panel.type = Image.Type.Sliced;
+            var prt = panel.rectTransform;
+            prt.anchorMin = new Vector2(0.5f, 0.5f); prt.anchorMax = new Vector2(0.5f, 0.5f); prt.pivot = new Vector2(0.5f, 0.5f);
+            prt.sizeDelta = new Vector2(640f, 340f); prt.anchoredPosition = Vector2.zero;
+
+            var t = _f.MakeText("Title", prt, title, _theme.FontSizeTitle, _theme.TextPrimary, _theme.FontBold, TextAlignmentOptions.Center);
+            t.raycastTarget = false;
+            var trt = t.rectTransform;
+            trt.anchorMin = new Vector2(0.5f, 1f); trt.anchorMax = new Vector2(0.5f, 1f); trt.pivot = new Vector2(0.5f, 1f);
+            trt.sizeDelta = new Vector2(580f, 48f); trt.anchoredPosition = new Vector2(0f, -44f);
+
+            var m = _f.MakeText("Msg", prt, message, _theme.FontSizeBody, _theme.TextSecondary, _theme.Font, TextAlignmentOptions.Center);
+            m.raycastTarget = false;
+            var mrt = m.rectTransform;
+            mrt.anchorMin = new Vector2(0.5f, 0.5f); mrt.anchorMax = new Vector2(0.5f, 0.5f); mrt.pivot = new Vector2(0.5f, 0.5f);
+            mrt.sizeDelta = new Vector2(560f, 110f); mrt.anchoredPosition = new Vector2(0f, 16f);
+
+            AddBackButton(holder);
+            _currentScreen = holder.gameObject;
+            return prt;
+        }
+
+        private void BuildReport()
+        {
+            Application.OpenURL(BugReportUrl);
+            var panel = BuildCenterDialog("Report bug",
+                "Le Discord de Nymora s'ouvre dans ton navigateur.\nPoste ton bug dans la section dédiée — merci !");
+
+            var btn = _f.MakeButton(panel, "Ouvrir le Discord", true, out _);
+            var brt = (RectTransform)btn.transform;
+            brt.anchorMin = new Vector2(0.5f, 0f); brt.anchorMax = new Vector2(0.5f, 0f); brt.pivot = new Vector2(0.5f, 0f);
+            brt.sizeDelta = new Vector2(240f, 46f); brt.anchoredPosition = new Vector2(0f, 34f);
+            btn.onClick.AddListener(() => Application.OpenURL(BugReportUrl));
+        }
+
+        private void BuildLogout()
+        {
+            var panel = BuildCenterDialog("Déconnexion",
+                "Se déconnecter et revenir à l'écran de connexion ?");
+
+            var row = _f.MakeRect("Btns", panel);
+            row.anchorMin = new Vector2(0.5f, 0f); row.anchorMax = new Vector2(0.5f, 0f); row.pivot = new Vector2(0.5f, 0f);
+            row.sizeDelta = new Vector2(460f, 50f); row.anchoredPosition = new Vector2(0f, 30f);
+            var hlg = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 16f; hlg.childAlignment = TextAnchor.MiddleCenter;
+            hlg.childControlWidth = true; hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
+
+            var cancel = _f.MakeButton(row, "Annuler", false, out _);
+            cancel.gameObject.GetComponent<LayoutElement>().preferredWidth = 180f;
+            cancel.onClick.AddListener(() => ShowScreen("home"));
+
+            var confirm = _f.MakeButton(row, "Se déconnecter", false, out var cl);
+            confirm.gameObject.GetComponent<LayoutElement>().preferredWidth = 220f;
+            var cimg = confirm.GetComponent<Image>(); if (cimg != null) cimg.color = Color.white;
+            var cc = confirm.colors;
+            var red = new Color(0.55f, 0.27f, 0.27f, 1f);
+            cc.normalColor = red; cc.highlightedColor = new Color(0.66f, 0.33f, 0.33f, 1f);
+            cc.pressedColor = new Color(0.48f, 0.22f, 0.22f, 1f); cc.selectedColor = red; cc.fadeDuration = 0.1f;
+            confirm.colors = cc; cl.color = Color.white;
+            confirm.onClick.AddListener(DoLogout);
+        }
+
+        private void DoLogout()
+        {
+            // Efface la session (JWT en PlayerPrefs) proprement via AuthService.
+            if (_api != null) { try { new AuthService(_api).Logout(); } catch { } }
+            // Le client de chat/session est DontDestroyOnLoad : on le détruit pour repartir
+            // propre au login (le NetworkRunner Fusion, lui, meurt avec la scène hub).
+            if (HubChatClient.Instance != null) Destroy(HubChatClient.Instance.gameObject);
+            _isOpen = false;
+            SceneTransition.Load(LoginSceneName);
         }
 
         private void BuildPlaceholder(string id)
