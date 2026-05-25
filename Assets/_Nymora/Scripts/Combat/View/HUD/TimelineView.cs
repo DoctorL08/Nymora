@@ -28,14 +28,14 @@ namespace Nymora.Combat.View.HUD
         [SerializeField] private Image _slot1Frame;
         [SerializeField] private TMP_Text _legacyLabel; // ancien texte P0/P1, hide si auto-spawn
 
-        [Header("Style")]
+        [Header("Style (re-skin DA hub : monochrome)")]
         [SerializeField] private Vector2 _slotSize = new Vector2(96f, 112f);
         [SerializeField] private float _slotSpacing = 10f;
-        [SerializeField] private Color _frameActive = new Color(1f, 0.85f, 0.30f, 1f);
-        [SerializeField] private Color _frameInactive = new Color(0.25f, 0.27f, 0.32f, 1f);
+        [SerializeField] private Color _frameActive = new Color(0.93f, 0.94f, 0.96f, 1f);   // accent clair = actif
+        [SerializeField] private Color _frameInactive = new Color(0.16f, 0.165f, 0.185f, 1f); // surface carte
         [SerializeField] private Color _portraitActive = Color.white;
-        [SerializeField] private Color _portraitInactive = new Color(0.55f, 0.55f, 0.60f, 1f);
-        [SerializeField] private int _frameBorderPx = 3;
+        [SerializeField] private Color _portraitInactive = new Color(0.55f, 0.55f, 0.58f, 1f);
+        [SerializeField] private int _frameBorderPx = 4;
 
         private CombatUISpriteAnimator _animator0;
         private CombatUISpriteAnimator _animator1;
@@ -71,6 +71,11 @@ namespace Nymora.Combat.View.HUD
             }
             if (_legacyLabel != null) _legacyLabel.gameObject.SetActive(false);
             EnsureSlots();
+
+            // Re-skin DA hub : cadres arrondis (sprite généré au runtime). ApplySlot ne change
+            // que la couleur du cadre -> la forme arrondie persiste.
+            if (_slot0Frame != null) CombatUiKit.ApplyRounded(_slot0Frame, 10f);
+            if (_slot1Frame != null) CombatUiKit.ApplyRounded(_slot1Frame, 10f);
         }
 
         /// <summary>

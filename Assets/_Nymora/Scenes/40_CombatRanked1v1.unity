@@ -43091,10 +43091,10 @@ MonoBehaviour:
   _legacyLabel: {fileID: 0}
   _slotSize: {x: 96, y: 112}
   _slotSpacing: 10
-  _frameActive: {r: 1, g: 0.85, b: 0.3, a: 1}
-  _frameInactive: {r: 0.25, g: 0.27, b: 0.32, a: 1}
+  _frameActive: {r: 0.93, g: 0.94, b: 0.96, a: 1}
+  _frameInactive: {r: 0.16, g: 0.165, b: 0.185, a: 0.96}
   _portraitActive: {r: 1, g: 1, b: 1, a: 1}
-  _portraitInactive: {r: 0.55, g: 0.55, b: 0.6, a: 1}
+  _portraitInactive: {r: 0.55, g: 0.55, b: 0.58, a: 1}
   _frameBorderPx: 3
   _verticalNudge: 80
 --- !u!114 &1649189431
@@ -43104,7 +43104,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1649189428}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
   m_Name: 

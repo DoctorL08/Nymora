@@ -15,6 +15,8 @@ namespace Nymora.Editor.Setup
     ///   - B2 : panneaux ressources P0/P1 (police Ari, fond arrondi façon hub).
     ///   - B3 : timer + n° de tour (police Ari) + bandeau « ton tour » (instance de scène
     ///     câblée avec la police Ari, neutralise l'auto-instance par défaut).
+    ///   - B4 : timeline d'initiative (couleurs monochromes : cadre actif = accent clair,
+    ///     inactif = surface carte ; cadres arrondis gérés au runtime).
     ///
     /// Ce que fait l'outil, sur les 3 scènes combat, en lisant les refs du CombatHUDController
     /// (pas de devinette de noms d'objets) :
@@ -54,7 +56,7 @@ namespace Nymora.Editor.Setup
             if (ari == null)
                 Debug.LogWarning($"[RestyleCombatHud] Police Ari introuvable à {AriPath} — police conservée.");
 
-            int scenesDone = 0, slotsDone = 0, buttonsDone = 0, panelsDone = 0, timersDone = 0, bannersDone = 0;
+            int scenesDone = 0, slotsDone = 0, buttonsDone = 0, panelsDone = 0, timersDone = 0, bannersDone = 0, timelinesDone = 0;
 
             foreach (var path in CombatScenes)
             {
@@ -105,17 +107,21 @@ namespace Nymora.Editor.Setup
                 // --- Bandeau « ton tour » (instance de scène câblée Ari) ---
                 if (EnsureTurnIndicator(ariBold ?? ari)) bannersDone++;
 
+                // --- Timeline d'initiative ---
+                var timeline = so.FindProperty("_timeline")?.objectReferenceValue as TimelineView;
+                if (RestyleTimeline(timeline)) timelinesDone++;
+
                 EditorSceneManager.MarkSceneDirty(scene);
                 EditorSceneManager.SaveScene(scene);
                 scenesDone++;
             }
 
-            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} Fin de tour, {panelsDone} panneau(x) ressources, {timersDone} timer(s), {bannersDone} bandeau(x).");
+            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} Fin de tour, {panelsDone} panneau(x) ressources, {timersDone} timer(s), {bannersDone} bandeau(x), {timelinesDone} timeline(s).");
             EditorUtility.DisplayDialog("Restyle Combat HUD",
                 $"HUD combat re-skinné (DA hub).\n\n" +
                 $"- Scènes traitées : {scenesDone}\n- Slots : {slotsDone}\n- Boutons Fin de tour : {buttonsDone}\n" +
-                $"- Panneaux ressources : {panelsDone}\n- Timers : {timersDone}\n- Bandeaux de tour : {bannersDone}\n\n" +
-                "Test : Play sur 30_CombatIA -> barre + ressources + timer + bandeau en Ari monochrome.\n" +
+                $"- Panneaux ressources : {panelsDone}\n- Timers : {timersDone}\n- Bandeaux de tour : {bannersDone}\n- Timelines : {timelinesDone}\n\n" +
+                "Test : Play sur 30_CombatIA -> tout le HUD en Ari monochrome.\n" +
                 "⚠️ Scènes modifiées -> rebuild standalone côté designer.",
                 "OK");
         }
@@ -174,6 +180,36 @@ namespace Nymora.Editor.Setup
             // "Tour N" : police + couleur secondaire (non pilotée par le code).
             SetLabel(turn, font, CombatUiKit.TextSecondary);
             return true;
+        }
+
+        /// <summary>Écrase les couleurs sérialisées de la timeline (au cas où la scène a override les
+        /// défauts) par la palette monochrome : cadre actif = accent, inactif = surface carte.</summary>
+        private static bool RestyleTimeline(TimelineView timeline)
+        {
+            if (timeline == null) return false;
+            var so = new SerializedObject(timeline);
+            SetColor(so, "_frameActive", CombatUiKit.Accent);
+            SetColor(so, "_frameInactive", CombatUiKit.CardBg);
+            SetColor(so, "_portraitActive", Color.white);
+            SetColor(so, "_portraitInactive", new Color(0.55f, 0.55f, 0.58f, 1f));
+            so.ApplyModifiedPropertiesWithoutUndo();
+
+            // Cadre noir transparent de fond (Image posée sur le GO racine de la timeline,
+            // derrière les slots) -> désactivé (réversible, le GameObject reste). On ne touche
+            // PAS aux Images enfants (cadres de slots).
+            var rootBg = timeline.GetComponent<Image>();
+            if (rootBg != null && rootBg.enabled)
+            {
+                rootBg.enabled = false;
+                EditorUtility.SetDirty(rootBg);
+            }
+            return true;
+        }
+
+        private static void SetColor(SerializedObject so, string prop, Color c)
+        {
+            var p = so.FindProperty(prop);
+            if (p != null) p.colorValue = c;
         }
 
         /// <summary>Pose (ou re-câble) une instance TurnIndicatorView dans la scène, avec la police Ari.
