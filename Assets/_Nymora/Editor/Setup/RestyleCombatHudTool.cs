@@ -13,6 +13,8 @@ namespace Nymora.Editor.Setup
     /// arrondis). Couvre, au fil des briques :
     ///   - B1 : barre de sorts (6 + signature) + bouton Fin de tour.
     ///   - B2 : panneaux ressources P0/P1 (police Ari, fond arrondi façon hub).
+    ///   - B3 : timer + n° de tour (police Ari) + bandeau « ton tour » (instance de scène
+    ///     câblée avec la police Ari, neutralise l'auto-instance par défaut).
     ///
     /// Ce que fait l'outil, sur les 3 scènes combat, en lisant les refs du CombatHUDController
     /// (pas de devinette de noms d'objets) :
@@ -52,7 +54,7 @@ namespace Nymora.Editor.Setup
             if (ari == null)
                 Debug.LogWarning($"[RestyleCombatHud] Police Ari introuvable à {AriPath} — police conservée.");
 
-            int scenesDone = 0, slotsDone = 0, buttonsDone = 0, panelsDone = 0;
+            int scenesDone = 0, slotsDone = 0, buttonsDone = 0, panelsDone = 0, timersDone = 0, bannersDone = 0;
 
             foreach (var path in CombatScenes)
             {
@@ -96,16 +98,24 @@ namespace Nymora.Editor.Setup
                     if (RestyleResourcePanel(panel, ari, ariBold)) panelsDone++;
                 }
 
+                // --- Timer + n° de tour ---
+                var timer = so.FindProperty("_timer")?.objectReferenceValue as TimerView;
+                if (RestyleTimer(timer, ariBold ?? ari)) timersDone++;
+
+                // --- Bandeau « ton tour » (instance de scène câblée Ari) ---
+                if (EnsureTurnIndicator(ariBold ?? ari)) bannersDone++;
+
                 EditorSceneManager.MarkSceneDirty(scene);
                 EditorSceneManager.SaveScene(scene);
                 scenesDone++;
             }
 
-            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} Fin de tour, {panelsDone} panneau(x) ressources.");
+            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} Fin de tour, {panelsDone} panneau(x) ressources, {timersDone} timer(s), {bannersDone} bandeau(x).");
             EditorUtility.DisplayDialog("Restyle Combat HUD",
                 $"HUD combat re-skinné (DA hub).\n\n" +
-                $"- Scènes traitées : {scenesDone}\n- Slots : {slotsDone}\n- Boutons Fin de tour : {buttonsDone}\n- Panneaux ressources : {panelsDone}\n\n" +
-                "Test : Play sur 30_CombatIA -> barre + panneaux ressources monochromes Ari.\n" +
+                $"- Scènes traitées : {scenesDone}\n- Slots : {slotsDone}\n- Boutons Fin de tour : {buttonsDone}\n" +
+                $"- Panneaux ressources : {panelsDone}\n- Timers : {timersDone}\n- Bandeaux de tour : {bannersDone}\n\n" +
+                "Test : Play sur 30_CombatIA -> barre + ressources + timer + bandeau en Ari monochrome.\n" +
                 "⚠️ Scènes modifiées -> rebuild standalone côté designer.",
                 "OK");
         }
@@ -148,6 +158,38 @@ namespace Nymora.Editor.Setup
                     bg.gameObject.AddComponent<CombatUiRounder>();
                 EditorUtility.SetDirty(bg);
             }
+            return true;
+        }
+
+        /// <summary>Police Ari sur le timer + le label de tour ; couleur du tour = secondaire (le temps
+        /// reste piloté par TimerView : clair / rouge urgence).</summary>
+        private static bool RestyleTimer(TimerView timer, TMP_FontAsset font)
+        {
+            if (timer == null) return false;
+            var so = new SerializedObject(timer);
+            var label = so.FindProperty("_label")?.objectReferenceValue as TMP_Text;
+            var turn = so.FindProperty("_turnLabel")?.objectReferenceValue as TMP_Text;
+            // Temps : police seule (couleur pilotée par Refresh).
+            if (label != null && font != null) { label.font = font; EditorUtility.SetDirty(label); }
+            // "Tour N" : police + couleur secondaire (non pilotée par le code).
+            SetLabel(turn, font, CombatUiKit.TextSecondary);
+            return true;
+        }
+
+        /// <summary>Pose (ou re-câble) une instance TurnIndicatorView dans la scène, avec la police Ari.
+        /// À runtime elle gagne le singleton -> l'auto-instance par défaut (police TMP) est neutralisée.</summary>
+        private static bool EnsureTurnIndicator(TMP_FontAsset font)
+        {
+            var indicator = Object.FindAnyObjectByType<TurnIndicatorView>(FindObjectsInactive.Include);
+            if (indicator == null)
+            {
+                var go = new GameObject("TurnIndicatorView", typeof(TurnIndicatorView));
+                indicator = go.GetComponent<TurnIndicatorView>();
+            }
+            var so = new SerializedObject(indicator);
+            var p = so.FindProperty("_font");
+            if (p != null && font != null) p.objectReferenceValue = font;
+            so.ApplyModifiedPropertiesWithoutUndo();
             return true;
         }
 

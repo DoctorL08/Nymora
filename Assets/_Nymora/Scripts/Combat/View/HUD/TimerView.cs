@@ -12,8 +12,10 @@ namespace Nymora.Combat.View.HUD
         [SerializeField] private TMP_Text _label;
         [SerializeField] private TMP_Text _turnLabel;
 
-        private static readonly Color Safe    = new Color(1.00f, 0.95f, 0.55f, 1f);
-        private static readonly Color Warning = new Color(0.95f, 0.40f, 0.25f, 1f);
+        // Re-skin DA hub : temps normal = texte clair monochrome ; urgence < 5s = rouge
+        // fonctionnel conservé (signal d'urgence, pas décoratif).
+        private static readonly Color Safe    = CombatUiKit.TextPrimary;
+        private static readonly Color Warning = new Color(0.86f, 0.36f, 0.33f, 1f);
 
         // A2 — SFX d'urgence : joué une seule fois quand on passe sous 5s, ré-armé à chaque tour.
         private const float WarningThreshold = 5f;

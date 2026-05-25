@@ -24,6 +24,10 @@ namespace Nymora.Combat.View.HUD
     {
         public static TurnIndicatorView Instance { get; private set; }
 
+        [Tooltip("Optionnel : police Ari (DA hub). Câblé par 'Restyle Combat HUD' sur l'instance " +
+                 "de scène. Si vide (auto-instance), police TMP par défaut.")]
+        [SerializeField] private TMP_FontAsset _font;
+
         // --- Position / style (ajustables) ---
         private const float TopOffset = -150f;    // sous le timer (centre-haut), px @1080p
         private const float SlideDistance = 220f; // amplitude du glissement lateral
@@ -111,9 +115,11 @@ namespace Nymora.Combat.View.HUD
             lRt.offsetMin = Vector2.zero;
             lRt.offsetMax = Vector2.zero;
             _label = labelGo.AddComponent<TextMeshProUGUI>();
+            if (_font != null) _label.font = _font;
             _label.fontSize = FontSize;
             _label.alignment = TextAlignmentOptions.Center;
             _label.fontStyle = FontStyles.Bold;
+            _label.characterSpacing = 4f;
             _label.raycastTarget = false;
             _label.text = "";
         }
