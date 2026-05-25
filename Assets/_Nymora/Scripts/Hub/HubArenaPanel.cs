@@ -51,9 +51,9 @@ namespace Nymora.Hub
         private void OnEnable()
         {
             if (_closeButton != null) _closeButton.onClick.AddListener(Close);
-            if (_trainingButton != null) _trainingButton.onClick.AddListener(OnTrainingClicked);
+            if (_trainingButton != null) _trainingButton.onClick.AddListener(StartTraining);
             // 6.1 — Ranked 1v1 actif : ouvre le panneau de recherche classee.
-            if (_ranked1v1Button != null) _ranked1v1Button.onClick.AddListener(OnRanked1v1Clicked);
+            if (_ranked1v1Button != null) _ranked1v1Button.onClick.AddListener(OpenRanked1v1);
             // 2v2 / 3v3 restent desactives (.interactable=false dans le tool) ; pas de listener.
         }
 
@@ -86,7 +86,8 @@ namespace Nymora.Hub
         }
 
         // 6.1 — Ouvre le panneau "Recherche de partie classee" (matchmaking reel en 6.2).
-        private void OnRanked1v1Clicked()
+        // M2 (24 mai) : public pour etre appelable depuis HubMenuShell (carte Arene du nouveau menu).
+        public void OpenRanked1v1()
         {
             if (_transitionInProgress) return;
             var search = HubRankedSearchPanel.Instance;
@@ -99,7 +100,8 @@ namespace Nymora.Hub
             search.Open();
         }
 
-        private async void OnTrainingClicked()
+        // M2 (24 mai) : public pour etre appelable depuis HubMenuShell (carte Arene du nouveau menu).
+        public async void StartTraining()
         {
             if (_transitionInProgress) return;
 

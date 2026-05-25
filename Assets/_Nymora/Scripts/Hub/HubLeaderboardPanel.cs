@@ -72,23 +72,26 @@ namespace Nymora.Hub
 
         private async UniTaskVoid FetchAsync()
         {
-            if (_api == null) { SetText("Backend non configuré."); return; }
+            var txt = await GetLeaderboardTextAsync(100);
+            SetText(txt);
+        }
+
+        /// <summary>
+        /// M2 (24 mai) — Construit le texte rich-text du classement (réutilisé par HubMenuShell
+        /// pour l'afficher au style du nouveau menu). Renvoie un message d'erreur lisible si échec.
+        /// </summary>
+        public async UniTask<string> GetLeaderboardTextAsync(int limit)
+        {
+            if (_api == null) return "Backend non configuré.";
             string token = HubChatClient.Instance?.DevToken;
-            if (string.IsNullOrEmpty(token)) { SetText("Non connecté."); return; }
+            if (string.IsNullOrEmpty(token)) return "Non connecté.";
             _api.SetBearerToken(token);
 
-            var res = await _api.GetLeaderboardAsync(100);
-            if (!res.IsSuccess)
-            {
-                SetText($"Erreur classement ({res.StatusCode}).");
-                return;
-            }
+            var res = await _api.GetLeaderboardAsync(limit);
+            if (!res.IsSuccess) return $"Erreur classement ({res.StatusCode}).";
+
             var entries = res.Data?.entries;
-            if (entries == null || entries.Length == 0)
-            {
-                SetText("Aucun joueur classé pour le moment.");
-                return;
-            }
+            if (entries == null || entries.Length == 0) return "Aucun joueur classé pour le moment.";
 
             string myId = HubChatClient.Instance?.MyUserId;
             var sb = new StringBuilder();
@@ -102,7 +105,7 @@ namespace Nymora.Hub
                 if (isMe) line = $"<mark=#3a3358aa>{line}</mark>";
                 sb.AppendLine(line);
             }
-            SetText(sb.ToString());
+            return sb.ToString();
         }
 
         private void SetText(string s)

@@ -1,0 +1,44 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f5a86e5dcca68194d875fc78f19f2a1a, type: 3}
+  m_Name: HubMenuTheme
+  m_EditorClassIdentifier: 
+  Font: {fileID: 11400000, guid: 9c8a8667e2352a841a77df1104136a55, type: 2}
+  FontBold: {fileID: 11400000, guid: 44ad7acdf467ff6449090118381791a4, type: 2}
+  Backdrop: {r: 0, g: 0, b: 0, a: 0.82}
+  PanelBg: {r: 0.1, g: 0.105, b: 0.12, a: 0.96}
+  TabBarBg: {r: 0.07, g: 0.072, b: 0.085, a: 0.98}
+  CardBg: {r: 0.16, g: 0.165, b: 0.185, a: 0.96}
+  CardBgHover: {r: 0.22, g: 0.225, b: 0.25, a: 0.98}
+  Divider: {r: 1, g: 1, b: 1, a: 0.08}
+  TextPrimary: {r: 0.93, g: 0.94, b: 0.96, a: 1}
+  TextSecondary: {r: 0.66, g: 0.67, b: 0.71, a: 1}
+  TextMuted: {r: 0.45, g: 0.46, b: 0.5, a: 1}
+  TextOnLight: {r: 0.08, g: 0.085, b: 0.1, a: 1}
+  Accent: {r: 0.93, g: 0.94, b: 0.96, a: 1}
+  ButtonGhostBg: {r: 1, g: 1, b: 1, a: 0.06}
+  ButtonGhostBgHover: {r: 1, g: 1, b: 1, a: 0.12}
+  CornerRadius: 14
+  CardSize: {x: 250, y: 460}
+  CardFooterHeight: 150
+  CardSpacing: 34
+  TabHeight: 64
+  TabSpacing: 10
+  TabIconSize: 38
+  ContentPadding: 32
+  HintBarHeight: 34
+  AnimDuration: 0.18
+  FontSizeTitle: 34
+  FontSizeHeader: 24
+  FontSizeBody: 19
+  FontSizeSmall: 16
+  FontSizeCardTitle: 26

@@ -291,6 +291,32 @@ namespace Nymora.Hub
             await FetchDecksAsync();
         }
 
+        /// <summary>
+        /// M3b (25 mai) — Sélectionne un deck depuis le nouveau menu (HubMenuDeckBuilder).
+        /// Synchronise _editingDeckId + composition + pref, pour que SelectedDeck (lu par
+        /// HubArenaPanel / HubMatchTransition au lancement du combat) pointe sur le bon deck,
+        /// même si l'édition se fait dans le nouveau menu et plus dans ce panneau.
+        /// </summary>
+        public async UniTask SetActiveDeckAsync(string classId, string deckId)
+        {
+            if (string.IsNullOrEmpty(classId) || string.IsNullOrEmpty(deckId)) return;
+            await EnsureClassLoadedAsync(classId);
+            var deck = _myDecks.Find(d => d.id == deckId);
+            if (deck == null)
+            {
+                _currentClassId = classId;
+                await FetchDecksAsync();
+                deck = _myDecks.Find(d => d.id == deckId);
+            }
+            if (deck == null) return;
+            _editingDeckId = deckId;
+            for (int i = 0; i < 6; i++)
+                _slotSpellIds[i] = (deck.spellIds != null && i < deck.spellIds.Length) ? deck.spellIds[i] : null;
+            SelectedClassPreferences.SetLastEditedDeckId(classId, deckId);
+            if (_deckNameInput != null) _deckNameInput.text = deck.name;
+            RenderAll();
+        }
+
         // ====== Fetch decks ======
 
         private async UniTask FetchDecksAsync()
