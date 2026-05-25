@@ -1,0 +1,262 @@
+using System.Collections.Generic;
+using Nymora.Core.Audio;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Nymora.Hub.Menu
+{
+    /// <summary>
+    /// M6 — Écran Paramètres du nouveau menu hub (onglet "Paramètres" de la barre haute).
+    ///
+    /// Écran NEUF (aucun panneau existant repris). Deux sous-onglets pilule :
+    ///   - Affichage : toggle Plein écran (Screen.fullScreen, persisté nativement en standalone).
+    ///   - Audio     : un slider par bus (Volume général / Musique / Effets / Ambiance / Interface),
+    ///                 branché direct sur NymoraAudioManager (Get/SetBusVolume, persisté PlayerPrefs).
+    ///
+    /// 100% View — pas de bump CombatRulesVersion. Tout est monté en code (sliders/toggles inclus).
+    /// </summary>
+    public sealed class HubMenuSettings
+    {
+        private readonly HubMenuTheme _t;
+        private readonly HubMenuUIFactory _f;
+
+        // Bus exposés (ordre d'affichage) + libellés FR.
+        private static readonly AudioBus[] Buses = { AudioBus.Master, AudioBus.Music, AudioBus.Sfx, AudioBus.Ambience, AudioBus.Ui };
+        private static readonly string[] BusLabels = { "Volume général", "Musique", "Effets", "Ambiance", "Interface" };
+
+        private int _tab; // 0 = Affichage, 1 = Audio
+        private readonly List<(Image bg, TextMeshProUGUI label)> _tabRefs = new List<(Image, TextMeshProUGUI)>();
+        private RectTransform _content;
+        private RectTransform _listRoot;
+
+        public HubMenuSettings(HubMenuTheme t, HubMenuUIFactory f)
+        {
+            _t = t; _f = f;
+        }
+
+        // ===== Entrée =====
+
+        public void Build(RectTransform parent)
+        {
+            var tabsRow = _f.MakeRect("SettingsTabs", parent);
+            tabsRow.anchorMin = new Vector2(0.5f, 1f); tabsRow.anchorMax = new Vector2(0.5f, 1f); tabsRow.pivot = new Vector2(0.5f, 1f);
+            tabsRow.sizeDelta = new Vector2(360f, 42f); tabsRow.anchoredPosition = new Vector2(0f, -18f);
+            var thlg = tabsRow.gameObject.AddComponent<HorizontalLayoutGroup>();
+            thlg.spacing = 10f; thlg.childAlignment = TextAnchor.MiddleCenter;
+            thlg.childControlWidth = true; thlg.childControlHeight = true;
+            thlg.childForceExpandWidth = false; thlg.childForceExpandHeight = false;
+            SpawnTab(tabsRow, "Affichage", 0);
+            SpawnTab(tabsRow, "Audio", 1);
+
+            _content = _f.MakeRect("SettingsContent", parent);
+            _content.anchorMin = new Vector2(0f, 0f); _content.anchorMax = new Vector2(1f, 1f);
+            _content.offsetMin = new Vector2(28f, 18f); _content.offsetMax = new Vector2(-28f, -74f);
+
+            UpdateTabStyles();
+            ShowTab(0);
+        }
+
+        private void SpawnTab(RectTransform parent, string label, int idx)
+        {
+            var img = _f.MakeImage("Tab_" + label, parent, _t.ButtonGhostBg);
+            var le = img.gameObject.AddComponent<LayoutElement>(); le.preferredWidth = 160f; le.preferredHeight = 40f;
+            var btn = img.gameObject.AddComponent<Button>(); btn.targetGraphic = img;
+            var lbl = _f.MakeText("L", img.rectTransform, label, _t.FontSizeBody, _t.TextSecondary, _t.Font, TextAlignmentOptions.Center);
+            HubMenuUIFactory.Stretch(lbl.rectTransform); lbl.raycastTarget = false; lbl.enableWordWrapping = false;
+            btn.onClick.AddListener(() => { if (_tab != idx) ShowTab(idx); });
+            _tabRefs.Add((img, lbl));
+        }
+
+        private void UpdateTabStyles()
+        {
+            for (int i = 0; i < _tabRefs.Count; i++)
+            {
+                bool active = i == _tab;
+                if (_tabRefs[i].bg != null) _tabRefs[i].bg.color = active ? _t.Accent : _t.ButtonGhostBg;
+                if (_tabRefs[i].label != null)
+                {
+                    _tabRefs[i].label.color = active ? _t.TextOnLight : _t.TextSecondary;
+                    _tabRefs[i].label.fontStyle = active ? FontStyles.Bold : FontStyles.Normal;
+                }
+            }
+        }
+
+        private void ShowTab(int idx)
+        {
+            _tab = idx;
+            UpdateTabStyles();
+            for (int i = _content.childCount - 1; i >= 0; i--) UnityEngine.Object.Destroy(_content.GetChild(i).gameObject);
+            _listRoot = null;
+
+            BuildScroll(_content);
+            if (idx == 0) BuildAffichage();
+            else BuildAudio();
+        }
+
+        // ===== Onglet Affichage =====
+
+        private void BuildAffichage()
+        {
+            SpawnToggleRow("Plein écran", Screen.fullScreen, v => Screen.fullScreen = v);
+        }
+
+        // ===== Onglet Audio =====
+
+        private void BuildAudio()
+        {
+            var audio = NymoraAudioManager.Instance;
+            if (audio == null)
+            {
+                SpawnInfoRow("<i>Gestionnaire audio indisponible.</i>");
+                return;
+            }
+            for (int i = 0; i < Buses.Length; i++) SpawnSliderRow(BusLabels[i], Buses[i], audio);
+        }
+
+        // ===== Lignes =====
+
+        private void SpawnSliderRow(string label, AudioBus bus, NymoraAudioManager audio)
+        {
+            var row = MakeListRow(54f);
+
+            var lbl = _f.MakeText("Label", row, label, _t.FontSizeBody, _t.TextPrimary, _t.Font, TextAlignmentOptions.MidlineLeft);
+            lbl.raycastTarget = false; lbl.enableWordWrapping = false;
+            var lrt = lbl.rectTransform;
+            lrt.anchorMin = new Vector2(0f, 0f); lrt.anchorMax = new Vector2(0f, 1f); lrt.pivot = new Vector2(0f, 0.5f);
+            lrt.sizeDelta = new Vector2(220f, 0f); lrt.anchoredPosition = new Vector2(16f, 0f);
+
+            var val = _f.MakeText("Val", row, "", _t.FontSizeBody, _t.TextSecondary, _t.FontBold, TextAlignmentOptions.MidlineRight);
+            val.raycastTarget = false; val.enableWordWrapping = false;
+            var vrt = val.rectTransform;
+            vrt.anchorMin = new Vector2(1f, 0.5f); vrt.anchorMax = new Vector2(1f, 0.5f); vrt.pivot = new Vector2(1f, 0.5f);
+            vrt.sizeDelta = new Vector2(64f, 28f); vrt.anchoredPosition = new Vector2(-16f, 0f);
+
+            float v0 = audio.GetBusVolume(bus);
+            var slider = MakeSlider(row, v0);
+            var srt = (RectTransform)slider.transform;
+            srt.anchorMin = new Vector2(0f, 0.5f); srt.anchorMax = new Vector2(1f, 0.5f); srt.pivot = new Vector2(0.5f, 0.5f);
+            srt.sizeDelta = new Vector2(-(250f + 100f), 20f);   // marge gauche label (250) + droite valeur (100)
+            srt.anchoredPosition = new Vector2((250f - 100f) * 0.5f, 0f);
+
+            val.text = Pct(v0);
+            slider.onValueChanged.AddListener(v =>
+            {
+                audio.SetBusVolume(bus, v);
+                val.text = Pct(v);
+            });
+        }
+
+        private void SpawnToggleRow(string label, bool value, System.Action<bool> onChange)
+        {
+            var row = MakeListRow(54f);
+
+            var lbl = _f.MakeText("Label", row, label, _t.FontSizeBody, _t.TextPrimary, _t.Font, TextAlignmentOptions.MidlineLeft);
+            lbl.raycastTarget = false; lbl.enableWordWrapping = false;
+            var lrt = lbl.rectTransform;
+            lrt.anchorMin = new Vector2(0f, 0f); lrt.anchorMax = new Vector2(1f, 1f); lrt.pivot = new Vector2(0f, 0.5f);
+            lrt.offsetMin = new Vector2(16f, 0f); lrt.offsetMax = new Vector2(-70f, 0f);
+
+            var toggle = MakeToggle(row, value);
+            var trt = (RectTransform)toggle.transform;
+            trt.anchorMin = new Vector2(1f, 0.5f); trt.anchorMax = new Vector2(1f, 0.5f); trt.pivot = new Vector2(1f, 0.5f);
+            trt.sizeDelta = new Vector2(30f, 30f); trt.anchoredPosition = new Vector2(-16f, 0f);
+            toggle.onValueChanged.AddListener(v => onChange(v));
+        }
+
+        // ===== Widgets montés en code =====
+
+        /// <summary>Slider horizontal complet (track + remplissage + poignée), monté en code.</summary>
+        private Slider MakeSlider(RectTransform parent, float value01)
+        {
+            var root = _f.MakeRect("Slider", parent);
+            var slider = root.gameObject.AddComponent<Slider>();
+
+            var bg = _f.MakeImage("Track", root, new Color(1f, 1f, 1f, 0.12f));
+            var bgrt = bg.rectTransform;
+            bgrt.anchorMin = new Vector2(0f, 0.5f); bgrt.anchorMax = new Vector2(1f, 0.5f); bgrt.pivot = new Vector2(0.5f, 0.5f);
+            bgrt.sizeDelta = new Vector2(0f, 8f); bgrt.anchoredPosition = Vector2.zero;
+
+            var fillArea = _f.MakeRect("Fill Area", root);
+            fillArea.anchorMin = new Vector2(0f, 0.5f); fillArea.anchorMax = new Vector2(1f, 0.5f); fillArea.pivot = new Vector2(0.5f, 0.5f);
+            fillArea.offsetMin = new Vector2(8f, -4f); fillArea.offsetMax = new Vector2(-8f, 4f);
+            var fill = _f.MakeImage("Fill", fillArea, _t.Accent);
+            var frt = fill.rectTransform;
+            frt.anchorMin = new Vector2(0f, 0f); frt.anchorMax = new Vector2(1f, 1f); frt.sizeDelta = Vector2.zero; frt.anchoredPosition = Vector2.zero;
+            fill.raycastTarget = false;
+
+            var handleArea = _f.MakeRect("Handle Slide Area", root);
+            handleArea.anchorMin = new Vector2(0f, 0f); handleArea.anchorMax = new Vector2(1f, 1f);
+            handleArea.offsetMin = new Vector2(8f, 0f); handleArea.offsetMax = new Vector2(-8f, 0f);
+            var handle = _f.MakeImage("Handle", handleArea, Color.white);
+            var hrt = handle.rectTransform;
+            hrt.anchorMin = new Vector2(0f, 0.5f); hrt.anchorMax = new Vector2(0f, 0.5f); hrt.pivot = new Vector2(0.5f, 0.5f);
+            hrt.sizeDelta = new Vector2(18f, 18f);
+
+            slider.fillRect = frt;
+            slider.handleRect = hrt;
+            slider.targetGraphic = handle;
+            slider.direction = Slider.Direction.LeftToRight;
+            slider.minValue = 0f; slider.maxValue = 1f;
+            slider.wholeNumbers = false;
+            slider.value = value01;
+            return slider;
+        }
+
+        /// <summary>Toggle case à cocher (fond ghost + coche accent), monté en code.</summary>
+        private Toggle MakeToggle(RectTransform parent, bool value)
+        {
+            var box = _f.MakeImage("Toggle", parent, _t.ButtonGhostBg);
+            var toggle = box.gameObject.AddComponent<Toggle>();
+            toggle.targetGraphic = box;
+
+            var check = _f.MakeImage("Check", box.rectTransform, _t.Accent);
+            HubMenuUIFactory.Stretch(check.rectTransform, 6f, 6f, 6f, 6f);
+            check.raycastTarget = false;
+            toggle.graphic = check;
+            toggle.isOn = value;
+            return toggle;
+        }
+
+        // ===== Helpers liste (mêmes patterns que HubMenuSocial/Progression) =====
+
+        private void BuildScroll(RectTransform parent)
+        {
+            var vp = _f.MakeRect("Scroll", parent);
+            vp.anchorMin = new Vector2(0f, 0f); vp.anchorMax = new Vector2(1f, 1f);
+            vp.offsetMin = new Vector2(0f, 8f); vp.offsetMax = new Vector2(0f, -4f);
+            var vpImg = vp.gameObject.AddComponent<Image>(); vpImg.color = new Color(1f, 1f, 1f, 0.02f);
+            vp.gameObject.AddComponent<RectMask2D>();
+            var sr = vp.gameObject.AddComponent<ScrollRect>();
+            sr.horizontal = false; sr.vertical = true; sr.scrollSensitivity = 28f; sr.viewport = vp;
+
+            var content = _f.MakeRect("Content", vp);
+            content.anchorMin = new Vector2(0f, 1f); content.anchorMax = new Vector2(1f, 1f); content.pivot = new Vector2(0.5f, 1f);
+            content.anchoredPosition = Vector2.zero; content.sizeDelta = Vector2.zero;
+            var vlg = content.gameObject.AddComponent<VerticalLayoutGroup>();
+            vlg.spacing = 8f; vlg.padding = new RectOffset(8, 8, 8, 8); vlg.childAlignment = TextAnchor.UpperLeft;
+            vlg.childControlWidth = true; vlg.childControlHeight = true;
+            vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
+            var fit = content.gameObject.AddComponent<ContentSizeFitter>();
+            fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize; fit.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+            sr.content = content;
+            _listRoot = content;
+        }
+
+        private void SpawnInfoRow(string richText)
+        {
+            var tmp = _f.MakeText("Info", _listRoot, richText, _t.FontSizeSmall, _t.TextMuted, _t.Font, TextAlignmentOptions.MidlineLeft);
+            tmp.raycastTarget = false;
+            tmp.gameObject.AddComponent<LayoutElement>().preferredHeight = 40f;
+        }
+
+        private RectTransform MakeListRow(float height)
+        {
+            var row = _f.MakeImage("Row", _listRoot, _t.CardBg);
+            row.gameObject.AddComponent<LayoutElement>().preferredHeight = height;
+            return row.rectTransform;
+        }
+
+        private static string Pct(float v01) => $"{Mathf.RoundToInt(v01 * 100f)}%";
+    }
+}

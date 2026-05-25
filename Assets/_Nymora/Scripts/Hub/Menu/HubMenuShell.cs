@@ -285,6 +285,7 @@ namespace Nymora.Hub.Menu
             else if (id == "character") BuildPersonnage();
             else if (id == "social") BuildSocial();
             else if (id == "progression") BuildProgression();
+            else if (id == "settings") BuildSettings();
             else BuildPlaceholder(id);
         }
 
@@ -906,6 +907,25 @@ namespace Nymora.Hub.Menu
             {
                 PlaceholderMsg(holder, "Progression indisponible (backend manquant sur HubMenuCanvas).");
             }
+
+            AddBackButton(holder);
+            _currentScreen = holder.gameObject;
+        }
+
+        // ===== M6 — Écran Paramètres (Audio + Affichage) =====
+
+        private void BuildSettings()
+        {
+            var holder = _f.MakeRect("Settings", _contentArea);
+            HubMenuUIFactory.Stretch(holder);
+
+            var panel = _f.MakePanel(holder);
+            panel.sprite = HubMenuUIFactory.RoundedSprite(28f); panel.type = UnityEngine.UI.Image.Type.Sliced;
+            var prt = panel.rectTransform;
+            prt.anchorMin = new Vector2(0.5f, 0f); prt.anchorMax = new Vector2(0.5f, 1f); prt.pivot = new Vector2(0.5f, 0.5f);
+            prt.sizeDelta = new Vector2(760f, -8f);
+            prt.anchoredPosition = Vector2.zero;
+            new HubMenuSettings(_theme, _f).Build(prt);
 
             AddBackButton(holder);
             _currentScreen = holder.gameObject;
