@@ -284,6 +284,7 @@ namespace Nymora.Hub.Menu
             else if (id == "leaderboard") BuildLeaderboard();
             else if (id == "character") BuildPersonnage();
             else if (id == "social") BuildSocial();
+            else if (id == "progression") BuildProgression();
             else BuildPlaceholder(id);
         }
 
@@ -867,6 +868,7 @@ namespace Nymora.Hub.Menu
                 // Panneau centré borné (comme Personnage/Matchmaking) : la liste vit DEDANS,
                 // clippée, au lieu de baver pleine largeur sur le hub.
                 var panel = _f.MakePanel(holder);
+                panel.sprite = HubMenuUIFactory.RoundedSprite(28f); panel.type = UnityEngine.UI.Image.Type.Sliced;
                 var prt = panel.rectTransform;
                 prt.anchorMin = new Vector2(0.5f, 0f); prt.anchorMax = new Vector2(0.5f, 1f); prt.pivot = new Vector2(0.5f, 0.5f);
                 prt.sizeDelta = new Vector2(1040f, -8f);
@@ -879,6 +881,32 @@ namespace Nymora.Hub.Menu
             }
 
             // Retour par-dessus, dans la marge à gauche du panneau.
+            AddBackButton(holder);
+            _currentScreen = holder.gameObject;
+        }
+
+        // ===== M5 — Écran Progression (Quêtes + Succès) =====
+
+        private void BuildProgression()
+        {
+            var holder = _f.MakeRect("Progression", _contentArea);
+            HubMenuUIFactory.Stretch(holder);
+
+            if (_api != null)
+            {
+                var panel = _f.MakePanel(holder);
+                panel.sprite = HubMenuUIFactory.RoundedSprite(28f); panel.type = UnityEngine.UI.Image.Type.Sliced;
+                var prt = panel.rectTransform;
+                prt.anchorMin = new Vector2(0.5f, 0f); prt.anchorMax = new Vector2(0.5f, 1f); prt.pivot = new Vector2(0.5f, 0.5f);
+                prt.sizeDelta = new Vector2(1040f, -8f);
+                prt.anchoredPosition = Vector2.zero;
+                new HubMenuProgression(_theme, _f, _api).Build(prt);
+            }
+            else
+            {
+                PlaceholderMsg(holder, "Progression indisponible (backend manquant sur HubMenuCanvas).");
+            }
+
             AddBackButton(holder);
             _currentScreen = holder.gameObject;
         }
