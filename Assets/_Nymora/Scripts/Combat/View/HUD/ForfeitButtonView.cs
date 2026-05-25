@@ -24,6 +24,13 @@ namespace Nymora.Combat.View.HUD
     {
         private static ForfeitButtonView _current;
 
+        [Tooltip("Optionnel : police Ari (DA hub), câblée par 'Restyle Combat HUD' sur l'instance de scène. Défaut TMP sinon.")]
+        [SerializeField] private TMP_FontAsset _font;
+
+        // Re-skin DA hub : chip sombre pour les boutons neutres, rouge fonctionnel pour l'action destructive.
+        private static readonly Color ChipBg = new Color(0.09f, 0.092f, 0.11f, 0.94f);
+        private static readonly Color DestructiveRed = new Color(0.74f, 0.30f, 0.28f, 0.95f);
+
         private GameObject _mainButton;
         private GameObject _confirmPanel;
         private GameObject _confirmDim; // fond grisé plein écran derrière la confirmation
@@ -75,7 +82,7 @@ namespace Nymora.Combat.View.HUD
             _rootGroup = gameObject.AddComponent<CanvasGroup>();
 
             // Bouton principal "Abandonner" (BAS-droite, sous la timeline remontee).
-            _mainButton = CreateButton("AbandonButton", "Abandonner", new Color(0.62f, 0.18f, 0.18f, 0.92f),
+            _mainButton = CreateButton("AbandonButton", "Abandonner", ChipBg,
                 new Vector2(1f, 0f), new Vector2(-24f, 24f), new Vector2(190f, 52f), OnAbandonClicked);
 
             // Fond grisé plein écran (modal) derrière la confirmation, bloque les clics derriere.
@@ -98,15 +105,16 @@ namespace Nymora.Combat.View.HUD
             cRt.anchoredPosition = Vector2.zero; // plein centre
             cRt.sizeDelta = new Vector2(460f, 230f);
             var bg = _confirmPanel.AddComponent<Image>();
-            bg.color = new Color(0.10f, 0.10f, 0.13f, 0.98f);
+            bg.color = CombatUiKit.PanelBg;
+            CombatUiKit.ApplyRounded(bg, CombatUiKit.CornerRadius);
 
             var label = CreateLabel(cRt, "Abandonner le combat ?", new Vector2(0.5f, 1f),
-                new Vector2(0f, -28f), new Vector2(430f, 56f), 30f);
+                new Vector2(0f, -28f), new Vector2(430f, 56f), 28f);
             label.alignment = TextAlignmentOptions.Center;
 
-            CreateButton("ConfirmYes", "Oui, abandonner", new Color(0.62f, 0.18f, 0.18f, 0.95f),
+            CreateButton("ConfirmYes", "Oui, abandonner", DestructiveRed,
                 new Vector2(0.5f, 1f), new Vector2(0f, -104f), new Vector2(400f, 56f), OnConfirmYes, _confirmPanel.transform);
-            CreateButton("ConfirmNo", "Annuler", new Color(0.30f, 0.32f, 0.36f, 0.95f),
+            CreateButton("ConfirmNo", "Annuler", ChipBg,
                 new Vector2(0.5f, 1f), new Vector2(0f, -172f), new Vector2(400f, 50f), OnConfirmNo, _confirmPanel.transform);
 
             _confirmPanel.SetActive(false);
@@ -190,17 +198,18 @@ namespace Nymora.Combat.View.HUD
 
             var img = go.AddComponent<Image>();
             img.color = bgColor;
+            CombatUiKit.ApplyRounded(img, CombatUiKit.CornerRadius); // coins arrondis DA hub
 
             var btn = go.AddComponent<Button>();
             btn.targetGraphic = img;
             btn.onClick.AddListener(onClick);
 
-            var label = CreateLabel(rt, text, new Vector2(0.5f, 0.5f), Vector2.zero, size, 24f);
+            var label = CreateLabel(rt, text, new Vector2(0.5f, 0.5f), Vector2.zero, size, 22f);
             label.alignment = TextAlignmentOptions.Center;
             return go;
         }
 
-        private static TextMeshProUGUI CreateLabel(Transform parent, string text, Vector2 anchor,
+        private TextMeshProUGUI CreateLabel(Transform parent, string text, Vector2 anchor,
             Vector2 anchoredPos, Vector2 size, float fontSize)
         {
             var go = new GameObject("Label", typeof(RectTransform));
@@ -212,9 +221,10 @@ namespace Nymora.Combat.View.HUD
             rt.sizeDelta = size;
             var tmp = go.AddComponent<TextMeshProUGUI>();
             tmp.text = text;
+            if (_font != null) tmp.font = _font;
             tmp.fontSize = fontSize;
             tmp.fontStyle = FontStyles.Bold;
-            tmp.color = Color.white;
+            tmp.color = CombatUiKit.TextPrimary;
             tmp.raycastTarget = false;
             return tmp;
         }

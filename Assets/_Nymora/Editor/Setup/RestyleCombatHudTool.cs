@@ -21,6 +21,8 @@ namespace Nymora.Editor.Setup
     ///     PanelBg. PassiveTooltipView (code) : instance de scène câblée Ari (arrondi + palette
     ///     gérés au runtime). CombatantTooltipView (nameplate world-space) laissé tel quel
     ///     (il reproduit déjà le tooltip avatar du hub).
+    ///   - B6 : overlay fin de match (scène : titre/sous-titre Ari, backdrop sombre, boutons
+    ///     pilule/ghost) + bouton Abandonner (instance de scène câblée Ari, monochrome arrondi).
     ///
     /// Ce que fait l'outil, sur les 3 scènes combat, en lisant les refs du CombatHUDController
     /// (pas de devinette de noms d'objets) :
@@ -60,7 +62,7 @@ namespace Nymora.Editor.Setup
             if (ari == null)
                 Debug.LogWarning($"[RestyleCombatHud] Police Ari introuvable à {AriPath} — police conservée.");
 
-            int scenesDone = 0, slotsDone = 0, buttonsDone = 0, panelsDone = 0, timersDone = 0, bannersDone = 0, timelinesDone = 0, tooltipsDone = 0;
+            int scenesDone = 0, slotsDone = 0, buttonsDone = 0, panelsDone = 0, timersDone = 0, bannersDone = 0, timelinesDone = 0, tooltipsDone = 0, overlaysDone = 0;
 
             foreach (var path in CombatScenes)
             {
@@ -120,17 +122,22 @@ namespace Nymora.Editor.Setup
                 if (RestyleSpellTooltip(spellTooltip, ari, ariBold)) tooltipsDone++;
                 if (EnsurePassiveTooltip(ari)) tooltipsDone++;
 
+                // --- Overlay fin de match + bouton Abandonner ---
+                var matchEnd = so.FindProperty("_matchEndOverlay")?.objectReferenceValue as MatchEndOverlay;
+                if (RestyleMatchEnd(matchEnd, ari, ariBold)) overlaysDone++;
+                if (EnsureForfeitButton(ariBold ?? ari)) overlaysDone++;
+
                 EditorSceneManager.MarkSceneDirty(scene);
                 EditorSceneManager.SaveScene(scene);
                 scenesDone++;
             }
 
-            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} Fin de tour, {panelsDone} panneau(x) ressources, {timersDone} timer(s), {bannersDone} bandeau(x), {timelinesDone} timeline(s), {tooltipsDone} tooltip(s).");
+            Debug.Log($"[RestyleCombatHud] Terminé : {scenesDone} scène(s), {slotsDone} slot(s), {buttonsDone} Fin de tour, {panelsDone} panneau(x) ressources, {timersDone} timer(s), {bannersDone} bandeau(x), {timelinesDone} timeline(s), {tooltipsDone} tooltip(s), {overlaysDone} overlay/abandon.");
             EditorUtility.DisplayDialog("Restyle Combat HUD",
                 $"HUD combat re-skinné (DA hub).\n\n" +
                 $"- Scènes traitées : {scenesDone}\n- Slots : {slotsDone}\n- Boutons Fin de tour : {buttonsDone}\n" +
-                $"- Panneaux ressources : {panelsDone}\n- Timers : {timersDone}\n- Bandeaux de tour : {bannersDone}\n- Timelines : {timelinesDone}\n- Tooltips : {tooltipsDone}\n\n" +
-                "Test : Play sur 30_CombatIA -> survole un sort + l'icône passif.\n" +
+                $"- Panneaux ressources : {panelsDone}\n- Timers : {timersDone}\n- Bandeaux de tour : {bannersDone}\n- Timelines : {timelinesDone}\n- Tooltips : {tooltipsDone}\n- Overlay/Abandon : {overlaysDone}\n\n" +
+                "Test : Play sur 30_CombatIA -> joue jusqu'à la fin + teste Abandonner.\n" +
                 "⚠️ Scènes modifiées -> rebuild standalone côté designer.",
                 "OK");
         }
@@ -284,11 +291,19 @@ namespace Nymora.Editor.Setup
         private static bool RestyleEndTurnButton(Button btn, TMP_FontAsset font)
         {
             if (btn == null) return false;
+            StyleButtonPill(btn, primary: true, font); // pilule claire = CTA hub
+            return true;
+        }
 
+        /// <summary>Style un bouton à la DA hub : pilule claire (primaire, texte sombre) ou ghost
+        /// translucide (secondaire, texte clair), coins arrondis + police Ari.</summary>
+        private static void StyleButtonPill(Button btn, bool primary, TMP_FontAsset font)
+        {
+            if (btn == null) return;
             var img = (btn.targetGraphic as Image) ?? btn.GetComponent<Image>();
             if (img != null)
             {
-                img.color = CombatUiKit.Accent; // pilule claire = CTA hub
+                img.color = primary ? CombatUiKit.Accent : CombatUiKit.GhostBg;
                 btn.targetGraphic = img;
                 if (img.GetComponent<CombatUiRounder>() == null)
                     img.gameObject.AddComponent<CombatUiRounder>();
@@ -296,17 +311,75 @@ namespace Nymora.Editor.Setup
             }
 
             var cb = btn.colors;
-            cb.normalColor = Color.white;
-            cb.highlightedColor = Color.white;
-            cb.pressedColor = new Color(0.85f, 0.86f, 0.88f, 1f);
-            cb.selectedColor = Color.white;
-            cb.disabledColor = new Color(0.42f, 0.43f, 0.46f, 0.6f);
+            if (primary)
+            {
+                cb.normalColor = Color.white;
+                cb.highlightedColor = Color.white;
+                cb.pressedColor = new Color(0.85f, 0.86f, 0.88f, 1f);
+                cb.selectedColor = Color.white;
+                cb.disabledColor = new Color(0.42f, 0.43f, 0.46f, 0.6f);
+            }
+            else
+            {
+                cb.normalColor = Color.white;
+                cb.highlightedColor = new Color(2f, 2f, 2f, 2f); // éclaircit le ghost
+                cb.pressedColor = new Color(1.6f, 1.6f, 1.6f, 1.6f);
+                cb.selectedColor = Color.white;
+                cb.disabledColor = new Color(0.5f, 0.5f, 0.5f, 0.4f);
+            }
             cb.fadeDuration = 0.1f;
             btn.colors = cb;
             EditorUtility.SetDirty(btn);
 
             var label = btn.GetComponentInChildren<TMP_Text>(true);
-            SetLabel(label, font, CombatUiKit.TextOnLight); // texte sombre sur pilule claire
+            SetLabel(label, font, primary ? CombatUiKit.TextOnLight : CombatUiKit.TextPrimary);
+        }
+
+        /// <summary>Overlay fin de match (scène) : titre/sous-titre Ari (couleur titre = sémantique,
+        /// pilotée par Refresh), backdrop sombre, boutons (Retour Hub = pilule, autres = ghost).</summary>
+        private static bool RestyleMatchEnd(MatchEndOverlay overlay, TMP_FontAsset ari, TMP_FontAsset ariBold)
+        {
+            if (overlay == null) return false;
+            var so = new SerializedObject(overlay);
+            var title = so.FindProperty("_titleText")?.objectReferenceValue as TMP_Text;
+            var subtitle = so.FindProperty("_subtitleText")?.objectReferenceValue as TMP_Text;
+            var panel = so.FindProperty("_panel")?.objectReferenceValue as GameObject;
+            var returnHub = so.FindProperty("_returnToHubButton")?.objectReferenceValue as Button;
+            var saveReplay = so.FindProperty("_saveReplayButton")?.objectReferenceValue as Button;
+            var restartE = so.FindProperty("_restartEasyButton")?.objectReferenceValue as Button;
+            var restartM = so.FindProperty("_restartMediumButton")?.objectReferenceValue as Button;
+
+            // Titre : police seule (couleur victoire-or / défaite-rouge pilotée par Refresh).
+            if (title != null && (ariBold ?? ari) != null) { title.font = ariBold ?? ari; EditorUtility.SetDirty(title); }
+            SetLabel(subtitle, ari, CombatUiKit.TextSecondary);
+
+            // Backdrop sombre plein écran (si l'Image est portée par le panel root).
+            if (panel != null)
+            {
+                var bg = panel.GetComponent<Image>();
+                if (bg != null) { bg.color = new Color(0.02f, 0.02f, 0.03f, 0.86f); EditorUtility.SetDirty(bg); }
+            }
+
+            StyleButtonPill(returnHub, primary: true, ariBold ?? ari); // action principale
+            StyleButtonPill(saveReplay, primary: false, ari);
+            StyleButtonPill(restartE, primary: false, ari);
+            StyleButtonPill(restartM, primary: false, ari);
+            return true;
+        }
+
+        /// <summary>Pose (ou re-câble) une instance ForfeitButtonView dans la scène, avec la police Ari.</summary>
+        private static bool EnsureForfeitButton(TMP_FontAsset font)
+        {
+            var fb = Object.FindAnyObjectByType<ForfeitButtonView>(FindObjectsInactive.Include);
+            if (fb == null)
+            {
+                var go = new GameObject("ForfeitButtonView", typeof(ForfeitButtonView));
+                fb = go.GetComponent<ForfeitButtonView>();
+            }
+            var so = new SerializedObject(fb);
+            var p = so.FindProperty("_font");
+            if (p != null && font != null) p.objectReferenceValue = font;
+            so.ApplyModifiedPropertiesWithoutUndo();
             return true;
         }
 
