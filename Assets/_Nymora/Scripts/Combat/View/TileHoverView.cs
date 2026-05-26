@@ -126,12 +126,20 @@ namespace Nymora.Combat.View
             // pointe vers l'Entity du vrai Ghostra parent, ce qui permet d'afficher le MEME
             // tooltip (mindgame Bible V7.1 : adversaire indiscernable cote caster vs vrai).
             EntityRef tooltipEntity = hoveredCombatant != null ? hoveredCombatant.Entity : default;
+            Transform tooltipAnchor = hoveredCombatant != null ? hoveredCombatant.transform : null;
             if (hoveredCombatant == null && _enableCombatantHover)
             {
                 var proxy = FindDecoyHoverProxyByMouse(mouseWorld);
-                if (proxy != null) tooltipEntity = proxy.GhostraParentEntity;
+                if (proxy != null)
+                {
+                    tooltipEntity = proxy.GhostraParentEntity;
+                    // Ancre sur le GameObject du leurre survole PRECISEMENT (pas le 1er leurre
+                    // trouve par entite) : 2 leurres du meme Ghostra partagent l'EntityRef parent
+                    // mais sont des GameObjects distincts -> chacun a donc son propre tooltip.
+                    tooltipAnchor = proxy.transform;
+                }
             }
-            UpdateCombatantHover(hoveredCombatant, tooltipEntity);
+            UpdateCombatantHover(hoveredCombatant, tooltipEntity, tooltipAnchor);
 
             // Pas de changement de cellule (tile/obstacle) : rien a faire pour ces 2.
             if (!outOfGrid && gx == _prevHoverX && gy == _prevHoverY) return;
@@ -180,7 +188,7 @@ namespace Nymora.Combat.View
         /// pour les leurres Ghostra : le hover est sur le leurre (highlight visuel optionnel)
         /// mais le tooltip affiche les HP du vrai Ghostra parent (mindgame indiscernable).
         /// </summary>
-        private void UpdateCombatantHover(CombatantView next, EntityRef tooltipEntity)
+        private void UpdateCombatantHover(CombatantView next, EntityRef tooltipEntity, Transform tooltipAnchor)
         {
             // Track via prev pour le highlight visuel (sprite jaune) -- ne s'applique
             // qu'aux vrais CombatantView, pas aux leurres.
@@ -193,21 +201,21 @@ namespace Nymora.Combat.View
             }
 
             // Track tooltip separement : peut etre actif sur un leurre meme si pas de
-            // CombatantView highlight.
-            bool tooltipChanged = tooltipEntity != _prevTooltipEntity;
+            // CombatantView highlight. On re-affiche des que l'entite OU l'ancre change :
+            // l'ancre distingue 2 leurres du MEME Ghostra (meme EntityRef parent, GameObjects
+            // distincts) -> chaque leurre declenche/positionne son propre tooltip.
+            bool tooltipChanged = tooltipEntity != _prevTooltipEntity || tooltipAnchor != _prevTooltipAnchor;
             if (tooltipChanged)
             {
                 _prevTooltipEntity = tooltipEntity;
+                _prevTooltipAnchor = tooltipAnchor;
                 if (CombatantTooltipView.Instance != null)
                 {
-                    if (tooltipEntity != default && TryGetCombatantHp(tooltipEntity, out int hp, out int maxHp))
+                    if (tooltipEntity != default && tooltipAnchor != null && TryGetCombatantHp(tooltipEntity, out int hp, out int maxHp))
                     {
-                        // 19 mai — World-space anchor : si on hover un CombatantView (vrai
-                        // combatant), on ancre au sprite combatant. Si on hover un leurre
-                        // Ghostra (DecoyHoverProxy), on ancre au sprite leurre (transform de
-                        // _prevCombatant si match, sinon fallback search).
-                        Transform anchor = ResolveTooltipAnchor(next, tooltipEntity);
-                        CombatantTooltipView.Instance.Show(tooltipEntity, hp, maxHp, anchor);
+                        // Ancre world-space : sprite du vrai combatant, ou sprite du leurre
+                        // precis survole (passe par l'appelant, plus de re-resolution par entite).
+                        CombatantTooltipView.Instance.Show(tooltipEntity, hp, maxHp, tooltipAnchor);
                     }
                     else
                     {
@@ -217,25 +225,8 @@ namespace Nymora.Combat.View
             }
         }
 
-        /// <summary>
-        /// Resoud le Transform a utiliser pour positionner le tooltip world-space :
-        /// - Si on hover un vrai CombatantView : utilise son transform direct.
-        /// - Sinon (cas leurre Ghostra) : cherche le DecoyHoverProxy sous la souris.
-        /// </summary>
-        private Transform ResolveTooltipAnchor(CombatantView combatantHovered, EntityRef tooltipEntity)
-        {
-            if (combatantHovered != null) return combatantHovered.transform;
-            // Fallback : iterate proxies pour trouver celui dont l'EntityRef parent match.
-            var proxies = Object.FindObjectsByType<DecoyHoverProxy>(FindObjectsSortMode.None);
-            for (int i = 0; i < proxies.Length; i++)
-            {
-                if (proxies[i] != null && proxies[i].GhostraParentEntity == tooltipEntity)
-                    return proxies[i].transform;
-            }
-            return null;
-        }
-
         private EntityRef _prevTooltipEntity;
+        private Transform _prevTooltipAnchor;
 
         /// <summary>
         /// 18 mai — Detecte un DecoyHoverProxy survole (= leurre Ghostra). Retourne le

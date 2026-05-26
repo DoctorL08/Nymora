@@ -38,7 +38,7 @@ namespace Nymora.Combat.View
         [SerializeField] private Vector3 _decoyScale = new Vector3(1.16f, 1.16f, 1f);
         [Tooltip("Y offset applique au sprite leurre (aligne avec le Visual.LocalPosition.y du prefab Ghostra : -0.22).")]
         [SerializeField] private float _decoyYOffset = -0.22f;
-        [Tooltip("Sorting order applique aux leurres. Default 5 (au-dessus des tiles, sous la vraie Ghostra ~10).")]
+        [Tooltip("Valeur INITIALE du sorting order a la creation du GameObject leurre. Ecrasee des la 1ere frame par le tri iso dynamique (1000 - (PosX+PosY)*10, identique a CombatantView) pour que le leurre se trie comme un vrai combattant selon sa case.")]
         [SerializeField] private int _decoySortingOrder = 5;
         [Tooltip("Alpha du sprite leurre COTE CASTER (le Ghostra qui a pose). 1 = identique a la vraie Ghostra. Default 0.85 = legerement translucide pour aider le caster a distinguer ses leurres. COTE ADVERSAIRE l'alpha est force a 1 (indiscernable Bible V7.1).")]
         [SerializeField, Range(0f, 1f)] private float _decoyAlpha = 0.85f;
@@ -120,6 +120,16 @@ namespace Nymora.Combat.View
                         _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight) + _centerOffset + transform.position;
                     world.y += _decoyYOffset;
                     go.transform.position = world;
+
+                    // Tri iso : MEME formule que CombatantView (1000 - (gx+gy)*10) pour que le
+                    // leurre se trie comme un vrai combattant selon sa case. Sinon le sortingOrder
+                    // fixe le fait toujours passer SOUS les combattants (un perso derriere un leurre
+                    // s'affichait devant). Recalcule chaque frame : un leurre peut etre deplace/permute.
+                    var decoySr = go.GetComponent<SpriteRenderer>();
+                    if (decoySr != null)
+                    {
+                        decoySr.sortingOrder = 1000 - (d.PosX + d.PosY) * 10;
+                    }
 
                     // Sync sprite avec la vraie Ghostra (Bible "indiscernable cote adversaire").
                     SyncSpriteFromGhostra(go, ghostraEntity);
