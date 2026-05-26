@@ -31,6 +31,9 @@ namespace Nymora.Hub
 
         private async void Start()
         {
+            // C1 — routeur des bulles de chat (hub only : vit/meurt avec cette scène).
+            if (GetComponent<HubChatBubbleRouter>() == null) gameObject.AddComponent<HubChatBubbleRouter>();
+
             if (_autoStartOnPlay)
             {
                 await StartHub();

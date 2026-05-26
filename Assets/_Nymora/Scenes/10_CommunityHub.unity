@@ -43254,6 +43254,7 @@ MonoBehaviour:
     Sprite: {fileID: 21300000, guid: 71cd29ebd59f02549acea678b447ab7e, type: 3}
   - Id: mode_1v1
     Sprite: {fileID: 21300000, guid: 9be852402471f2c4a9ed88787d570459, type: 3}
+  _emoteCatalog: {fileID: 11400000, guid: ae3d24d8eb3a17b4a846d39a73181c07, type: 2}
 --- !u!114 &578034599
 MonoBehaviour:
   m_ObjectHideFlags: 0

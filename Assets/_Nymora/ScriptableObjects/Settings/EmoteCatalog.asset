@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: efc8376ad34969d4083029f220a71824, type: 3}
+  m_Name: EmoteCatalog
+  m_EditorClassIdentifier: 
+  Emotes:
+  - Id: emote_cs_grrr
+    ClassId: 3
+    Sprite: {fileID: 21300000, guid: e3bc6d53e3ce08d4eb5e83f9fe1a42bb, type: 3}
+  - Id: emote_cs_star
+    ClassId: 3
+    Sprite: {fileID: 21300000, guid: fca76bf453ac95d4d9ea363d270c6d19, type: 3}
+  - Id: emote_cs_zzz
+    ClassId: 3
+    Sprite: {fileID: 21300000, guid: e8ee50d6e206d9a45b1b2c7b50b08cc6, type: 3}
+  - Id: emote_gh_happy
+    ClassId: 5
+    Sprite: {fileID: 21300000, guid: a9ed28e4714381f4d94d85cfc5e978b2, type: 3}
+  - Id: emote_gh_mad
+    ClassId: 5
+    Sprite: {fileID: 21300000, guid: b4a613c1738bb8f4584213b8431e49d6, type: 3}
+  - Id: emote_gh_wut
+    ClassId: 5
+    Sprite: {fileID: 21300000, guid: caa5d7e9552e32f47816413e5f4c6dff, type: 3}
+  - Id: emote_nc_good
+    ClassId: 4
+    Sprite: {fileID: 21300000, guid: 3deff69cc71e2b645a66e23e872eb808, type: 3}
+  - Id: emote_nc_love
+    ClassId: 4
+    Sprite: {fileID: 21300000, guid: 32888df3b32cfc9438ded80e84357033, type: 3}
+  - Id: emote_nc_uuh
+    ClassId: 4
+    Sprite: {fileID: 21300000, guid: 04140754985cb0c4b9b445616a921fb2, type: 3}
+  - Id: emote_ns_peek
+    ClassId: 2
+    Sprite: {fileID: 21300000, guid: f588da455e6c15e43b5646bb25fe0eed, type: 3}
+  - Id: emote_ns_shh
+    ClassId: 2
+    Sprite: {fileID: 21300000, guid: 7e92f9275471a8740aba7e109d2bfc91, type: 3}
+  - Id: emote_ns_star
+    ClassId: 2
+    Sprite: {fileID: 21300000, guid: e31c965d981084f48be195b0eed0fbef, type: 3}
+  - Id: emote_sr_cry
+    ClassId: 1
+    Sprite: {fileID: 21300000, guid: 0bf4a7bbb5b47814b9562293ab80b8a5, type: 3}
+  - Id: emote_sr_love
+    ClassId: 1
+    Sprite: {fileID: 21300000, guid: aceba091e2f75f94bbab674f3a88a85f, type: 3}
+  - Id: emote_sr_victory
+    ClassId: 1
+    Sprite: {fileID: 21300000, guid: 6a70014002a730a4d96b2f95d67e07c1, type: 3}

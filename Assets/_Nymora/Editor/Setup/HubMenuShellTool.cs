@@ -93,6 +93,11 @@ namespace Nymora.Editor.Setup
             var catalogProp = so.FindProperty("_spellCatalog");
             if (catalogProp != null && catalog != null) catalogProp.objectReferenceValue = catalog;
 
+            // E1 — catalogue d'émotes (bouton + popup à droite du hamburger).
+            var emoteCatalog = FindFirstAsset<EmoteCatalog>();
+            var emoteProp = so.FindProperty("_emoteCatalog");
+            if (emoteProp != null && emoteCatalog != null) emoteProp.objectReferenceValue = emoteCatalog;
+
             var skins = FindAllAssets<CosmeticSkinDefinition>();
             var skinsProp = so.FindProperty("_skinDefinitions");
             if (skinsProp != null)
@@ -125,6 +130,8 @@ namespace Nymora.Editor.Setup
             so.ApplyModifiedPropertiesWithoutUndo();
             if (catalog == null)
                 Debug.LogWarning("[HubMenuShell] SpellCatalog introuvable — le deck builder du menu restera indisponible. Assigne-le à la main sur HubMenuCanvas.");
+            if (emoteCatalog == null)
+                Debug.LogWarning("[HubMenuShell] EmoteCatalog introuvable — lance d'abord 'Nymora > Setup > Emotes > Import Emotes & Build Catalog'. Le popup d'émote affichera un message en attendant.");
             if (settings == null)
                 Debug.LogWarning("[HubMenuShell] NymoraBackendSettings introuvable — la barre XP de Personnage restera vide. Assigne-le à la main sur HubMenuCanvas.");
             if (defs.Length == 0)

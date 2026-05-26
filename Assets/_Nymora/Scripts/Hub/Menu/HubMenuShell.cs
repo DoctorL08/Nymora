@@ -26,7 +26,7 @@ namespace Nymora.Hub.Menu
     ///
     /// 100% View — pas de bump CombatRulesVersion.
     /// </summary>
-    public sealed class HubMenuShell : MonoBehaviour
+    public sealed partial class HubMenuShell : MonoBehaviour
     {
         [SerializeField] private HubMenuTheme _theme;
         [SerializeField] private NymoraBackendSettings _backendSettings;
@@ -48,6 +48,9 @@ namespace Nymora.Hub.Menu
         private const string LoginSceneName = "00_Login";
 
         public static HubMenuShell Instance { get; private set; }
+
+        // C1 — police de la DA menu (Ari), exposée pour les bulles de chat world-space.
+        public static TMP_FontAsset MenuFont { get; private set; }
 
         private HubMenuUIFactory _f;
         private GameObject _menuRoot;
@@ -94,6 +97,7 @@ namespace Nymora.Hub.Menu
                 return;
             }
             _f = new HubMenuUIFactory(_theme);
+            MenuFont = _theme.Font;
             if (_backendSettings != null) _api = new NymoraApiClient(_backendSettings);
             BuildUI();
         }
@@ -141,6 +145,7 @@ namespace Nymora.Hub.Menu
         {
             if (_isOpen || _menuRoot == null) return;
             _isOpen = true;
+            CloseEmotePopup(); // E1 — referme le popup d'émote s'il était ouvert
             ShowScreen("home");
             _menuRoot.SetActive(true); // UiPanelAnimator joue le fondu+pop
         }
@@ -211,6 +216,10 @@ namespace Nymora.Hub.Menu
             // Bouton hamburger (hors MenuRoot, toujours visible) — placé DERRIÈRE le menu
             BuildHamburger(canvasRT);
             if (_hamburger != null) _hamburger.transform.SetAsFirstSibling();
+
+            // E1 — Bouton émote (à droite du hamburger) + popup de sélection (hors MenuRoot,
+            // visible dans le hub ; couvert par le voile quand le menu Échap est ouvert).
+            BuildEmoteButton(canvasRT);
 
             // Devise persistante (hors MenuRoot, sur le canvas menu = toujours visible, au-dessus
             // de tout y compris le voile). Icônes ash/blood + valeurs live.

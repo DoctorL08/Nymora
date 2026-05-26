@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
 using Fusion;
 using Nymora.Core.Data;
@@ -129,6 +130,21 @@ namespace Nymora.Hub
         // _32 chars max (largement suffisant pour un pseudo unique en DB).
         [Networked] public NetworkString<_32> NetDisplayName { get; set; }
 
+        // Bannière cosmétique équipée du JOUEUR LOCAL (cosmeticId, "" = aucune). Résolue dans
+        // RefreshEquippedSkinAsync (qui ne tourne que pour l'avatar local, HasStateAuthority).
+        // Lue par HubAvatarHoverTooltip pour afficher l'emblème au-dessus de la plaque quand on
+        // survole SON PROPRE avatar. Les remotes ne la voient pas encore (faudra un [Networked]
+        // NetBanner + regen prefab/scène — brique séparée).
+        public static string LocalEquippedBannerId { get; private set; } = "";
+
+        // E1 — bulle d'emote (View) posee lazy sur le root avatar. Pas de [Networked] ici : en E1
+        // c'est purement local (la diffusion reseau aux remotes viendra en E2 via RPC Fusion).
+        private EmoteBubbleView _emoteBubble;
+
+        // C1 — bulle de chat (View) posee lazy. Alimentee par HubChatBubbleRouter sur reception
+        // d'un CHANNEL_MESSAGE global (deja diffuse a tous par le backend -> pas de RPC).
+        private ChatBubbleView _chatBubble;
+
         private SpriteRenderer _sr;
         // Transform du child "Visual" (cree par RestructureHubAvatarPrefabTool). Recoit le
         // Scale + Y offset per-class via ApplyClassVisual. Fallback sur transform root si
@@ -152,6 +168,13 @@ namespace Nymora.Hub
         public string Sub => NetSub.ToString();
 
         public static HubAvatar Local { get; private set; }
+
+        // C1 — Registre de TOUS les avatars hub (local + distants), pour router une bulle de chat
+        // vers le bon perso via le displayName de l'expediteur. Peuple au Spawn, retire au Despawn.
+        public static readonly List<HubAvatar> All = new List<HubAvatar>();
+
+        /// <summary>Pseudo officiel sync (NetDisplayName) — sert au matching des bulles de chat.</summary>
+        public string DisplayName => NetDisplayName.ToString();
 
         public override void Spawned()
         {
@@ -239,6 +262,9 @@ namespace Nymora.Hub
             _currentSkinDef = FindSkinDef(NetSkinId.ToString());
             ApplyClassVisual();
             RefreshEquippedSkin();
+
+            // C1 — inscrit l'avatar au registre (local + distants) pour le routage des bulles de chat.
+            if (!All.Contains(this)) All.Add(this);
         }
 
         /// <summary>
@@ -537,6 +563,7 @@ namespace Nymora.Hub
             string cls = NetClassId.ToString();
             string equippedId = "";
             string equippedTitle = "";
+            string equippedBanner = "";
             if (res.Data.items != null)
             {
                 foreach (var it in res.Data.items)
@@ -547,6 +574,9 @@ namespace Nymora.Hub
                     // Titre : pas de class-lock, un seul equipe a la fois. Texte "propre" extrait du nom.
                     else if (it.type == "title" && string.IsNullOrEmpty(equippedTitle))
                         equippedTitle = ExtractTitleText(it.name);
+                    // Banniere : pas de class-lock, un seul equipe a la fois (cosmeticId brut = cle asset).
+                    else if (it.type == "banner" && string.IsNullOrEmpty(equippedBanner))
+                        equippedBanner = it.id;
                 }
             }
             // 5.5.f — push reseau (les remotes recoivent OnSkinIdChanged) + applique en local.
@@ -554,6 +584,9 @@ namespace Nymora.Hub
             {
                 NetSkinId = equippedId;
                 NetTitle = equippedTitle; // sync titre pour le tooltip (3e ligne)
+                // Banniere locale (pas de [Networked] pour l'instant -> visible seulement sur SON
+                // propre tooltip ; remotes plus tard via NetBanner + regen).
+                LocalEquippedBannerId = equippedBanner;
             }
             _currentSkinDef = FindSkinDef(equippedId);
             ApplyClassVisual();
@@ -581,6 +614,31 @@ namespace Nymora.Hub
             return raw;
         }
 
+        /// <summary>
+        /// E1 — Affiche une bulle d'emote au-dessus de CET avatar (local only en E1). Le composant
+        /// EmoteBubbleView est cree a la volee (aucun setup prefab). Appele par le popup d'emote
+        /// (HubMenuShell) sur HubAvatar.Local. En E2, le declenchement passera aussi par un RPC
+        /// Fusion pour que les remotes voient la bulle.
+        /// </summary>
+        public void ShowEmoteBubble(Sprite emoteSprite)
+        {
+            if (emoteSprite == null) return;
+            if (_emoteBubble == null) _emoteBubble = gameObject.AddComponent<EmoteBubbleView>();
+            _emoteBubble.Show(emoteSprite);
+        }
+
+        /// <summary>
+        /// C1 — Affiche une bulle de chat (texte) au-dessus de cet avatar. Appele par
+        /// HubChatBubbleRouter pour l'avatar dont le NetDisplayName matche l'expediteur. Marche pour
+        /// l'avatar local ET les distants (le message est deja recu par tous via le backend).
+        /// </summary>
+        public void ShowChatBubble(string text, TMPro.TMP_FontAsset font)
+        {
+            if (string.IsNullOrWhiteSpace(text)) return;
+            if (_chatBubble == null) _chatBubble = gameObject.AddComponent<ChatBubbleView>();
+            _chatBubble.Show(text, font);
+        }
+
         // 4.4.b — Couleur deterministe par joueur pour distinguer self/other en multi-instance.
         // HSV based sur hash(InputAuthority) -> teinte unique stable cote A et cote B.
         private static Color ColorForPlayer(PlayerRef player)
@@ -594,6 +652,7 @@ namespace Nymora.Hub
         {
             if (HubChatClient.Instance != null) HubChatClient.Instance.OnWelcome -= HandleWelcomePostSpawn;
             if (HubClanPanel.Instance != null) HubClanPanel.Instance.OnClanStateChanged -= PushClanName;
+            All.Remove(this);
             if (Local == this) Local = null;
         }
 
