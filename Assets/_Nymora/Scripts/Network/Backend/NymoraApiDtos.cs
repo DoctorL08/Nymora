@@ -174,10 +174,33 @@ namespace Nymora.Network.Backend
         public string clanId;
         public string name;
         public string bannerColor;
+        public string bannerEnd;       // clé pièce ruban (ex "pennon")
+        public string bannerFlourish;  // clé pièce fioriture (ex "diamond")
         public string description;
         public string createdAt;
         public string myRole;    // peut etre null si pas membre
         public ClanMemberDto[] members;
+    }
+
+    /// <summary>Réponse de GET /clans/banner-by-name/:name (config bandeau pour le tooltip).</summary>
+    [Serializable]
+    public class ClanBannerDto
+    {
+        public string name;
+        public string bannerColor;
+        public string bannerEnd;
+        public string bannerFlourish;
+    }
+
+    /// <summary>Corps de PATCH /clans/me (chef édite le bandeau). Champs vides ("") = ignorés
+    /// côté backend (emptyStringsToUndef), donc on n'écrase pas ce qu'on ne renseigne pas.</summary>
+    [Serializable]
+    public class ClanUpdateBody
+    {
+        public string description;
+        public string bannerColor;
+        public string bannerEnd;
+        public string bannerFlourish;
     }
 
     [Serializable]

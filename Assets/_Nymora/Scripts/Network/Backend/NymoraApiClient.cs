@@ -155,6 +155,17 @@ namespace Nymora.Network.Backend
         public UniTask<ApiResult<ClanLeaveResponse>> LeaveClanAsync(CancellationToken ct = default)
             => PostJsonAsync<ClanLeaveResponse>("/clans/me/leave", new EmptyResponse(), requireAuth: true, ct);
 
+        /// <summary>PATCH /clans/me — le chef édite le bandeau (pièces + couleur). Champs null/""
+        /// = non modifiés côté backend. Renvoie le ClanDto à jour.</summary>
+        public UniTask<ApiResult<ClanDto>> UpdateClanBannerAsync(string bannerEnd, string bannerFlourish, string bannerColor, CancellationToken ct = default)
+            => PatchJsonAsync<ClanDto>("/clans/me",
+                new ClanUpdateBody { bannerEnd = bannerEnd, bannerFlourish = bannerFlourish, bannerColor = bannerColor },
+                requireAuth: true, ct);
+
+        /// <summary>GET /clans/banner-by-name/:name — config bandeau d'un clan (pour le tooltip avatar).</summary>
+        public UniTask<ApiResult<ClanBannerDto>> GetClanBannerByNameAsync(string clanName, CancellationToken ct = default)
+            => GetJsonAsync<ClanBannerDto>($"/clans/banner-by-name/{UnityWebRequest.EscapeURL(clanName)}", requireAuth: true, ct);
+
         // ====== Brique 5.1 — Progression ======
 
         public UniTask<ApiResult<ProgressionMeResponse>> GetProgressionMeAsync(CancellationToken ct = default)
@@ -381,6 +392,26 @@ namespace Nymora.Network.Backend
             byte[] payload = Encoding.UTF8.GetBytes(json);
 
             using var req = new UnityWebRequest($"{_settings.BaseUrl}{path}", UnityWebRequest.kHttpVerbPUT)
+            {
+                uploadHandler = new UploadHandlerRaw(payload),
+                downloadHandler = new DownloadHandlerBuffer(),
+                timeout = _settings.TimeoutSeconds,
+            };
+            req.SetRequestHeader("Content-Type", "application/json");
+            ApplyAuth(req, requireAuth);
+            if (sendVersionHeader) ApplyClientVersion(req);
+
+            return await SendAsync<TResponse>(req, ct);
+        }
+
+        private async UniTask<ApiResult<TResponse>> PatchJsonAsync<TResponse>(
+            string path, object body, bool requireAuth, CancellationToken ct, bool sendVersionHeader = true)
+        {
+            string json = JsonUtility.ToJson(body);
+            byte[] payload = Encoding.UTF8.GetBytes(json);
+
+            // UnityWebRequest n'a pas de constante kHttpVerbPATCH -> verbe littéral "PATCH".
+            using var req = new UnityWebRequest($"{_settings.BaseUrl}{path}", "PATCH")
             {
                 uploadHandler = new UploadHandlerRaw(payload),
                 downloadHandler = new DownloadHandlerBuffer(),

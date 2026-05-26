@@ -39,6 +39,15 @@ namespace Nymora.Hub.Menu
         private static readonly Color DemoteColor = new Color(0.5f, 0.4f, 0.3f, 1f);
 
         private int _tab; // 0 = Amis, 1 = Clan
+
+        // ===== Builder bandeau de clan (chef) =====
+        private static readonly string[] EndKeys = { "pennon", "taper", "scroll", "rounded", "forked", "bevel", "flare", "studded" };
+        private static readonly string[] FlourishKeys = { "diamond", "swirl", "fleuron", "chevrons", "arrow", "spark", "serif", "dots" };
+        private static readonly string[] BannerColors =
+            { "#D4B05C", "#C7CCD6", "#B5483C", "#4F7AB0", "#5BA177", "#8B5BB0", "#C77B3A", "#3FB0A8", "#C44F8F", "#8A8F98" };
+        private string _bEnd, _bFlourish, _bColorHex, _editingClanName;
+        private RectTransform _previewHolder;
+        private TextMeshProUGUI _endLabel, _flourishLabel;
         private readonly List<(Image bg, TextMeshProUGUI label)> _tabRefs = new List<(Image, TextMeshProUGUI)>();
 
         private RectTransform _content;     // zone sous les sous-onglets, reconstruite par tab
@@ -343,6 +352,9 @@ namespace Nymora.Hub.Menu
             nameTmp.raycastTarget = false; nameTmp.enableWordWrapping = false;
             nameTmp.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
 
+            // Bandeau du clan (chef seul) : choix bout / fioriture / couleur + aperçu.
+            if (isLeader) BuildBannerEditor(clan);
+
             // Inviter (chef/officier)
             if (canInvite)
             {
@@ -376,6 +388,218 @@ namespace Nymora.Hub.Menu
                 leave.onClick.AddListener(LeaveClan);
             }
         }
+
+        // ===== Builder bandeau (chef) =====
+
+        private void BuildBannerEditor(ClanDto clan)
+        {
+            _editingClanName = clan.name;
+            _bEnd = NonEmpty(clan.bannerEnd, "pennon");
+            _bFlourish = NonEmpty(clan.bannerFlourish, "diamond");
+            _bColorHex = NonEmpty(clan.bannerColor, "#5C7AA6");
+
+            // En-tête repliable (cliquable) : "Bandeau du clan" + indicateur +/−.
+            var header = _f.MakeImage("BannerHeader", _listRoot, Color.white);
+            header.gameObject.AddComponent<LayoutElement>().preferredHeight = 40f;
+            var hbtn = header.gameObject.AddComponent<Button>();
+            hbtn.targetGraphic = header;
+            var hc = hbtn.colors;
+            hc.normalColor = _t.ButtonGhostBg; hc.highlightedColor = _t.ButtonGhostBgHover;
+            hc.pressedColor = _t.ButtonGhostBgHover; hc.selectedColor = _t.ButtonGhostBg; hc.fadeDuration = 0.1f;
+            hbtn.colors = hc;
+            var hlbl = _f.MakeText("HL", header.rectTransform, "Bandeau du clan", _t.FontSizeBody, _t.TextPrimary, _t.FontBold, TextAlignmentOptions.MidlineLeft);
+            HubMenuUIFactory.Stretch(hlbl.rectTransform, 16f, 40f, 0f, 0f); hlbl.raycastTarget = false;
+            var ind = _f.MakeText("Ind", header.rectTransform, "+", _t.FontSizeHeader, _t.TextSecondary, _t.FontBold, TextAlignmentOptions.MidlineRight);
+            HubMenuUIFactory.Stretch(ind.rectTransform, 0f, 16f, 0f, 0f); ind.raycastTarget = false;
+
+            // Conteneur du contenu (replié par défaut). VLG + ContentSizeFitter -> se dimensionne
+            // tout seul, et inactif il ne prend aucune place dans la liste.
+            var content = _f.MakeRect("BannerContent", _listRoot);
+            var vlg = content.gameObject.AddComponent<VerticalLayoutGroup>();
+            vlg.spacing = 6f; vlg.childAlignment = TextAnchor.UpperLeft;
+            vlg.childControlWidth = true; vlg.childControlHeight = true;
+            vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
+            var fit = content.gameObject.AddComponent<ContentSizeFitter>();
+            fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            content.gameObject.SetActive(false);
+
+            // On construit les widgets DANS le conteneur en redirigeant temporairement _listRoot.
+            var savedRoot = _listRoot;
+            _listRoot = content;
+
+            var prevRow = _f.MakeRect("BannerPreview", _listRoot);
+            prevRow.gameObject.AddComponent<LayoutElement>().preferredHeight = 92f;
+            var pbg = prevRow.gameObject.AddComponent<Image>();
+            pbg.color = new Color(0.16f, 0.17f, 0.20f, 1f);
+            _previewHolder = _f.MakeRect("Holder", prevRow);
+            _previewHolder.anchorMin = _previewHolder.anchorMax = new Vector2(0.5f, 0.5f);
+            _previewHolder.pivot = new Vector2(0.5f, 0.5f);
+            _previewHolder.sizeDelta = new Vector2(360f, 92f);
+            RebuildBannerPreview();
+
+            _endLabel = MakeSelectorRow("Bout", () => CycleEnd(-1), () => CycleEnd(1), _bEnd);
+            _flourishLabel = MakeSelectorRow("Fioriture", () => CycleFlourish(-1), () => CycleFlourish(1), _bFlourish);
+            BuildColorSwatches();
+
+            SpawnRowContainer(out var srow, 50f);
+            var save = _f.MakeButton(srow, "Sauvegarder le bandeau", true, out _);
+            save.gameObject.GetComponent<LayoutElement>().preferredWidth = 280f;
+            save.onClick.AddListener(SaveBanner);
+
+            _listRoot = savedRoot;
+
+            // Toggle plier/déplier.
+            hbtn.onClick.AddListener(() =>
+            {
+                bool open = !content.gameObject.activeSelf;
+                content.gameObject.SetActive(open);
+                ind.text = open ? "-" : "+"; // tiret ASCII (sûr dans la police) / plus
+            });
+        }
+
+        private TextMeshProUGUI MakeSelectorRow(string label, Action onPrev, Action onNext, string value)
+        {
+            SpawnRowContainer(out var hbox, 48f);
+            var lbl = _f.MakeText("Lbl", hbox, label, _t.FontSizeBody, _t.TextSecondary, _t.Font, TextAlignmentOptions.MidlineLeft);
+            lbl.gameObject.AddComponent<LayoutElement>().preferredWidth = 110f;
+            var prev = _f.MakeButton(hbox, "‹", false, out _);
+            prev.gameObject.GetComponent<LayoutElement>().preferredWidth = 48f;
+            prev.onClick.AddListener(() => onPrev());
+            var val = _f.MakeText("Val", hbox, value, _t.FontSizeBody, _t.TextPrimary, _t.FontBold, TextAlignmentOptions.Center);
+            val.enableWordWrapping = false;
+            val.gameObject.AddComponent<LayoutElement>().flexibleWidth = 1f;
+            var next = _f.MakeButton(hbox, "›", false, out _);
+            next.gameObject.GetComponent<LayoutElement>().preferredWidth = 48f;
+            next.onClick.AddListener(() => onNext());
+            return val;
+        }
+
+        private void BuildColorSwatches()
+        {
+            SpawnRowContainer(out var hbox, 42f);
+            foreach (var hex in BannerColors)
+            {
+                var col = ParseColor(hex, Color.gray);
+                var img = _f.MakeImage("Sw", hbox, col, rounded: false);
+                var le = img.gameObject.AddComponent<LayoutElement>();
+                le.preferredWidth = 30f; le.preferredHeight = 30f;
+                var btn = img.gameObject.AddComponent<Button>();
+                btn.targetGraphic = img;
+                string h = hex;
+                btn.onClick.AddListener(() => { _bColorHex = h; RebuildBannerPreview(); });
+            }
+        }
+
+        private void RebuildBannerPreview()
+        {
+            if (_previewHolder == null) return;
+            for (int i = _previewHolder.childCount - 1; i >= 0; i--)
+                UnityEngine.Object.Destroy(_previewHolder.GetChild(i).gameObject);
+
+            Color orn = ParseColor(_bColorHex, _t.Accent);
+            const float plateW = 156f, plateH = 64f;
+
+            // Plaque sombre rectangulaire englobant les 3 lignes (comme le tooltip).
+            var plate = _f.MakeImage("Plate", _previewHolder, new Color(0.08f, 0.08f, 0.10f, 0.96f), rounded: false);
+            SetPreviewRect(plate.rectTransform, 0f, 0f, plateW, plateH);
+            plate.raycastTarget = false;
+
+            // Liserés or haut/bas.
+            var top = _f.MakeImage("LisTop", _previewHolder, orn, rounded: false);
+            SetPreviewRect(top.rectTransform, 0f, plateH * 0.5f - 1.5f, plateW, 3f); top.raycastTarget = false;
+            var bot = _f.MakeImage("LisBot", _previewHolder, orn, rounded: false);
+            SetPreviewRect(bot.rectTransform, 0f, -plateH * 0.5f + 1.5f, plateW, 3f); bot.raycastTarget = false;
+
+            // Bouts de ruban (~ moitié de la plaque), flanquant la plaque.
+            const float endH = 40f, endW = 40f;
+            float endX = plateW * 0.5f + endW * 0.5f - 8f;
+            AddPreviewSprite("ui_banner_end_" + _bEnd, orn, -endX, 0f, endW, endH, false);
+            AddPreviewSprite("ui_banner_end_" + _bEnd, orn, endX, 0f, endW, endH, true);
+
+            // Ligne 1 — fioriture | NOM DE CLAN | fioriture (haut).
+            const float y1 = 18f;
+            AddPreviewSprite("ui_banner_flourish_" + _bFlourish, orn, -64f, y1, 34f, 11f, false);
+            AddPreviewSprite("ui_banner_flourish_" + _bFlourish, orn, 64f, y1, 34f, 11f, true);
+            AddPreviewText(_editingClanName, 0f, y1, 86f, 16f, _t.FontSizeSmall,
+                new Color(0.96f, 0.84f, 0.58f, 1f), _t.FontBold, false);
+
+            // Ligne 2 — pseudo générique (milieu, gros).
+            AddPreviewText("Pseudo", 0f, -2f, 140f, 22f, _t.FontSizeBody,
+                new Color(1f, 0.97f, 0.90f, 1f), _t.FontBold, false);
+
+            // Ligne 3 — titre générique (bas, or italique).
+            AddPreviewText("titre", 0f, -22f, 130f, 16f, _t.FontSizeSmall,
+                new Color(1f, 0.85f, 0.20f, 1f), _t.Font, true);
+        }
+
+        private void AddPreviewText(string text, float x, float y, float w, float h, float size, Color color, TMP_FontAsset font, bool italic)
+        {
+            var tmp = _f.MakeText("PvTxt", _previewHolder, text, size, color, font, TextAlignmentOptions.Center);
+            tmp.enableWordWrapping = false; tmp.raycastTarget = false;
+            if (italic) tmp.fontStyle |= FontStyles.Italic;
+            SetPreviewRect(tmp.rectTransform, x, y, w, h);
+        }
+
+        private void AddPreviewSprite(string resName, Color color, float x, float y, float w, float h, bool mirror)
+        {
+            var sp = Resources.Load<Sprite>("UI/Icons/Banner/" + resName);
+            var img = _f.MakeImage(resName, _previewHolder, color, rounded: false);
+            img.sprite = sp; img.type = Image.Type.Simple; img.preserveAspect = true; img.raycastTarget = false;
+            SetPreviewRect(img.rectTransform, x, y, w, h);
+            if (mirror) img.rectTransform.localScale = new Vector3(-1f, 1f, 1f);
+        }
+
+        private static void SetPreviewRect(RectTransform rt, float x, float y, float w, float h)
+        {
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = new Vector2(x, y);
+            rt.sizeDelta = new Vector2(w, h);
+        }
+
+        private void CycleEnd(int dir)
+        {
+            _bEnd = Cycle(EndKeys, _bEnd, dir);
+            if (_endLabel != null) _endLabel.text = _bEnd;
+            RebuildBannerPreview();
+        }
+
+        private void CycleFlourish(int dir)
+        {
+            _bFlourish = Cycle(FlourishKeys, _bFlourish, dir);
+            if (_flourishLabel != null) _flourishLabel.text = _bFlourish;
+            RebuildBannerPreview();
+        }
+
+        private static string Cycle(string[] arr, string cur, int dir)
+        {
+            int i = Array.IndexOf(arr, cur);
+            if (i < 0) i = 0;
+            i = (i + dir + arr.Length) % arr.Length;
+            return arr[i];
+        }
+
+        private void SaveBanner()
+        {
+            SaveBannerAsync();
+        }
+
+        private async void SaveBannerAsync()
+        {
+            if (_busy || !EnsureToken()) return;
+            _busy = true;
+            SetStatus("Sauvegarde du bandeau...");
+            var res = await _api.UpdateClanBannerAsync(_bEnd, _bFlourish, _bColorHex);
+            _busy = false;
+            if (!res.IsSuccess) { SetStatus($"Échec ({res.StatusCode}) : {res.ErrorMessage}"); return; }
+            // Invalide le cache du tooltip -> prochain survol = config à jour.
+            HubAvatarHoverTooltip.InvalidateClanBanner(_editingClanName);
+            SetStatus("Bandeau sauvegardé !");
+        }
+
+        private static string NonEmpty(string s, string def) => string.IsNullOrEmpty(s) ? def : s;
+        private static Color ParseColor(string hex, Color fallback)
+            => !string.IsNullOrEmpty(hex) && ColorUtility.TryParseHtmlString(hex, out var c) ? c : fallback;
 
         private void SpawnClanInviteRow(ClanInviteDto inv)
         {
