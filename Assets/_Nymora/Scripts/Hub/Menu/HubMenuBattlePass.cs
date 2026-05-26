@@ -179,14 +179,32 @@ namespace Nymora.Hub.Menu
 
             if (state == CellState.Empty) return;
 
+            // Filigrane de récompense (icône Nymos pour les Nymos, icône de type pour les
+            // cosmétiques) DERRIÈRE le label -> repère visuel rapide du contenu de la cellule.
+            string rewardIcon = IconForReward(reward);
+            if (rewardIcon != null)
+            {
+                var rsp = HubMenuUIFactory.LoadIcon(rewardIcon);
+                if (rsp != null)
+                {
+                    bool dim = state == CellState.Locked || state == CellState.PremiumLocked;
+                    var ric = _f.MakeImage("RewardIcon", brt, new Color(1f, 1f, 1f, dim ? 0.12f : 0.26f), rounded: false);
+                    ric.sprite = rsp; ric.type = Image.Type.Simple; ric.preserveAspect = true; ric.raycastTarget = false;
+                    var rrt = ric.rectTransform;
+                    rrt.anchorMin = rrt.anchorMax = new Vector2(0.5f, 0.5f); rrt.pivot = new Vector2(0.5f, 0.5f);
+                    rrt.sizeDelta = new Vector2(118f, 118f); rrt.anchoredPosition = new Vector2(0f, 6f);
+                }
+            }
+
             // Label de récompense
             string label = string.IsNullOrEmpty(reward?.label) ? "" : reward.label;
             var txt = _f.MakeText("L", brt, label, _t.FontSizeSmall, state == CellState.Locked || state == CellState.PremiumLocked ? _t.TextMuted : _t.TextPrimary, _t.Font, TextAlignmentOptions.Center);
             txt.raycastTarget = false; txt.enableWordWrapping = true; txt.overflowMode = TextOverflowModes.Ellipsis;
             HubMenuUIFactory.Stretch(txt.rectTransform, 8f, 8f, 22f, 22f);
 
-            // Pastille d'état (haut de la cellule)
-            string badge = state == CellState.Claimed ? "<color=#7CFC7C>✓ Réclamé</color>"
+            // Pastille d'état (haut de la cellule). Pas de glyphe ✓ (tofu en police Ari) : l'icône
+            // check est déjà affichée dans le coin de la cellule pour l'état Réclamé.
+            string badge = state == CellState.Claimed ? "<color=#7CFC7C>Réclamé</color>"
                          : state == CellState.Claimable ? "<color=#fff2c0>Réclamer</color>"
                          : state == CellState.PremiumLocked ? "<color=#ff9d2e>Premium</color>"
                          : "<color=#8a8f99>Verrouillé</color>";
@@ -196,9 +214,10 @@ namespace Nymora.Hub.Menu
             brt2.anchorMin = new Vector2(0f, 0f); brt2.anchorMax = new Vector2(1f, 0f); brt2.pivot = new Vector2(0.5f, 0f);
             brt2.sizeDelta = new Vector2(0f, 20f); brt2.anchoredPosition = new Vector2(0f, 6f);
 
-            // Icône d'angle (check réclamé / cadenas verrouillé ou premium)
+            // Icône d'angle : check (réclamé) / premium (verrouillé faute de premium) / cadenas (palier non atteint)
             string cornerIcon = state == CellState.Claimed ? "ui_icon_check"
-                              : (state == CellState.Locked || state == CellState.PremiumLocked) ? "ui_icon_lock" : null;
+                              : state == CellState.PremiumLocked ? "ui_icon_premium"
+                              : state == CellState.Locked ? "ui_icon_lock" : null;
             if (cornerIcon != null)
             {
                 var sp = HubMenuUIFactory.LoadIcon(cornerIcon);
@@ -239,6 +258,21 @@ namespace Nymora.Hub.Menu
         // ===== Helpers état (calqués sur HubBattlePassPanel) =====
 
         private static bool IsReal(BpRewardDto r) => r != null && !string.IsNullOrEmpty(r.kind);
+
+        /// <summary>Icône représentant une récompense : Nymos pour les Nymos, icône de type
+        /// (déduite du libellé) pour les cosmétiques. Le DTO BP ne porte que kind+label.</summary>
+        private static string IconForReward(BpRewardDto r)
+        {
+            if (r == null || string.IsNullOrEmpty(r.kind)) return null;
+            if (r.kind == "nymos") return "ui_icon_nymos";
+            if (r.kind != "cosmetic") return null;
+            string l = r.label ?? "";
+            if (l.StartsWith("Titre")) return "ui_icon_type_title";
+            if (l.StartsWith("Bannière") || l.StartsWith("Banniere")) return "ui_icon_type_banner";
+            if (l.StartsWith("Emote")) return "ui_icon_type_emote";
+            if (l.StartsWith("Skin")) return "ui_icon_type_skin";
+            return "ui_icon_type_skin"; // cosmétique générique
+        }
 
         private static CellState StateOf(BpRewardDto r, int tier, int currentTier, bool claimed, bool isPremium, bool hasPremium)
         {

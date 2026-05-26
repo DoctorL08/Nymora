@@ -73,7 +73,7 @@ namespace Nymora.Hub.Menu
                 var inCat = new List<ShopItemDto>();
                 foreach (var it in items) if (it.type == CatKeys[c]) inCat.Add(it);
                 if (inCat.Count == 0) continue;
-                SpawnCategoryHeader(CatLabels[c]);
+                SpawnCategoryHeader(CatLabels[c], CatKeys[c]);
                 var grid = SpawnGridContainer();
                 foreach (var it in inCat) SpawnCard(grid, it);
                 shown += inCat.Count;
@@ -118,6 +118,12 @@ namespace Nymora.Hub.Menu
             prt.offsetMin = new Vector2(16f, -236f); prt.offsetMax = new Vector2(-16f, -16f);
             var sprite = Resources.Load<Sprite>(item.previewKey);
             if (sprite != null) { prev.sprite = sprite; prev.color = Color.white; }
+            else
+            {
+                // Pas d'asset de preview (ex : titres) -> repli sur l'icône de type, atténuée.
+                var typeSp = HubMenuUIFactory.LoadIcon("ui_icon_type_" + item.type);
+                if (typeSp != null) { prev.sprite = typeSp; prev.color = new Color(1f, 1f, 1f, 0.5f); }
+            }
 
             // Nom (retour à la ligne + ellipse, contenu dans la carte)
             var name = _f.MakeText("Name", root, item.name, _t.FontSizeBody, _t.TextPrimary, _t.FontBold, TextAlignmentOptions.Center);
@@ -288,11 +294,27 @@ namespace Nymora.Hub.Menu
             _listRoot = content;
         }
 
-        private void SpawnCategoryHeader(string text)
+        private void SpawnCategoryHeader(string text, string typeKey = null)
         {
-            var tmp = _f.MakeText("Cat", _listRoot, text, _t.FontSizeHeader, _t.TextPrimary, _t.FontBold, TextAlignmentOptions.Center);
-            tmp.raycastTarget = false;
-            tmp.gameObject.AddComponent<LayoutElement>().preferredHeight = 40f;
+            // En-tête = icône de type (si dispo) + libellé, groupe centré.
+            var holder = _f.MakeRect("Cat", _listRoot);
+            holder.gameObject.AddComponent<LayoutElement>().preferredHeight = 40f;
+            var hlg = holder.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 10f; hlg.childAlignment = TextAnchor.MiddleCenter;
+            hlg.childControlWidth = true; hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
+
+            var sp = typeKey != null ? HubMenuUIFactory.LoadIcon("ui_icon_type_" + typeKey) : null;
+            if (sp != null)
+            {
+                var icon = _f.MakeImage("Icon", holder, _t.TextSecondary, rounded: false);
+                icon.sprite = sp; icon.type = Image.Type.Simple; icon.preserveAspect = true; icon.raycastTarget = false;
+                var le = icon.gameObject.AddComponent<LayoutElement>(); le.preferredWidth = 26f; le.preferredHeight = 26f;
+            }
+
+            var tmp = _f.MakeText("Lbl", holder, text, _t.FontSizeHeader, _t.TextPrimary, _t.FontBold, TextAlignmentOptions.MidlineLeft);
+            tmp.raycastTarget = false; tmp.enableWordWrapping = false;
+            tmp.gameObject.AddComponent<LayoutElement>();
         }
 
         /// <summary>Conteneur grille pour une catégorie. Sa hauteur (préférée GridLayoutGroup) est

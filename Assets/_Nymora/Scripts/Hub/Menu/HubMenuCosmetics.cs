@@ -191,6 +191,12 @@ namespace Nymora.Hub.Menu
             prev.preserveAspect = true; prev.raycastTarget = false;
             var sprite = Resources.Load<Sprite>(item.previewKey);
             if (sprite != null) { prev.sprite = sprite; prev.color = Color.white; }
+            else
+            {
+                // Pas d'asset de preview (ex : titres / familiers) -> repli sur l'icône de type.
+                var typeSp = HubMenuUIFactory.LoadIcon("ui_icon_type_" + item.type);
+                if (typeSp != null) { prev.sprite = typeSp; prev.color = new Color(1f, 1f, 1f, 0.6f); }
+            }
             prev.gameObject.AddComponent<LayoutElement>().preferredWidth = 50f;
 
             // Nom + sous-titre — largeur = contenu (pas de flexible -> le bouton se colle au texte)
@@ -205,7 +211,20 @@ namespace Nymora.Hub.Menu
             string id = item.id;
             if (item.equipped)
             {
-                actLabel.text = "✓ Équipé";
+                // Icône check (sprite) + "Équipé" en vert. Pas de glyphe ✓ (tofu en police Ari).
+                var ckSp = HubMenuUIFactory.LoadIcon("ui_icon_check");
+                var eqGreen = new Color(0.7f, 0.95f, 0.75f, 1f);
+                if (ckSp != null)
+                {
+                    actLabel.text = "Équipé"; actLabel.color = eqGreen;
+                    HubMenuUIFactory.Stretch(actLabel.rectTransform, 24f, 6f, 0f, 0f);
+                    var ck = _f.MakeImage("Check", (RectTransform)actBtn.transform, eqGreen, rounded: false);
+                    ck.sprite = ckSp; ck.type = Image.Type.Simple; ck.preserveAspect = true; ck.raycastTarget = false;
+                    var crt = ck.rectTransform;
+                    crt.anchorMin = new Vector2(0f, 0.5f); crt.anchorMax = new Vector2(0f, 0.5f); crt.pivot = new Vector2(0f, 0.5f);
+                    crt.sizeDelta = new Vector2(18f, 18f); crt.anchoredPosition = new Vector2(12f, 0f);
+                }
+                else { actLabel.text = "✓ Équipé"; actLabel.color = eqGreen; }
                 actBtn.onClick.AddListener(() => Unequip(id));
             }
             else if (classOk)

@@ -155,12 +155,31 @@ namespace Nymora.Hub.Menu
             irt.anchorMin = new Vector2(0f, 1f); irt.anchorMax = new Vector2(1f, 1f); irt.pivot = new Vector2(0.5f, 1f);
             irt.offsetMin = new Vector2(16f, -34f); irt.offsetMax = new Vector2(-220f, -8f);
 
-            // Récompense (Nymos + XP Pass), haut-droite
-            var reward = _f.MakeText("Reward", row, $"<color=#f5dba0>◆ {q.nymos}</color>   <color=#8be0ff>+{q.bpXp} XP</color>", _t.FontSizeSmall, _t.TextSecondary, _t.Font, TextAlignmentOptions.MidlineRight);
+            // Récompense (icône Nymos + montant + XP Pass), haut-droite. Groupe auto-dimensionné,
+            // aligné à droite. Repli glyphe ◆ si l'icône Nymos est absente.
+            var rewardRow = _f.MakeRect("Reward", row);
+            rewardRow.anchorMin = new Vector2(1f, 1f); rewardRow.anchorMax = new Vector2(1f, 1f); rewardRow.pivot = new Vector2(1f, 1f);
+            rewardRow.anchoredPosition = new Vector2(-16f, -12f); rewardRow.sizeDelta = new Vector2(260f, 24f);
+            var rhlg = rewardRow.gameObject.AddComponent<HorizontalLayoutGroup>();
+            rhlg.spacing = 6f; rhlg.childAlignment = TextAnchor.MiddleRight;
+            rhlg.childControlWidth = true; rhlg.childControlHeight = true;
+            rhlg.childForceExpandWidth = false; rhlg.childForceExpandHeight = false;
+            var rfit = rewardRow.gameObject.AddComponent<ContentSizeFitter>();
+            rfit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize; rfit.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+            var nymosSp = HubMenuUIFactory.LoadIcon("ui_icon_nymos");
+            if (nymosSp != null)
+            {
+                var nic = _f.MakeImage("NymosIcon", rewardRow, Color.white, rounded: false);
+                nic.sprite = nymosSp; nic.type = Image.Type.Simple; nic.preserveAspect = true; nic.raycastTarget = false;
+                var nle = nic.gameObject.AddComponent<LayoutElement>(); nle.preferredWidth = 20f; nle.preferredHeight = 20f;
+            }
+            string rewardStr = nymosSp != null
+                ? $"<color=#f5dba0>{q.nymos}</color>   <color=#8be0ff>+{q.bpXp} XP</color>"
+                : $"<color=#f5dba0>◆ {q.nymos}</color>   <color=#8be0ff>+{q.bpXp} XP</color>";
+            var reward = _f.MakeText("RewardText", rewardRow, rewardStr, _t.FontSizeSmall, _t.TextSecondary, _t.Font, TextAlignmentOptions.MidlineRight);
             reward.raycastTarget = false; reward.enableWordWrapping = false;
-            var rrt = reward.rectTransform;
-            rrt.anchorMin = new Vector2(1f, 1f); rrt.anchorMax = new Vector2(1f, 1f); rrt.pivot = new Vector2(1f, 1f);
-            rrt.sizeDelta = new Vector2(260f, 24f); rrt.anchoredPosition = new Vector2(-16f, -12f);
+            reward.gameObject.AddComponent<LayoutElement>();
 
             // Progression "x / y" sur sa propre ligne (gauche, sous le titre, sur fond sombre = lisible)
             var cnt = _f.MakeText("Count", row, $"{Mathf.Min(q.progress, q.target)} / {q.target}", _t.FontSizeSmall, _t.TextSecondary, _t.Font, TextAlignmentOptions.MidlineLeft);
@@ -184,9 +203,34 @@ namespace Nymora.Hub.Menu
                 string id = q.id;
                 btn.onClick.AddListener(() => ClaimQuest(id));
             }
+            else if (q.claimed)
+            {
+                // Tag "Réclamée" = icône check (sprite) + texte, aligné à droite. Pas de glyphe ✓ (tofu Ari).
+                var tagRow = _f.MakeRect("Tag", row);
+                tagRow.anchorMin = new Vector2(1f, 0f); tagRow.anchorMax = new Vector2(1f, 0f); tagRow.pivot = new Vector2(1f, 0f);
+                tagRow.anchoredPosition = new Vector2(-16f, 18f); tagRow.sizeDelta = new Vector2(180f, 24f);
+                var thlg = tagRow.gameObject.AddComponent<HorizontalLayoutGroup>();
+                thlg.spacing = 6f; thlg.childAlignment = TextAnchor.MiddleRight;
+                thlg.childControlWidth = true; thlg.childControlHeight = true;
+                thlg.childForceExpandWidth = false; thlg.childForceExpandHeight = false;
+                var tfit = tagRow.gameObject.AddComponent<ContentSizeFitter>();
+                tfit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize; tfit.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+                var ckSp = HubMenuUIFactory.LoadIcon("ui_icon_check");
+                if (ckSp != null)
+                {
+                    var ck = _f.MakeImage("Check", tagRow, UnlockedColor, rounded: false);
+                    ck.sprite = ckSp; ck.type = Image.Type.Simple; ck.preserveAspect = true; ck.raycastTarget = false;
+                    var le = ck.gameObject.AddComponent<LayoutElement>(); le.preferredWidth = 18f; le.preferredHeight = 18f;
+                }
+                var tt = _f.MakeText("L", tagRow, ckSp != null ? "<color=#7CFC7C>Réclamée</color>" : "<color=#7CFC7C>✓ Réclamée</color>",
+                    _t.FontSizeSmall, _t.TextMuted, _t.Font, TextAlignmentOptions.MidlineRight);
+                tt.raycastTarget = false; tt.enableWordWrapping = false;
+                tt.gameObject.AddComponent<LayoutElement>();
+            }
             else
             {
-                var tag = _f.MakeText("Tag", row, q.claimed ? "<color=#7CFC7C>✓ Réclamée</color>" : "En cours", _t.FontSizeSmall, _t.TextMuted, _t.Font, TextAlignmentOptions.MidlineRight);
+                var tag = _f.MakeText("Tag", row, "En cours", _t.FontSizeSmall, _t.TextMuted, _t.Font, TextAlignmentOptions.MidlineRight);
                 tag.raycastTarget = false; tag.enableWordWrapping = false;
                 var trt = tag.rectTransform;
                 trt.anchorMin = new Vector2(1f, 0f); trt.anchorMax = new Vector2(1f, 0f); trt.pivot = new Vector2(1f, 0f);
