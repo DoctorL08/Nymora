@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using Nymora.Core.Enums;
 using Nymora.Core.ScriptableObjects;
+using Nymora.Hub;
 using UnityEditor;
 using UnityEngine;
 
@@ -21,6 +22,7 @@ namespace Nymora.Editor.Setup
     {
         private const string EmoteDir = "Assets/_Nymora/Art/UI/Emotes";
         private const string CatalogPath = "Assets/_Nymora/ScriptableObjects/Settings/EmoteCatalog.asset";
+        private const string AvatarPrefabPath = "Assets/_Nymora/Prefabs/Hub/HubAvatar.prefab";
 
         private static readonly Dictionary<string, NymoraClass> ClassByPrefix = new Dictionary<string, NymoraClass>
         {
@@ -95,10 +97,40 @@ namespace Nymora.Editor.Setup
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
 
+            // E2 — câble le catalogue sur le prefab HubAvatar (résolution des émotes reçues par RPC).
+            AssignCatalogToAvatarPrefab(catalog);
+
             Debug.Log($"[Emotes] Catalogue OK : {entries.Count} émotes importées dans {CatalogPath}" +
                       (unknown > 0 ? $" ({unknown} fichier(s) ignoré(s))" : "") +
                       ".\nRelance maintenant 'Nymora > Setup > UI Menu > Create or Refresh Menu Shell' pour câbler le catalogue au menu.");
             Selection.activeObject = catalog;
+        }
+
+        private static void AssignCatalogToAvatarPrefab(EmoteCatalog catalog)
+        {
+            var go = AssetDatabase.LoadAssetAtPath<GameObject>(AvatarPrefabPath);
+            if (go == null)
+            {
+                Debug.LogWarning("[Emotes] Prefab HubAvatar introuvable à " + AvatarPrefabPath +
+                                 " — assigne EmoteCatalog à la main sur le composant HubAvatar.");
+                return;
+            }
+            var avatar = go.GetComponent<HubAvatar>();
+            if (avatar == null)
+            {
+                Debug.LogWarning("[Emotes] Composant HubAvatar absent du prefab — assigne EmoteCatalog à la main.");
+                return;
+            }
+            var so = new SerializedObject(avatar);
+            var prop = so.FindProperty("_emoteCatalog");
+            if (prop != null && prop.objectReferenceValue != catalog)
+            {
+                prop.objectReferenceValue = catalog;
+                so.ApplyModifiedPropertiesWithoutUndo();
+                EditorUtility.SetDirty(go);
+                AssetDatabase.SaveAssets();
+                Debug.Log("[Emotes] EmoteCatalog câblé sur le prefab HubAvatar.");
+            }
         }
 
         private static void EnsureSpriteImport(string path)

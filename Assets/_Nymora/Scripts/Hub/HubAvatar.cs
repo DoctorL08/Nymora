@@ -44,6 +44,10 @@ namespace Nymora.Hub
         [Tooltip("Pour fetch l'inventaire et résoudre le skin équipé (avatar local uniquement).")]
         [SerializeField] private NymoraBackendSettings _backendSettings;
 
+        [Header("Emotes (E2 — drag EmoteCatalog.asset ; assigné aussi par Import Emotes)")]
+        [Tooltip("Résout l'émote reçue par RPC (emoteId -> sprite) pour afficher la bulle sur cet avatar.")]
+        [SerializeField] private EmoteCatalog _emoteCatalog;
+
         // 5.3.g.bis — SceneSpriteAnimator auto-add pour anim Idle pixel art (frames Sprite[]
         // extraites de l'AnimatorController Stage0_SE et stockees dans NymoraClassDefinition.IdleFrames).
         private SceneSpriteAnimator _spriteAnimator;
@@ -615,10 +619,39 @@ namespace Nymora.Hub
         }
 
         /// <summary>
-        /// E1 — Affiche une bulle d'emote au-dessus de CET avatar (local only en E1). Le composant
-        /// EmoteBubbleView est cree a la volee (aucun setup prefab). Appele par le popup d'emote
-        /// (HubMenuShell) sur HubAvatar.Local. En E2, le declenchement passera aussi par un RPC
-        /// Fusion pour que les remotes voient la bulle.
+        /// E2 — Point d'entree appele par le popup d'emote sur HubAvatar.Local. L'avatar local a la
+        /// State Authority (Shared Mode) -> emet une RPC vers TOUS (InvokeLocal inclus) pour que la
+        /// bulle s'affiche chez soi ET chez les autres joueurs du hub. Pas de [Networked] field donc
+        /// aucune regen (les RPC ne changent pas le layout reseau).
+        /// </summary>
+        public void PlayEmote(string emoteId)
+        {
+            if (string.IsNullOrEmpty(emoteId)) return;
+            if (Object != null && Object.HasStateAuthority)
+                RpcPlayEmote(emoteId);
+            else
+                ShowEmoteById(emoteId); // garde-fou (le popup ne cible que Local de toute facon)
+        }
+
+        // RPC : seul le proprietaire (State Authority en Shared Mode) declenche son emote ; tous les
+        // clients executent le corps (InvokeLocal=true par defaut) -> bulle synchronisee partout.
+        [Rpc(RpcSources.StateAuthority, RpcTargets.All)]
+        private void RpcPlayEmote(NetworkString<_32> emoteId)
+        {
+            ShowEmoteById(emoteId.ToString());
+        }
+
+        /// <summary>Resout l'emote par id via le catalogue puis affiche la bulle sur cet avatar.</summary>
+        private void ShowEmoteById(string emoteId)
+        {
+            var sprite = _emoteCatalog != null ? _emoteCatalog.GetSprite(emoteId) : null;
+            if (sprite != null) ShowEmoteBubble(sprite);
+        }
+
+        /// <summary>
+        /// Affiche une bulle d'emote au-dessus de CET avatar (couche d'affichage bas niveau). Le
+        /// composant EmoteBubbleView est cree a la volee (aucun setup prefab). Appele localement ET
+        /// via la RPC RpcPlayEmote sur chaque client.
         /// </summary>
         public void ShowEmoteBubble(Sprite emoteSprite)
         {

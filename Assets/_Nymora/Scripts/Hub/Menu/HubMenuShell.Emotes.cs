@@ -137,11 +137,12 @@ namespace Nymora.Hub.Menu
             }
 
             foreach (var e in emotes)
-                MakeEmoteButton(e.Sprite);
+                MakeEmoteButton(e);
         }
 
-        private void MakeEmoteButton(Sprite sprite)
+        private void MakeEmoteButton(EmoteCatalog.EmoteEntry entry)
         {
+            Sprite sprite = entry.Sprite;
             var bg = _f.MakeImage("Emote", _emoteRow, _theme.ButtonGhostBg);
             var le = bg.gameObject.AddComponent<LayoutElement>();
             le.preferredWidth = 68f; le.preferredHeight = 100f;
@@ -163,7 +164,7 @@ namespace Nymora.Hub.Menu
             btn.onClick.AddListener(() =>
             {
                 var local = HubAvatar.Local;
-                if (local != null) local.ShowEmoteBubble(sprite);
+                if (local != null) local.PlayEmote(entry.Id); // E2 : diffuse a tous via RPC Fusion
                 CloseEmotePopup();
             });
         }
