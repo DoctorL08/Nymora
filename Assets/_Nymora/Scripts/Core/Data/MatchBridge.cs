@@ -52,6 +52,36 @@ namespace Nymora.Core.Data
         public static bool LastIsRanked { get; private set; }
         public static bool HasPendingResult => LastMatchResult != MatchResult.None;
 
+        // ===== S-STATS.b — stats de combat du joueur local (View-observed) =====
+        // Alimentees en continu par CombatStatsCollector (asmdef Nymora.Combat) pendant le
+        // match, lues par HubMatchResultDisplay au moment du report ranked puis reset.
+        // NON-autoritatives (observation View, double-accord alpha) cf backend S-STATS.a.
+        public static int StatDamageDealt { get; private set; }
+        public static int StatDamageTaken { get; private set; }
+        public static int StatSpellsCast { get; private set; }
+        public static int StatTurns { get; private set; }
+        public static bool HasCombatStats { get; private set; }
+
+        /// <summary>Pousse les stats courantes du joueur local (appele chaque frame par le collecteur).</summary>
+        public static void SetCombatStats(int damageDealt, int damageTaken, int spellsCast, int turns)
+        {
+            StatDamageDealt = damageDealt;
+            StatDamageTaken = damageTaken;
+            StatSpellsCast = spellsCast;
+            StatTurns = turns;
+            HasCombatStats = true;
+        }
+
+        /// <summary>Remet les stats a zero (debut de match cote collecteur, et apres report cote hub).</summary>
+        public static void ResetCombatStats()
+        {
+            StatDamageDealt = 0;
+            StatDamageTaken = 0;
+            StatSpellsCast = 0;
+            StatTurns = 0;
+            HasCombatStats = false;
+        }
+
         public static void SetPendingMatch(string matchId, string opponentSub, string opponentEmail,
                                             string localSub = null, string localEmail = null,
                                             string opponentDisplayName = null, string localDisplayName = null)
@@ -124,6 +154,7 @@ namespace Nymora.Core.Data
             LastOpponentDisplayName = null;
             LastOpponentSub = null;
             LastIsRanked = false;
+            ResetCombatStats();
         }
     }
 }

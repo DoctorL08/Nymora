@@ -303,6 +303,15 @@ namespace Nymora.Network.Backend
                 new RankedReportBody { matchId = matchId, opponentUserId = opponentUserId, classId = classId, result = result },
                 requireAuth: true, ct);
 
+        /// <summary>S-STATS.b — variante avec stats de combat (degats/sorts/tours) pour les
+        /// succes de combat. N'utiliser que si les stats ont ete reellement collectees
+        /// (sinon damageTaken=0 par defaut debloquerait faussement les succes 'sans degat').</summary>
+        public UniTask<ApiResult<RankedReportResponse>> ReportRankedResultAsync(
+            string matchId, string opponentUserId, string classId, string result, RankedReportStats stats, CancellationToken ct = default)
+            => PostJsonAsync<RankedReportResponse>("/ranked/report-result",
+                new RankedReportBodyWithStats { matchId = matchId, opponentUserId = opponentUserId, classId = classId, result = result, stats = stats },
+                requireAuth: true, ct);
+
         /// <summary>GET /ranked/season — saison ranked courante (numero + jours restants).</summary>
         public UniTask<ApiResult<SeasonResponse>> GetSeasonAsync(CancellationToken ct = default)
             => GetJsonAsync<SeasonResponse>("/ranked/season", requireAuth: true, ct);

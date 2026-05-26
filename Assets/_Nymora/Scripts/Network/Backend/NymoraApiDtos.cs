@@ -498,6 +498,28 @@ namespace Nymora.Network.Backend
         public string result;         // "win" | "loss" | "draw"
     }
 
+    // S-STATS.b — stats de combat auto-declarees (View-observed). Toutes optionnelles
+    // cote backend ; n'envoyer que si reellement collectees (sinon flawless faussement
+    // debloque par un damageTaken=0 par defaut). Cf RankedReportBodyWithStats.
+    [Serializable]
+    public class RankedReportStats
+    {
+        public int damageDealt;
+        public int damageTaken;
+        public int spellsCast;
+        public int turns;
+    }
+
+    [Serializable]
+    public class RankedReportBodyWithStats
+    {
+        public string matchId;
+        public string opponentUserId;
+        public string classId;
+        public string result;
+        public RankedReportStats stats;
+    }
+
     [Serializable]
     public class RankedReportResponse
     {

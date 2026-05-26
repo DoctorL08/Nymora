@@ -134,7 +134,27 @@ namespace Nymora.Hub
             if (string.IsNullOrEmpty(token)) return;
             _api.SetBearerToken(token);
 
-            var res = await _api.ReportRankedResultAsync(matchId, opponentSub, classId, result);
+            // S-STATS.b — joint les stats de combat (View-observed via CombatStatsCollector)
+            // si elles ont ete collectees. Sinon report classique (pas de stats -> pas de
+            // succes de combat faussement debloque). Reset apres pour ne pas fuiter au prochain match.
+            ApiResult<RankedReportResponse> res;
+            if (MatchBridge.HasCombatStats)
+            {
+                var stats = new RankedReportStats
+                {
+                    damageDealt = MatchBridge.StatDamageDealt,
+                    damageTaken = MatchBridge.StatDamageTaken,
+                    spellsCast = MatchBridge.StatSpellsCast,
+                    turns = MatchBridge.StatTurns,
+                };
+                Debug.Log($"[HubMatchResultDisplay] Report ranked AVEC stats : dealt={stats.damageDealt} taken={stats.damageTaken} spells={stats.spellsCast} tours={stats.turns}");
+                res = await _api.ReportRankedResultAsync(matchId, opponentSub, classId, result, stats);
+            }
+            else
+            {
+                res = await _api.ReportRankedResultAsync(matchId, opponentSub, classId, result);
+            }
+            MatchBridge.ResetCombatStats();
             if (!res.IsSuccess)
             {
                 Debug.LogWarning($"[HubMatchResultDisplay] ReportRankedResult failed: {res.StatusCode} {res.ErrorMessage}");
