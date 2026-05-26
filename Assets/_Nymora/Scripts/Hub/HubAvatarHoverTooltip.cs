@@ -67,9 +67,14 @@ namespace Nymora.Hub
         private const float FlourishWidthFactor = 0.7f;   // écrase la largeur des fioritures (moins long)
         private const float FlourishGapFactor = 0.35f;    // × hauteur clan
         private const float LisereThicknessFactor = 0.045f; // × hauteur plaque
+        // Bannière cosmétique (emblème) posée au-dessus de la plaque.
+        private const string CosmeticBannerResRoot = "UI/Cosmetics/Banners/";
+        private const float BannerHeightFactor = 4.2f;    // × hauteur pseudo rendue
+        private const float BannerOverlapFactor = 0.22f;  // × hauteur bannière (chevauche le haut de la plaque)
 
         private Transform _root;
         private SpriteRenderer _plate, _lisereTop, _lisereBottom, _endL, _endR, _flourishL, _flourishR;
+        private SpriteRenderer _cosmeticBanner; // emblème cosmétique au-dessus de la plaque
         private TextMeshPro _clanText, _pseudoText, _titleText;
 
         private HubAvatar _currentHovered;
@@ -135,6 +140,11 @@ namespace Nymora.Hub
             var flSprite = LoadBannerSprite("ui_banner_flourish_", DefaultFlourishKey);
             _flourishL = MakeSprite("FlourishL", flSprite, OrnamentColor, layer, 4999);
             _flourishR = MakeSprite("FlourishR", flSprite, OrnamentColor, layer, 4999);
+
+            // Bannière cosmétique (sprite full-color, pas de teinte) au-dessus de la plaque.
+            // Sprite assigné dynamiquement dans RefreshLayout selon la bannière équipée.
+            _cosmeticBanner = MakeSprite("CosmeticBanner", null, Color.white, layer, 5001);
+            _cosmeticBanner.gameObject.SetActive(false);
 
             // Textes.
             _clanText = MakeText("Clan", ClanFont, ClanColor, layer, 5000, FontStyles.Bold);
@@ -202,7 +212,7 @@ namespace Nymora.Hub
                 }
                 else
                 {
-                    RefreshLayout(GetClan(hovered), GetPseudo(hovered), GetTitle(hovered));
+                    RefreshLayout(GetClan(hovered), GetPseudo(hovered), GetTitle(hovered), GetBanner(hovered));
                     if (_root != null) _root.gameObject.SetActive(true);
                 }
             }
@@ -236,7 +246,7 @@ namespace Nymora.Hub
         /// <summary>Met en page le bandeau (origine root = centre de la plaque). La plaque
         /// ENGLOBE les 3 lignes (clan + pseudo + titre) empilées ; dimensions dérivées de la
         /// hauteur RENDUE du texte → compact.</summary>
-        private void RefreshLayout(string clan, string pseudo, string title)
+        private void RefreshLayout(string clan, string pseudo, string title, string bannerId)
         {
             if (string.IsNullOrEmpty(pseudo)) pseudo = "?";
             bool hasClan = !string.IsNullOrEmpty(clan);
@@ -265,20 +275,30 @@ namespace Nymora.Hub
                 th = _titleText.preferredHeight; tw = _titleText.preferredWidth;
             }
 
-            // Dimensions plaque : englobe les lignes présentes + paddings.
+            // Bannière cosmétique chargée TÔT : son chevauchement (dip) détermine le headroom haut.
+            var bannerSprite = LoadCosmeticBanner(bannerId);
+            float bH = bannerSprite != null ? ph * BannerHeightFactor : 0f;
+            // Chevauchement sous le bord haut (+ ajustement par emblème). Le headroom haut s'adapte
+            // à ce dip -> abaisser un emblème ne le fait pas mordre sur le nom de clan.
+            float bannerDip = bH * (BannerOverlapFactor + BannerExtraOverlap(bannerId));
+
+            // Dimensions plaque : englobe les lignes présentes + paddings. Padding HAUT élargi si
+            // bannière -> l'emblème déborde sur le padding, pas sur la 1ère ligne (clan).
             float lineGap = ph * LineGapFactor;
             float contentH = ph
                            + (hasClan ? ch + lineGap : 0f)
                            + (hasTitle ? th + lineGap : 0f);
-            float plateH = contentH + 2f * ph * PlatePadYFactor;
+            float padY = ph * PlatePadYFactor;
+            float topPad = bannerSprite != null ? Mathf.Max(padY, bannerDip - ph * 0.06f) : padY;
+            float plateH = contentH + topPad + padY;
             float contentW = Mathf.Max(pw, Mathf.Max(clanLineW, tw));
             float plateW = contentW + 2f * ph * PlatePadXFactor;
 
             _plate.transform.localScale = new Vector3(plateW, plateH, 1f);
             _plate.transform.localPosition = Vector3.zero;
 
-            // Empilement vertical (haut -> bas), centré dans la plaque.
-            float cursor = contentH * 0.5f;
+            // Empilement vertical (haut -> bas). Contenu décalé vers le bas si padding haut élargi.
+            float cursor = contentH * 0.5f + (padY - topPad) * 0.5f;
             if (hasClan)
             {
                 float clanY = cursor - ch * 0.5f;
@@ -301,20 +321,47 @@ namespace Nymora.Hub
             _flourishR.gameObject.SetActive(hasClan);
             _titleText.gameObject.SetActive(hasTitle);
 
-            // Liserés haut/bas de la plaque.
-            float lisere = plateH * LisereThicknessFactor;
-            _lisereTop.transform.localScale = new Vector3(plateW, lisere, 1f);
-            _lisereBottom.transform.localScale = new Vector3(plateW, lisere, 1f);
-            _lisereTop.transform.localPosition = new Vector3(0f, plateH * 0.5f - lisere * 0.5f, 0f);
-            _lisereBottom.transform.localPosition = new Vector3(0f, -plateH * 0.5f + lisere * 0.5f, 0f);
+            // Liserés haut/bas de la plaque (ornement de clan, couleur du clan) -> seulement si clan.
+            _lisereTop.gameObject.SetActive(hasClan);
+            _lisereBottom.gameObject.SetActive(hasClan);
+            if (hasClan)
+            {
+                float lisere = plateH * LisereThicknessFactor;
+                _lisereTop.transform.localScale = new Vector3(plateW, lisere, 1f);
+                _lisereBottom.transform.localScale = new Vector3(plateW, lisere, 1f);
+                _lisereTop.transform.localPosition = new Vector3(0f, plateH * 0.5f - lisere * 0.5f, 0f);
+                _lisereBottom.transform.localPosition = new Vector3(0f, -plateH * 0.5f + lisere * 0.5f, 0f);
+            }
 
             // Bouts de ruban (taille ~ plaque), flanquant la plaque, centrés verticalement.
-            float endSize = plateH * EndSizeFactor;
-            float endW = FitHeight(_endL, endSize, false, EndWidthFactor);
-            FitHeight(_endR, endSize, true, EndWidthFactor);
-            float endX = plateW * 0.5f + endW * 0.5f - plateH * EndOverlapFactor;
-            _endL.transform.localPosition = new Vector3(-endX, 0f, 0.01f);
-            _endR.transform.localPosition = new Vector3(endX, 0f, 0.01f);
+            // Pièces de clan -> affichées UNIQUEMENT si le joueur a un clan (sinon un perso sans
+            // clan se retrouvait avec le ruban quand même).
+            _endL.gameObject.SetActive(hasClan);
+            _endR.gameObject.SetActive(hasClan);
+            if (hasClan)
+            {
+                float endSize = plateH * EndSizeFactor;
+                float endW = FitHeight(_endL, endSize, false, EndWidthFactor);
+                FitHeight(_endR, endSize, true, EndWidthFactor);
+                float endX = plateW * 0.5f + endW * 0.5f - plateH * EndOverlapFactor;
+                _endL.transform.localPosition = new Vector3(-endX, 0f, 0.01f);
+                _endR.transform.localPosition = new Vector3(endX, 0f, 0.01f);
+            }
+
+            // Bannière cosmétique : emblème centré au-dessus de la plaque, chevauchant un peu le
+            // haut (sprite + bH déjà résolus plus haut pour le headroom). Calé par hauteur.
+            if (bannerSprite != null)
+            {
+                _cosmeticBanner.sprite = bannerSprite;
+                FitHeight(_cosmeticBanner, bH, false, 1f);
+                float bY = plateH * 0.5f + bH * 0.5f - bannerDip;
+                _cosmeticBanner.transform.localPosition = new Vector3(0f, bY, 0.02f);
+                _cosmeticBanner.gameObject.SetActive(true);
+            }
+            else
+            {
+                _cosmeticBanner.gameObject.SetActive(false);
+            }
 
             // Le bandeau (hors rubans) tient dans la plaque -> extension basse = demi-plaque.
             _bottomExtent = plateH * 0.5f;
@@ -414,7 +461,7 @@ namespace Nymora.Hub
             // Re-applique si on survole toujours ce clan.
             if (this == null || _root == null || !_root.gameObject.activeSelf || _currentHovered == null) return;
             if (GetClan(_currentHovered) == clanName)
-                RefreshLayout(clanName, GetPseudo(_currentHovered), GetTitle(_currentHovered));
+                RefreshLayout(clanName, GetPseudo(_currentHovered), GetTitle(_currentHovered), GetBanner(_currentHovered));
         }
 
         /// <summary>Construit (lazy) un NymoraApiClient à partir du SO settings déjà chargé en
@@ -426,6 +473,40 @@ namespace Nymora.Hub
             if (all == null || all.Length == 0) return null;
             _api = new NymoraApiClient(all[0]);
             return _api;
+        }
+
+        /// <summary>Bannière cosmétique (emblème) du joueur hover. Pas de [Networked] pour
+        /// l'instant : on ne connaît que celle du JOUEUR LOCAL (State Authority sur son avatar
+        /// en shared mode). Les remotes verront leur bannière via un futur NetBanner (+ regen).</summary>
+        private static string GetBanner(HubAvatar a)
+        {
+            if (a != null && a.Object != null && a.Object.HasStateAuthority)
+                return HubAvatar.LocalEquippedBannerId;
+            return "";
+        }
+
+        /// <summary>Ajustement vertical par emblème (× hauteur bannière, ajouté au chevauchement) :
+        /// certains emblèmes plats/horizontaux (parchemin) flottent trop haut → on les abaisse un
+        /// peu. Le headroom haut de la plaque compense (pas de morsure sur le nom de clan).</summary>
+        private static float BannerExtraOverlap(string bannerId)
+        {
+            switch (bannerId)
+            {
+                case "banner_parchemin": return 0.08f; // parchemin abaissé (léger)
+                default: return 0f;
+            }
+        }
+
+        /// <summary>Charge (lazy + cache) un sprite de bannière cosmétique par cosmeticId
+        /// (Resources/UI/Cosmetics/Banners/&lt;id&gt;). Null si absent (slot non livré).</summary>
+        private static Sprite LoadCosmeticBanner(string cosmeticId)
+        {
+            if (string.IsNullOrEmpty(cosmeticId)) return null;
+            string path = CosmeticBannerResRoot + cosmeticId;
+            if (_spriteCache.TryGetValue(path, out var sp)) return sp;
+            sp = Resources.Load<Sprite>(path);
+            _spriteCache[path] = sp; // cache même null (évite de recharger une clé invalide)
+            return sp;
         }
 
         private static Sprite LoadBannerSprite(string prefix, string key)
