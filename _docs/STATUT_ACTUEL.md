@@ -3,6 +3,25 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
+**SESSION 28 mai 2026 — 🐾 FAMILIERS (placement/combat/par-classe) + 🛒 BOUTIQUE (émotes/titres/logo + prévisu animée) + ⏳ ÉCRAN DE CHARGEMENT :** grosse session. **100% View/Hub/UI côté client → aucun bump `CombatRulesVersion`.** Backend **déployé prod** (3 commits). Client Unity **commité en local** (push GitHub à la fin de session).
+
+- **🐾 Familiers — suite & fin du chantier 5.10 :**
+  - **Placement hub réglable** (`62a6641`) : `PetPlacementConfig` (SO Resources) sort les offsets/taille du dur ; **un offset par direction iso (SE/SW/NE/NW)** (règle le placement de dos) ; `HubPetPlacementTuner` (panneau Play Mode F8, curseurs X/Y/taille live + sauvegarde asset). **Fix pivot sur place** : le familier snappe au lieu de marcher quand on tourne sans bouger.
+  - **B5 — familier en COMBAT** (`e4529cf`) : `CombatPetView` (vue autonome qui colle au combattant, facing auto-aim, idle/walk, anim interne) câblée dans `CombatantRenderer` (résout `RuntimePlayer.PetId` local+adverse, masqué si voilé). Offsets combat séparés + `CombatPetPlacementTuner` (F9). En IA seul le familier local s'affiche (le bot n'en équipe pas).
+  - **Fix multi** (`26aac9f`) : le remote ne voyait pas le familier (OnPetIdChanged ne se déclenche qu'au changement) → application au `Spawned` depuis `NetPetId`, comme le skin. ✅ validé.
+  - **Tuners F8/F9 retirés des builds** (`796498a`) : passés en `#if UNITY_EDITOR` (placement validé/sauvé).
+  - **🎯 Familier PAR CLASSE** (client `f807760` + backend `057237c` prod) : un familier mémorisé par classe (comme les skins). Backend = `ClassProgression.equippedPetId` (migration `20260527000000_class_equipped_pet`) ; `equipItem(pet)` exige activeClass, `getInventory(activeClass)` calcule le flag equipped des pets, `/inventory ?activeClass`, `/unequip` activeClass body. Client : `GetInventoryAsync(activeClass)`/`UnequipItemAsync(itemId, activeClass)` ; HubAvatar/preview/cosmétiques passent la classe. ✅ validé E2E prod (SR=cornecroc, NS=grumon). ⚠️ anciens familiers globaux non reportés.
+  - **Prévisu menu perso** (`773d67b`) : `UISpriteAnimator` mode aligné (échelle constante + ancrage par pivot) → corrige jiggle G/D **et** zoom/dézoom des frames de classe trimmées (Nightseer), + **toutes les classes centrées** au même endroit. Familier équipé affiché en **idle à gauche du perso**.
+- **🛒 Boutique (backend prod + client) :**
+  - **Octroi en masse** (`cd010e2` prod) : script `cosmetic:grant-all` (itère SHOP_CATALOG+REWARD_TITLES) → **38 cosmétiques** (5 pets + 5 bannières + 5 skins + 23 titres) accordés à **Nocturn & Kyami**.
+  - **Émotes retirées + 3 titres + logo** (`2e93d95` prod + client `d59378d`) : `emote_taunt`/`emote_bow` retirées du shop (catégorie auto-masquée) ; +3 titres (le Maudit 1500 / Faucheur d'Âmes 3000 / Souverain des Cendres 6000 Nymos) ; **logo emblème « T »** (`Resources/cosmetics/title_logo.png`) → `previewKey` de tous les titres, affiché boutique + cosmétiques.
+  - **🔍 Prévisu animée (5.11)** (`4bf5e28`) : **bouton œil** (généré procéduralement) sur chaque carte skin/familier → fenêtre de prévisu (Stage 0/1/2 + anims idle/walk/attack/cast/hurt/death, sprite rejoué). Grande fenêtre skins / compacte familiers, coins arrondis + D.A. menu, boutons en grille qui wrap. Frames extraites des AnimatorControllers SE par **`Nymora > Setup > Extract Skin Combat Preview`** (`CosmeticSkinDefinition.CombatPreview`). Dégrade par item (familiers/placeholders = idle/walk).
+- **⏳ Écran de chargement** (`a9ba8ef`) : `HubReadyBeacon` (mirror `CombatReadyBeacon`) garde le voile (`waitForReady`) jusqu'à ce que `HubAvatar.Local` soit spawné + sprite posé (`IsVisualReady`) → **fini le hub vide** pendant la connexion Fusion. `waitForReady:true` sur tous les loads hub (login + reprise + retours combat) ; timeout 12s = filet. **Background Nymora** (login_background déplacé en `Resources/UI/Backgrounds/`) affiché sur le voile derrière le spinner → moins vide.
+- **À RETENIR** : (1) lancer **`Extract Skin Combat Preview`** après ajout d'un skin combat (peuple les prévisu). (2) `QuantumMap.asset` + TMP SDF + `map_hub_sans_fond.png` + scène `10_CommunityHub` = dérives **non commitées** (laissées). (3) familier par-classe = re-choisir une fois par classe (pas de report des anciens globaux).
+- **PROCHAIN STEP** : à décider. Push GitHub en attente (fin de session) + HealthCheck.
+
+---
+
 **SESSION 27 mai 2026 (quinquies) — 🎭 SKIN ASHEN SOVEREIGN EN COMBAT (stages + adversaire) + 🐾 FAMILIERS (boutique/équip/hub) :** clôture du reliquat 5.10 (skin en combat) + 1er chantier familiers. **100% View côté combat (RuntimePlayer SkinId/PetId VIEW-ONLY) → aucun bump `CombatRulesVersion`.** Backend familiers **déployé prod**. Client Unity commité + poussé GitHub (fin de session).
 
 - **CHANTIER A — Skin Ashen Sovereign en COMBAT (reliquat 5.10 clos)** :
