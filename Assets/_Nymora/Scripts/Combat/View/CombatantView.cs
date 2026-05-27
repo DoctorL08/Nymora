@@ -129,6 +129,10 @@ namespace Nymora.Combat.View
         /// pendant les moves pour preserver le facing entre 2 updates de stage.</summary>
         public IsoFacing CurrentFacing => _currentFacing == (IsoFacing)(-1) ? IsoFacing.SE : _currentFacing;
 
+        /// <summary>5.10 (B5) — SpriteRenderer du combattant, lu par le CombatantRenderer pour
+        /// que le familier (CombatPetView) copie sa couche/ordre de tri et son facing.</summary>
+        public SpriteRenderer Sprite => _sprite;
+
         // 2.12.bis : Animator parameter hashes (perf, evite Animator.StringToHash a chaque call).
         // Doit matcher les const du BuildSoulrenderAnimator (ParamMoveSpeed, etc.).
         private static readonly int ParamMoveSpeedHash = Animator.StringToHash("MoveSpeed");

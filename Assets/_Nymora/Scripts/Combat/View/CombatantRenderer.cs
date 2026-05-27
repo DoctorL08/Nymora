@@ -82,6 +82,27 @@ namespace Nymora.Combat.View
             }
         }
 
+        // 5.10 (B5) — Familiers en combat : catalogue (Resources) + une vue par combattant équipé.
+        private const string PetCatalogResourcePath = "Cosmetics/PetCatalog";
+        private PetCatalog _petCatalog;
+        private bool _petCatalogLoaded;
+        private readonly Dictionary<EntityRef, CombatPetView> _pets = new Dictionary<EntityRef, CombatPetView>(2);
+
+        private PetCatalog PetCatalog
+        {
+            get
+            {
+                if (!_petCatalogLoaded)
+                {
+                    _petCatalog = Resources.Load<PetCatalog>(PetCatalogResourcePath);
+                    _petCatalogLoaded = true;
+                    if (_petCatalog == null)
+                        Debug.LogWarning($"[Nymora.CombatantRenderer] PetCatalog introuvable (Resources/{PetCatalogResourcePath}) — familiers combat désactivés.");
+                }
+                return _petCatalog;
+            }
+        }
+
         // 2.16.c.vi — Buffer reutilise pour computer le path Manhattan (X puis Y) entre
         // 2 GridX/Y consecutifs d'un combatant. Capacite 16 = max ~10 cases + marge. Si
         // un move depasse (peu probable), le code re-alloue un nouveau buffer.
@@ -375,6 +396,22 @@ namespace Nymora.Combat.View
                                         && combatant.HP > 0
                                         && HasUntargetable(combatant);
                 view.SetCloaked(cloakedForViewer);
+
+                // 5.10 (B5) — familier : colle au combattant (même case, offset combat), reprend
+                // son facing, masqué quand le combattant est voilé pour le viewer.
+                if (_pets.TryGetValue(entity, out var pet) && pet != null)
+                {
+                    pet.SetVisible(!cloakedForViewer);
+                    if (!cloakedForViewer)
+                    {
+                        var sr = view.Sprite;
+                        int petOrder = sr != null ? sr.sortingOrder : 0;
+                        int petLayer = sr != null ? sr.sortingLayerID : 0;
+                        bool isLocal = combatant.PlayerIndex == localViewer;
+                        pet.Drive(view.transform.position, view.CurrentFacing, petOrder, petLayer,
+                                  isLocal, Time.deltaTime);
+                    }
+                }
 
                 // 2.12.bis : detection des changements d'etat -> triggers anims.
                 DispatchAnimTriggers(entity, combatant, view);
@@ -745,7 +782,36 @@ namespace Nymora.Combat.View
             view.UpdateGridPosition(combatant.GridX, combatant.GridY, world);
             _views[entity] = view;
 
+            // 5.10 (B5) — familier équipé de CE joueur (local OU adverse), lu depuis son
+            // RuntimePlayer.PetId (sync Quantum AddPlayer, posé par le bootstrap).
+            SpawnPetFor(entity, combatant, frame, view);
+
             Debug.Log($"[Nymora.CombatantRenderer] Spawn P{combatant.PlayerIndex} {combatant.Class} en ({combatant.GridX},{combatant.GridY}) HP={combatant.HP}/{combatant.MaxHP} PA={combatant.PA} PM={combatant.PM}");
+        }
+
+        /// <summary>
+        /// 5.10 (B5) — Crée la vue du familier d'un combattant si son RuntimePlayer porte un PetId
+        /// résoluble. GameObject autonome (non parenté), piloté chaque frame dans OnUpdateView.
+        /// </summary>
+        private void SpawnPetFor(EntityRef entity, Combatant combatant, Frame frame, CombatantView ownerView)
+        {
+            var catalog = PetCatalog;
+            if (catalog == null || frame == null) return;
+
+            var runtimePlayer = frame.GetPlayerData((PlayerRef)combatant.PlayerIndex);
+            string petId = runtimePlayer != null ? runtimePlayer.PetId : null;
+            if (string.IsNullOrEmpty(petId)) return;
+
+            var def = catalog.Resolve(petId);
+            if (def == null) return;
+
+            int sortingLayerId = ownerView.Sprite != null ? ownerView.Sprite.sortingLayerID : 0;
+            var go = new GameObject($"CombatPet_P{combatant.PlayerIndex}_{petId}");
+            go.transform.position = ownerView.transform.position; // évite un flash à l'origine
+            var pet = go.AddComponent<CombatPetView>();
+            pet.Init(def, sortingLayerId);
+            _pets[entity] = pet;
+            Debug.Log($"[Nymora.CombatantRenderer] Familier '{petId}' spawné pour P{combatant.PlayerIndex}.");
         }
 
         /// <summary>
@@ -795,6 +861,12 @@ namespace Nymora.Combat.View
                 if (pair.Value != null) Destroy(pair.Value.gameObject);
             }
             _views.Clear();
+            // 5.10 (B5) — détruit les vues de familiers (GameObjects autonomes non parentés).
+            foreach (var pair in _pets)
+            {
+                if (pair.Value != null) Destroy(pair.Value.gameObject);
+            }
+            _pets.Clear();
             _lastGridPos.Clear();
             _lastFacings.Clear();
             _lastHP.Clear();
