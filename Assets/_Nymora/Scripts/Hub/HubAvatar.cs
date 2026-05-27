@@ -112,6 +112,15 @@ namespace Nymora.Hub
         // (cf feedback-networked-field-regen-protocol, sinon InvalidOperationException Invalid Length).
         [Networked] public NetworkString<_64> NetTitle { get; set; }
 
+        // Bannière cosmétique (emblème) équipée, SYNC entre clients pour que les remotes voient
+        // l'emblème au-dessus de la plaque dans HubAvatarHoverTooltip (avant : local-only via un
+        // static LocalEquippedBannerId, donc invisible pour les autres). Résolue depuis l'inventaire
+        // dans RefreshEquippedSkinAsync (avatar local / State Authority). "" = aucune bannière.
+        // _64 chars (les cosmeticId de bannières sont courts, ex "banner_couronne", marge gardée).
+        // AJOUT DE CE [Networked] FIELD => regen prefab + scene + rebuild standalone obligatoire
+        // (cf feedback-networked-field-regen-protocol, sinon InvalidOperationException Invalid Length).
+        [Networked] public NetworkString<_64> NetBanner { get; set; }
+
         // 5.3.g.bis hotfix multi (17 mai nuit) — Facing sync direct State Auth -> remotes.
         // Sans ce field, le remote calculait son facing depuis le delta NetGridX/Y, mais
         // NetGridX/Y n'est pousse qu'au END-of-step (cf HubMovementController.Update ligne 56),
@@ -133,13 +142,6 @@ namespace Nymora.Hub
         // HubChatClient.MyDisplayName au Spawn (ou via OnWelcome retarde si WELCOME pas encore recu).
         // _32 chars max (largement suffisant pour un pseudo unique en DB).
         [Networked] public NetworkString<_32> NetDisplayName { get; set; }
-
-        // Bannière cosmétique équipée du JOUEUR LOCAL (cosmeticId, "" = aucune). Résolue dans
-        // RefreshEquippedSkinAsync (qui ne tourne que pour l'avatar local, HasStateAuthority).
-        // Lue par HubAvatarHoverTooltip pour afficher l'emblème au-dessus de la plaque quand on
-        // survole SON PROPRE avatar. Les remotes ne la voient pas encore (faudra un [Networked]
-        // NetBanner + regen prefab/scène — brique séparée).
-        public static string LocalEquippedBannerId { get; private set; } = "";
 
         // E1 — bulle d'emote (View) posee lazy sur le root avatar. Pas de [Networked] ici : en E1
         // c'est purement local (la diffusion reseau aux remotes viendra en E2 via RPC Fusion).
@@ -588,9 +590,9 @@ namespace Nymora.Hub
             {
                 NetSkinId = equippedId;
                 NetTitle = equippedTitle; // sync titre pour le tooltip (3e ligne)
-                // Banniere locale (pas de [Networked] pour l'instant -> visible seulement sur SON
-                // propre tooltip ; remotes plus tard via NetBanner + regen).
-                LocalEquippedBannerId = equippedBanner;
+                // Sync l'emblème de bannière : les remotes le voient désormais sur le tooltip
+                // (avant c'était un static local-only invisible pour les autres).
+                NetBanner = equippedBanner;
             }
             _currentSkinDef = FindSkinDef(equippedId);
             ApplyClassVisual();

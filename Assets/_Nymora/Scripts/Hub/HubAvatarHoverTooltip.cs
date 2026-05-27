@@ -475,15 +475,10 @@ namespace Nymora.Hub
             return _api;
         }
 
-        /// <summary>Bannière cosmétique (emblème) du joueur hover. Pas de [Networked] pour
-        /// l'instant : on ne connaît que celle du JOUEUR LOCAL (State Authority sur son avatar
-        /// en shared mode). Les remotes verront leur bannière via un futur NetBanner (+ regen).</summary>
-        private static string GetBanner(HubAvatar a)
-        {
-            if (a != null && a.Object != null && a.Object.HasStateAuthority)
-                return HubAvatar.LocalEquippedBannerId;
-            return "";
-        }
+        /// <summary>Bannière cosmétique (emblème) du joueur hover, lue depuis le [Networked]
+        /// NetBanner → visible pour SON propre avatar ET pour les avatars distants (sync Fusion),
+        /// comme GetTitle/GetClan. "" = aucune bannière équipée.</summary>
+        private static string GetBanner(HubAvatar a) => a != null ? a.NetBanner.ToString() : "";
 
         /// <summary>Ajustement vertical par emblème (× hauteur bannière, ajouté au chevauchement) :
         /// certains emblèmes plats/horizontaux (parchemin) flottent trop haut → on les abaisse un
