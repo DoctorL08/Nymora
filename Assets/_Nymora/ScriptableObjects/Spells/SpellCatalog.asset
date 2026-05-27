@@ -35,7 +35,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 10
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_ouvre_plaie
     DisplayName: Ouvre-Plaie
     ClassId: 1
@@ -57,7 +57,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 11
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_charge_brutale
     DisplayName: Charge Brutale
     ClassId: 1
@@ -79,7 +79,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 12
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_detonation_sanglante
     DisplayName: "D\xE9tonation Sanglante"
     ClassId: 1
@@ -102,7 +102,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 13
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_curee
     DisplayName: "Cur\xE9e"
     ClassId: 1
@@ -125,7 +125,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 14
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_pacte_de_sang
     DisplayName: Pacte de Sang
     ClassId: 1
@@ -148,7 +148,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 15
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_marque_de_carnage
     DisplayName: Marque de Carnage
     ClassId: 1
@@ -171,7 +171,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 16
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_empoignade
     DisplayName: Empoignade
     ClassId: 1
@@ -194,7 +194,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 17
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_rugissement
     DisplayName: Rugissement
     ClassId: 1
@@ -217,7 +217,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 18
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_rage_insatiable
     DisplayName: Rage Insatiable
     ClassId: 1
@@ -240,7 +240,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 19
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_riposte_carmin
     DisplayName: Riposte Carmin
     ClassId: 1
@@ -262,7 +262,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 20
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_cauterisation
     DisplayName: "Caut\xE9risation"
     ClassId: 1
@@ -284,7 +284,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 21
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_peau_de_fer
     DisplayName: Peau de Fer
     ClassId: 1
@@ -306,7 +306,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 22
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_seve_vive
     DisplayName: "S\xE8ve Vive"
     ClassId: 1
@@ -327,7 +327,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 23
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_dernier_souffle
     DisplayName: Dernier Souffle
     ClassId: 1
@@ -349,7 +349,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 24
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: soulrender_ame_laceree
     DisplayName: "\xC2me Lac\xE9r\xE9e"
     ClassId: 1
@@ -373,7 +373,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 25
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_tir_precis
     DisplayName: "Tir Pr\xE9cis"
     ClassId: 2
@@ -395,7 +395,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 30
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_volee_epines
     DisplayName: "Vol\xE9e d'\xC9pines"
     ClassId: 2
@@ -419,7 +419,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 31
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_detonation_onirique
     DisplayName: "D\xE9tonation Onirique"
     ClassId: 2
@@ -443,7 +443,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 32
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_frappe_ombre
     DisplayName: Frappe de l'Ombre
     ClassId: 2
@@ -465,7 +465,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 33
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_salve_mortelle
     DisplayName: Salve Mortelle
     ClassId: 2
@@ -489,7 +489,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 34
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_marque_chasseur
     DisplayName: Marque du Chasseur
     ClassId: 2
@@ -511,7 +511,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 35
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_filet_ronces
     DisplayName: Filet de Ronces
     ClassId: 2
@@ -534,7 +534,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 36
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_champ_mines
     DisplayName: Champ de Mines
     ClassId: 2
@@ -556,7 +556,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 37
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_bourrasque
     DisplayName: Bourrasque
     ClassId: 2
@@ -578,7 +578,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 38
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_souffle_glacial
     DisplayName: Souffle Glacial
     ClassId: 2
@@ -601,7 +601,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 39
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_voile_ombre
     DisplayName: Voile d'Ombre
     ClassId: 2
@@ -623,7 +623,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 40
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_pas_furtif
     DisplayName: Pas Furtif
     ClassId: 2
@@ -644,7 +644,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 41
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_camouflage_ronces
     DisplayName: Camouflage de Ronces
     ClassId: 2
@@ -667,7 +667,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 42
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_seve_sauvage
     DisplayName: "S\xE8ve Sauvage"
     ClassId: 2
@@ -689,7 +689,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 43
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_evanescence
     DisplayName: "\xC9vanescence"
     ClassId: 2
@@ -711,7 +711,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 44
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: nightseer_traquenard
     DisplayName: Traquenard
     ClassId: 2
@@ -736,7 +736,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 45
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_frappe_lourde
     DisplayName: Frappe Lourde
     ClassId: 3
@@ -759,7 +759,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 50
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_onde_de_choc
     DisplayName: Onde de Choc
     ClassId: 3
@@ -782,7 +782,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 51
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_marteau_punisseur
     DisplayName: Marteau Punisseur
     ClassId: 3
@@ -805,7 +805,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 52
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_choc_sismique
     DisplayName: Choc Sismique
     ClassId: 3
@@ -829,7 +829,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 53
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_represailles
     DisplayName: "Repr\xE9sailles"
     ClassId: 3
@@ -852,7 +852,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 54
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_pilier
     DisplayName: Pilier
     ClassId: 3
@@ -874,7 +874,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 55
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_mur_de_pierre
     DisplayName: Mur de Pierre
     ClassId: 3
@@ -897,7 +897,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 56
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_ancrage
     DisplayName: Ancrage
     ClassId: 3
@@ -918,7 +918,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 57
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_provocation
     DisplayName: Provocation
     ClassId: 3
@@ -942,7 +942,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 58
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_brisure
     DisplayName: Brisure
     ClassId: 3
@@ -966,7 +966,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 59
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_stoicisme
     DisplayName: "Sto\xEFcisme"
     ClassId: 3
@@ -989,7 +989,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 60
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_garde_protectrice
     DisplayName: Garde Protectrice
     ClassId: 3
@@ -1012,7 +1012,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 61
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_ressac_vital
     DisplayName: Ressac Vital
     ClassId: 3
@@ -1033,7 +1033,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 62
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_renvoi_bouclier
     DisplayName: Renvoi du Bouclier
     ClassId: 3
@@ -1054,7 +1054,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 63
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_soin_lourd
     DisplayName: Soin Lourd
     ClassId: 3
@@ -1076,7 +1076,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 64
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: colossar_effondrement
     DisplayName: Effondrement
     ClassId: 3
@@ -1103,7 +1103,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 65
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_crachat_acide
     DisplayName: Crachat Acide
     ClassId: 4
@@ -1125,7 +1125,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 70
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_morsure_putride
     DisplayName: Morsure Putride
     ClassId: 4
@@ -1148,7 +1148,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 71
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_detonation_virulente
     DisplayName: "D\xE9tonation Virulente"
     ClassId: 4
@@ -1171,7 +1171,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 72
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_faux_decharnee
     DisplayName: "Faux D\xE9charn\xE9e"
     ClassId: 4
@@ -1194,7 +1194,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 73
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_brume_toxique
     DisplayName: Brume Toxique
     ClassId: 4
@@ -1217,7 +1217,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 74
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_inoculation
     DisplayName: Inoculation
     ClassId: 4
@@ -1239,7 +1239,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 75
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_marque_sacrificielle
     DisplayName: Marque Sacrificielle
     ClassId: 4
@@ -1261,7 +1261,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 76
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_symbiose_morbide
     DisplayName: Symbiose Morbide
     ClassId: 4
@@ -1284,7 +1284,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 77
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_contagion
     DisplayName: Contagion
     ClassId: 4
@@ -1307,7 +1307,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 78
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_pas_spectral
     DisplayName: Pas Spectral
     ClassId: 4
@@ -1330,7 +1330,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 79
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_voile_pestilence
     DisplayName: Voile de Pestilence
     ClassId: 4
@@ -1353,7 +1353,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 80
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_carapace_visqueuse
     DisplayName: Carapace Visqueuse
     ClassId: 4
@@ -1375,7 +1375,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 81
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_drain_vital
     DisplayName: Drain Vital
     ClassId: 4
@@ -1396,7 +1396,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 82
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_regeneration_necrotique
     DisplayName: "R\xE9g\xE9n\xE9ration N\xE9crotique"
     ClassId: 4
@@ -1418,7 +1418,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 83
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_cocon_putride
     DisplayName: Cocon Putride
     ClassId: 4
@@ -1441,7 +1441,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 84
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: necram_virus_fatal
     DisplayName: Virus Fatal
     ClassId: 4
@@ -1466,7 +1466,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 85
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_lame_spectrale
     DisplayName: Lame Spectrale
     ClassId: 5
@@ -1488,7 +1488,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 86
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_lame_vorace_spectrale
     DisplayName: Lame Vorace Spectrale
     ClassId: 5
@@ -1510,7 +1510,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 87
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_replique_fantome
     DisplayName: "R\xE9plique Fant\xF4me"
     ClassId: 5
@@ -1535,7 +1535,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 88
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_pas_dans_ombre
     DisplayName: Pas dans l'Ombre
     ClassId: 5
@@ -1558,7 +1558,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 89
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_volte_face
     DisplayName: Volte-Face
     ClassId: 5
@@ -1584,7 +1584,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 90
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_saigne_ame
     DisplayName: "Saigne-\xC2me"
     ClassId: 5
@@ -1605,7 +1605,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 91
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_frappe_fantome
     DisplayName: "Frappe Fant\xF4me"
     ClassId: 5
@@ -1628,7 +1628,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 92
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_dague_lancee
     DisplayName: "Dague Lanc\xE9e"
     ClassId: 5
@@ -1652,7 +1652,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 93
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_marque_ombre
     DisplayName: Marque de l'Ombre
     ClassId: 5
@@ -1675,7 +1675,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 94
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_danse_des_lames
     DisplayName: Danse des Lames
     ClassId: 5
@@ -1699,7 +1699,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 95
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_linceul_ombres
     DisplayName: Linceul d'Ombres
     ClassId: 5
@@ -1720,7 +1720,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 96
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_voile_spectral
     DisplayName: Voile Spectral
     ClassId: 5
@@ -1743,7 +1743,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 97
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_replique_protectrice
     DisplayName: "R\xE9plique Protectrice"
     ClassId: 5
@@ -1768,7 +1768,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 98
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_dernier_pas
     DisplayName: Dernier Pas
     ClassId: 5
@@ -1791,7 +1791,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 99
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_pas_au_dela
     DisplayName: "Pas de l'Au-Del\xE0"
     ClassId: 5
@@ -1814,7 +1814,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 100
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
   - SpellId: ghostra_execution_spectrale
     DisplayName: "Ex\xE9cution Spectrale"
     ClassId: 5
@@ -1839,4 +1839,4 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 101
-    CombatRulesVersion: 74
+    CombatRulesVersion: 80
