@@ -471,7 +471,7 @@ namespace Nymora.Combat.Bootstrap
             Debug.LogWarning($"[CombatBootstrapCasual] ReturnToHub reason='{reason}'.");
             // Reset MatchBridge pour eviter une boucle si l'utilisateur clique a nouveau.
             MatchBridge.Reset();
-            SceneTransition.Load("10_CommunityHub");
+            SceneTransition.Load("10_CommunityHub", waitForReady: true);
         }
 
         private void Log(string msg)

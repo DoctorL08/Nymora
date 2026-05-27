@@ -196,6 +196,10 @@ namespace Nymora.Hub
 
         public static HubAvatar Local { get; private set; }
 
+        /// <summary>T2-hub — True quand l'avatar a un sprite affiché (classe résolue + frame posée).
+        /// Lu par HubReadyBeacon pour ne lever le voile de chargement qu'une fois les persos visibles.</summary>
+        public bool IsVisualReady => _sr != null && _sr.sprite != null && _sr.enabled;
+
         // C1 — Registre de TOUS les avatars hub (local + distants), pour router une bulle de chat
         // vers le bon perso via le displayName de l'expediteur. Peuple au Spawn, retire au Despawn.
         public static readonly List<HubAvatar> All = new List<HubAvatar>();

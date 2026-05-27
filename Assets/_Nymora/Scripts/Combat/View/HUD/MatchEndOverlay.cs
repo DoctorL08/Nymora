@@ -287,7 +287,7 @@ namespace Nymora.Combat.View.HUD
                 Debug.Log("[Nymora.HUD] Retour Hub clique (IA) — pas de SetMatchResult, pas d'XP MVP");
             }
 
-            SceneTransition.Load("10_CommunityHub", () => QuantumRunner.ShutdownAll());
+            SceneTransition.Load("10_CommunityHub", () => QuantumRunner.ShutdownAll(), waitForReady: true);
         }
     }
 }

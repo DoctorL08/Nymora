@@ -71,7 +71,7 @@ namespace Nymora.Hub
         {
             Debug.Log($"[MatchTestLogger] Fin de match : {result} (matchId={_matchId}). LoadScene → {_hubSceneName}");
             MatchBridge.SetMatchResult(result, _matchId, _opponentEmail);
-            SceneTransition.Load(_hubSceneName);
+            SceneTransition.Load(_hubSceneName, waitForReady: true);
         }
     }
 }

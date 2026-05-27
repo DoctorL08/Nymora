@@ -226,7 +226,8 @@ namespace Nymora.UI.Login
                 SaveRememberPreference(_rememberToggle != null && _rememberToggle.isOn);
                 SetStatus($"Connecte : {res.Data.user.displayName}. Entree dans le hub...");
                 NymoraLog.Info("Login", $"Connexion OK ({res.Data.user.displayName}) -> {_hubSceneName}");
-                SceneTransition.Load(_hubSceneName);
+                // waitForReady : garde le voile jusqu'à ce que les persos soient visibles (HubReadyBeacon).
+                SceneTransition.Load(_hubSceneName, waitForReady: true);
                 return;
             }
 
@@ -261,7 +262,8 @@ namespace Nymora.UI.Login
                 SaveRememberPreference(_rememberToggle == null || _rememberToggle.isOn);
                 SetStatus($"Reconnecte : {name}. Entree dans le hub...");
                 NymoraLog.Info("Login", $"Reprise session memorisee ({name}) -> {_hubSceneName}");
-                SceneTransition.Load(_hubSceneName);
+                // waitForReady : garde le voile jusqu'à ce que les persos soient visibles (HubReadyBeacon).
+                SceneTransition.Load(_hubSceneName, waitForReady: true);
                 return;
             }
 

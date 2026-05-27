@@ -103,7 +103,8 @@ namespace Nymora.Core.SceneFlow
             _group.blocksRaycasts = false;
             _group.interactable = false;
 
-            // Image plein écran (voile sombre uni).
+            // Image plein écran (voile sombre uni) — base derrière le background (sert de fond si
+            // l'image ne couvre pas tout l'écran et pendant le fondu).
             var imgGo = new GameObject("Veil");
             imgGo.transform.SetParent(canvasGo.transform, false);
             var img = imgGo.AddComponent<Image>();
@@ -114,6 +115,24 @@ namespace Nymora.Core.SceneFlow
             rt.anchorMax = Vector2.one;
             rt.offsetMin = Vector2.zero;
             rt.offsetMax = Vector2.zero;
+
+            // Background Nymora (celui de la page de login) -> l'écran de chargement fait moins vide.
+            // Chargé depuis Resources (SceneTransition est 100% code/persistant). Absent -> voile uni.
+            var bgSprite = Resources.Load<Sprite>("UI/Backgrounds/login_background");
+            if (bgSprite != null)
+            {
+                var bgGo = new GameObject("Background");
+                bgGo.transform.SetParent(canvasGo.transform, false);
+                var bg = bgGo.AddComponent<Image>();
+                bg.sprite = bgSprite;
+                bg.raycastTarget = false;
+                bg.preserveAspect = false; // plein cadre (fond) ; le voile sombre couvre les bords si besoin
+                var brt = bg.rectTransform;
+                brt.anchorMin = Vector2.zero;
+                brt.anchorMax = Vector2.one;
+                brt.offsetMin = Vector2.zero;
+                brt.offsetMax = Vector2.zero;
+            }
 
             // Spinner centré : anneau de points avec traîne, tourné en Update tant que _busy.
             var spinGo = new GameObject("Spinner");
