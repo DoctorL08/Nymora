@@ -38,6 +38,7 @@ namespace Nymora.Combat.View.Animation
             // Recettes BESPOKE par sort (par classe). Si la classe du sort est mappée finement,
             // on joue son effet dédié et on s'arrête ; sinon on retombe sur l'archétype générique.
             if (SoulrenderVfx.TryPlay(host, caster.LastCastSpellId, casterPos, targetPos, layer, dir)) return;
+            if (NightseerVfx.TryPlay(host, caster.LastCastSpellId, casterPos, targetPos, layer, dir)) return;
 
             Vector3 casterBody = casterPos + Vector3.up * BodyY;
             Vector3 targetBody = targetPos + Vector3.up * BodyY;
