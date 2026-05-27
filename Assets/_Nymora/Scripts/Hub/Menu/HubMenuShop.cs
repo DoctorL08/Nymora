@@ -39,6 +39,10 @@ namespace Nymora.Hub.Menu
         private RectTransform _listRoot;
         private TextMeshProUGUI _status;
         private bool _busy;
+        // 5.11 — tooltip de prévisu animée (survol skin/familier).
+        private CosmeticPreviewTooltip _preview;
+        private static CosmeticSkinCatalog _skinCatalog;
+        private static bool _skinCatalogLoaded;
 
         public HubMenuShop(HubMenuTheme t, HubMenuUIFactory f, NymoraApiClient api)
         {
@@ -62,6 +66,60 @@ namespace Nymora.Hub.Menu
             return null;
         }
 
+        private static PetDefinition PetDef(string cosmeticId)
+        {
+            if (!_petCatalogLoaded) { _petCatalog = Resources.Load<PetCatalog>("Cosmetics/PetCatalog"); _petCatalogLoaded = true; }
+            return _petCatalog != null ? _petCatalog.Resolve(cosmeticId) : null;
+        }
+
+        private static CosmeticSkinDefinition SkinDef(string cosmeticId)
+        {
+            if (!_skinCatalogLoaded) { _skinCatalog = Resources.Load<CosmeticSkinCatalog>("Cosmetics/CosmeticSkinCatalog"); _skinCatalogLoaded = true; }
+            return _skinCatalog != null ? _skinCatalog.Resolve(cosmeticId) : null;
+        }
+
+        // Icône œil générée procéduralement (aucun asset dédié) : lentille en amande claire + pupille
+        // sombre + contour. Mise en cache (1 seule texture pour toutes les cartes).
+        private static Sprite _eyeSprite;
+        private static Sprite EyeSprite()
+        {
+            if (_eyeSprite != null) return _eyeSprite;
+            const int S = 64;
+            var tex = new Texture2D(S, S, TextureFormat.RGBA32, false) { filterMode = FilterMode.Bilinear };
+            var clear = new Color(0f, 0f, 0f, 0f);
+            var light = new Color(0.93f, 0.94f, 0.97f, 1f);
+            var dark = new Color(0.06f, 0.06f, 0.09f, 1f);
+            float cx = (S - 1) * 0.5f, cy = (S - 1) * 0.5f, rx = 29f, ry = 16f;
+            for (int y = 0; y < S; y++)
+            {
+                for (int x = 0; x < S; x++)
+                {
+                    float nx = (x - cx) / rx, ny = (y - cy) / ry;
+                    float e = nx * nx + ny * ny;          // <=1 dans la lentille
+                    Color col = clear;
+                    if (e <= 1f)
+                    {
+                        col = e > 0.80f ? dark : light;   // contour sombre de la lentille
+                        float d = Mathf.Sqrt((x - cx) * (x - cx) + (y - cy) * (y - cy));
+                        if (d <= 9f) col = dark;           // pupille
+                        else if (d <= 11.5f) col = light;  // liseré autour de la pupille
+                    }
+                    tex.SetPixel(x, y, col);
+                }
+            }
+            tex.Apply();
+            _eyeSprite = Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100f);
+            return _eyeSprite;
+        }
+
+        // Ouvre le tooltip de prévisu pour la carte survolée (skin ou familier).
+        private void ShowPreview(string type, string id, RectTransform card)
+        {
+            if (_preview == null) return;
+            if (type == "skin") { var d = SkinDef(id); if (d != null) _preview.ShowForSkin(d, card); }
+            else if (type == "pet") { var d = PetDef(id); if (d != null) _preview.ShowForPet(d, card); }
+        }
+
         public void Build(RectTransform parent)
         {
             _status = _f.MakeText("Status", parent, "Chargement...", _t.FontSizeSmall, _t.TextMuted, _t.Font, TextAlignmentOptions.Center);
@@ -70,6 +128,7 @@ namespace Nymora.Hub.Menu
             srt.anchorMin = new Vector2(0f, 1f); srt.anchorMax = new Vector2(1f, 1f); srt.pivot = new Vector2(0.5f, 1f);
             srt.sizeDelta = new Vector2(-48f, 24f); srt.anchoredPosition = new Vector2(0f, -14f);
 
+            _preview = new CosmeticPreviewTooltip(_t, _f, parent);
             BuildScroll(parent);
             LoadAsync();
         }
@@ -120,6 +179,22 @@ namespace Nymora.Hub.Menu
             var bg = _f.MakeImage("BG", frame.rectTransform, CardBgColor);
             HubMenuUIFactory.Stretch(bg.rectTransform, 3f, 3f, 3f, 3f);
             var root = bg.rectTransform;
+
+            // 5.11 — bouton œil en haut à droite (skin/familier) -> ouvre la fenêtre de prévisu
+            // animée (stages + anims). Plus fiable que le survol pour naviguer/cliquer.
+            if (item.type == "skin" || item.type == "pet")
+            {
+                string pid = item.id, ptype = item.type;
+                var card = frame.rectTransform;
+                var eyeBtn = _f.MakeImage("EyeBtn", root, new Color(0f, 0f, 0f, 0.6f));
+                var ert = eyeBtn.rectTransform;
+                ert.anchorMin = ert.anchorMax = new Vector2(1f, 1f); ert.pivot = new Vector2(1f, 1f);
+                ert.sizeDelta = new Vector2(42f, 42f); ert.anchoredPosition = new Vector2(-8f, -8f);
+                var eyeIco = _f.MakeImage("Eye", ert, Color.white, rounded: false);
+                eyeIco.sprite = EyeSprite(); eyeIco.preserveAspect = true; eyeIco.raycastTarget = false;
+                HubMenuUIFactory.Stretch(eyeIco.rectTransform, 8f, 8f, 8f, 8f);
+                eyeBtn.gameObject.AddComponent<Button>().onClick.AddListener(() => ShowPreview(ptype, pid, card));
+            }
 
             // Lueur rareté en haut
             var glow = _f.MakeImage("Glow", root, new Color(rarity.r, rarity.g, rarity.b, 0.16f), rounded: false);

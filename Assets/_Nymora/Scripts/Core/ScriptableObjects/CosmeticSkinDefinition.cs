@@ -1,8 +1,22 @@
+using System.Collections.Generic;
 using Nymora.Core.Enums;
 using UnityEngine;
 
 namespace Nymora.Core.ScriptableObjects
 {
+    /// <summary>
+    /// Brique 5.11 — Une animation de prévisu (frames SE d'un clip combat), pour le tooltip
+    /// boutique. Extrait des AnimatorControllers par "Nymora > Setup > Extract Skin Combat Preview".
+    /// </summary>
+    [System.Serializable]
+    public class SkinPreviewClip
+    {
+        public int Stage;            // 0 / 1 / 2
+        public string Anim;          // "idle" | "walk" | "attack" | "cast" | "hurt" | "death"
+        public Sprite[] Frames;
+        public float Fps = 8f;
+    }
+
     /// <summary>
     /// Brique 5.5.e — Définition visuelle d'un skin cosmétique (alternative aux frames de la
     /// classe). Quand ce skin est équipé pour sa classe, l'avatar hub joue CES frames au lieu
@@ -63,5 +77,31 @@ namespace Nymora.Core.ScriptableObjects
 
         /// <summary>True si le skin embarque au moins le controller stage 0 SE (variante combat dispo).</summary>
         public bool HasCombatControllers => Stage0ControllerSE != null;
+
+        // ==================================================================
+        // Brique 5.11 — Frames de PRÉVISU (tooltip boutique). Extraites des clips des
+        // AnimatorControllers SE (les controllers ne sont pas lisibles au runtime) par l'outil
+        // "Extract Skin Combat Preview". Permet de rejouer stage 0/1/2 × idle/walk/attack/cast/
+        // hurt/death dans une UI Image (UISpriteAnimator) sans Animator.
+        // ==================================================================
+        [Header("Prévisu boutique (frames extraites, 5.11)")]
+        public List<SkinPreviewClip> CombatPreview = new List<SkinPreviewClip>();
+
+        /// <summary>Frames d'un (stage, anim) de prévisu, ou null si absent.</summary>
+        public SkinPreviewClip GetPreview(int stage, string anim)
+        {
+            if (CombatPreview == null) return null;
+            for (int i = 0; i < CombatPreview.Count; i++)
+            {
+                var c = CombatPreview[i];
+                if (c != null && c.Stage == stage && c.Anim == anim
+                    && c.Frames != null && c.Frames.Length > 0)
+                    return c;
+            }
+            return null;
+        }
+
+        /// <summary>True si au moins une prévisu combat a été extraite.</summary>
+        public bool HasCombatPreview => CombatPreview != null && CombatPreview.Count > 0;
     }
 }
