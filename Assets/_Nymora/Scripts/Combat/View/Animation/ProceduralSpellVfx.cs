@@ -40,6 +40,8 @@ namespace Nymora.Combat.View.Animation
             if (SoulrenderVfx.TryPlay(host, caster.LastCastSpellId, casterPos, targetPos, layer, dir)) return;
             if (NightseerVfx.TryPlay(host, caster.LastCastSpellId, casterPos, targetPos, layer, dir)) return;
             if (ColossarVfx.TryPlay(host, caster.LastCastSpellId, casterPos, targetPos, layer, dir)) return;
+            if (NecramVfx.TryPlay(host, caster.LastCastSpellId, casterPos, targetPos, layer, dir)) return;
+            if (GhostraVfx.TryPlay(host, caster.LastCastSpellId, casterPos, targetPos, layer, dir)) return;
 
             Vector3 casterBody = casterPos + Vector3.up * BodyY;
             Vector3 targetBody = targetPos + Vector3.up * BodyY;
