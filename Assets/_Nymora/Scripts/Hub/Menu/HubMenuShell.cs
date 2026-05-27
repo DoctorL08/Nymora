@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Fusion;
 using Nymora.Core.Data;
 using Nymora.Core.SceneFlow;
 using Nymora.Core.ScriptableObjects;
@@ -1188,11 +1189,31 @@ namespace Nymora.Hub.Menu
         {
             // Efface la session (JWT en PlayerPrefs) proprement via AuthService.
             if (_api != null) { try { new AuthService(_api).Logout(); } catch { } }
-            // Le client de chat/session est DontDestroyOnLoad : on le détruit pour repartir
-            // propre au login (le NetworkRunner Fusion, lui, meurt avec la scène hub).
-            if (HubChatClient.Instance != null) Destroy(HubChatClient.Instance.gameObject);
             _isOpen = false;
-            SceneTransition.Load(LoginSceneName);
+
+            // FIX double-perso : on ferme le NetworkRunner Fusion PROPREMENT (= leave de la room
+            // Photon) AVANT de revenir au login. Sans ça, détruire le runner via l'unload de scène
+            // ne notifie pas toujours le serveur à temps : l'avatar reste "zombie" côté Photon
+            // le temps du timeout, et à la reconnexion rapide le joueur récupère son ancien perso
+            // EN PLUS de son nouveau spawn (= double, invisible pour les autres une fois le zombie
+            // expiré). ALT+F4 ne souffre pas du bug car l'OS ferme le socket d'un coup (despawn
+            // immédiat). On capture le runner AVANT la transition (la scène hub sera unloadée).
+            var runner = FindFirstObjectByType<NetworkRunner>();
+
+            // Le shutdown réseau tourne sous le voile opaque (hook whileCovered) -> jamais visible.
+            SceneTransition.LoadAsync(LoginSceneName, async () =>
+            {
+                if (runner != null)
+                {
+                    try { await runner.Shutdown(); }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning($"[Logout] Shutdown runner Fusion a échoué : {ex.Message} — on continue.");
+                    }
+                }
+                // Client de chat/session (DontDestroyOnLoad) : détruit pour repartir propre au login.
+                if (HubChatClient.Instance != null) Destroy(HubChatClient.Instance.gameObject);
+            });
         }
 
         private void BuildPlaceholder(string id)
