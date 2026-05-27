@@ -257,8 +257,34 @@ namespace Nymora.Combat.View.HUD
                 : $"<color=#e85060>[{clan}]</color>\n";
             string pseudoLine = $"<color=#ffffff>{pseudo}</color>\n";
             string hpLine = $"<color=#ffd060>HP : {hp} / {maxHp}</color>";
+            string shieldLine = BuildShieldLine(entity);
             string previewLine = BuildSpellPreviewLine(entity);
-            return clanLine + pseudoLine + hpLine + previewLine;
+            return clanLine + pseudoLine + hpLine + shieldLine + previewLine;
+        }
+
+        /// <summary>
+        /// J5 — Ligne "Bouclier : N" (bleu) affichee tant qu'un status ShieldActive est en cours
+        /// sur le combattant survole (Peau de Fer, Stoicisme, Carapace Visqueuse, Camouflage Ronces…).
+        /// Lue en live a chaque frame via le refresh du tooltip. No-op si pas de bouclier actif.
+        /// </summary>
+        private static string BuildShieldLine(EntityRef entity)
+        {
+            var runner = QuantumRunner.Default;
+            if (runner == null || runner.Game == null) return "";
+            var frame = runner.Game.Frames.Verified;
+            if (frame == null || !frame.Exists(entity) || !frame.Has<Combatant>(entity)) return "";
+
+            var c = frame.Get<Combatant>(entity);
+            for (int s = 0; s < StatusHelper.SlotCount; s++)
+            {
+                if (c.Statuses[s].Kind == StatusKind.ShieldActive
+                    && c.Statuses[s].TurnsLeft > 0
+                    && c.Statuses[s].Magnitude > 0)
+                {
+                    return $"\n<color=#80c0ff>Bouclier : {c.Statuses[s].Magnitude}</color>";
+                }
+            }
+            return "";
         }
 
         /// <summary>

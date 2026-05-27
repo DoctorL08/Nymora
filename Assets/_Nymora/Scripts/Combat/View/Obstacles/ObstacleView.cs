@@ -1,3 +1,4 @@
+using System.Collections;
 using Quantum;
 using TMPro;
 using UnityEngine;
@@ -30,6 +31,10 @@ namespace Nymora.Combat.View.Obstacles
         public int GridX { get; private set; }
         public int GridY { get; private set; }
 
+        // J8 — anim "sort du sol" jouee une fois a l'apparition de l'obstacle.
+        private const float EmergeDuration = 0.32f;
+        private bool _emerged;
+
         public void Bind(EntityRef entity)
         {
             Entity = entity;
@@ -48,6 +53,16 @@ namespace Nymora.Combat.View.Obstacles
             GridX = data.GridX;
             GridY = data.GridY;
             transform.position = worldPos;
+
+            // J8 — au tout premier update (apparition), l'obstacle SORT DU SOL : son sprite
+            // grandit verticalement depuis sa base (pivot bas) + fondu. Le scale du sprite est
+            // independant de transform.position (pousse chaque frame ici), donc pas de conflit.
+            if (!_emerged && _sprite != null)
+            {
+                _emerged = true;
+                StartCoroutine(EmergeFromGround());
+            }
+
             if (_hpLabel != null)
             {
                 // Update le text meme si cache : TileHoverView peut l'activer instantanement.
@@ -75,6 +90,31 @@ namespace Nymora.Combat.View.Obstacles
                     if (idx >= _hpFrames.Length) idx = _hpFrames.Length - 1;
                     if (_hpFrames[idx] != null) _sprite.sprite = _hpFrames[idx];
                 }
+            }
+        }
+
+        // J8 — Le sprite grandit verticalement depuis sa base (sort du sol) + fondu, une fois.
+        private IEnumerator EmergeFromGround()
+        {
+            Transform st = _sprite.transform;
+            Vector3 baseScale = st.localScale;
+            Color baseColor = _sprite.color;
+            float e = 0f;
+            while (e < EmergeDuration && _sprite != null)
+            {
+                e += Time.deltaTime;
+                float k = Mathf.Clamp01(e / EmergeDuration);
+                float yScale = GroundEmergeEase.BackOut(k);
+                st.localScale = new Vector3(baseScale.x, baseScale.y * yScale, baseScale.z);
+                var c = baseColor;
+                c.a = baseColor.a * Mathf.Clamp01(k * 2.2f);
+                _sprite.color = c;
+                yield return null;
+            }
+            if (_sprite != null)
+            {
+                st.localScale = baseScale;
+                _sprite.color = baseColor;
             }
         }
 

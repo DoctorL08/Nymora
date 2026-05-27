@@ -108,7 +108,12 @@ namespace Nymora.Combat.View
             }
             else if (hasIABootstrap)
             {
-                Debug.Log("[Nymora.CombatInput] Mode IA detecte avec CombatBootstrapIA — auto-add skip. _localPlayerIndex reste 0 (Lorenzo = slot 0 en IA).");
+                // IA : le joueur humain est slot 0, le bot slot 1 (drive par AISystem). On VERROUILLE
+                // la perspective joueur (fini le "drive both" debug) -> l'input n'agit que pour le
+                // slot 0. Pendant le tour du bot, la sim rejette de toute facon les commands slot 0.
+                _localPlayerIndex = 0;
+                _debugAllPlayersMovable = false;
+                Debug.Log("[Nymora.CombatInput] Mode IA (CombatBootstrapIA) — perspective joueur : _localPlayerIndex=0, _debugAllPlayersMovable=false.");
             }
             else if (isPvp)
             {

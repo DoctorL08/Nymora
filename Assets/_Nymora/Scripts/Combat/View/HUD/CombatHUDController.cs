@@ -62,6 +62,10 @@ namespace Nymora.Combat.View.HUD
         public SpellId? ArmedSpell => _armedSpell;
         public event Action ArmedSpellChanged;
 
+        // J10 — true uniquement quand c'est le tour du joueur que CE HUD controle. Sert a bloquer
+        // l'armement de sort et a griser la barre pendant le tour adverse (notamment le bot en IA).
+        private bool _isLocalTurn;
+
         // B5 (22 mai) — dernier joueur actif pour lequel on a joue le bandeau de tour anime.
         // -1 = aucun -> declenche le bandeau au 1er tour.
         private int _lastBannerActivePlayer = -1;
@@ -211,7 +215,20 @@ namespace Nymora.Combat.View.HUD
             var frame = game?.Frames?.Verified;
             if (frame == null || frame.RuntimeConfig == null) return;
             bool isPvp = !frame.RuntimeConfig.IsBotMatch;
-            if (!isPvp) return;
+            if (!isPvp)
+            {
+                // IA : perspective JOUEUR (slot 0 = humain, slot 1 = bot drive par AISystem).
+                // On coupe le "drive both" debug -> la barre de sorts reste celle du joueur et
+                // se grise pendant le tour du bot (cf gate _isLocalTurn). Skip si raw-dev sans
+                // bootstrap IA (on garde alors le debug pour piloter les 2 cote editeur).
+                if (Nymora.Combat.Bootstrap.CombatBootstrapIA.Instance != null)
+                {
+                    _localPlayerIndex = 0;
+                    _debugAllPlayersControllable = false;
+                    Debug.Log("[CombatHUDController] Mode IA (CombatBootstrapIA) — perspective joueur : _localPlayerIndex=0, _debugAllPlayersControllable=false.");
+                }
+                return;
+            }
 
             var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
             if (bootstrap == null)
@@ -276,6 +293,13 @@ namespace Nymora.Combat.View.HUD
             int activePlayer = state.ActivePlayerIndex;
             int controlPlayer = ResolveControlPlayer(activePlayer);
 
+            // J10 — tour du joueur local ? controlPlayer==activePlayer est vrai en debug "drive both"
+            // (raw dev), sinon seulement quand le slot local EST le slot actif. Hors tour : on
+            // desarme + grise la barre (plus de cast/arme cote bot en IA).
+            bool localTurn = state.CurrentPhase == CombatPhase.TurnActive && controlPlayer == activePlayer;
+            _isLocalTurn = localTurn;
+            if (!localTurn && _armedSpell.HasValue) Disarm();
+
             // Filter combatants une seule fois ; cache localement P0/P1 et le combatant local.
             Combatant p0 = default, p1 = default;
             bool hasP0 = false, hasP1 = false;
@@ -333,7 +357,7 @@ namespace Nymora.Combat.View.HUD
 
             // Slots : grisage selon PA / HG dispo du combattant qu'on controle, etat armed.
             // 2.13.c : passe aussi le turnNumber pour calcul du cooldown signature.
-            RefreshSlots(hasLocal ? local : default, hasLocal, state.TurnNumber);
+            RefreshSlots(hasLocal ? local : default, hasLocal, state.TurnNumber, localTurn);
 
             // End Turn : seul le joueur actif peut le presser. (Si _debugAllPlayersControllable
             // est false et qu'on n'est pas le joueur actif, on grise le bouton.)
@@ -353,18 +377,21 @@ namespace Nymora.Combat.View.HUD
             }
         }
 
-        private void RefreshSlots(in Combatant c, bool valid, int turnNumber)
+        private void RefreshSlots(in Combatant c, bool valid, int turnNumber, bool localTurn)
         {
             for (int i = 0; i < _spellSlots.Length; i++)
             {
                 var slot = _spellSlots[i];
                 if (slot == null) continue;
-                slot.SetState(ResolveSlotState(slot.Spell, c, valid, turnNumber));
+                // J10 — hors du tour du joueur (ex : tour du bot en IA) la barre est grisee.
+                var st = localTurn ? ResolveSlotState(slot.Spell, c, valid, turnNumber) : SpellSlotView.SlotState.Disabled;
+                slot.SetState(st);
                 slot.SetCooldownLabel(ResolveCooldownTurnsLeft(slot.Spell, c, valid, turnNumber));
             }
             if (_signatureSlot != null)
             {
-                _signatureSlot.SetState(ResolveSlotState(_signatureSlot.Spell, c, valid, turnNumber));
+                var sigState = localTurn ? ResolveSlotState(_signatureSlot.Spell, c, valid, turnNumber) : SpellSlotView.SlotState.Disabled;
+                _signatureSlot.SetState(sigState);
                 _signatureSlot.SetCooldownLabel(ResolveCooldownTurnsLeft(_signatureSlot.Spell, c, valid, turnNumber));
             }
             // 19 mai POLISH-6g — Signature visible UNIQUEMENT quand la ressource max est atteinte
@@ -373,7 +400,7 @@ namespace Nymora.Combat.View.HUD
             // re-anim apparition automatiquement.
             if (_signatureEnhancer != null)
             {
-                _signatureEnhancer.SetUnlocked(valid && IsSignatureUnlocked(c));
+                _signatureEnhancer.SetUnlocked(valid && localTurn && IsSignatureUnlocked(c));
             }
         }
 
@@ -458,6 +485,9 @@ namespace Nymora.Combat.View.HUD
         public void OnSlotClicked(SpellId spell)
         {
             if (spell == SpellId.None) return;
+            // J10 — pas d'armement hors de son tour (ex : on ne pilote pas le sort du bot en IA
+            // pendant son tour). La barre est de toute facon grisee, mais on bloque aussi le clic.
+            if (!_isLocalTurn) return;
 
             if (_armedSpell.HasValue && _armedSpell.Value == spell)
             {

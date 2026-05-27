@@ -46,6 +46,11 @@ namespace Nymora.Combat.View
         // lourde). On detecte via LastCastOnTurn + LastCastSpellId == GhostraFrappeFantome.
         // Cache la derniere valeur de LastCastOnTurn QUAND le spell etait Frappe Fantome.
         private readonly Dictionary<EntityRef, int> _lastFrappeFantomeCastTurn = new Dictionary<EntityRef, int>(2);
+        // J7 — teleport generalise (toutes classes) : suit LastCastSequence pour declencher l'anim
+        // de TP (fade + flash spectral) quand un SORT DE TELEPORT est lance, comme sur la Ghostra.
+        private readonly Dictionary<EntityRef, int> _lastTeleportCastSeq = new Dictionary<EntityRef, int>(2);
+        // J9 — charge : suit LastCastSequence pour declencher le DASH (vitesse + trainee) au cast.
+        private readonly Dictionary<EntityRef, int> _lastChargeCastSeq = new Dictionary<EntityRef, int>(2);
 
         // 3.7.a.i — Track Permutation Ghostra pour snap instantané au lieu de walk lerp.
         // Si combatant.LastPermutationOnTurn > cache -> une Permutation vient d'avoir lieu
@@ -287,6 +292,30 @@ namespace Nymora.Combat.View
                     }
                 }
 
+                // J7 — Teleport GENERALISE (toutes classes) : tout sort de TP (Nightseer Pas Furtif /
+                // Evanescence / Traquenard, Ghostra Dernier Pas, etc.) declenche l'anim de TP comme
+                // la Ghostra. On compare LastCastSequence au tick precedent : si elle a avance ET que
+                // le sort lance est un teleport -> snap + flash au lieu d'un walk. Fallback : ne
+                // re-declenche pas si le bloc Ghostra ci-dessus a deja pose isTeleportSnap.
+                {
+                    int prevTpSeq = _lastTeleportCastSeq.TryGetValue(entity, out var tps) ? tps : combatant.LastCastSequence;
+                    bool castAdvanced = combatant.LastCastSequence != prevTpSeq;
+                    _lastTeleportCastSeq[entity] = combatant.LastCastSequence;
+                    if (!isTeleportSnap && castAdvanced && IsTeleportSpell(combatant.LastCastSpellId))
+                        isTeleportSnap = true;
+                }
+
+                // J9 — Charge : un sort de charge declenche le DASH (mouvement rapide + trainee
+                // spectrale facon mini-teleport). Le deplacement reste un walk (pas un snap), juste
+                // accelere. Doit etre arme AVANT UpdateGridPosition (qui pousse les waypoints).
+                {
+                    int prevChSeq = _lastChargeCastSeq.TryGetValue(entity, out var chs) ? chs : combatant.LastCastSequence;
+                    bool chAdvanced = combatant.LastCastSequence != prevChSeq;
+                    _lastChargeCastSeq[entity] = combatant.LastCastSequence;
+                    if (chAdvanced && IsChargeSpell(combatant.LastCastSpellId))
+                        view.TriggerDash();
+                }
+
                 if (isTeleportSnap)
                 {
                     // 3.7.a.i / 3.7.b.ii — VFX téléportation : fade out + snap + flash bleu spectral + fade in.
@@ -365,10 +394,18 @@ namespace Nymora.Combat.View
             if (currHP == 0 && prevHP > 0)
             {
                 view.TriggerDeath();
+                // J2 — flash + squash sur le coup fatal (flinch max) + shake selon le coup.
+                view.PlayHitReaction(1f);
+                RequestHitShake(prevHP - currHP, combatant.MaxHP);
             }
             else if (currHP < prevHP)
             {
                 view.TriggerHurt();
+                // J2 — hit reaction proportionnelle aux degats encaisses.
+                int dmg = prevHP - currHP;
+                float intensity = combatant.MaxHP > 0 ? Mathf.Clamp01((float)dmg / combatant.MaxHP) : 0.3f;
+                view.PlayHitReaction(intensity);
+                RequestHitShake(dmg, combatant.MaxHP);
             }
             _lastHP[entity] = currHP;
 
@@ -411,6 +448,61 @@ namespace Nymora.Combat.View
             // on push 1.0 fixe quand l'entity vient de bouger. Le state Walk gere automatiquement
             // les transitions via MoveSpeed (CombatantView.Update push MoveSpeed pendant le lerp).
             view.SetDesiredMoveSpeed(1.0f);
+        }
+
+        // J2 (juice combat) — Screen-shake sur les coups, proportionnel a la fraction de PV
+        // perdue. Les coups "chip" (< MinFraction) ne shakent pas ; au-dela, l'amplitude monte
+        // lineairement jusqu'a MaxFraction. Passe par le CameraShaker central (J1, "le plus fort
+        // gagne" -> pas de double-shake si un signature shake deja via FloatingTextManager).
+        private const float HitShakeMinFraction = 0.08f;   // < 8% du MaxHP = pas de shake
+        private const float HitShakeMaxFraction = 0.30f;    // >= 30% = shake max
+        private const float HitShakeMinAmplitude = 0.05f;   // unites monde
+        private const float HitShakeMaxAmplitude = 0.16f;
+        private const float HitShakeDuration = 0.22f;
+
+        private static void RequestHitShake(int damage, int maxHp)
+        {
+            if (CameraShaker.Instance == null || maxHp <= 0 || damage <= 0) return;
+            float frac = (float)damage / maxHp;
+            if (frac < HitShakeMinFraction) return;
+            float k = Mathf.InverseLerp(HitShakeMinFraction, HitShakeMaxFraction, frac);
+            float amp = Mathf.Lerp(HitShakeMinAmplitude, HitShakeMaxAmplitude, k);
+            CameraShaker.Instance.Shake(amp, HitShakeDuration);
+        }
+
+        /// <summary>
+        /// J7 — Sorts qui TELEPORTENT le caster (saut discret) -> anim de TP (fade + flash spectral)
+        /// au lieu d'un walk. Exclut les sorts de MOUVEMENT traversant (Pas Spectral Necram /
+        /// Pas de l'Au-Dela Ghostra) qui restent des deplacements animes case par case.
+        /// </summary>
+        private static bool IsTeleportSpell(SpellId id)
+        {
+            switch (id)
+            {
+                case SpellId.NightseerPasFurtif:
+                case SpellId.NightseerEvanescence:
+                case SpellId.NightseerTraquenard:
+                case SpellId.GhostraPasDansLOmbre:
+                case SpellId.GhostraFrappeFantome:
+                case SpellId.GhostraDernierPas:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// J9 — Sorts de CHARGE : le caster fonce vers sa cible -> dash rapide + trainee.
+        /// </summary>
+        private static bool IsChargeSpell(SpellId id)
+        {
+            switch (id)
+            {
+                case SpellId.SoulrenderChargeBrutale:
+                    return true;
+                default:
+                    return false;
+            }
         }
 
         /// <summary>
@@ -648,6 +740,8 @@ namespace Nymora.Combat.View
             _lastFacings.Clear();
             _lastHP.Clear();
             _lastCastSeq.Clear();
+            _lastTeleportCastSeq.Clear();
+            _lastChargeCastSeq.Clear();
             _gridReady = false;
         }
 

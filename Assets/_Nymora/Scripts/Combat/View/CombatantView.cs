@@ -46,6 +46,14 @@ namespace Nymora.Combat.View
         // Snap quand on est tres proche (0.05 = 5% case). Limite l'oscillation finale.
         private const float SnapDistance = 0.05f;
 
+        // J9 (juice combat) — DASH de charge : le mouvement d'un sort de charge (Charge Brutale)
+        // est joue beaucoup plus vite + laisse une trainee spectrale (effet "mini-teleport").
+        // Active par CombatantRenderer.TriggerDash() au cast, desactive en fin de mouvement.
+        private const float DashSpeedMultiplier = 3.6f;
+        private const float AfterimageInterval = 0.045f;
+        private bool _dashing;
+        private float _afterimageTimer;
+
         [SerializeField] private SpriteRenderer _sprite;
         [Tooltip("Optionnel. Si fourni avec des AnimatorController par stage, prend la priorite sur les sprites statiques.")]
         [SerializeField] private Animator _animator;
@@ -162,6 +170,94 @@ namespace Nymora.Combat.View
             // ce reset peut entrer en conflit — mais le hover ne s'applique qu'a un combatant
             // immobile (la grille reste statique pendant un hover). Cas tres rare en pratique.
             _sprite.color = Color.white;
+        }
+
+        // ======================================================================
+        // Brique J2 (juice combat) — Hit reaction : flash blanc + squash/recoil du sprite
+        // quand le combatant encaisse des degats. Piloté par CombatantRenderer.DispatchAnimTriggers
+        // (qui detecte deja le delta HP). 100% View, self-contained, safe si _sprite null.
+        //
+        // Le squash s'applique sur le ROOT transform.localScale : l'ancre etant aux pieds
+        // (case iso), une compression Y vers le bas + elargissement X lit comme un encaissement.
+        // Le flash sur-eclaire le sprite (couleur > 1, comme le HighlightTint glow).
+        //
+        // ⚠️ Edge connu (rare) : un hit pile pendant le VFX teleport Ghostra OU un hover peut
+        // se chevaucher (les deux touchent _sprite.color). On capture la couleur courante comme
+        // base et on la restaure en fin de reaction → le cas se resorbe en <0.2s.
+        // ======================================================================
+        private static readonly Color HitFlashColor = new Color(1.9f, 1.9f, 1.9f, 1f);
+        private const float HitFlashUpDuration = 0.05f;     // montee flash + squash (snap rapide)
+        private const float HitRecoverDuration = 0.16f;     // retour a la normale (ease-out)
+        private const float HitSquashMin = 0.06f;           // deformation a faible degat
+        private const float HitSquashMax = 0.16f;           // deformation a gros degat
+
+        private Coroutine _hitReactionCo;
+        private Vector3 _hitBaseScale = Vector3.one;
+        private Color _hitBaseColor = Color.white;
+        private bool _reacting;
+
+        /// <summary>
+        /// J2 — Joue la reaction d'encaissement (flash + squash). `intensity01` (0..1) module
+        /// l'ampleur du squash (gros coup = flinch plus marque) ; calculee par le Renderer
+        /// comme degats / MaxHP. No-op si pas de sprite.
+        /// </summary>
+        public void PlayHitReaction(float intensity01)
+        {
+            if (_sprite == null) return;
+            intensity01 = Mathf.Clamp01(intensity01);
+
+            if (!_reacting)
+            {
+                // 1re reaction : on memorise l'etat de repos a restaurer.
+                _hitBaseScale = transform.localScale;
+                _hitBaseColor = _sprite.color;
+            }
+            else if (_hitReactionCo != null)
+            {
+                // Re-hit pendant une reaction : on coupe et repart de la base propre.
+                StopCoroutine(_hitReactionCo);
+                transform.localScale = _hitBaseScale;
+            }
+
+            _hitReactionCo = StartCoroutine(HitReactionRoutine(intensity01));
+        }
+
+        private IEnumerator HitReactionRoutine(float intensity01)
+        {
+            _reacting = true;
+            float squash = Mathf.Lerp(HitSquashMin, HitSquashMax, intensity01);
+            Vector3 punch = new Vector3(
+                _hitBaseScale.x * (1f + squash),
+                _hitBaseScale.y * (1f - squash),
+                _hitBaseScale.z);
+
+            // Phase 1 : snap vers le punch + flash (temps non-scale, pret pour un futur hit-stop).
+            float t = 0f;
+            while (t < HitFlashUpDuration)
+            {
+                t += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(t / HitFlashUpDuration);
+                transform.localScale = Vector3.Lerp(_hitBaseScale, punch, k);
+                if (_sprite != null) _sprite.color = Color.Lerp(_hitBaseColor, HitFlashColor, k);
+                yield return null;
+            }
+
+            // Phase 2 : retour ease-out vers le repos.
+            t = 0f;
+            while (t < HitRecoverDuration)
+            {
+                t += Time.unscaledDeltaTime;
+                float k = Mathf.Clamp01(t / HitRecoverDuration);
+                float ease = 1f - (1f - k) * (1f - k); // ease-out quad
+                transform.localScale = Vector3.Lerp(punch, _hitBaseScale, ease);
+                if (_sprite != null) _sprite.color = Color.Lerp(HitFlashColor, _hitBaseColor, ease);
+                yield return null;
+            }
+
+            transform.localScale = _hitBaseScale;
+            if (_sprite != null) _sprite.color = _hitBaseColor;
+            _reacting = false;
+            _hitReactionCo = null;
         }
 
         // ======================================================================
@@ -458,6 +554,7 @@ namespace Nymora.Combat.View
             if (_waypointIdx >= _waypointCount)
             {
                 PushAnimMoveSpeed(0f);
+                _dashing = false; // J9 — fin de mouvement : plus de dash
                 return;
             }
 
@@ -489,11 +586,11 @@ namespace Nymora.Combat.View
             }
 
             // Vitesse constante (vs Lerp exponentiel Zeno) : mouvement uniforme = clip walk
-            // lisible. On clamp aussi a un step max pour eviter de teleporter sur une frame
-            // de gros dt (lag spike).
-            transform.position = Vector3.MoveTowards(
-                current, target, MoveSpeedUnitsPerSecond * Time.deltaTime);
+            // lisible. J9 : x DashSpeedMultiplier pendant une charge (dash rapide + trainee).
+            float speed = MoveSpeedUnitsPerSecond * (_dashing ? DashSpeedMultiplier : 1f);
+            transform.position = Vector3.MoveTowards(current, target, speed * Time.deltaTime);
             PushAnimMoveSpeed(_desiredMoveSpeed);
+            if (_dashing) SpawnAfterimageTick();
         }
 
         /// <summary>
@@ -573,6 +670,57 @@ namespace Nymora.Combat.View
         {
             if (!IsAnimatorReady()) return;
             _animator.SetTrigger(ParamDeathHash);
+        }
+
+        /// <summary>
+        /// J9 — Active le DASH pour le mouvement courant (charge) : vitesse x DashSpeedMultiplier +
+        /// trainee spectrale. Se desactive automatiquement en fin de mouvement (Update).
+        /// </summary>
+        public void TriggerDash()
+        {
+            _dashing = true;
+            _afterimageTimer = 0f;
+        }
+
+        // J9 — Spawn periodique d'une image fantome (copie figee du sprite) qui s'estompe -> motion blur.
+        private void SpawnAfterimageTick()
+        {
+            _afterimageTimer -= Time.deltaTime;
+            if (_afterimageTimer > 0f) return;
+            _afterimageTimer = AfterimageInterval;
+            if (_sprite == null || _sprite.sprite == null) return;
+
+            var go = new GameObject("DashAfterimage");
+            var st = _sprite.transform;
+            go.transform.position = st.position;
+            go.transform.rotation = st.rotation;
+            go.transform.localScale = st.lossyScale;
+
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.sprite = _sprite.sprite;
+            sr.flipX = _sprite.flipX;
+            sr.sortingLayerID = _sprite.sortingLayerID;
+            sr.sortingOrder = _sprite.sortingOrder - 1; // juste derriere le perso
+            sr.color = new Color(0.65f, 0.82f, 1f, 0.5f); // teinte spectrale "mini-tp"
+
+            StartCoroutine(FadeAfterimage(sr));
+        }
+
+        private IEnumerator FadeAfterimage(SpriteRenderer sr)
+        {
+            const float life = 0.22f;
+            float e = 0f;
+            Color baseC = sr.color;
+            while (e < life && sr != null)
+            {
+                e += Time.deltaTime;
+                float k = Mathf.Clamp01(1f - e / life);
+                var c = baseC;
+                c.a = baseC.a * k;
+                sr.color = c;
+                yield return null;
+            }
+            if (sr != null) Destroy(sr.gameObject);
         }
 
         private void PushAnimMoveSpeed(float speed)

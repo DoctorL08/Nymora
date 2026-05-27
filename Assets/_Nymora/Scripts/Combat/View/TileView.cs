@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 
 namespace Nymora.Combat.View
@@ -31,6 +32,10 @@ namespace Nymora.Combat.View
         public Sprite FloorSprite => _sprite != null ? _sprite.sprite : null;
 
         private Color _baseColor;
+        // J8 — scale d'origine du sprite floor, capture AVANT l'anim d'apparition. Sert au
+        // highlight (EnsureHighlightSprite) pour ne JAMAIS copier un scale mi-animation (sinon
+        // les previews de portee PM apparaissent rapetissees a vie — regression J8).
+        private Vector3 _floorBaseScale = Vector3.one;
 
         public void Setup(int gx, int gy, Color baseColor)
         {
@@ -45,7 +50,43 @@ namespace Nymora.Combat.View
 
             if (_sprite != null)
             {
+                _floorBaseScale = _sprite.transform.localScale; // capture AVANT l'anim
                 _sprite.color = baseColor;
+                // J8 — la tile SORT DU SOL a l'init : pop + fondu, decale selon la profondeur iso
+                // (gx+gy) pour une vague fluide d'assemblage du plateau. No-op si GO inactif.
+                if (isActiveAndEnabled) StartCoroutine(EmergeRoutine((gx + gy) * 0.012f));
+            }
+        }
+
+        // J8 — Apparition de la tile : invisible le temps du delai, puis pop (back-out) + fondu.
+        private IEnumerator EmergeRoutine(float delay)
+        {
+            if (_sprite == null) yield break;
+            Transform st = _sprite.transform;
+            Vector3 baseScale = st.localScale;
+            Color baseCol = _sprite.color;
+
+            var hidden = baseCol; hidden.a = 0f; _sprite.color = hidden;
+            st.localScale = new Vector3(0f, 0f, baseScale.z);
+
+            float w = 0f;
+            while (w < delay) { w += Time.deltaTime; yield return null; }
+
+            const float dur = 0.30f;
+            float e = 0f;
+            while (e < dur && _sprite != null)
+            {
+                e += Time.deltaTime;
+                float k = Mathf.Clamp01(e / dur);
+                float s = GroundEmergeEase.BackOut(k);
+                st.localScale = new Vector3(baseScale.x * s, baseScale.y * s, baseScale.z);
+                var c = baseCol; c.a = baseCol.a * Mathf.Clamp01(k * 2f); _sprite.color = c;
+                yield return null;
+            }
+            if (_sprite != null)
+            {
+                st.localScale = baseScale;
+                _sprite.color = baseCol;
             }
         }
 
@@ -90,7 +131,7 @@ namespace Nymora.Combat.View
             go.transform.SetParent(transform, false);
             go.transform.localPosition = Vector3.zero;
             go.transform.localRotation = Quaternion.identity;
-            go.transform.localScale = _sprite.transform.localScale;
+            go.transform.localScale = _floorBaseScale; // scale d'origine, pas le scale mi-anim J8
             var sr = go.AddComponent<SpriteRenderer>();
             sr.sprite = _sprite.sprite;
             sr.sortingLayerID = _sprite.sortingLayerID;

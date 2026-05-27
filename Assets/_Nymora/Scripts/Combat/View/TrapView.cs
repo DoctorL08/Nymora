@@ -1,3 +1,4 @@
+using System.Collections;
 using Nymora.Combat.View.Animation;
 using Quantum;
 using UnityEngine;
@@ -81,6 +82,7 @@ namespace Nymora.Combat.View
         private SpriteAnimator[] _overlayAnimators;
         private TrapKind[] _currentKind;
         private int[] _currentOwner;
+        private Coroutine[] _emergeCos; // J8 — anim "sort du sol" par overlay
 
         private void Awake()
         {
@@ -123,6 +125,7 @@ namespace Nymora.Combat.View
             _overlayAnimators = new SpriteAnimator[count];
             _currentKind = new TrapKind[count];
             _currentOwner = new int[count];
+            _emergeCos = new Coroutine[count];
 
             for (int y = 0; y < _height; y++)
             {
@@ -212,6 +215,9 @@ namespace Nymora.Combat.View
                         if (!wasActive)
                         {
                             _overlayGOs[idx].SetActive(true);
+                            // J8 — la rune SORT DU SOL : pop d'apparition (back-out) a l'activation.
+                            if (_emergeCos[idx] != null) StopCoroutine(_emergeCos[idx]);
+                            _emergeCos[idx] = StartCoroutine(EmergeTrap(idx));
                             if (_hideFloorWhenTrapActive)
                             {
                                 var tile = _gridRenderer.GetTileView(x, y);
@@ -235,6 +241,26 @@ namespace Nymora.Combat.View
                     _currentOwner[idx] = owner;
                 }
             }
+        }
+
+        // J8 — Pop "sort du sol" de la rune a l'apparition (scale uniforme 0 -> overshoot -> plein).
+        private IEnumerator EmergeTrap(int idx)
+        {
+            var go = _overlayGOs[idx];
+            if (go == null) yield break;
+            Transform t = go.transform;
+            float full = _overlayScale;
+            const float dur = 0.28f;
+            float e = 0f;
+            while (e < dur && go != null && go.activeSelf)
+            {
+                e += Time.deltaTime;
+                float k = Mathf.Clamp01(e / dur);
+                float s = GroundEmergeEase.BackOut(k);
+                t.localScale = new Vector3(full * s, full * s, 1f);
+                yield return null;
+            }
+            if (go != null) t.localScale = new Vector3(full, full, 1f);
         }
 
         private Color ColorForKind(TrapKind kind)
