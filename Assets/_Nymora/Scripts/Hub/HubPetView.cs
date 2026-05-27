@@ -20,8 +20,6 @@ namespace Nymora.Hub
         private const float FollowSpeed = 4.5f;
         // Au-delà de ce reste de distance, le familier est considéré "en marche" (anim walk).
         private const float WalkThreshold = 0.05f;
-        // Réduction de taille du familier vs sa taille native (compagnon discret à côté du perso).
-        private const float SizeFactor = 0.65f;
 
         private SpriteRenderer _sr;
         private SceneSpriteAnimator _anim;
@@ -41,8 +39,7 @@ namespace Nymora.Hub
             if (_anim == null) _anim = gameObject.GetComponent<SceneSpriteAnimator>();
             if (_anim == null) _anim = gameObject.AddComponent<SceneSpriteAnimator>();
 
-            float scale = (def != null && def.VisualScale > 0f ? def.VisualScale : 1f) * SizeFactor;
-            transform.localScale = new Vector3(scale, scale, 1f);
+            ApplyScale();
             transform.position = startWorld;
             _initialized = true;
 
@@ -56,15 +53,21 @@ namespace Nymora.Hub
         /// anim/facing. `useNE`/`flipX` = facing du propriétaire ; `ownerSortingOrder` sert à le
         /// trier juste devant l'avatar (il est décalé vers la caméra).
         /// </summary>
-        public void Drive(Vector3 anchorWorld, bool useNE, bool flipX, int ownerSortingOrder, float dt)
+        public void Drive(Vector3 anchorWorld, bool useNE, bool flipX, int ownerSortingOrder, float dt,
+                          bool snap = false)
         {
             if (!_initialized || _def == null) return;
 
+            // Taille relue chaque frame -> le curseur du tuner s'applique en direct.
+            ApplyScale();
+
             Vector3 cur = transform.position;
             float remaining = Vector3.Distance(cur, anchorWorld);
-            transform.position = Vector3.MoveTowards(cur, anchorWorld, FollowSpeed * dt);
+            // snap = pivot sur place de l'avatar -> on téléporte le familier (pas de "marche" vers
+            // l'autre côté). Sinon il rejoint l'ancre en glissant (effet de traîne).
+            transform.position = snap ? anchorWorld : Vector3.MoveTowards(cur, anchorWorld, FollowSpeed * dt);
 
-            bool walking = remaining > WalkThreshold;
+            bool walking = !snap && remaining > WalkThreshold;
             // Sélection des frames selon walk/idle + direction (NW/SW = mirror des NE/SE).
             Sprite[] frames = walking
                 ? (useNE ? _def.WalkFramesNE : _def.WalkFrames)
@@ -85,6 +88,14 @@ namespace Nymora.Hub
                 // Au premier plan (devant les pieds, vers la caméra) -> rendu devant l'avatar.
                 _sr.sortingOrder = ownerSortingOrder + 1;
             }
+        }
+
+        // Échelle = taille native du familier × facteur de taille global (PetPlacementConfig).
+        private void ApplyScale()
+        {
+            float sizeFactor = PetPlacementConfig.Instance.SizeFactor;
+            float scale = (_def != null && _def.VisualScale > 0f ? _def.VisualScale : 1f) * sizeFactor;
+            transform.localScale = new Vector3(scale, scale, 1f);
         }
 
         private void OnDestroy()

@@ -56,6 +56,9 @@ namespace Nymora.Hub
         // flipX selon delta de mouvement. NW = NE mirror, SW = SE mirror.
         private enum HubFacing { SE, NE, SW, NW }
         private HubFacing _currentFacing = HubFacing.SE;
+        // Index de la direction courante (0=SE, 1=NE, 2=SW, 3=NW). Utilisé par le tuner de
+        // placement du familier pour surligner le bloc actif. Outil dev uniquement.
+        public int CurrentFacingIndex => (int)_currentFacing;
         private NymoraClassDefinition _currentClassDef;
         // 5.5.e — skin equipe pour la classe courante (local only). Si non-null, l'avatar joue
         // SES frames au lieu de celles de _currentClassDef.
@@ -64,11 +67,15 @@ namespace Nymora.Hub
         // 5.10 (B4) — familier équipé + sa vue (suiveur). Résolu via PetCatalog (Resources).
         private PetDefinition _currentPetDef;
         private HubPetView _petView;
+        // Dernier facing avec lequel le familier a été piloté. Sert à détecter un pivot sur place :
+        // si le facing change alors que l'avatar est à l'arrêt, le familier se TÉLÉPORTE à sa
+        // nouvelle ancre (sinon il "marchait" pour aller de l'autre côté). En marche -> traîne.
+        private int _petLastFacingIndex = int.MinValue;
         private static PetCatalog _petCatalog;
         private static bool _petCatalogLoaded;
-        // Ancre du familier près de l'avatar (position d'origine validée) : légèrement vers la
-        // caméra et à droite. Rendu devant (ownerOrder+1 dans HubPetView).
-        private static readonly Vector3 PetAnchorOffset = new Vector3(0.42f, -0.12f, 0f);
+        // Ancre du familier près de l'avatar : offset face (SE/SW) vs dos (NE/NW) lu dans
+        // PetPlacementConfig (réglable en Play Mode via HubPetPlacementTuner). Rendu devant
+        // (ownerOrder+1 dans HubPetView).
         private int _prevGridXForFacing = int.MinValue;
         private int _prevGridYForFacing = int.MinValue;
 
@@ -678,19 +685,29 @@ namespace Nymora.Hub
                 var go = new GameObject($"HubPet_{_currentPetDef.CosmeticId}");
                 _petView = go.AddComponent<HubPetView>();
             }
-            _petView.Init(_currentPetDef, _hubSortingLayer, transform.position + PetAnchorOffset);
+            Vector2 startOffset = PetPlacementConfig.Instance.OffsetForFacing((int)_currentFacing);
+            _petView.Init(_currentPetDef, _hubSortingLayer,
+                          transform.position + new Vector3(startOffset.x, startOffset.y, 0f));
         }
 
         /// <summary>5.10 (B4) — pousse la position/anim du familier chaque frame (suit l'avatar).</summary>
         private void DrivePet()
         {
             if (_petView == null) return;
-            Vector3 anchor = transform.position + PetAnchorOffset
-                             + new Vector3(0f, _currentPetDef != null ? _currentPetDef.VisualYOffset : 0f, 0f);
             bool useNE = (_currentFacing == HubFacing.NE || _currentFacing == HubFacing.NW);
             bool flipX = (_currentFacing == HubFacing.SW || _currentFacing == HubFacing.NW);
+            // Offset par direction (SE/SW/NE/NW), réglable via HubPetPlacementTuner, + décalage Y
+            // propre au familier.
+            Vector2 off = PetPlacementConfig.Instance.OffsetForFacing((int)_currentFacing);
+            Vector3 anchor = transform.position + new Vector3(off.x, off.y, 0f)
+                             + new Vector3(0f, _currentPetDef != null ? _currentPetDef.VisualYOffset : 0f, 0f);
             int ownerOrder = _sr != null ? _sr.sortingOrder : _baseSortingOrder;
-            _petView.Drive(anchor, useNE, flipX, ownerOrder, Time.deltaTime);
+            // Pivot sur place (facing change alors qu'on ne marche pas) -> snap instantané.
+            int facingIndex = (int)_currentFacing;
+            bool snap = !_isWalking && _petLastFacingIndex != int.MinValue
+                        && _petLastFacingIndex != facingIndex;
+            _petLastFacingIndex = facingIndex;
+            _petView.Drive(anchor, useNE, flipX, ownerOrder, Time.deltaTime, snap);
         }
 
         /// <summary>
