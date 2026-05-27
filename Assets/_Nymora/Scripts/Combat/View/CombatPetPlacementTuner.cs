@@ -1,4 +1,6 @@
-#if UNITY_EDITOR || DEVELOPMENT_BUILD
+// Outil dev : Éditeur uniquement (F9 retiré des builds). Re-régler le placement via Play Mode
+// dans l'éditeur ; les valeurs persistent dans PetPlacementConfig.asset.
+#if UNITY_EDITOR
 using Nymora.Core.ScriptableObjects;
 using UnityEngine;
 using UnityEngine.SceneManagement;
