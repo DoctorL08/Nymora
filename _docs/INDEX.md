@@ -13,6 +13,8 @@ Ces 7 fichiers contiennent **tout le contexte du projet**. Upload-les dans cet o
 | 4 | **03_GDD_Features.md** | 🎮 14 features (auth, profil, deck builder, chat, shop, BP) | 37 KB |
 | 5 | **04_Roadmap_14_mois.md** | 🗺️ Roadmap V1 (vue technique haut niveau, 7 phases) | 30 KB |
 | 6 | **05_Roadmap_V2_Novice.md** | 🧱 Roadmap V2 — **WORKFLOW ACTIF** brique par brique | 35 KB |
+| 7 | **07_PLAN_COMMUNICATION.md** | 🐯 La Doc du Seigneur de la Seigneurie — comm, réseaux, Kickstarter, plan hebdo | — |
+| 8 | **08_KICKSTARTER_A_Z.md** | 🏰 Le Grimoire du Kickstarter — compte, objectif, page, trailer, paliers, légal, jour J, fulfillment | — |
 
 **Total : ~255 KB** — léger, pas de risque de saturer le contexte.
 
