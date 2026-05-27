@@ -290,6 +290,13 @@ namespace Nymora.Hub
             ApplyClassVisual();
             RefreshEquippedSkin();
 
+            // 5.10 (B5) — applique le familier déjà sync via NetPetId. Indispensable pour les
+            // avatars DISTANTS : OnPetIdChanged (OnChangedRender) ne se déclenche qu'au CHANGEMENT,
+            // pas à l'arrivée -> sans ça l'observateur ne voit jamais le familier d'un joueur déjà
+            // équipé. Local : NetPetId vide au spawn -> no-op, RefreshEquippedSkin le posera juste après.
+            _currentPetDef = FindPetDef(NetPetId.ToString());
+            ApplyPetVisual();
+
             // C1 — inscrit l'avatar au registre (local + distants) pour le routage des bulles de chat.
             if (!All.Contains(this)) All.Add(this);
         }
