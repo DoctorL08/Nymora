@@ -3,6 +3,24 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
+**SESSION 27 mai 2026 (quinquies) — 🎭 SKIN ASHEN SOVEREIGN EN COMBAT (stages + adversaire) + 🐾 FAMILIERS (boutique/équip/hub) :** clôture du reliquat 5.10 (skin en combat) + 1er chantier familiers. **100% View côté combat (RuntimePlayer SkinId/PetId VIEW-ONLY) → aucun bump `CombatRulesVersion`.** Backend familiers **déployé prod**. Client Unity commité + poussé GitHub (fin de session).
+
+- **CHANTIER A — Skin Ashen Sovereign en COMBAT (reliquat 5.10 clos)** :
+  - **A1** : 6 `.aseprite` Ashen (stage0/1/2 × NE/SE) importés dans `Art/Cosmetics/AshenSovereign/sources/` (`.meta` écrits à la main, calés sur le Soulrender : **PPU 96 + pivot custom 0.5/0.1**, cf piège SerializedObject AsepriteImporter → [[project-aseprite-combat-import-calibration]]). Tool `BuildAshenSovereignCombatAnimator` (Nymora > Setup) → 6 AnimatorController dans `Animations/Cosmetics/AshenSovereign/` + câblés sur `CosmeticSkinDefinition` (nouveaux champs `StageXControllerYY` + offsets combat).
+  - **A2** : `CombatantView.ApplySkin()` swappe les 6 controllers de classe ; `CosmeticSkinCatalog` (Resources) résout cosmeticId→def ; `CombatCosmeticsContext` (Core statique) = pont hub→combat (le combat ne référence PAS le réseau). Tool `BuildCosmeticSkinCatalogTool`. Skin du joueur LOCAL appliqué au spawn.
+  - **A3** : skin de l'**adversaire** aussi → `RuntimePlayer.SkinId` (+`PetId`) sync via Quantum `AddPlayer` (posé par les bootstraps IA/Casual depuis le contexte), lu par `CombatantRenderer.ResolveSkinFor(combatant, frame)` via `f.GetPlayerData(playerRef)` pour TOUS les combattants. **Validé en jeu (incl. fix axe Y via le bon pivot d'import).**
+- **CHANTIER B — Familiers (5 premiers, type `pet`)** :
+  - **B1 ✅ PROD** : catalogue backend (`src/shop/catalog.ts`) + type `'pet'` + 5 familiers en Nymos (Cornecroc/Grumon 1500 common · Lentille/Voilard 2500 rare · Ossivore 4000 epic). Pas de classLock (un seul équipé). Commit `f4274d5` poussé + `deploy.sh` (no migration). Validé prod (catalogue compilé).
+  - **B2** : 20 PNG slicés (idle 6f / walk 8f, 64×64, pivot bas-centre, PPU 96) via `BuildPetsTool` → 5 `PetDefinition` + `PetCatalog` (Resources). SO `PetDefinition`/`PetCatalog` (Core).
+  - **B3** : boutique catégorie **Familiers** (`HubMenuShop`) + onglet inventaire **Familiers** (`HubMenuCosmetics`, existait déjà) ; vignette = 1re frame idle du PetCatalog ; équiper/déséquiper générique.
+  - **B4** : familier équipé **suit l'avatar dans le hub** → `HubPetView` (suiveur trailing, idle/walk + facing, taille ×0.65) + `[Networked] NetPetId` sur `HubAvatar` (résolu dans `RefreshEquippedSkinAsync`, sync remote comme `NetSkinId`). **⚠️ Regen Fusion à faire par Lorenzo (reimport prefab HubAvatar + rebuild standalone) pour le test multi.** Écrit aussi `CombatCosmeticsContext.LocalPetId` (pour B5).
+- **🔖 RELIQUAT (prochaine session)** : **placement du familier hub quand le perso est de DOS (NE/NW)** — la position de face (SE) est validée (« parfait »), mais de dos ça tombe mal. Tentative de miroir (offset X inversé + flip sprite selon useNE) **rejetée par Lorenzo** → revenue à l'offset fixe `(0.42,-0.12)` + tri devant + flip qui suit le perso. À reprendre proprement. Knobs : `PetAnchorOffset` (HubAvatar), `SizeFactor` + tri (HubPetView).
+- **🔜 RESTE B5 (prochaine session)** : familier en **COMBAT** — sur la MÊME case que le combattant (décaler légèrement perso ET familier en x/y pour qu'ils tiennent ensemble sur la case). `RuntimePlayer.PetId` est déjà transmis (local+adverse) ; reste à spawner la vue côté `CombatantRenderer`.
+- **À RETENIR** : (1) `QuantumMap.asset` + TMP SDF (Anton/Bangers) = dérive non liée, **non commités**. (2) catalogue skins/pets en `Resources/cosmetics/` (Resources.Load insensible à la casse). (3) relancer `Build Cosmetic Skin Catalog` / `Build Pets` après ajout d'un skin/familier.
+- **PROCHAIN STEP** : B5 (familier en combat) + reliquat placement familier de dos.
+
+---
+
 **SESSION 27 mai 2026 (quater) — ✨ CHANTIER JUICE COMBAT + 🎬 ANIMS (TP / SORT-DU-SOL / CHARGE) + 🎯 FIX PERSPECTIVE IA :** grosse passe de game feel. **100% View → aucun bump `CombatRulesVersion`.** Tout **commité en LOCAL** (push GitHub réservé à la fin de session). Aucune scène/prefab modifié (scripts seuls).
 
 - **J1 — CameraShaker central** (`Combat/View/CameraShaker.cs`) : screen-shake réutilisable `CameraShaker.Instance?.Shake(amplitude, durée, freq)`, auto-instancié en scène « Combat », compatible clamp/pan caméra (`DefaultExecutionOrder(-200)` : offset de rendu retiré avant l'Update de `CameraController`, réappliqué en LateUpdate). Le shake des signatures passe désormais par lui (ancienne coroutine maison de `FloatingTextManager` supprimée).

@@ -244,6 +244,9 @@ namespace Nymora.Combat.Bootstrap
                 PlayerNickname = "Lorenzo",
                 ClassId = ResolveLorenzoClassId(),
                 SpellIdValues = ResolveLorenzoSpellIdValues(),
+                // 5.10 (A3) — skin/familier équipé (résolu côté hub). Le bot (slot 1) n'en a pas.
+                SkinId = Nymora.Core.Data.CombatCosmeticsContext.LocalSkinId,
+                PetId = Nymora.Core.Data.CombatCosmeticsContext.LocalPetId,
             };
             Runner.Game.AddPlayer(0, lorenzo);
             Log($"AddPlayer slot 0 (Lorenzo) class={lorenzo.ClassId} deck=[{string.Join(",", lorenzo.SpellIdValues)}]");

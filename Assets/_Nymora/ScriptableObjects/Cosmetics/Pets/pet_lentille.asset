@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1f1b634b9576244683a773b828bd85c, type: 3}
+  m_Name: pet_lentille
+  m_EditorClassIdentifier: 
+  CosmeticId: pet_lentille
+  DisplayName: Lentille
+  IdleFrames:
+  - {fileID: 746412582, guid: eb176d92efe501a48ad7a6f62d2ef0ad, type: 3}
+  - {fileID: 1672281181, guid: eb176d92efe501a48ad7a6f62d2ef0ad, type: 3}
+  - {fileID: 205198890, guid: eb176d92efe501a48ad7a6f62d2ef0ad, type: 3}
+  - {fileID: -2015903294, guid: eb176d92efe501a48ad7a6f62d2ef0ad, type: 3}
+  - {fileID: 1176603979, guid: eb176d92efe501a48ad7a6f62d2ef0ad, type: 3}
+  - {fileID: 876706267, guid: eb176d92efe501a48ad7a6f62d2ef0ad, type: 3}
+  IdleFramesNE:
+  - {fileID: -1501314001, guid: 46b4109a21d3c8b46b75bf48d38d0d7f, type: 3}
+  - {fileID: 1332287438, guid: 46b4109a21d3c8b46b75bf48d38d0d7f, type: 3}
+  - {fileID: 1254875658, guid: 46b4109a21d3c8b46b75bf48d38d0d7f, type: 3}
+  - {fileID: 706152182, guid: 46b4109a21d3c8b46b75bf48d38d0d7f, type: 3}
+  - {fileID: 1929921262, guid: 46b4109a21d3c8b46b75bf48d38d0d7f, type: 3}
+  - {fileID: 547209818, guid: 46b4109a21d3c8b46b75bf48d38d0d7f, type: 3}
+  IdleFps: 6
+  WalkFrames:
+  - {fileID: 2002025885, guid: 3dac2eb03eb37a542947309cbed1cc5f, type: 3}
+  - {fileID: 817177872, guid: 3dac2eb03eb37a542947309cbed1cc5f, type: 3}
+  - {fileID: 319469309, guid: 3dac2eb03eb37a542947309cbed1cc5f, type: 3}
+  - {fileID: -1259028051, guid: 3dac2eb03eb37a542947309cbed1cc5f, type: 3}
+  - {fileID: -1455523906, guid: 3dac2eb03eb37a542947309cbed1cc5f, type: 3}
+  - {fileID: 702971868, guid: 3dac2eb03eb37a542947309cbed1cc5f, type: 3}
+  - {fileID: 1071836252, guid: 3dac2eb03eb37a542947309cbed1cc5f, type: 3}
+  - {fileID: 1648168284, guid: 3dac2eb03eb37a542947309cbed1cc5f, type: 3}
+  WalkFramesNE:
+  - {fileID: -655109554, guid: 89bb3dea48b310d4cb3eb647ae416e98, type: 3}
+  - {fileID: 928126638, guid: 89bb3dea48b310d4cb3eb647ae416e98, type: 3}
+  - {fileID: -1295420514, guid: 89bb3dea48b310d4cb3eb647ae416e98, type: 3}
+  - {fileID: 43837043, guid: 89bb3dea48b310d4cb3eb647ae416e98, type: 3}
+  - {fileID: 1595243951, guid: 89bb3dea48b310d4cb3eb647ae416e98, type: 3}
+  - {fileID: -923246225, guid: 89bb3dea48b310d4cb3eb647ae416e98, type: 3}
+  - {fileID: -337441383, guid: 89bb3dea48b310d4cb3eb647ae416e98, type: 3}
+  - {fileID: -1279821600, guid: 89bb3dea48b310d4cb3eb647ae416e98, type: 3}
+  WalkFps: 8
+  VisualScale: 1
+  VisualYOffset: 0

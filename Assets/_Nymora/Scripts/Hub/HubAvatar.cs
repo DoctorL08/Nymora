@@ -61,6 +61,14 @@ namespace Nymora.Hub
         // SES frames au lieu de celles de _currentClassDef.
         private CosmeticSkinDefinition _currentSkinDef;
         private NymoraApiClient _skinApi;
+        // 5.10 (B4) — familier équipé + sa vue (suiveur). Résolu via PetCatalog (Resources).
+        private PetDefinition _currentPetDef;
+        private HubPetView _petView;
+        private static PetCatalog _petCatalog;
+        private static bool _petCatalogLoaded;
+        // Ancre du familier près de l'avatar (position d'origine validée) : légèrement vers la
+        // caméra et à droite. Rendu devant (ownerOrder+1 dans HubPetView).
+        private static readonly Vector3 PetAnchorOffset = new Vector3(0.42f, -0.12f, 0f);
         private int _prevGridXForFacing = int.MinValue;
         private int _prevGridYForFacing = int.MinValue;
 
@@ -103,6 +111,12 @@ namespace Nymora.Hub
         // AJOUT DE CE [Networked] FIELD => regen prefab + scene + rebuild standalone obligatoire
         // (cf feedback-networked-field-regen-protocol, sinon InvalidOperationException Invalid Length).
         [Networked, OnChangedRender(nameof(OnSkinIdChanged))] public NetworkString<_64> NetSkinId { get; set; }
+
+        // 5.10 (B4) — Familier équipé (cosmeticId backend), sync entre clients pour que les remotes
+        // voient le familier accompagner l'avatar. "" = aucun familier. _64 (ids courts type "pet_*").
+        // AJOUT DE CE [Networked] FIELD => regen prefab + scene + rebuild standalone obligatoire
+        // (cf feedback-networked-field-regen-protocol, sinon InvalidOperationException Invalid Length).
+        [Networked, OnChangedRender(nameof(OnPetIdChanged))] public NetworkString<_64> NetPetId { get; set; }
 
         // Titre cosmetique equipe (texte deja "propre", ex "l'Inebranlable"), sync entre clients
         // pour la 3e ligne du HubAvatarHoverTooltip (clan / pseudo / titre). "" = aucun titre.
@@ -493,6 +507,9 @@ namespace Nymora.Hub
                 SyncClanNameIfChanged();
             }
 
+            // 5.10 (B4) — le familier suit l'avatar (indépendant de la classe).
+            DrivePet();
+
             if (_currentClassDef == null) return;
             Vector3 curPos = transform.position;
             if (Vector3.SqrMagnitude(curPos - _lastTrackedWorldPos) > _moveSqrEpsilon)
@@ -524,6 +541,18 @@ namespace Nymora.Hub
             if (Object != null && Object.HasStateAuthority) return;
             _currentSkinDef = FindSkinDef(NetSkinId.ToString());
             ApplyClassVisual();
+        }
+
+        /// <summary>
+        /// 5.10 (B4) — OnChanged callback NetPetId. Côté remote : résout le familier depuis l'id
+        /// réseau et (dé)spawn la vue suiveuse. Skip si State Authority (déjà appliqué dans
+        /// RefreshEquippedSkinAsync). FindPetDef("") -> null -> familier retiré.
+        /// </summary>
+        private void OnPetIdChanged()
+        {
+            if (Object != null && Object.HasStateAuthority) return;
+            _currentPetDef = FindPetDef(NetPetId.ToString());
+            ApplyPetVisual();
         }
 
         /// <summary>
@@ -570,6 +599,7 @@ namespace Nymora.Hub
             string equippedId = "";
             string equippedTitle = "";
             string equippedBanner = "";
+            string equippedPet = "";
             if (res.Data.items != null)
             {
                 foreach (var it in res.Data.items)
@@ -583,6 +613,9 @@ namespace Nymora.Hub
                     // Banniere : pas de class-lock, un seul equipe a la fois (cosmeticId brut = cle asset).
                     else if (it.type == "banner" && string.IsNullOrEmpty(equippedBanner))
                         equippedBanner = it.id;
+                    // 5.10 (B4) — Familier : pas de class-lock, un seul equipe (cosmeticId = cle asset).
+                    else if (it.type == "pet" && string.IsNullOrEmpty(equippedPet))
+                        equippedPet = it.id;
                 }
             }
             // 5.5.f — push reseau (les remotes recoivent OnSkinIdChanged) + applique en local.
@@ -593,9 +626,20 @@ namespace Nymora.Hub
                 // Sync l'emblème de bannière : les remotes le voient désormais sur le tooltip
                 // (avant c'était un static local-only invisible pour les autres).
                 NetBanner = equippedBanner;
+                NetPetId = equippedPet; // 5.10 (B4) — familier sync aux remotes
             }
             _currentSkinDef = FindSkinDef(equippedId);
             ApplyClassVisual();
+
+            // 5.10 (B4) — familier équipé : résout + (dé)spawn la vue suiveuse.
+            _currentPetDef = FindPetDef(equippedPet);
+            ApplyPetVisual();
+            // Pont hub → combat : familier local pour l'affichage en combat (B5).
+            Nymora.Core.Data.CombatCosmeticsContext.LocalPetId = equippedPet;
+
+            // 5.10 (A2) — Pont hub → combat : mémorise le skin équipé local pour que le combat
+            // (qui ne référence pas le réseau) l'applique au combattant local au spawn.
+            Nymora.Core.Data.CombatCosmeticsContext.LocalSkinId = equippedId;
         }
 
         private CosmeticSkinDefinition FindSkinDef(string cosmeticId)
@@ -604,6 +648,49 @@ namespace Nymora.Hub
             foreach (var s in _skinDefinitions)
                 if (s != null && s.CosmeticId == cosmeticId) return s;
             return null;
+        }
+
+        /// <summary>5.10 (B4) — résout un familier via le PetCatalog (Resources, chargé une fois).</summary>
+        private static PetDefinition FindPetDef(string cosmeticId)
+        {
+            if (string.IsNullOrEmpty(cosmeticId)) return null;
+            if (!_petCatalogLoaded)
+            {
+                _petCatalog = Resources.Load<PetCatalog>("Cosmetics/PetCatalog");
+                _petCatalogLoaded = true;
+            }
+            return _petCatalog != null ? _petCatalog.Resolve(cosmeticId) : null;
+        }
+
+        /// <summary>
+        /// 5.10 (B4) — Crée/met à jour ou retire la vue du familier selon _currentPetDef.
+        /// La vue est un GameObject autonome (non parenté) piloté dans Update via DrivePet.
+        /// </summary>
+        private void ApplyPetVisual()
+        {
+            if (_currentPetDef == null)
+            {
+                if (_petView != null) { Destroy(_petView.gameObject); _petView = null; }
+                return;
+            }
+            if (_petView == null)
+            {
+                var go = new GameObject($"HubPet_{_currentPetDef.CosmeticId}");
+                _petView = go.AddComponent<HubPetView>();
+            }
+            _petView.Init(_currentPetDef, _hubSortingLayer, transform.position + PetAnchorOffset);
+        }
+
+        /// <summary>5.10 (B4) — pousse la position/anim du familier chaque frame (suit l'avatar).</summary>
+        private void DrivePet()
+        {
+            if (_petView == null) return;
+            Vector3 anchor = transform.position + PetAnchorOffset
+                             + new Vector3(0f, _currentPetDef != null ? _currentPetDef.VisualYOffset : 0f, 0f);
+            bool useNE = (_currentFacing == HubFacing.NE || _currentFacing == HubFacing.NW);
+            bool flipX = (_currentFacing == HubFacing.SW || _currentFacing == HubFacing.NW);
+            int ownerOrder = _sr != null ? _sr.sortingOrder : _baseSortingOrder;
+            _petView.Drive(anchor, useNE, flipX, ownerOrder, Time.deltaTime);
         }
 
         /// <summary>
@@ -689,6 +776,8 @@ namespace Nymora.Hub
             if (HubClanPanel.Instance != null) HubClanPanel.Instance.OnClanStateChanged -= PushClanName;
             All.Remove(this);
             if (Local == this) Local = null;
+            // 5.10 (B4) — détruit la vue du familier (GameObject autonome non parenté).
+            if (_petView != null) { Destroy(_petView.gameObject); _petView = null; }
         }
 
         /// <summary>

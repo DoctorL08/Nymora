@@ -312,6 +312,9 @@ namespace Nymora.Combat.Bootstrap
                 PlayerNickname = playerName,
                 ClassId = ResolveClassIdForLocalPlayer(),
                 SpellIdValues = ResolveSpellIdValuesForLocalPlayer(),
+                // 5.10 (A3) — cosmétiques équipés (résolus côté hub), sync à l'adversaire via Quantum.
+                SkinId = Nymora.Core.Data.CombatCosmeticsContext.LocalSkinId,
+                PetId = Nymora.Core.Data.CombatCosmeticsContext.LocalPetId,
             };
             // Le 1er argument de Game.AddPlayer est le "localPlayerSlot" : index local utilise
             // uniquement quand un meme client controle plusieurs players (split-screen). En 1v1

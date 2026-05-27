@@ -17,5 +17,14 @@
     {
         public NymoraClass ClassId;
         public int[] SpellIdValues = new int[6];
+
+        // 5.10 (A3) — Cosmétiques équipés du joueur, transmis à TOUS les clients via Quantum
+        // AddPlayer (comme ClassId). VIEW-ONLY : jamais lus par la simulation → aucun impact
+        // déterministe, pas de bump CombatRulesVersion. Le CombatantRenderer lit ces champs par
+        // f.GetPlayerData(slot) pour appliquer le skin/familier de chaque combattant (local + adverse).
+        //   SkinId : cosmeticId du skin de combat (ex "skin_soulrender_ashen_sovereign"), "" = aucun.
+        //   PetId  : cosmeticId du familier équipé (B5), "" = aucun.
+        public string SkinId = "";
+        public string PetId = "";
     }
 }

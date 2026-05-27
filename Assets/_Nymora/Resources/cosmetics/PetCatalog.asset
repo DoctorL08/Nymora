@@ -1,0 +1,20 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bfc54bcd821cec44981a1e0b683371f8, type: 3}
+  m_Name: PetCatalog
+  m_EditorClassIdentifier: 
+  Pets:
+  - {fileID: 11400000, guid: c3e454313ac39124d8c09ccc5c8fa099, type: 2}
+  - {fileID: 11400000, guid: 4108705a9a23f3440971f3449f23f625, type: 2}
+  - {fileID: 11400000, guid: aa0ba4dec8c2c5041a3910fa8209b522, type: 2}
+  - {fileID: 11400000, guid: 563baff7c81f170449b832625168a17b, type: 2}
+  - {fileID: 11400000, guid: 7b3ee8c6e42406944815bcf974325ad7, type: 2}

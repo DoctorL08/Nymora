@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Nymora.Core.Audio;
+using Nymora.Core.ScriptableObjects;
 using Nymora.Network.Backend;
 using TMPro;
 using UnityEngine;
@@ -32,8 +33,8 @@ namespace Nymora.Hub.Menu
         private static readonly Vector2 CellSize = new Vector2(264f, 380f);
 
         // Ordre + libellés des catégories (clé type backend).
-        private static readonly string[] CatKeys = { "skin", "title", "banner", "emote" };
-        private static readonly string[] CatLabels = { "Skins", "Titres", "Bannières", "Emotes" };
+        private static readonly string[] CatKeys = { "skin", "pet", "title", "banner", "emote" };
+        private static readonly string[] CatLabels = { "Skins", "Familiers", "Titres", "Bannières", "Emotes" };
 
         private RectTransform _listRoot;
         private TextMeshProUGUI _status;
@@ -42,6 +43,23 @@ namespace Nymora.Hub.Menu
         public HubMenuShop(HubMenuTheme t, HubMenuUIFactory f, NymoraApiClient api)
         {
             _t = t; _f = f; _api = api;
+        }
+
+        // Familiers : preview = 1re frame idle SE de la PetDefinition (pas de sprite Resources
+        // dédié). PetCatalog chargé une fois depuis Resources (partagé hub/combat).
+        private static PetCatalog _petCatalog;
+        private static bool _petCatalogLoaded;
+
+        private static Sprite PetPreviewSprite(string cosmeticId)
+        {
+            if (!_petCatalogLoaded)
+            {
+                _petCatalog = Resources.Load<PetCatalog>("Cosmetics/PetCatalog");
+                _petCatalogLoaded = true;
+            }
+            var def = _petCatalog != null ? _petCatalog.Resolve(cosmeticId) : null;
+            if (def != null && def.IdleFrames != null && def.IdleFrames.Length > 0) return def.IdleFrames[0];
+            return null;
         }
 
         public void Build(RectTransform parent)
@@ -117,6 +135,8 @@ namespace Nymora.Hub.Menu
             prt.anchorMin = new Vector2(0f, 1f); prt.anchorMax = new Vector2(1f, 1f); prt.pivot = new Vector2(0.5f, 1f);
             prt.offsetMin = new Vector2(16f, -236f); prt.offsetMax = new Vector2(-16f, -16f);
             var sprite = Resources.Load<Sprite>(item.previewKey);
+            // Familiers : pas de sprite Resources dédié -> 1re frame idle SE du PetCatalog.
+            if (sprite == null && item.type == "pet") sprite = PetPreviewSprite(item.id);
             if (sprite != null) { prev.sprite = sprite; prev.color = Color.white; }
             else
             {

@@ -51,3 +51,12 @@ MonoBehaviour:
   WalkFps: 12
   HubVisualScale: 1
   HubVisualYOffset: 0.5
+  Stage0ControllerSE: {fileID: 9100000, guid: 4378a90b15e2c7b4c9607901a2f79464, type: 2}
+  Stage1ControllerSE: {fileID: 9100000, guid: a4a7ac873e3f9ba43a8b130edb1924df, type: 2}
+  Stage2ControllerSE: {fileID: 9100000, guid: a949df57d34e80d40a93a2c20c5bbdd2, type: 2}
+  Stage0ControllerNE: {fileID: 9100000, guid: f4a50aaf8a1d00a4f8a0f9384c1ce888, type: 2}
+  Stage1ControllerNE: {fileID: 9100000, guid: 5eb85ff2a065bbc4d981661ce51460c0, type: 2}
+  Stage2ControllerNE: {fileID: 9100000, guid: bfcff822e36ba434f8b76267f2634a00, type: 2}
+  Stage0CombatYOffset: 0
+  Stage1CombatYOffset: 0
+  Stage2CombatYOffset: 0

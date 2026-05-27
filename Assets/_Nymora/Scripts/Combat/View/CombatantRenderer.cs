@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Nymora.Combat.Grid;
+using Nymora.Core.ScriptableObjects;
 using Quantum;
 using UnityEngine;
 using SpellCategory = Nymora.Core.Enums.SpellCategory;
@@ -60,6 +61,27 @@ namespace Nymora.Combat.View
         private Vector3 _centerOffset;
         private bool _gridReady;
 
+        // 5.10 (A2) — Catalogue des skins combat, chargé depuis Resources (pas de câblage de
+        // scène, marche dans les 3 scènes combat + build). Résout cosmeticId -> CosmeticSkinDefinition.
+        private const string SkinCatalogResourcePath = "Cosmetics/CosmeticSkinCatalog";
+        private CosmeticSkinCatalog _skinCatalog;
+        private bool _skinCatalogLoaded;
+
+        private CosmeticSkinCatalog SkinCatalog
+        {
+            get
+            {
+                if (!_skinCatalogLoaded)
+                {
+                    _skinCatalog = Resources.Load<CosmeticSkinCatalog>(SkinCatalogResourcePath);
+                    _skinCatalogLoaded = true;
+                    if (_skinCatalog == null)
+                        Debug.LogWarning($"[Nymora.CombatantRenderer] CosmeticSkinCatalog introuvable (Resources/{SkinCatalogResourcePath}) — skins combat désactivés.");
+                }
+                return _skinCatalog;
+            }
+        }
+
         // 2.16.c.vi — Buffer reutilise pour computer le path Manhattan (X puis Y) entre
         // 2 GridX/Y consecutifs d'un combatant. Capacite 16 = max ~10 cases + marge. Si
         // un move depasse (peu probable), le code re-alloue un nouveau buffer.
@@ -113,7 +135,7 @@ namespace Nymora.Combat.View
             var filter = frame.Filter<Combatant>();
             while (filter.Next(out EntityRef entity, out Combatant combatant))
             {
-                SpawnView(entity, combatant);
+                SpawnView(entity, combatant, frame);
             }
         }
 
@@ -147,7 +169,7 @@ namespace Nymora.Combat.View
                 if (!_views.TryGetValue(entity, out var view) || view == null)
                 {
                     // Entity apparue apres GameStarted (ex : invocations futures, leurres Ghostra) — spawn a la volee.
-                    SpawnView(entity, combatant);
+                    SpawnView(entity, combatant, frame);
                     continue;
                 }
 
@@ -685,7 +707,7 @@ namespace Nymora.Combat.View
             return combatant.Resource * 5 < max * 2 ? 0 : 1;
         }
 
-        private void SpawnView(EntityRef entity, Combatant combatant)
+        private void SpawnView(EntityRef entity, Combatant combatant, Frame frame)
         {
             GameObject prefab = GetPrefabForClass(combatant.Class);
             if (prefab == null)
@@ -710,10 +732,47 @@ namespace Nymora.Combat.View
             }
 
             view.Bind(entity, combatant.Class);
+
+            // 5.10 (A3) — Applique le skin combat équipé de CE joueur (local OU adverse), lu depuis
+            // son RuntimePlayer (sync Quantum AddPlayer).
+            var skin = ResolveSkinFor(combatant, frame);
+            if (skin != null)
+            {
+                view.ApplySkin(skin);
+                Debug.Log($"[Nymora.CombatantRenderer] Skin combat '{skin.CosmeticId}' appliqué à P{combatant.PlayerIndex} {combatant.Class}.");
+            }
+
             view.UpdateGridPosition(combatant.GridX, combatant.GridY, world);
             _views[entity] = view;
 
             Debug.Log($"[Nymora.CombatantRenderer] Spawn P{combatant.PlayerIndex} {combatant.Class} en ({combatant.GridX},{combatant.GridY}) HP={combatant.HP}/{combatant.MaxHP} PA={combatant.PA} PM={combatant.PM}");
+        }
+
+        /// <summary>
+        /// 5.10 (A3) — Résout le skin combat à appliquer à un combattant (local OU adverse),
+        /// depuis le cosmeticId porté par son RuntimePlayer (sync par Quantum AddPlayer, posé par
+        /// le bootstrap depuis CombatCosmeticsContext). VIEW-ONLY, jamais lu par la sim.
+        ///
+        /// Garde-fou class-lock : le skin ne s'applique que si sa classe correspond à celle du
+        /// combattant. Comparaison par nom car ClassId (Core enum) ≠ combatant.Class (Quantum enum).
+        /// </summary>
+        private CosmeticSkinDefinition ResolveSkinFor(Combatant combatant, Frame frame)
+        {
+            var catalog = SkinCatalog;
+            if (catalog == null || frame == null) return null;
+
+            var runtimePlayer = frame.GetPlayerData((PlayerRef)combatant.PlayerIndex);
+            string cosmeticId = runtimePlayer != null ? runtimePlayer.SkinId : null;
+            if (string.IsNullOrEmpty(cosmeticId)) return null;
+
+            var skin = catalog.Resolve(cosmeticId);
+            if (skin == null) return null;
+
+            if (skin.ClassId != Nymora.Core.Enums.NymoraClass.None
+                && skin.ClassId.ToString() != combatant.Class.ToString())
+                return null;
+
+            return skin;
         }
 
         private GameObject GetPrefabForClass(NymoraClass nymoraClass)

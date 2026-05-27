@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1f1b634b9576244683a773b828bd85c, type: 3}
+  m_Name: pet_grumon
+  m_EditorClassIdentifier: 
+  CosmeticId: pet_grumon
+  DisplayName: Grumon
+  IdleFrames:
+  - {fileID: -1095797960, guid: 8bbe0682fee8a5b4d91c3efde31bbf42, type: 3}
+  - {fileID: 214469277, guid: 8bbe0682fee8a5b4d91c3efde31bbf42, type: 3}
+  - {fileID: 1373939167, guid: 8bbe0682fee8a5b4d91c3efde31bbf42, type: 3}
+  - {fileID: 1316319633, guid: 8bbe0682fee8a5b4d91c3efde31bbf42, type: 3}
+  - {fileID: -355364742, guid: 8bbe0682fee8a5b4d91c3efde31bbf42, type: 3}
+  - {fileID: -2067168629, guid: 8bbe0682fee8a5b4d91c3efde31bbf42, type: 3}
+  IdleFramesNE:
+  - {fileID: 1507593264, guid: a8e60244e8735c942bf3813760ed93d1, type: 3}
+  - {fileID: -1109783684, guid: a8e60244e8735c942bf3813760ed93d1, type: 3}
+  - {fileID: 1754555453, guid: a8e60244e8735c942bf3813760ed93d1, type: 3}
+  - {fileID: -206457591, guid: a8e60244e8735c942bf3813760ed93d1, type: 3}
+  - {fileID: 524436360, guid: a8e60244e8735c942bf3813760ed93d1, type: 3}
+  - {fileID: 1183667664, guid: a8e60244e8735c942bf3813760ed93d1, type: 3}
+  IdleFps: 6
+  WalkFrames:
+  - {fileID: 305995940, guid: d6cf98e19994b334290c44223df932e2, type: 3}
+  - {fileID: 1604261796, guid: d6cf98e19994b334290c44223df932e2, type: 3}
+  - {fileID: 1455407653, guid: d6cf98e19994b334290c44223df932e2, type: 3}
+  - {fileID: 243674339, guid: d6cf98e19994b334290c44223df932e2, type: 3}
+  - {fileID: 1249106232, guid: d6cf98e19994b334290c44223df932e2, type: 3}
+  - {fileID: -1642712830, guid: d6cf98e19994b334290c44223df932e2, type: 3}
+  - {fileID: -716345717, guid: d6cf98e19994b334290c44223df932e2, type: 3}
+  - {fileID: 1049250030, guid: d6cf98e19994b334290c44223df932e2, type: 3}
+  WalkFramesNE:
+  - {fileID: 547034808, guid: 8e6ff02d5ad4111479202cadbc566e1a, type: 3}
+  - {fileID: 1921937403, guid: 8e6ff02d5ad4111479202cadbc566e1a, type: 3}
+  - {fileID: -1793362083, guid: 8e6ff02d5ad4111479202cadbc566e1a, type: 3}
+  - {fileID: 826200366, guid: 8e6ff02d5ad4111479202cadbc566e1a, type: 3}
+  - {fileID: -2019558418, guid: 8e6ff02d5ad4111479202cadbc566e1a, type: 3}
+  - {fileID: -104093958, guid: 8e6ff02d5ad4111479202cadbc566e1a, type: 3}
+  - {fileID: -886343628, guid: 8e6ff02d5ad4111479202cadbc566e1a, type: 3}
+  - {fileID: -1676585128, guid: 8e6ff02d5ad4111479202cadbc566e1a, type: 3}
+  WalkFps: 8
+  VisualScale: 1
+  VisualYOffset: 0

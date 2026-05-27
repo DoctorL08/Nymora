@@ -35,5 +35,33 @@ namespace Nymora.Core.ScriptableObjects
         [Header("Hub Visual Calibration")]
         public float HubVisualScale = 1f;
         public float HubVisualYOffset = 0f;
+
+        // ==================================================================
+        // Brique 5.10 — Skin en COMBAT.
+        // Le combat anime un combattant via 6 AnimatorController (stage 0/1/2 × NE/SE)
+        // exactement comme NymoraClassDefinition / le prefab Combatant_<Classe> (cf
+        // CombatantView._stageXControllerYY). Quand ce skin est équipé, CombatantView
+        // swappe ses 6 controllers de classe pour CEUX-CI.
+        //
+        // Peuplés par "Nymora > Setup > Build Ashen Sovereign Combat Animator" (lit les
+        // .aseprite stage0/1/2 NE/SE et génère les controllers idle/walk/attack/cast/hurt/death).
+        // Laissés null pour un skin sans variante combat (l'avatar hub reste skinné, le
+        // combat garde le visuel de classe).
+        // ==================================================================
+        [Header("Combat — AnimatorControllers par stage (5.10)")]
+        public RuntimeAnimatorController Stage0ControllerSE;
+        public RuntimeAnimatorController Stage1ControllerSE;
+        public RuntimeAnimatorController Stage2ControllerSE;
+        public RuntimeAnimatorController Stage0ControllerNE;
+        public RuntimeAnimatorController Stage1ControllerNE;
+        public RuntimeAnimatorController Stage2ControllerNE;
+
+        [Header("Combat — Y offset visuel par stage (pivot Aseprite non standardisé)")]
+        public float Stage0CombatYOffset = 0f;
+        public float Stage1CombatYOffset = 0f;
+        public float Stage2CombatYOffset = 0f;
+
+        /// <summary>True si le skin embarque au moins le controller stage 0 SE (variante combat dispo).</summary>
+        public bool HasCombatControllers => Stage0ControllerSE != null;
     }
 }

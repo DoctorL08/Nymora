@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Nymora.Core.Data;
+using Nymora.Core.ScriptableObjects;
 using Nymora.Network.Backend;
 using TMPro;
 using UnityEngine;
@@ -190,10 +191,12 @@ namespace Nymora.Hub.Menu
             var prev = _f.MakeImage("Preview", row.rectTransform, new Color(1f, 1f, 1f, 0.06f), rounded: false);
             prev.preserveAspect = true; prev.raycastTarget = false;
             var sprite = Resources.Load<Sprite>(item.previewKey);
+            // Familiers : 1re frame idle SE du PetCatalog (pas de sprite Resources dédié).
+            if (sprite == null && item.type == "pet") sprite = PetPreviewSprite(item.id);
             if (sprite != null) { prev.sprite = sprite; prev.color = Color.white; }
             else
             {
-                // Pas d'asset de preview (ex : titres / familiers) -> repli sur l'icône de type.
+                // Pas d'asset de preview (ex : titres) -> repli sur l'icône de type.
                 var typeSp = HubMenuUIFactory.LoadIcon("ui_icon_type_" + item.type);
                 if (typeSp != null) { prev.sprite = typeSp; prev.color = new Color(1f, 1f, 1f, 0.6f); }
             }
@@ -272,6 +275,22 @@ namespace Nymora.Hub.Menu
                 if (HubMenuShell.Instance != null) HubMenuShell.Instance.RefreshClassPortrait();
                 LoadAsync();
             }
+        }
+
+        // Familiers : vignette = 1re frame idle SE de la PetDefinition (PetCatalog en Resources).
+        private static PetCatalog _petCatalog;
+        private static bool _petCatalogLoaded;
+
+        private static Sprite PetPreviewSprite(string cosmeticId)
+        {
+            if (!_petCatalogLoaded)
+            {
+                _petCatalog = Resources.Load<PetCatalog>("Cosmetics/PetCatalog");
+                _petCatalogLoaded = true;
+            }
+            var def = _petCatalog != null ? _petCatalog.Resolve(cosmeticId) : null;
+            if (def != null && def.IdleFrames != null && def.IdleFrames.Length > 0) return def.IdleFrames[0];
+            return null;
         }
 
         private static string RarityLabel(string rarity)

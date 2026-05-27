@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1f1b634b9576244683a773b828bd85c, type: 3}
+  m_Name: pet_ossivore
+  m_EditorClassIdentifier: 
+  CosmeticId: pet_ossivore
+  DisplayName: Ossivore
+  IdleFrames:
+  - {fileID: 463081397, guid: 3e48f960523b6354fb5bf6cdba7d45eb, type: 3}
+  - {fileID: -1355309723, guid: 3e48f960523b6354fb5bf6cdba7d45eb, type: 3}
+  - {fileID: -1524696981, guid: 3e48f960523b6354fb5bf6cdba7d45eb, type: 3}
+  - {fileID: 1503821765, guid: 3e48f960523b6354fb5bf6cdba7d45eb, type: 3}
+  - {fileID: -1784864171, guid: 3e48f960523b6354fb5bf6cdba7d45eb, type: 3}
+  - {fileID: 911065519, guid: 3e48f960523b6354fb5bf6cdba7d45eb, type: 3}
+  IdleFramesNE:
+  - {fileID: -1370792295, guid: e272b86989be2464c83d4b7bccf4902a, type: 3}
+  - {fileID: -759964496, guid: e272b86989be2464c83d4b7bccf4902a, type: 3}
+  - {fileID: -496828256, guid: e272b86989be2464c83d4b7bccf4902a, type: 3}
+  - {fileID: 1714238957, guid: e272b86989be2464c83d4b7bccf4902a, type: 3}
+  - {fileID: -1030158374, guid: e272b86989be2464c83d4b7bccf4902a, type: 3}
+  - {fileID: 1260378518, guid: e272b86989be2464c83d4b7bccf4902a, type: 3}
+  IdleFps: 6
+  WalkFrames:
+  - {fileID: 85097714, guid: 9321fc9eb0f8d584caf1fde322d56ac5, type: 3}
+  - {fileID: 1168969224, guid: 9321fc9eb0f8d584caf1fde322d56ac5, type: 3}
+  - {fileID: 413386198, guid: 9321fc9eb0f8d584caf1fde322d56ac5, type: 3}
+  - {fileID: -1945812483, guid: 9321fc9eb0f8d584caf1fde322d56ac5, type: 3}
+  - {fileID: -1053358047, guid: 9321fc9eb0f8d584caf1fde322d56ac5, type: 3}
+  - {fileID: -877318055, guid: 9321fc9eb0f8d584caf1fde322d56ac5, type: 3}
+  - {fileID: 1041351796, guid: 9321fc9eb0f8d584caf1fde322d56ac5, type: 3}
+  - {fileID: -1235679640, guid: 9321fc9eb0f8d584caf1fde322d56ac5, type: 3}
+  WalkFramesNE:
+  - {fileID: 132362577, guid: 44570c25ece879e4a9525715a34f39ef, type: 3}
+  - {fileID: 1954912195, guid: 44570c25ece879e4a9525715a34f39ef, type: 3}
+  - {fileID: 254735672, guid: 44570c25ece879e4a9525715a34f39ef, type: 3}
+  - {fileID: -1307105617, guid: 44570c25ece879e4a9525715a34f39ef, type: 3}
+  - {fileID: 245333656, guid: 44570c25ece879e4a9525715a34f39ef, type: 3}
+  - {fileID: 1267521006, guid: 44570c25ece879e4a9525715a34f39ef, type: 3}
+  - {fileID: -888776005, guid: 44570c25ece879e4a9525715a34f39ef, type: 3}
+  - {fileID: 926736237, guid: 44570c25ece879e4a9525715a34f39ef, type: 3}
+  WalkFps: 8
+  VisualScale: 1
+  VisualYOffset: 0

@@ -1,4 +1,5 @@
 using System.Collections;
+using Nymora.Core.ScriptableObjects;
 using Quantum;
 using UnityEngine;
 using SpellCategory = Nymora.Core.Enums.SpellCategory;
@@ -149,6 +150,40 @@ namespace Nymora.Combat.View
 
             // Affichage initial : stage 0 + facing SE par defaut (sera override des le 1er OnUpdateView).
             SetStageAndFacing(0, IsoFacing.SE);
+        }
+
+        /// <summary>
+        /// Brique 5.10 (A2) — Applique un skin cosmetique en COMBAT : remplace les 6
+        /// AnimatorController de classe (stage 0/1/2 × NE/SE) par ceux du skin + ses Y offsets.
+        /// Le CombatantRenderer l'appelle au spawn quand le joueur a un skin equipe pour sa classe.
+        ///
+        /// No-op si le skin est null ou n'embarque pas de variante combat (HasCombatControllers) :
+        /// dans ce cas le combattant garde le visuel de classe (degradation propre).
+        ///
+        /// Force un refresh du visuel courant (re-applique stage+facing) pour que le swap soit
+        /// visible immediatement, meme si Bind a deja pose le stage 0.
+        /// </summary>
+        public void ApplySkin(CosmeticSkinDefinition skin)
+        {
+            if (skin == null || !skin.HasCombatControllers) return;
+
+            _stage0ControllerSE = skin.Stage0ControllerSE;
+            _stage1ControllerSE = skin.Stage1ControllerSE;
+            _stage2ControllerSE = skin.Stage2ControllerSE;
+            _stage0ControllerNE = skin.Stage0ControllerNE;
+            _stage1ControllerNE = skin.Stage1ControllerNE;
+            _stage2ControllerNE = skin.Stage2ControllerNE;
+            _stage0VisualYOffset = skin.Stage0CombatYOffset;
+            _stage1VisualYOffset = skin.Stage1CombatYOffset;
+            _stage2VisualYOffset = skin.Stage2CombatYOffset;
+
+            // Force le re-set : on relit le stage/facing courant puis on invalide les sentinelles
+            // pour que SetStageAndFacing ne court-circuite pas (no-op si rien n'a change).
+            int stage = _currentStage < 0 ? 0 : _currentStage;
+            IsoFacing facing = _currentFacing == (IsoFacing)(-1) ? IsoFacing.SE : _currentFacing;
+            _currentStage = -1;
+            _currentFacing = (IsoFacing)(-1);
+            SetStageAndFacing(stage, facing);
         }
 
         // ======================================================================

@@ -1,0 +1,52 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1f1b634b9576244683a773b828bd85c, type: 3}
+  m_Name: pet_cornecroc
+  m_EditorClassIdentifier: 
+  CosmeticId: pet_cornecroc
+  DisplayName: Cornecroc
+  IdleFrames:
+  - {fileID: -1142457059, guid: 1dfd434ee88642444a40e09223b600d8, type: 3}
+  - {fileID: -1127465287, guid: 1dfd434ee88642444a40e09223b600d8, type: 3}
+  - {fileID: 1144560051, guid: 1dfd434ee88642444a40e09223b600d8, type: 3}
+  - {fileID: 2097902878, guid: 1dfd434ee88642444a40e09223b600d8, type: 3}
+  - {fileID: 1490531736, guid: 1dfd434ee88642444a40e09223b600d8, type: 3}
+  - {fileID: 1620725555, guid: 1dfd434ee88642444a40e09223b600d8, type: 3}
+  IdleFramesNE:
+  - {fileID: 146799143, guid: 16205b73ef850d34d8aef8c24e25132e, type: 3}
+  - {fileID: -803387064, guid: 16205b73ef850d34d8aef8c24e25132e, type: 3}
+  - {fileID: -1405258206, guid: 16205b73ef850d34d8aef8c24e25132e, type: 3}
+  - {fileID: 127120839, guid: 16205b73ef850d34d8aef8c24e25132e, type: 3}
+  - {fileID: 948558901, guid: 16205b73ef850d34d8aef8c24e25132e, type: 3}
+  - {fileID: -1803249996, guid: 16205b73ef850d34d8aef8c24e25132e, type: 3}
+  IdleFps: 6
+  WalkFrames:
+  - {fileID: 385045124, guid: 91d62c41a22916d4c86dfebffc6c9c2d, type: 3}
+  - {fileID: 1644112510, guid: 91d62c41a22916d4c86dfebffc6c9c2d, type: 3}
+  - {fileID: 329384807, guid: 91d62c41a22916d4c86dfebffc6c9c2d, type: 3}
+  - {fileID: -662707382, guid: 91d62c41a22916d4c86dfebffc6c9c2d, type: 3}
+  - {fileID: 2008904015, guid: 91d62c41a22916d4c86dfebffc6c9c2d, type: 3}
+  - {fileID: 1407543277, guid: 91d62c41a22916d4c86dfebffc6c9c2d, type: 3}
+  - {fileID: -1471123270, guid: 91d62c41a22916d4c86dfebffc6c9c2d, type: 3}
+  - {fileID: -1435547362, guid: 91d62c41a22916d4c86dfebffc6c9c2d, type: 3}
+  WalkFramesNE:
+  - {fileID: 728630120, guid: 1715794807f78c84cb5f94a72f003bb8, type: 3}
+  - {fileID: 841902819, guid: 1715794807f78c84cb5f94a72f003bb8, type: 3}
+  - {fileID: 506969335, guid: 1715794807f78c84cb5f94a72f003bb8, type: 3}
+  - {fileID: 565239031, guid: 1715794807f78c84cb5f94a72f003bb8, type: 3}
+  - {fileID: -1863939927, guid: 1715794807f78c84cb5f94a72f003bb8, type: 3}
+  - {fileID: 938178062, guid: 1715794807f78c84cb5f94a72f003bb8, type: 3}
+  - {fileID: 1748395966, guid: 1715794807f78c84cb5f94a72f003bb8, type: 3}
+  - {fileID: -140495536, guid: 1715794807f78c84cb5f94a72f003bb8, type: 3}
+  WalkFps: 8
+  VisualScale: 1
+  VisualYOffset: 0
