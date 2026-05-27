@@ -75,6 +75,19 @@ namespace Nymora.Hub.Menu
         private Image _pgXpFill;
         private Image _pgPortrait;
         private UISpriteAnimator _pgPortraitAnim;
+        // Ancre + taille de base du portrait (anchoredPosition / sizeDelta au repos). Servent au
+        // mode aligné de l'animation (anti jiggle + anti zoom des frames de classe trimmées) et à
+        // restaurer le rect quand on repasse sur le chemin legacy du skin.
+        private Vector2 _pgPortraitAnchor;
+        private Vector2 _pgPortraitSize;
+        // Familier équipé affiché en idle à côté du perso (prévisu menu personnage). Pas de
+        // class-lock : un seul familier, montré quelle que soit la classe sélectionnée.
+        private Image _pgPetPortrait;
+        private UISpriteAnimator _pgPetPortraitAnim;
+        private Vector2 _pgPetBoxCenter;
+        private Vector2 _pgPetBoxSize;
+        private static PetCatalog _pgPetCatalog;
+        private static bool _pgPetCatalogLoaded;
         private int _classIndex;
         private RectTransform _pgRightCol;
         private GameObject _pgRightContent;
@@ -716,7 +729,22 @@ namespace Nymora.Hub.Menu
             prt.anchorMin = new Vector2(0f, 0f); prt.anchorMax = new Vector2(0f, 0f); prt.pivot = new Vector2(0.5f, 0f);
             prt.sizeDelta = new Vector2(340f, 460f);
             prt.anchoredPosition = new Vector2(cx, 150f);
+            _pgPortraitAnchor = new Vector2(cx, 150f);
+            _pgPortraitSize = new Vector2(340f, 460f);
             _pgPortraitAnim = _pgPortrait.gameObject.AddComponent<UISpriteAnimator>();
+
+            // Familier équipé, idle animé, à droite du perso près des pieds (compagnon).
+            _pgPetPortrait = _f.MakeImage("PetPreview", root, Color.white, rounded: false);
+            _pgPetPortrait.raycastTarget = false;
+            _pgPetPortrait.preserveAspect = true;
+            var petrt = _pgPetPortrait.rectTransform;
+            petrt.anchorMin = new Vector2(0f, 0f); petrt.anchorMax = new Vector2(0f, 0f); petrt.pivot = new Vector2(0.5f, 0f);
+            _pgPetBoxSize = new Vector2(160f, 160f);
+            petrt.sizeDelta = _pgPetBoxSize;
+            _pgPetBoxCenter = new Vector2(cx - 140f, 215f); // à gauche, au niveau des pieds
+            petrt.anchoredPosition = _pgPetBoxCenter;
+            _pgPetPortrait.enabled = false; // affiché seulement si un familier est équipé
+            _pgPetPortraitAnim = _pgPetPortrait.gameObject.AddComponent<UISpriteAnimator>();
 
             // Switch ‹ NomClasse › (centré sous le sprite)
             var switchRow = _f.MakeRect("ClassSwitch", root);
@@ -860,7 +888,13 @@ namespace Nymora.Hub.Menu
                 if (def != null && def.IdleFrames != null && def.IdleFrames.Length > 0)
                 {
                     _pgPortrait.enabled = true;
-                    if (_pgPortraitAnim != null) _pgPortraitAnim.Play(_pgPortrait, def.IdleFrames, def.IdleFps);
+                    if (_pgPortraitAnim != null)
+                    {
+                        // Centre visé = centre de la box portrait (ancre basse + demi-hauteur) ->
+                        // toutes les classes centrées au même endroit, quelle que soit leur taille.
+                        Vector2 boxCenter = _pgPortraitAnchor + new Vector2(0f, _pgPortraitSize.y * 0.5f);
+                        _pgPortraitAnim.PlayAligned(_pgPortrait, def.IdleFrames, def.IdleFps, boxCenter, _pgPortraitSize);
+                    }
                     else _pgPortrait.sprite = def.IdleFrames[0];
                 }
                 else if (def != null && def.PortraitSprite != null) { _pgPortrait.enabled = true; _pgPortrait.sprite = def.PortraitSprite; }
@@ -896,19 +930,35 @@ namespace Nymora.Hub.Menu
             string token = HubChatClient.Instance?.DevToken;
             if (string.IsNullOrEmpty(token)) return;
             _api.SetBearerToken(token);
-            var res = await _api.GetInventoryAsync();
+            // activeClass = classe affichée -> le familier équipé reflété est celui de CETTE classe.
+            var res = await _api.GetInventoryAsync(cls);
             if (!res.IsSuccess || res.Data.items == null) return;
             if (_currentScreenId != "character" || _pgPortrait == null) return;
 
+            // Familier équipé (pas de class-lock, un seul) -> idle à côté du perso, peu importe la classe.
+            string petId = null;
             string skinId = null;
             foreach (var it in res.Data.items)
-                if (it != null && it.equipped && it.type == "skin" && it.classLock == cls) { skinId = it.id; break; }
+            {
+                if (it == null || !it.equipped) continue;
+                if (it.type == "skin" && it.classLock == cls && skinId == null) skinId = it.id;
+                else if (it.type == "pet" && petId == null) petId = it.id;
+            }
+            ApplyPetToPreview(petId);
+
             if (string.IsNullOrEmpty(skinId)) return; // pas de skin -> on garde les frames de classe
 
             var skin = FindSkinDef(skinId);
             if (skin != null && skin.IdleFrames != null && skin.IdleFrames.Length > 0)
             {
                 _pgPortrait.enabled = true;
+                // Le mode aligné (chemin classe) a pu modifier pivot/sizeDelta/preserveAspect ->
+                // on restaure le rect par défaut avant le chemin legacy du skin (preserveAspect).
+                _pgPortrait.preserveAspect = true;
+                var rt = _pgPortrait.rectTransform;
+                rt.pivot = new Vector2(0.5f, 0f);
+                rt.sizeDelta = _pgPortraitSize;
+                rt.anchoredPosition = _pgPortraitAnchor;
                 _pgPortraitAnim.Play(_pgPortrait, skin.IdleFrames, skin.IdleFps);
                 // Les frames de skin sont souvent plus petites (contenu natif) -> boost d'échelle
                 // pour matcher la taille du sprite de classe. SkinPortraitBoost ajustable.
@@ -917,6 +967,33 @@ namespace Nymora.Hub.Menu
                 float skinScale = skin.HubVisualScale > 0f ? skin.HubVisualScale : 1f;
                 _pgPortrait.rectTransform.localScale = Vector3.one * (skinScale / classScale) * SkinPortraitBoost;
             }
+        }
+
+        // Affiche (ou masque) le familier équipé en idle à côté du perso. Mode aligné comme le
+        // portrait (échelle constante + centré dans sa box) -> stable malgré le trim des frames.
+        private void ApplyPetToPreview(string petId)
+        {
+            if (_pgPetPortrait == null || _pgPetPortraitAnim == null) return;
+            var def = FindPetDef(petId);
+            if (def == null || def.IdleFrames == null || def.IdleFrames.Length == 0)
+            {
+                _pgPetPortrait.enabled = false;
+                return;
+            }
+            _pgPetPortrait.enabled = true;
+            _pgPetPortraitAnim.PlayAligned(_pgPetPortrait, def.IdleFrames, def.IdleFps, _pgPetBoxCenter, _pgPetBoxSize);
+        }
+
+        // Résout un familier via le PetCatalog (Resources, chargé une fois). Même source que le hub/combat.
+        private static PetDefinition FindPetDef(string cosmeticId)
+        {
+            if (string.IsNullOrEmpty(cosmeticId)) return null;
+            if (!_pgPetCatalogLoaded)
+            {
+                _pgPetCatalog = Resources.Load<PetCatalog>("Cosmetics/PetCatalog");
+                _pgPetCatalogLoaded = true;
+            }
+            return _pgPetCatalog != null ? _pgPetCatalog.Resolve(cosmeticId) : null;
         }
 
         private NymoraClassDefinition CurrentClassDef()
