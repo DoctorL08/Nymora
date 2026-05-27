@@ -657,6 +657,7 @@ namespace Nymora.Hub.Menu
             _busy = false;
             if (!res.IsSuccess) { SetStatus($"Échec ({res.StatusCode}) : {res.ErrorMessage}"); return; }
             SetStatus($"Clan {res.Data.name} créé !");
+            HubClanPanel.Instance?.ForceRefreshClanState(); // re-sync avatar + chat clan + permissions
             LoadClanAsync();
         }
 
@@ -687,6 +688,9 @@ namespace Nymora.Hub.Menu
             _busy = false;
             if (!res.IsSuccess) { SetStatus($"Erreur ({res.StatusCode})."); return; }
             SetStatus(accepted ? "Tu as rejoint le clan." : "Invitation refusée.");
+            // FIX invitation clan : re-sync l'état canonique (avatar + chat clan + permissions),
+            // pas seulement l'onglet du menu — sinon il fallait relog (cf HubClanPanel.ForceRefreshClanState).
+            if (accepted) HubClanPanel.Instance?.ForceRefreshClanState();
             LoadClanAsync();
         }
 
@@ -720,6 +724,7 @@ namespace Nymora.Hub.Menu
             _busy = false;
             if (!res.IsSuccess) { SetStatus($"Erreur ({res.StatusCode})."); return; }
             SetStatus("Clan quitté.");
+            HubClanPanel.Instance?.ForceRefreshClanState(); // re-sync avatar + chat clan + permissions
             LoadClanAsync();
         }
 
@@ -731,6 +736,7 @@ namespace Nymora.Hub.Menu
             _busy = false;
             if (!res.IsSuccess) { SetStatus($"Erreur ({res.StatusCode})."); return; }
             SetStatus("Clan dissous.");
+            HubClanPanel.Instance?.ForceRefreshClanState(); // re-sync avatar + chat clan + permissions
             LoadClanAsync();
         }
 

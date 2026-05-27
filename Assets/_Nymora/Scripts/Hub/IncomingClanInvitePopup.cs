@@ -106,6 +106,13 @@ namespace Nymora.Hub
             {
                 Debug.LogWarning($"[IncomingClanInvite] Respond failed ({res.StatusCode}): {res.ErrorMessage}");
             }
+            else if (accepted)
+            {
+                // FIX invitation clan : re-sync l'état clan CANONIQUE (tag avatar + chat clan +
+                // permissions) immédiatement. Cette pop-up ne touchait que le backend puis Hide()
+                // -> il fallait relog pour que l'adhésion soit prise en compte ailleurs.
+                HubClanPanel.Instance?.ForceRefreshClanState();
+            }
             Hide();
         }
 

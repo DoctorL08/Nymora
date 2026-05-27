@@ -238,6 +238,17 @@ namespace Nymora.Hub
             if (IsOpen) RefreshAsync().Forget();
         }
 
+        /// <summary>
+        /// FIX invitation clan — Re-synchronise l'état clan CANONIQUE (HasClan / MyClanId /
+        /// MyClanName + event OnClanStateChanged) depuis le backend. Appelé par le menu Échap
+        /// (HubMenuSocial) après une action qui change l'appartenance (accepter une invitation,
+        /// créer / quitter / dissoudre) : le menu a son propre rendu mais ne touchait PAS cet
+        /// état partagé, dont dépendent le tag clan de l'avatar (HubAvatar) et le canal de chat
+        /// clan (HubChatUI). Sans ça, il fallait se déconnecter/reconnecter pour que l'adhésion
+        /// soit réellement prise en compte ailleurs que dans l'onglet du menu.
+        /// </summary>
+        public void ForceRefreshClanState() => RefreshClanStateAsync().Forget();
+
         /// <summary>4.11 polish — light fetch /clans/me sans toucher l'UI, pour synchroniser HasClan.</summary>
         private async UniTask RefreshClanStateAsync()
         {
