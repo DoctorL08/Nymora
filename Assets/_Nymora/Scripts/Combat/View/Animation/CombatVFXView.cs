@@ -97,7 +97,15 @@ namespace Nymora.Combat.View.Animation
         private void TrySpawnVFX(in Combatant caster)
         {
             Sprite[] frames = _library.GetFrames(caster.LastCastSpellId);
-            if (frames == null || frames.Length == 0) return; // pas de VFX defini pour ce sort
+            if (frames == null || frames.Length == 0)
+            {
+                // Pas de frames peintes (Kyami ne livre que les signatures) -> VFX PROCÉDURAL.
+                // Couvre tous les autres sorts : slash/projectile/impact/zone/buff/nova selon
+                // l'archétype du SpellVfxCatalog (Play route aussi les signatures sans frames
+                // vers la séquence spectaculaire). 100% View.
+                ProceduralSpellVfx.Play(this, _gridRenderer, caster);
+                return;
+            }
 
             // 2.13.e : position du VFX = case ciblee par le cast (pas la case du caster).
             // Pour les sorts self-target, TargetX/Y = caster pos (CombatInputController redirige).
@@ -125,6 +133,11 @@ namespace Nymora.Combat.View.Animation
             var anim = go.AddComponent<SpriteAnimator>();
             anim.Completed += () => Destroy(go);
             anim.SetFrames(frames, _framesPerSecond, loop: false);
+
+            // Signature : on AJOUTE la séquence procédurale spectaculaire par-dessus l'art peint
+            // de Kyami (wind-up + flash + double onde de choc + éclats) -> effet "waaaw".
+            if (SpellVfxCatalog.IsSignature(caster.LastCastSpellId))
+                ProceduralSpellVfx.PlaySignature(this, _gridRenderer, caster);
         }
     }
 }
