@@ -606,10 +606,11 @@ namespace Nymora.Hub
             if (_skinApi == null) _skinApi = new NymoraApiClient(_backendSettings);
             _skinApi.SetBearerToken(token);
 
-            var res = await _skinApi.GetInventoryAsync();
+            string cls = NetClassId.ToString();
+            // activeClass -> le familier équipé renvoyé est celui CHOISI pour cette classe (par-classe).
+            var res = await _skinApi.GetInventoryAsync(cls);
             if (!res.IsSuccess) return;
 
-            string cls = NetClassId.ToString();
             string equippedId = "";
             string equippedTitle = "";
             string equippedBanner = "";

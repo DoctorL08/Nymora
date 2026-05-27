@@ -710,6 +710,7 @@ namespace Nymora.Network.Backend
     public class ShopUnequipBody
     {
         public string itemId;
+        public string activeClass;  // requis pour un familier (desequipe pour CETTE classe)
     }
 
     [Serializable]

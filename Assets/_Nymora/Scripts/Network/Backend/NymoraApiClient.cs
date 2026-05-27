@@ -344,9 +344,15 @@ namespace Nymora.Network.Backend
         public UniTask<ApiResult<ShopResponse>> GetShopAsync(CancellationToken ct = default)
             => GetJsonAsync<ShopResponse>("/shop", requireAuth: true, ct);
 
-        /// <summary>GET /shop/inventory — cosmetiques possedes.</summary>
-        public UniTask<ApiResult<ShopInventoryResponse>> GetInventoryAsync(CancellationToken ct = default)
-            => GetJsonAsync<ShopInventoryResponse>("/shop/inventory", requireAuth: true, ct);
+        /// <summary>GET /shop/inventory — cosmetiques possedes. `activeClass` (optionnel) sert au
+        /// flag `equipped` des familiers, equipes PAR CLASSE.</summary>
+        public UniTask<ApiResult<ShopInventoryResponse>> GetInventoryAsync(string activeClass = null, CancellationToken ct = default)
+        {
+            string path = string.IsNullOrEmpty(activeClass)
+                ? "/shop/inventory"
+                : $"/shop/inventory?activeClass={UnityWebRequest.EscapeURL(activeClass)}";
+            return GetJsonAsync<ShopInventoryResponse>(path, requireAuth: true, ct);
+        }
 
         /// <summary>POST /shop/buy — achat (debit wallet). 402 INSUFFICIENT_FUNDS, 409 ALREADY_OWNED.</summary>
         public UniTask<ApiResult<ShopBuyResponse>> BuyItemAsync(string itemId, string currency, CancellationToken ct = default)
@@ -359,10 +365,11 @@ namespace Nymora.Network.Backend
             => PostJsonAsync<ShopEquipResponse>("/shop/equip",
                 new ShopEquipBody { itemId = itemId, activeClass = activeClass }, requireAuth: true, ct);
 
-        /// <summary>POST /shop/unequip — desequipe un cosmetique.</summary>
-        public UniTask<ApiResult<ShopEquipResponse>> UnequipItemAsync(string itemId, CancellationToken ct = default)
+        /// <summary>POST /shop/unequip — desequipe un cosmetique. `activeClass` requis pour un
+        /// familier (desequipe pour CETTE classe uniquement).</summary>
+        public UniTask<ApiResult<ShopEquipResponse>> UnequipItemAsync(string itemId, string activeClass = null, CancellationToken ct = default)
             => PostJsonAsync<ShopEquipResponse>("/shop/unequip",
-                new ShopUnequipBody { itemId = itemId }, requireAuth: true, ct);
+                new ShopUnequipBody { itemId = itemId, activeClass = activeClass }, requireAuth: true, ct);
 
         private async UniTask<ApiResult<TResponse>> PostJsonAsync<TResponse>(
             string path, object body, bool requireAuth, CancellationToken ct, bool sendVersionHeader = true)

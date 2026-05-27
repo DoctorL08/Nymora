@@ -132,7 +132,8 @@ namespace Nymora.Hub.Menu
             SetStatus("Chargement...");
             if (!EnsureToken()) { SetStatus("Non connecté."); return; }
 
-            var res = await _api.GetInventoryAsync();
+            // activeClass = classe courante -> flag `equipped` des familiers correct (par-classe).
+            var res = await _api.GetInventoryAsync(_classId);
             if (_listContent == null) return; // écran fermé pendant le fetch
             if (!res.IsSuccess) { SetStatus($"Erreur {res.StatusCode}."); return; }
 
@@ -267,7 +268,8 @@ namespace Nymora.Hub.Menu
         {
             if (_busy || !EnsureToken()) return;
             _busy = true;
-            var res = await _api.UnequipItemAsync(itemId);
+            // activeClass requis pour un familier (déséquipe pour CETTE classe seulement).
+            var res = await _api.UnequipItemAsync(itemId, _classId);
             _busy = false;
             if (res.IsSuccess)
             {
