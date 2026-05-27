@@ -54,6 +54,13 @@ namespace Nymora.Combat.View.HUD
         private int _activeCasterPM = 0;
         private bool _hasActiveCaster;
         private bool _spellArmedThisFrame;
+        // FIX trajectoire — données capturées au CallbackUpdateView pour reconstruire le path
+        // jaune via le pathfinder PARTAGÉ (ViewPathfinder) dans l'Update Unity (piloté souris).
+        private QuantumGame _game;
+        private EntityRef _activeCasterEntity;
+        private bool _ignoreEnemyOccupants;
+        // Buffer réutilisé pour le path retourné par ViewPathfinder (zéro alloc par frame).
+        private readonly (int x, int y)[] _pathScratch = new (int x, int y)[ViewPathfinder.Count];
 
         // Offsets 4 cardinales.
         private static readonly int[] NeighborDX = { 1, -1, 0, 0 };
@@ -102,6 +109,7 @@ namespace Nymora.Combat.View.HUD
 
         private void OnUpdateView(QuantumGame game)
         {
+            _game = game; // capturé pour ViewPathfinder dans l'Update Unity (path jaune au survol)
             _hasActiveCaster = false;
             _spellArmedThisFrame = false;
             if (!_gridReady) return;
@@ -142,11 +150,13 @@ namespace Nymora.Combat.View.HUD
             // 3.7.c.v : detection NextMoveIgnoresUnits (Pas de l'Au-Dela Ghostra) — meme effet.
             bool casterHasPasAuDela = false;
             NymoraClass casterClass = NymoraClass.None;
+            EntityRef casterEntity = EntityRef.None;
             var filter = frame.Filter<Combatant>();
-            while (filter.Next(out EntityRef _, out Combatant c))
+            while (filter.Next(out EntityRef ce, out Combatant c))
             {
                 if (c.PlayerIndex == casterPlayerIndex)
                 {
+                    casterEntity = ce;
                     casterX = c.GridX;
                     casterY = c.GridY;
                     casterPM = c.PM;
@@ -171,6 +181,7 @@ namespace Nymora.Combat.View.HUD
             _activeCasterX = casterX;
             _activeCasterY = casterY;
             _activeCasterPM = casterPM;
+            _activeCasterEntity = casterEntity;
             _hasActiveCaster = true;
 
             // 3.5.b.iii / 3.7.c.v : Pas Spectral (Necram) OU Pas de l'Au-Dela (Ghostra) autorisent
@@ -178,6 +189,7 @@ namespace Nymora.Combat.View.HUD
             // ignoreEnemyOccupants=true a A* dans les memes conditions).
             bool ignoreEnemyOccupants = (casterHasPasSpectral && casterClass == NymoraClass.Necram)
                                      || (casterHasPasAuDela && casterClass == NymoraClass.Ghostra);
+            _ignoreEnemyOccupants = ignoreEnemyOccupants;
 
             // BFS / SPFA avec relaxation. Met a jour _bestCost (utilise dans Update Unity pour highlight).
             for (int i = 0; i < _bestCost.Length; i++) _bestCost[i] = int.MaxValue;
@@ -290,48 +302,44 @@ namespace Nymora.Combat.View.HUD
         }
 
         /// <summary>
-        /// Reconstruit le path le plus court de la case du caster jusqu'a (targetX, targetY)
-        /// en remontant _bestCost (greedy : on choisit le voisin avec cost minimum). Highlight
-        /// chaque case du path avec _pathColor.
+        /// FIX trajectoire — Highlight le path du caster jusqu'a (targetX, targetY) en utilisant
+        /// le MÊME pathfinder que l'animation de l'avatar (ViewPathfinder, partagé avec
+        /// CombatantRenderer). Avant, ce path était reconstruit par descente gloutonne sur
+        /// _bestCost, dont le tie-break différait de celui du BFS d'animation -> le perso ne
+        /// suivait pas le trajet prévisualisé sur les chemins de coût égal. Le BFS de portée
+        /// (_bestCost) reste la source pour décider QUELLES cases sont atteignables (gating dans
+        /// Update) ; ViewPathfinder donne le TRAJET exact vers la case survolée.
         /// </summary>
         private void HighlightPathTo(int targetX, int targetY)
         {
+            if (_game == null) return;
+            var frame = _game.Frames.Verified;
+            if (frame == null) return;
+
+            if (!ViewPathfinder.TryFindPath(
+                    frame,
+                    _activeCasterX, _activeCasterY,
+                    targetX, targetY,
+                    _activeCasterEntity,
+                    _pathScratch,
+                    out int len,
+                    _ignoreEnemyOccupants))
+                return;
+
             int width = GridConstants.Width;
-            int curIdx = targetY * width + targetX;
-            // Garde-fou : evite boucle infinie si BFS state corrompu.
-            int safety = GridConstants.Count;
-            while (safety-- > 0 && _bestCost[curIdx] > 0)
+            // Le path inclut le start (index 0 = case du caster) et la cible (index len-1).
+            // On skippe le start ; on highlight chaque case jusqu'a la cible.
+            for (int i = 1; i < len; i++)
             {
-                int gx = curIdx % width;
-                int gy = curIdx / width;
-                // 3.5.b.iii : skip highlight de la case ennemie traversee (la case appartient
-                // visuellement au Soulrender, l'utilisateur voit que le path passe DESSUS via
-                // les cases voisines). Le chainage cameFrom continue normalement.
-                if (!_occupiedTraversable[curIdx])
-                {
-                    var tile = _gridRenderer.GetTileView(gx, gy);
-                    if (tile != null)
-                    {
-                        tile.ApplyHighlight(_pathColor);
-                        _highlightedIdx[_highlightedCount++] = curIdx;
-                    }
-                }
-                // Trouve le voisin avec cost strictement inferieur (= predecesseur sur le path).
-                int curCost = _bestCost[curIdx];
-                int bestNidx = -1;
-                int bestNcost = curCost;
-                for (int d = 0; d < 4; d++)
-                {
-                    int nx = gx + NeighborDX[d];
-                    int ny = gy + NeighborDY[d];
-                    if (!GridHelpers.InBounds(nx, ny)) continue;
-                    int nidx = ny * width + nx;
-                    if (_bestCost[nidx] >= bestNcost) continue;
-                    bestNidx = nidx;
-                    bestNcost = _bestCost[nidx];
-                }
-                if (bestNidx < 0) break;
-                curIdx = bestNidx;
+                var (gx, gy) = _pathScratch[i];
+                int idx = gy * width + gx;
+                // 3.5.b.iii : skip les cases ennemies traversees (Pas Spectral / Pas de l'Au-Dela) :
+                // non-stopables, l'utilisateur voit le trajet passer dessus via les cases voisines.
+                if (_occupiedTraversable[idx]) continue;
+                var tile = _gridRenderer.GetTileView(gx, gy);
+                if (tile == null) continue;
+                tile.ApplyHighlight(_pathColor);
+                _highlightedIdx[_highlightedCount++] = idx;
             }
         }
 

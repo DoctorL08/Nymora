@@ -193,7 +193,9 @@ namespace Nymora.Combat.View
                     // marge contournement). On donne 16 = MaxWaypoints de CombatantView.
                     System.Span<(int x, int y)> pathBuf = stackalloc (int, int)[16];
                     int pathLen;
-                    bool found = TryFindViewPath(frame, prevGx, prevGy,
+                    // FIX trajectoire : pathfinder View PARTAGÉ avec le preview de survol
+                    // (MovementRangePreview) pour que la trajectoire animée == celle prévisualisée.
+                    bool found = ViewPathfinder.TryFindPath(frame, prevGx, prevGy,
                         combatant.GridX, combatant.GridY, entity, pathBuf, out pathLen,
                         animIgnoreEnemyOccupants);
 
@@ -649,131 +651,8 @@ namespace Nymora.Combat.View
             _gridReady = false;
         }
 
-        // ====================================================================
-        // 3.3.d polish — BFS path cote View pour contourner les obstacles.
-        // ====================================================================
-
-        private const int GridWidth = 15;
-        private const int GridHeight = 17;
-        private const int GridCount = GridWidth * GridHeight;
-        // Buffers reutilises pour eviter alloc heap par appel (BFS).
-        private readonly int[] _bfsPrev = new int[GridCount];
-        private readonly bool[] _bfsVisited = new bool[GridCount];
-        private readonly int[] _bfsQueue = new int[GridCount];
-
-        /// <summary>
-        /// BFS 4-connexite cote View qui contourne les obstacles (Pilier/Mur/Faille) et autres
-        /// combatants (sauf `self` qui est le combatant qu'on deplace). Reconstruit le path le
-        /// plus court de (sx,sy) inclus a (tx,ty) inclus dans `outPath`. Retourne false si pas
-        /// de path ou si depasse `outPath.Length`.
-        ///
-        /// Safe API Quantum (Filter.Next par valeur). O(N*M) ou N=cases visitees, M=obstacles
-        /// + combatants. Pour 1v1 typique : ~20 cases visitees x ~5 entites = 100 ops, ~0.01ms.
-        /// </summary>
-        private bool TryFindViewPath(
-            Quantum.Frame frame,
-            int sx, int sy, int tx, int ty,
-            Quantum.EntityRef self,
-            System.Span<(int x, int y)> outPath,
-            out int outLen,
-            bool ignoreEnemyOccupants = false)
-        {
-            outLen = 0;
-            if (sx < 0 || sx >= GridWidth || sy < 0 || sy >= GridHeight) return false;
-            if (tx < 0 || tx >= GridWidth || ty < 0 || ty >= GridHeight) return false;
-            if (sx == tx && sy == ty) return false;
-
-            // Reset buffers.
-            for (int i = 0; i < GridCount; i++) { _bfsPrev[i] = -1; _bfsVisited[i] = false; }
-
-            int startIdx = sy * GridWidth + sx;
-            int targetIdx = ty * GridWidth + tx;
-            _bfsVisited[startIdx] = true;
-            int head = 0, tail = 0;
-            _bfsQueue[tail++] = startIdx;
-
-            int[] dxArr = { 1, -1, 0, 0 };
-            int[] dyArr = { 0, 0, 1, -1 };
-
-            bool found = false;
-            while (head < tail)
-            {
-                int idx = _bfsQueue[head++];
-                if (idx == targetIdx) { found = true; break; }
-                int cx = idx % GridWidth;
-                int cy = idx / GridWidth;
-                for (int d = 0; d < 4; d++)
-                {
-                    int nx = cx + dxArr[d];
-                    int ny = cy + dyArr[d];
-                    if (nx < 0 || nx >= GridWidth || ny < 0 || ny >= GridHeight) continue;
-                    int nidx = ny * GridWidth + nx;
-                    if (_bfsVisited[nidx]) continue;
-                    // La case cible est traversable meme si on detecte un blocking (la sim
-                    // a deja valide qu'elle est libre, sinon le combatant ne s'y serait pas
-                    // teleporte). Pour les cases intermediaires, on check obstacle/combatant.
-                    // 3.5.b.iii Pas Spectral : si flag actif, on autorise traverser les
-                    // combatants (mais pas les obstacles Pilier/Mur/Faille — IsBlockedForView
-                    // sait distinguer via le param).
-                    if (nidx != targetIdx && IsBlockedForView(frame, nx, ny, self, ignoreEnemyOccupants)) continue;
-                    _bfsVisited[nidx] = true;
-                    _bfsPrev[nidx] = idx;
-                    _bfsQueue[tail++] = nidx;
-                }
-            }
-
-            if (!found) return false;
-
-            // Reconstruct path : remonter prev de targetIdx a startIdx, puis inverser.
-            // Compte d'abord la longueur pour valider la capacite du buffer.
-            int len = 1; // target lui-meme
-            int cur = targetIdx;
-            while (cur != startIdx)
-            {
-                cur = _bfsPrev[cur];
-                if (cur < 0) return false;
-                len++;
-            }
-            if (len > outPath.Length) return false;
-
-            // Re-remonte et fill outPath (du start au target).
-            cur = targetIdx;
-            for (int i = len - 1; i >= 0; i--)
-            {
-                outPath[i] = (cur % GridWidth, cur / GridWidth);
-                if (i > 0) cur = _bfsPrev[cur];
-            }
-            outLen = len;
-            return true;
-        }
-
-        /// <summary>
-        /// Une case est bloquante pour le pathfinding View si elle contient :
-        ///   - Un Obstacle (Pilier/Mur/Faille) actif (HP > 0)
-        ///   - Un Combatant vivant autre que `self` (sauf si ignoreEnemyOccupants=true,
-        ///     cas Pas Spectral 3.5.b.iii ou les Combatants sont traversables a l'anim).
-        /// </summary>
-        private static bool IsBlockedForView(Quantum.Frame frame, int x, int y, Quantum.EntityRef self, bool ignoreEnemyOccupants = false)
-        {
-            // Obstacles : O(N) sur le nb d'obstacles dans la frame (max ~6 typiques).
-            var obsFilter = frame.Filter<Quantum.Obstacle>();
-            while (obsFilter.Next(out _, out Quantum.Obstacle obs))
-            {
-                if (obs.HP <= 0) continue;
-                if (obs.GridX == x && obs.GridY == y) return true;
-            }
-            // Combatants : O(N) sur le nb de combatants (max 2 en 1v1, 6 en 3v3).
-            if (!ignoreEnemyOccupants)
-            {
-                var combFilter = frame.Filter<Quantum.Combatant>();
-                while (combFilter.Next(out Quantum.EntityRef ent, out Quantum.Combatant c))
-                {
-                    if (ent == self) continue;
-                    if (c.HP <= 0) continue;
-                    if (c.GridX == x && c.GridY == y) return true;
-                }
-            }
-            return false;
-        }
+        // FIX trajectoire — le BFS path View (contournement obstacles/combatants) a été
+        // factorisé dans Nymora.Combat.View.ViewPathfinder, partagé avec MovementRangePreview
+        // pour garantir trajectoire animée == trajectoire prévisualisée.
     }
 }
