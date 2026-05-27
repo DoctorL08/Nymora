@@ -116,6 +116,13 @@ namespace Nymora.Hub
         private void HandleConnected()
         {
             AppendSystemLine(ChatTab.Global, "--- Connected ---");
+            // FIX chat clan : à chaque (re)connexion, re-souscrire le canal clan courant.
+            // JoinChannel no-op si le WS n'est pas connecté, et seul "global" est re-joint
+            // automatiquement par HubChatClient -> sans ça, le canal clan rejoint trop tôt
+            // (avant connexion) ou perdu sur une reconnexion ne revient jamais (le cache
+            // _joinedClanChannel empêchait même un re-join). On reset le cache puis on relance.
+            _joinedClanChannel = null;
+            TryJoinClanChannel();
         }
 
         private void HandleDisconnected(string reason)
