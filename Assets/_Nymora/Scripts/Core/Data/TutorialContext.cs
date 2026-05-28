@@ -18,8 +18,24 @@ namespace Nymora.Core.Data
     public static class TutorialContext
     {
         /// <summary>True = le combat 30_CombatIA doit démarrer en mode tutoriel scripté
-        /// (classe Soulrender imposée, deck fixe). La passivité du mannequin arrive en T2.</summary>
+        /// (classe Soulrender imposée, deck fixe, mannequin passif). En prod, posé au runtime
+        /// par le routing post-login (T4) ; en éditeur, par l'override DEV ci-dessous.</summary>
         public static bool Active;
+
+        /// <summary>Clé PlayerPrefs de l'override DEV (posée par TutorialDevLauncher). PlayerPrefs
+        /// (et non EditorPrefs) pour être lisible au RUNTIME, donc robuste au domain-reload Unity.</summary>
+        public const string DevForcePrefKey = "Nymora.Tutorial.DevForce";
+
+        /// <summary>
+        /// En ÉDITEUR uniquement : si l'override DEV est actif (PlayerPrefs), force <see cref="Active"/>.
+        /// Appelé par le bootstrap au démarrage du combat, donc lu au moment exact (pas de timing de
+        /// callback éditeur). <c>[Conditional("UNITY_EDITOR")]</c> => l'appel est retiré des builds.
+        /// </summary>
+        [System.Diagnostics.Conditional("UNITY_EDITOR")]
+        public static void ApplyEditorDevOverride()
+        {
+            if (UnityEngine.PlayerPrefs.GetInt(DevForcePrefKey, 0) == 1) Active = true;
+        }
 
         /// <summary>
         /// Deck Soulrender du tutoriel (6 SpellId snake_case du SpellCatalog). Imposé au slot 0

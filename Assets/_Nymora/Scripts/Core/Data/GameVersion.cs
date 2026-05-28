@@ -27,7 +27,10 @@ namespace Nymora.Core.Data
         // 82 (5.12) : délai de 1re action du bot IA (BotFirstMoveDelayTicks) — corrige le bot qui
         //             apparaissait au milieu (move exécuté avant le spawn de sa vue en IA).
         // 83 (5.12) : en mode IA, le joueur (P0) commence toujours (PvP/ranked = aléatoire Bible).
-        public const int CombatRulesVersion = 83;
+        // 84 (Tuto T2) : flag RuntimeConfig.TutorialPassiveBot — en mode tutoriel le bot rend son
+        //                tour sans agir (mannequin passif). N'affecte aucun match IA/PvP/ranked
+        //                (flag false partout ailleurs).
+        public const int CombatRulesVersion = 84;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

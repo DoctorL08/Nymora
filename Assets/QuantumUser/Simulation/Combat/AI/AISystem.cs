@@ -66,6 +66,16 @@ namespace Quantum
             int elapsed = totalDuration - state->TurnTimerTicks;
             int interval = AIConstants.ActionIntervalTicks;
 
+            // Tuto T2 — Mannequin passif : le bot prend bien son tour (initiative P0 d'abord
+            // conservee, cf TurnSystem) mais ne bouge ni ne lance de sort ; il le rend apres un
+            // court delai pour que sa vue soit posee et le passage de tour reste lisible.
+            if (f.RuntimeConfig.TutorialPassiveBot)
+            {
+                if (elapsed >= AIConstants.BotFirstMoveDelayTicks)
+                    EndBotTurn(f, state, bot);
+                return;
+            }
+
             bool isMedium = AIConstants.CurrentDifficulty == AIDifficulty.Medium;
             int maxCasts = isMedium ? AIConstants.MaxCastsPerTurnMedium : AIConstants.MaxCastsPerTurnEasy;
 

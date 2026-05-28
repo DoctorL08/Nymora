@@ -147,6 +147,10 @@ namespace Nymora.Combat.Bootstrap
 
         private async Task BootstrapAsync(CancellationToken ct)
         {
+            // Tuto : en éditeur, applique l'override DEV (PlayerPrefs posé par TutorialDevLauncher)
+            // AVANT toute lecture de TutorialContext.Active ci-dessous. No-op en build (Conditional).
+            Nymora.Core.Data.TutorialContext.ApplyEditorDevOverride();
+
             if (RuntimeConfig == null)
                 throw new InvalidOperationException("RuntimeConfig non assigne dans l'Inspector — drag RuntimeConfigCombatIA.asset.");
 
@@ -216,6 +220,10 @@ namespace Nymora.Combat.Bootstrap
             // Safety net : force IsBotMatch=true pour cette scene IA, meme si l'asset
             // RuntimeConfig en inspector avait ete laisse a false par erreur.
             runtimeConfig.IsBotMatch = true;
+
+            // Tuto T2 : mannequin passif. En mode tutoriel le bot prend son tour mais ne fait
+            // rien (AISystem.Update lit ce flag). false en match IA normal -> bot agit comme avant.
+            runtimeConfig.TutorialPassiveBot = Nymora.Core.Data.TutorialContext.Active;
 
             // PATCH 22 mai (test designer) — Seed RNG aleatoire par match (meme bug latent qu'en
             // casual : Seed=0 -> initiative toujours P0). Local single-client : Guid suffit.
