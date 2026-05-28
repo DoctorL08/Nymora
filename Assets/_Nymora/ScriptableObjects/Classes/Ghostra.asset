@@ -30,9 +30,7 @@ MonoBehaviour:
   ResourceDescription: "REMANENCE \u2014 leurres spectraux poses sur la grille (max
     3). Modifient les sorts dorsaux selon leur densite."
   PassiveName: L'Angle Mort
-  PassiveDescription: 'Systeme de DESYNCHRONISATION : les sorts dorsaux de la Ghostra
-    sont modifies selon le nombre de leurres actifs. Plus de leurres = sorts plus
-    letaux et imprevisibles.'
+  PassiveDescription: 'Desynchronisation indexee sur la DENSITE de leurres actifs (pas sur les degats infliges). Angle 1 (0 leurre) : aucun bonus. Angle 2 (1-2 leurres) : tes sorts dorsaux infligent +50 degats et appliquent Plaie Ouverte (40 degats par tour, 2 tours). Angle 3 (3 leurres) : +80 degats dorsaux et debloque Permutation a 0 PA, 1 fois par tour.'
   SignatureName: "Ex\xE9cution Spectrale"
   SignatureCooldownTurns: 4
   SignatureDescription: Sort signature debloque a 3 leurres. Cooldown 4 tours apres

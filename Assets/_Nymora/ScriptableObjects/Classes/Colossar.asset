@@ -29,9 +29,7 @@ MonoBehaviour:
   ResourceDescription: "FONDATION \u2014 generee par la pose d'obstacles et l'absorption
     de degats. Cap 3."
   PassiveName: "Densit\xE9 Inerte"
-  PassiveDescription: "Etat continu lie au nombre d'obstacles poses : reduction de
-    degats progressive (cap -50%). Le Colossar bascule en EFFONDREMENT a Fondation
-    max \u2014 punition de zone."
+  PassiveDescription: 'Etat continu lie au nombre de tes obstacles actifs : -8% de degats subis par obstacle (cap -24% a 3 obstacles, additif avec Garde Protectrice jusqu''a -50% total). +30 HP quand un de tes Piliers est detruit. +20 degats sur tes sorts de portee 1-2 quand tu es adjacent a un de tes obstacles.'
   SignatureName: Effondrement
   SignatureCooldownTurns: 4
   SignatureDescription: Sort signature debloque a 3 FD. Cooldown 4 tours apres usage.

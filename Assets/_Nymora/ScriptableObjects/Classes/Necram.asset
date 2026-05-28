@@ -29,9 +29,7 @@ MonoBehaviour:
   ResourceDescription: "PUTREFACTION \u2014 densite toxique. Generee par les ticks
     venin sur les ennemis et les marques actives. Cap 6."
   PassiveName: La Floraison
-  PassiveDescription: Suit le nombre de marques de venin actives dans le match (toutes
-    cibles confondues). Plus de marques = ticks plus puissants, regen Necram, zones
-    toxiques autour de lui.
+  PassiveDescription: 'Indexee sur la DENSITE globale de marques de venin actives (toutes cibles confondues). Les ticks de venin frappent a chaque debut de sub-turn. A partir de 4 marques actives : tu regeneres +10 HP par marque et un halo toxique (rayon 3 cases) inflige 20 degats a chaque ennemi qui commence son tour pres de toi. Plus la map est infectee, plus tu domines.'
   SignatureName: Virus Fatal
   SignatureCooldownTurns: 4
   SignatureDescription: Sort signature debloque a 6 PT. Detone tous les ticks. Cooldown
