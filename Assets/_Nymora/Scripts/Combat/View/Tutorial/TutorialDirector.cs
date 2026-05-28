@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Nymora.Combat.View.HUD;
 using Nymora.Core.Data;
+using Nymora.Core.SceneFlow;
 using Quantum;
 using TMPro;
 using UnityEngine;
@@ -61,9 +62,11 @@ namespace Nymora.Combat.View.Tutorial
 
         // ---- UI ----
         private Canvas _canvas;
+        private GameObject _panelGo;
         private TextMeshProUGUI _instructionText;
         private TextMeshProUGUI _statusText;
         private GameObject _continueGo;
+        private bool _finished;
 
         private void Awake()
         {
@@ -90,7 +93,7 @@ namespace Nymora.Combat.View.Tutorial
                                 "pour le frapper. Lancer un sort coute des PA (points d'action).", Gate.Cast));
             _steps.Add(new Step("FIN DE TOUR : quand tu n'as plus rien a faire, termine ton tour " +
                                 "(bouton Fin de tour). Le mannequin ne riposte pas.", Gate.EndTurn));
-            _steps.Add(new Step("Bravo, tu maitrises les bases ! (ecran de fin + retour au hub a venir)", Gate.Continue));
+            _steps.Add(new Step("Bravo, tu maitrises les bases du combat ! Clique sur Continuer pour terminer.", Gate.Continue));
         }
 
         private void ShowStep(int i)
@@ -166,8 +169,56 @@ namespace Nymora.Combat.View.Tutorial
 
         private void Finish()
         {
-            // T3 : on masque simplement l'overlay. Écran de fin + retour hub + set flag = T4.
-            if (_canvas != null) _canvas.gameObject.SetActive(false);
+            if (_finished) return;
+            _finished = true;
+            // T4 : masque le panneau d'instructions et affiche l'écran de fin (centre) + retour hub.
+            // Le set du flag backend "tutorialCompleted" (anti-rejeu nouveau compte) arrive en T6.
+            if (_panelGo != null) _panelGo.SetActive(false);
+            BuildEndScreen();
+        }
+
+        private void BuildEndScreen()
+        {
+            if (_canvas == null) return;
+
+            var panel = NewImage("EndPanel", _canvas.transform, CombatUiKit.PanelBg, CombatUiKit.CornerRadius);
+            var prt = panel.rectTransform;
+            prt.anchorMin = prt.anchorMax = prt.pivot = new Vector2(0.5f, 0.5f);
+            prt.sizeDelta = new Vector2(720f, 320f);
+            prt.anchoredPosition = Vector2.zero;
+
+            var title = NewText("Title", panel.transform, 44, CombatUiKit.TextPrimary, TextAlignmentOptions.Center);
+            var trt = title.rectTransform;
+            trt.anchorMin = new Vector2(0f, 1f); trt.anchorMax = new Vector2(1f, 1f); trt.pivot = new Vector2(0.5f, 1f);
+            trt.sizeDelta = new Vector2(-48f, 70f); trt.anchoredPosition = new Vector2(0f, -40f);
+            title.text = "Tutoriel termine !";
+
+            var body = NewText("Body", panel.transform, 26, CombatUiKit.TextSecondary, TextAlignmentOptions.Center);
+            var brt = body.rectTransform;
+            brt.anchorMin = new Vector2(0f, 0.5f); brt.anchorMax = new Vector2(1f, 0.5f); brt.pivot = new Vector2(0.5f, 0.5f);
+            brt.sizeDelta = new Vector2(-80f, 90f); brt.anchoredPosition = new Vector2(0f, 6f);
+            body.text = "Tu connais les bases : deplacement, sorts et fin de tour.\nPret a affronter de vrais adversaires ?";
+
+            var btnImg = NewImage("ReturnButton", panel.transform, CombatUiKit.Accent, 10f);
+            var rrt = btnImg.rectTransform;
+            rrt.anchorMin = rrt.anchorMax = rrt.pivot = new Vector2(0.5f, 0f);
+            rrt.sizeDelta = new Vector2(320f, 64f);
+            rrt.anchoredPosition = new Vector2(0f, 28f);
+            var btn = btnImg.gameObject.AddComponent<Button>();
+            btn.targetGraphic = btnImg;
+            btn.onClick.AddListener(ReturnToHub);
+            var lbl = NewText("Label", btnImg.transform, 28, CombatUiKit.TextOnLight, TextAlignmentOptions.Center);
+            var lrt = lbl.rectTransform;
+            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
+            lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
+            lbl.text = "Retour au hub";
+        }
+
+        private void ReturnToHub()
+        {
+            // Même pattern que MatchEndOverlay : fondu + shutdown Quantum à mi-transition + attente
+            // que le hub soit prêt. TutorialContext.Reset() est aussi fait par CombatBootstrapIA.OnDestroy.
+            SceneTransition.Load("10_CommunityHub", () => QuantumRunner.ShutdownAll(), waitForReady: true);
         }
 
         // ============================ UI (procédural, design combat) ============================
@@ -184,8 +235,9 @@ namespace Nymora.Combat.View.Tutorial
             scaler.referenceResolution = new Vector2(1920f, 1080f);
             scaler.matchWidthOrHeight = 0.5f;
 
-            // Panneau d'instructions — haut-centre (provisoire, à caler en T4).
+            // Panneau d'instructions — haut-centre (provisoire, à caler en T5 avec les coach marks).
             var panel = NewImage("Panel", _canvas.transform, CombatUiKit.PanelBg, CombatUiKit.CornerRadius);
+            _panelGo = panel.gameObject;
             var prt = panel.rectTransform;
             prt.anchorMin = new Vector2(0.5f, 1f);
             prt.anchorMax = new Vector2(0.5f, 1f);
