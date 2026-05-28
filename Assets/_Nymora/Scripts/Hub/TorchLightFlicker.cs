@@ -54,7 +54,14 @@ namespace Nymora.Hub
             float t = Time.time * _flickerSpeed;
 
             float n = Mathf.PerlinNoise(_seedI, t) * 2f - 1f; // [-1, 1]
-            _light.intensity = Mathf.Max(0f, _baseIntensity * (1f + n * _flickerAmount));
+
+            // Profondeur de lumiere : le profil graphique actif peut creuser/intensifier les puits
+            // de lumiere des torches (multiplicateur PAR-DESSUS la base + le flicker -> non destructif).
+            float profileMul = 1f;
+            var disp = DisplaySettingsController.Instance;
+            if (disp != null) profileMul = disp.CurrentProfile.TorchIntensityMul;
+
+            _light.intensity = Mathf.Max(0f, _baseIntensity * (1f + n * _flickerAmount) * profileMul);
 
             if (_jitterX > 0f || _jitterY > 0f)
             {

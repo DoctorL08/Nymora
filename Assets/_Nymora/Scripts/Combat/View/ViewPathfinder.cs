@@ -131,6 +131,11 @@ namespace Nymora.Combat.View
                     if (c.HP <= 0) continue;
                     if (c.GridX == x && c.GridY == y) return true;
                 }
+
+                // PATCH #8 — un leurre Ghostra bloque le déplacement (silhouette : on ne marche pas
+                // dessus). La sim bloque déjà via DecoyHelpers.HasAnyDecoyAt ; on l'ajoute ici pour
+                // que la prévisu PM CONTOURNE les leurres au lieu de les traverser.
+                if (DecoyHelpers.HasAnyDecoyAt(frame, x, y)) return true;
             }
             return false;
         }

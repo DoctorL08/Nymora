@@ -211,6 +211,10 @@ namespace Nymora.Combat.View.HUD
                     if (occupied && !ignoreEnemyOccupants) continue;
                     // Note : on n'exclut PAS les obstacles ici car GridHelpers.IsWalkable les
                     // rejette deja (Pilier/Mur Colossar non traversables, meme via Pas Spectral).
+                    // PATCH #8 — un leurre Ghostra bloque le deplacement (silhouette, comme dans la
+                    // sim via HasAnyDecoyAt) : la portee verte s'arrete aux leurres au lieu de les
+                    // traverser. Coherent avec ViewPathfinder.IsBlocked.
+                    if (!ignoreEnemyOccupants && DecoyHelpers.HasAnyDecoyAt(frame, nx, ny)) continue;
 
                     int extra = GridHelpers.GetTerrainKind(frame, nx, ny) == TerrainKind.VapeurCarmin ? 1 : 0;
                     int newCost = curCost + 1 + extra;

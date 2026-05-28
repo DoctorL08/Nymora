@@ -128,5 +128,14 @@ namespace Nymora.Combat.View
         {
             if (_sr != null) _sr.enabled = visible;
         }
+
+        /// <summary>
+        /// Teinte le sprite (utilisé pour les familiers de LEURRES Ghostra : cyan/translucide
+        /// côté caster, opaque côté adverse — comme le sprite du leurre).
+        /// </summary>
+        public void SetTint(Color c)
+        {
+            if (_sr != null) _sr.color = c;
+        }
     }
 }

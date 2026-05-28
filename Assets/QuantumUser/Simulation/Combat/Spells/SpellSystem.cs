@@ -355,12 +355,23 @@ namespace Quantum
                     && (spellDef.Filter == TargetingFilter.Enemy || spellDef.Filter == TargetingFilter.AnyUnit)
                     && IsAdverseObstacleAt(f, cmd.TargetX, cmd.TargetY, playerIndex);
 
-                if (!offensiveObstacleTarget)
+                // PATCH #6 — un sort cible-ennemi peut viser une case occupee par un LEURRE Ghostra
+                // ennemi (Bible : leurres indiscernables -> ciblables comme la vraie Ghostra). La
+                // resolution (consommation du leurre) est geree plus bas (boucle damage / interception
+                // non-offensive). Vaut pour les sorts offensifs ET non-offensifs (marques/debuffs).
+                bool targetIsEnemyDecoy =
+                    (spellDef.Filter == TargetingFilter.Enemy || spellDef.Filter == TargetingFilter.AnyUnit)
+                    && DecoyHelpers.HasEnemyDecoyAt(f, playerIndex, cmd.TargetX, cmd.TargetY);
+
+                if (!offensiveObstacleTarget && !targetIsEnemyDecoy)
                 {
                     Log.Warn($"[Spell] rejet : ({cmd.TargetX},{cmd.TargetY}) ne match pas filter {spellDef.Filter}");
                     return;
                 }
-                Log.Info($"[Spell] cible obstacle adverse autorisee sur ({cmd.TargetX},{cmd.TargetY}) (sort offensif {cmd.Spell})");
+                if (offensiveObstacleTarget)
+                    Log.Info($"[Spell] cible obstacle adverse autorisee sur ({cmd.TargetX},{cmd.TargetY}) (sort offensif {cmd.Spell})");
+                else
+                    Log.Info($"[Spell] cible leurre ennemi autorisee sur ({cmd.TargetX},{cmd.TargetY}) ({cmd.Spell})");
             }
 
             // 2.15.c — Voile d'Ombre : si cible directe (filter Enemy/AnyUnit) est un combatant
@@ -544,6 +555,22 @@ namespace Quantum
                     out effectCount);
             }
 
+            // ===== PATCH #6 — sort NON-offensif ciblant directement un leurre ennemi =====
+            // Les sorts OFFENSIFS gerent le leurre dans la boucle damage ci-dessous (par case d'effet,
+            // AoE incluse). Pour un sort NON-offensif a cible ennemi (marque/debuff), viser la case
+            // d'un leurre = interaction : Standard/RepliqueFantome consommes (le faux est revele,
+            // heal Bible), Protective survit (encaisse 0 dmg). PA deja consomme (cast "rate" sur un faux).
+            if (spellDef.IsOffensive == 0
+                && (spellDef.Filter == TargetingFilter.Enemy || spellDef.Filter == TargetingFilter.AnyUnit)
+                && GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY) == EntityRef.None
+                && DecoyHelpers.TryFindEnemyDecoyForCaster(f, caster->PlayerIndex, cmd.TargetX, cmd.TargetY,
+                    out Combatant* nbDecoyG, out int nbDecoySlot))
+            {
+                bool nbDestroyed = DecoyHelpers.HitDecoyByEnemyAction(nbDecoyG, nbDecoySlot, 0);
+                Log.Info($"[Spell] {cmd.Spell} (non-offensif) cible leurre ennemi P{nbDecoyG->PlayerIndex} en ({cmd.TargetX},{cmd.TargetY}) -> {(nbDestroyed ? "DETRUIT" : "Protective survit")}");
+                return;
+            }
+
             // ===== Damage loop + Shield absorption + Riposte trigger + gain HG =====
             bool casterHitSomething = false;       // au moins 1 cible a perdu des HP (apres shield)
             bool castHitMarkedTarget = false;      // au moins 1 cible MarkedByCarnage a perdu des HP
@@ -652,6 +679,17 @@ namespace Quantum
                     EntityRef target = GridHelpers.GetOccupant(f, cx, cy);
                     if (target == EntityRef.None)
                     {
+                        // PATCH #6 — leurre Ghostra ENNEMI sur une case d'effet (cible directe OU
+                        // case d'AoE) : le sort le touche. Standard/RepliqueFantome 1-shot ;
+                        // Protective encaisse effectiveDmg (detruit a 0 HP). Heal Bible selon Kind.
+                        if (DecoyHelpers.TryFindEnemyDecoyForCaster(f, caster->PlayerIndex, cx, cy,
+                                out Combatant* aoeDecoyG, out int aoeDecoySlot))
+                        {
+                            bool aoeDecoyDestroyed = DecoyHelpers.HitDecoyByEnemyAction(aoeDecoyG, aoeDecoySlot, effectiveDmg);
+                            Log.Info($"[Spell] {cmd.Spell} touche leurre ennemi P{aoeDecoyG->PlayerIndex} en ({cx},{cy}) dmg={effectiveDmg} -> {(aoeDecoyDestroyed ? "DETRUIT" : "encaisse")}");
+                            continue;
+                        }
+
                         // 3.3.d — Sort AoE damage : si la case a un obstacle ADVERSE (Faille, Pilier
                         // ennemi, Mur ennemi), on lui inflige aussi le damage de base (effectiveDmg).
                         // Bible-balance : permet a l'ennemi piégé par Effondrement de casser des

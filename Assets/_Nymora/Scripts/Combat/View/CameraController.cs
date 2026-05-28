@@ -39,6 +39,10 @@ namespace Nymora.Combat.View
         [Tooltip("Marge monde ajoutee aux bounds de la grille. Monte-la si ton background deborde " +
                  "de la grille iso et que tu veux voir son liseré ; baisse-la si tu vois encore du vide.")]
         [SerializeField] private float _boundsPadding = 0f;
+        [Tooltip("Leste de pan : laisse le centre camera depasser les bornes de cette marge monde. " +
+                 "Permet de pousser un bord/coin de la map vers le centre de l'ecran (surtout en zoom). " +
+                 "0 = clamp strict (viewport jamais hors map).")]
+        [SerializeField] private float _panSlack = 2.5f;
 
         private Vector3 _initialPosition;
         private float _initialOrthoSize;
@@ -93,9 +97,10 @@ namespace Nymora.Combat.View
 
             float halfH = _camera.orthographicSize;
             float halfW = halfH * aspect;
+            float slack = Mathf.Max(0f, _panSlack);
             Vector3 p = _camera.transform.position;
-            p.x = (mapW <= halfW * 2f) ? (min.x + max.x) * 0.5f : Mathf.Clamp(p.x, min.x + halfW, max.x - halfW);
-            p.y = (mapH <= halfH * 2f) ? (min.y + max.y) * 0.5f : Mathf.Clamp(p.y, min.y + halfH, max.y - halfH);
+            p.x = (mapW <= halfW * 2f) ? (min.x + max.x) * 0.5f : Mathf.Clamp(p.x, min.x + halfW - slack, max.x - halfW + slack);
+            p.y = (mapH <= halfH * 2f) ? (min.y + max.y) * 0.5f : Mathf.Clamp(p.y, min.y + halfH - slack, max.y - halfH + slack);
             _camera.transform.position = p;
         }
 

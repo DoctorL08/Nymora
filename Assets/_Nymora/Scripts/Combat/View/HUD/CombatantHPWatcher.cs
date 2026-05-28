@@ -36,6 +36,9 @@ namespace Nymora.Combat.View.HUD
         private readonly Dictionary<EntityRef, int> _lastHP = new Dictionary<EntityRef, int>(4);
         // J5 — suit la Magnitude du status ShieldActive par entite (gain / absorption).
         private readonly Dictionary<EntityRef, int> _lastShield = new Dictionary<EntityRef, int>(4);
+        // PATCH #4 — suit LastCastSequence par entite pour detecter les casts de signature
+        // depuis la FRAME (deterministe -> arme le bridge sur les 2 clients, pas que le caster).
+        private readonly Dictionary<EntityRef, int> _lastCastSeq = new Dictionary<EntityRef, int>(4);
         private Vector3 _centerOffset;
         private bool _gridReady;
 
@@ -49,6 +52,7 @@ namespace Nymora.Combat.View.HUD
         {
             _lastHP.Clear();
             _lastShield.Clear();
+            _lastCastSeq.Clear();
             if (_gridSettings == null)
             {
                 Debug.LogWarning("[CombatantHPWatcher] GridSettings manquant — cable dans l'Inspector.", this);
@@ -72,6 +76,23 @@ namespace Nymora.Combat.View.HUD
 
             var frame = game.Frames.Verified;
             if (frame == null) return;
+
+            // PATCH #4 — 1re passe : detecte les casts de SIGNATURE depuis la frame (LastCastSequence
+            // avance + LastCastSpellId signature) et arme SignatureCastBridge. Deterministe -> marche
+            // sur les 2 clients, donc le flottant "SMASH!!" apparait AUSSI cote adverse (avant : seul
+            // le caster armait le bridge via son input local). Passe separee = le bridge est arme avant
+            // l'evaluation des deltas HP ci-dessous, quel que soit l'ordre d'iteration des entites.
+            var sigFilter = frame.Filter<Combatant>();
+            while (sigFilter.Next(out EntityRef sigEntity, out Combatant sigC))
+            {
+                if (_lastCastSeq.TryGetValue(sigEntity, out int prevSeq)
+                    && sigC.LastCastSequence != prevSeq
+                    && SignatureCastBridge.IsSignatureSpell(sigC.LastCastSpellId))
+                {
+                    SignatureCastBridge.NotifySpellCast(sigC.LastCastSpellId);
+                }
+                _lastCastSeq[sigEntity] = sigC.LastCastSequence;
+            }
 
             var filter = frame.Filter<Combatant>();
             while (filter.Next(out EntityRef entity, out Combatant c))

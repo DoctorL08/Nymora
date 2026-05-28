@@ -186,6 +186,44 @@ namespace Quantum
         }
 
         /// <summary>
+        /// PATCH #6 — Un sort ENNEMI touche DIRECTEMENT la case d'un leurre (ciblage direct ou
+        /// case d'effet AoE). Comportement selon Kind (decision Lorenzo) :
+        ///   - Standard / RepliqueFantome (HP=0) : detruit en 1 coup (heal Bible selon Kind via
+        ///     DestroyByEnemyAction : Standard 0, RepliqueFantome +40).
+        ///   - Protective (HP=200) : encaisse `damage` sur ses HP ; detruit (+80 HP Ghostra) seulement
+        ///     si HP tombe a 0. Un sort sans degats (damage &lt;= 0) ne le detruit PAS (absorbe 0).
+        /// Retourne true si le leurre a ete DETRUIT, false s'il a juste encaisse/survecu.
+        /// </summary>
+        public static bool HitDecoyByEnemyAction(Combatant* ghostra, int slotIndex, int damage)
+        {
+            if (ghostra == null) return false;
+            if (slotIndex < 0 || slotIndex >= MaxDecoys) return false;
+            DecoyKind k = ghostra->Decoys[slotIndex].Kind;
+            if (k == DecoyKind.None) return false;
+
+            if (k == DecoyKind.Protective)
+            {
+                int hpBefore = ghostra->Decoys[slotIndex].HP;
+                int absorbed = damage <= 0 ? 0 : (damage > hpBefore ? hpBefore : damage);
+                int hpAfter = hpBefore - absorbed;
+                var slot = ghostra->Decoys[slotIndex];
+                slot.HP = hpAfter;
+                ghostra->Decoys[slotIndex] = slot;
+                Log.Info($"[Decoy] Hit direct PROTECTIVE P{ghostra->PlayerIndex} slot {slotIndex} : -{absorbed} HP ({hpBefore}->{hpAfter})");
+                if (hpAfter <= 0)
+                {
+                    DestroyByEnemyAction(ghostra, slotIndex); // heal +80 Bible
+                    return true;
+                }
+                return false;
+            }
+
+            // Standard / RepliqueFantome (HP=0) : 1-hit destroy (toute interaction de sort).
+            DestroyByEnemyAction(ghostra, slotIndex);
+            return true;
+        }
+
+        /// <summary>
         /// Cherche un slot decoy a la position (x,y) appartenant au Ghostra. Retourne
         /// l'index du slot ou -1.
         /// </summary>

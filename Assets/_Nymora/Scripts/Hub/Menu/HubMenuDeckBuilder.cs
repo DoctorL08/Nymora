@@ -122,6 +122,7 @@ namespace Nymora.Hub.Menu
 
             // Header : nom (input) + Supprimer / Save (droite)
             _nameInput = MakeInput(main, "Nom du deck");
+            _nameInput.characterLimit = 19; // borne le nom pour qu'il tienne sur une ligne dans la liste
             var nirt = _nameInput.GetComponent<RectTransform>();
             nirt.anchorMin = new Vector2(0f, 1f); nirt.anchorMax = new Vector2(0f, 1f); nirt.pivot = new Vector2(0f, 1f);
             nirt.sizeDelta = new Vector2(320f, 44f); nirt.anchoredPosition = new Vector2(0f, -4f);

@@ -37,6 +37,16 @@ namespace Nymora.Hub
         private ChatTab _activeTab = ChatTab.Global;
         private string _joinedClanChannel; // "clan:<clanId>" si rejoint, sinon null
 
+        // #9 — Messages non-lus par onglet (MP / Clan). Incrementes a la reception hors onglet
+        // actif, remis a 0 au switch sur l'onglet. Affiches en pastille rouge sur le bouton d'onglet.
+        private int _unreadPrivate;
+        private int _unreadClan;
+        private GameObject _privateBadge;
+        private TextMeshProUGUI _privateBadgeText;
+        private GameObject _clanBadge;
+        private TextMeshProUGUI _clanBadgeText;
+        private bool _badgesBuilt;
+
         private void OnEnable()
         {
             if (_sendButton != null) _sendButton.onClick.AddListener(OnSendClicked);
@@ -64,6 +74,8 @@ namespace Nymora.Hub
             UpdateTabStyles();
             RefreshHistoryText();
             EnsureHistoryClickHandler();
+            EnsureBadges();
+            RefreshBadges();
             if (HubChatClient.Instance != null)
             {
                 HubChatClient.Instance.OnConnected += HandleConnected;
@@ -141,6 +153,10 @@ namespace Nymora.Hub
             // POLISH-7 polish (20 mai) : pseudo wrappe dans link cliquable pour ouvrir
             // le menu contextuel chat (MP / Ami / Inviter clan / Signaler).
             AppendLine(tab, $"{WrapPseudoLink(from)}: {text}");
+            // #9 — message clan recu hors onglet Clan -> incremente le compteur non-lu (badge rouge).
+            // (mes propres messages clan reviennent par le relai mais j'envoie depuis l'onglet Clan
+            // actif, donc ils ne sont pas comptes.)
+            if (tab == ChatTab.Clan && _activeTab != ChatTab.Clan) { _unreadClan++; RefreshBadges(); }
         }
 
         private void HandleWhisper(string from, string to, string text)
@@ -148,10 +164,13 @@ namespace Nymora.Hub
             // Notification SON : uniquement sur MP REÇU (pas mes propres MP envoyés). Compare au
             // displayName officiel (HubChatClient) plutôt qu'à PlayerProfileBridge.LocalPseudo.
             string me = HubChatClient.Instance != null ? HubChatClient.Instance.MyDisplayName : null;
-            if (!string.IsNullOrEmpty(from) && from != me)
+            bool received = !string.IsNullOrEmpty(from) && from != me;
+            if (received)
                 Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(Nymora.Core.Audio.SoundId.MessageReceived);
             // POLISH-7 polish : 2 pseudos cliquables dans la ligne whisper (sender + receiver).
             AppendLine(ChatTab.Private, $"<color=#d8a4ff>[{WrapPseudoLink(from)} → {WrapPseudoLink(to)}]</color> {text}");
+            // #9 — MP recu hors onglet Prive -> incremente le compteur non-lu (badge rouge).
+            if (received && _activeTab != ChatTab.Private) { _unreadPrivate++; RefreshBadges(); }
         }
 
         // POLISH-7 (20 mai) : les events portent maintenant le displayName (pseudo officiel
@@ -277,6 +296,10 @@ namespace Nymora.Hub
         {
             if (_activeTab == tab) return;
             _activeTab = tab;
+            // #9 — ouvrir un onglet marque ses messages comme lus -> reset du compteur + badge.
+            if (tab == ChatTab.Private) _unreadPrivate = 0;
+            else if (tab == ChatTab.Clan) _unreadClan = 0;
+            RefreshBadges();
             UpdateTabStyles();
             RefreshHistoryText();
         }
@@ -306,6 +329,60 @@ namespace Nymora.Hub
             if (img != null) img.color = active ? _tabActiveColor : _tabInactiveColor;
             var lbl = btn.GetComponentInChildren<TextMeshProUGUI>(true);
             if (lbl != null) lbl.color = active ? _tabActiveTextColor : _tabInactiveTextColor;
+        }
+
+        // #9 — Cree (une fois) la pastille de non-lus sur les boutons d'onglet MP et Clan.
+        private void EnsureBadges()
+        {
+            if (_badgesBuilt) return;
+            _badgesBuilt = true;
+            if (_tabPrivateButton != null) CreateBadge(_tabPrivateButton.transform, out _privateBadge, out _privateBadgeText);
+            if (_tabClanButton != null) CreateBadge(_tabClanButton.transform, out _clanBadge, out _clanBadgeText);
+        }
+
+        // Pastille rouge ancree en haut-droite du bouton d'onglet, masquee tant que 0 non-lu.
+        private static void CreateBadge(Transform parent, out GameObject badge, out TextMeshProUGUI text)
+        {
+            badge = new GameObject("UnreadBadge", typeof(RectTransform), typeof(Image));
+            badge.transform.SetParent(parent, worldPositionStays: false);
+            var rt = (RectTransform)badge.transform;
+            rt.anchorMin = new Vector2(1f, 1f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(24f, 24f);
+            rt.anchoredPosition = new Vector2(-3f, -3f);
+            var img = badge.GetComponent<Image>();
+            img.color = new Color(0.85f, 0.16f, 0.16f, 1f); // rouge notif
+            img.raycastTarget = false;
+
+            var txtGo = new GameObject("Count", typeof(RectTransform), typeof(TextMeshProUGUI));
+            txtGo.transform.SetParent(badge.transform, worldPositionStays: false);
+            var trt = (RectTransform)txtGo.transform;
+            trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+            trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
+            text = txtGo.GetComponent<TextMeshProUGUI>();
+            text.alignment = TextAlignmentOptions.Center;
+            text.fontSize = 14f;
+            text.color = Color.white;
+            text.raycastTarget = false;
+            text.enableWordWrapping = false;
+
+            badge.SetActive(false);
+        }
+
+        // #9 — Reflete les compteurs de non-lus sur les pastilles (cap d'affichage a "+9").
+        private void RefreshBadges()
+        {
+            UpdateBadge(_privateBadge, _privateBadgeText, _unreadPrivate);
+            UpdateBadge(_clanBadge, _clanBadgeText, _unreadClan);
+        }
+
+        private static void UpdateBadge(GameObject badge, TextMeshProUGUI text, int count)
+        {
+            if (badge == null) return;
+            if (count <= 0) { badge.SetActive(false); return; }
+            badge.SetActive(true);
+            if (text != null) text.text = count > 9 ? "+9" : ("+" + count);
         }
 
         private void AppendSystemLine(ChatTab tab, string line)

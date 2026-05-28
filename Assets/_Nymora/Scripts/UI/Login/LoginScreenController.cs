@@ -55,6 +55,10 @@ namespace Nymora.UI.Login
         [Tooltip("Scene hub chargee apres connexion reussie.")]
         [SerializeField] private string _hubSceneName = "10_CommunityHub";
 
+        [Header("Quitter")]
+        [Tooltip("Bouton 'Quitter' (coin de l'ecran) : ferme le jeu. Toujours visible.")]
+        [SerializeField] private Button _quitButton;
+
         [Header("Status")]
         [SerializeField] private TMP_Text _statusText;
         [SerializeField] private TMP_Text _versionVerdictText;
@@ -108,6 +112,7 @@ namespace Nymora.UI.Login
             if (_createAccountButton != null) _createAccountButton.onClick.AddListener(OnCreateAccountClicked);
             if (_backToLoginButton != null) _backToLoginButton.onClick.AddListener(OnBackToLoginClicked);
             if (_downloadButton != null) _downloadButton.onClick.AddListener(OnDownloadClicked);
+            if (_quitButton != null) _quitButton.onClick.AddListener(OnQuitClicked);
         }
 
         private void OnDisable()
@@ -117,6 +122,18 @@ namespace Nymora.UI.Login
             if (_createAccountButton != null) _createAccountButton.onClick.RemoveListener(OnCreateAccountClicked);
             if (_backToLoginButton != null) _backToLoginButton.onClick.RemoveListener(OnBackToLoginClicked);
             if (_downloadButton != null) _downloadButton.onClick.RemoveListener(OnDownloadClicked);
+            if (_quitButton != null) _quitButton.onClick.RemoveListener(OnQuitClicked);
+        }
+
+        /// <summary>Ferme le jeu (ou arrete le Play Mode en editeur).</summary>
+        private void OnQuitClicked()
+        {
+            NymoraLog.Info("Login", "Fermeture du jeu demandee (bouton Quitter).");
+#if UNITY_EDITOR
+            UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
         }
 
         private async void Start()

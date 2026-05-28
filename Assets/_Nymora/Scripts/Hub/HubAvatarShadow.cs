@@ -33,17 +33,27 @@ namespace Nymora.Hub
         [SerializeField] private bool _stretchTowardShadow = true;
         [SerializeField, Min(1f)] private float _maxStretch = 1.35f;
         [SerializeField, Min(0.25f)] private float _refreshInterval = 1f;
+        [Tooltip("Lissage de la reaction au flicker des lumieres : plus haut = l'ombre vacille " +
+                 "beaucoup moins (suit la MOYENNE des lights, pas le scintillement des torches).")]
+        [SerializeField, Min(0f)] private float _smoothTime = 0.6f;
 
         private SpriteRenderer _sr;
         private Vector3 _baseScale;
         private Vector3 _basePosition;
         private readonly List<Light2D> _lights = new List<Light2D>();
 
+        // Valeurs lissees (decouplent l'ombre du flicker des torches).
+        private Vector3 _curOffset;
+        private Vector3 _curOffsetVel;
+        private float _curStretch = 1f;
+        private float _curAlpha;
+
         private void Awake()
         {
             _sr = GetComponent<SpriteRenderer>();
             _baseScale = transform.localScale;
             _basePosition = transform.localPosition; // base = position reglee dans le prefab
+            _curAlpha = _minAlpha;
         }
 
         private void OnEnable() => StartCoroutine(RefreshLightsLoop());
@@ -92,24 +102,32 @@ namespace Nymora.Hub
                 totalInfluence += infl;
             }
 
-            Vector3 localOffset = Vector3.zero;
-            float stretch = 1f;
+            Vector3 targetOffset = Vector3.zero;
+            float targetStretch = 1f;
             if (totalInfluence > 1e-3f)
             {
                 Vector2 dir = accumDir / totalInfluence;
                 Vector2 off = Vector2.ClampMagnitude(dir * _offsetGain, _maxOffset);
-                localOffset = new Vector3(off.x, off.y, 0f);
+                targetOffset = new Vector3(off.x, off.y, 0f);
                 if (_stretchTowardShadow)
-                    stretch = Mathf.Lerp(1f, _maxStretch, Mathf.Clamp01(off.magnitude / _maxOffset));
+                    targetStretch = Mathf.Lerp(1f, _maxStretch, Mathf.Clamp01(off.magnitude / _maxOffset));
             }
+            float targetAlpha = Mathf.Lerp(_minAlpha, _maxAlpha, Mathf.Clamp01(totalInfluence));
 
-            transform.localPosition = _basePosition + localOffset;
+            // Lissage : l'ombre suit la MOYENNE des lumieres, pas leur flicker frame-a-frame
+            // -> elle vacille beaucoup moins que les torches.
+            _curOffset = Vector3.SmoothDamp(_curOffset, targetOffset, ref _curOffsetVel, _smoothTime);
+            float k = _smoothTime > 1e-4f ? 1f - Mathf.Exp(-Time.deltaTime / _smoothTime) : 1f;
+            _curStretch = Mathf.Lerp(_curStretch, targetStretch, k);
+            _curAlpha = Mathf.Lerp(_curAlpha, targetAlpha, k);
 
-            if (_stretchTowardShadow && localOffset.sqrMagnitude > 1e-5f)
+            transform.localPosition = _basePosition + _curOffset;
+
+            if (_stretchTowardShadow && _curOffset.sqrMagnitude > 1e-5f)
             {
-                float ang = Mathf.Atan2(localOffset.y, localOffset.x) * Mathf.Rad2Deg;
+                float ang = Mathf.Atan2(_curOffset.y, _curOffset.x) * Mathf.Rad2Deg;
                 transform.localRotation = Quaternion.Euler(0f, 0f, ang);
-                transform.localScale = new Vector3(_baseScale.x * stretch, _baseScale.y, _baseScale.z);
+                transform.localScale = new Vector3(_baseScale.x * _curStretch, _baseScale.y, _baseScale.z);
             }
             else
             {
@@ -120,7 +138,7 @@ namespace Nymora.Hub
             if (_sr != null)
             {
                 var c = _sr.color;
-                c.a = Mathf.Lerp(_minAlpha, _maxAlpha, Mathf.Clamp01(totalInfluence));
+                c.a = _curAlpha;
                 _sr.color = c;
             }
         }

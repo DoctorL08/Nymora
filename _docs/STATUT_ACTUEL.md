@@ -3,6 +3,34 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
+**SESSION 28 mai 2026 (ter) — 🩹 12 PATCHS (10/12) + 🎨 GROSSE PASSE GRAPHIQUE HUB + 🌫️ ATMO COMBAT :** patchs de la liste `Patch à faire.txt` + refonte visuelle du hub. **100% View SAUF #6 (sim) → `CombatRulesVersion` 80→81.** Commité local + push GitHub (fin de session).
+
+- **🩹 Patchs livrés (10/12)** : #2 prévisu perso re-équip cosmétique (anti-flash `HubMenuShell`), #3 bouton Quitter login (`AddLoginQuitButtonTool` non-destructif), #4 flottant SMASH côté adverse (`CombatantHPWatcher`), #6 **leurre Ghostra ciblable** (sim : `DecoyHelpers.HitDecoyByEnemyAction`+`SpellSystem`, **bump 81**), #7 familier sur **tous** les leurres (`DecoyView`), #8 prévisu PM contourne les leurres (`ViewPathfinder`/`MovementRangePreview`), #9 badges non-lus MP & Clan (`HubChatUI`), #10 nom de deck limité à 19 car., #11 leste caméra combat zoom (`CameraController._panSlack`), #12 → passe graphique ci-dessous. Indiscernibilité leurres résolue (teinte LocalOwns + skin + matériau).
+- **🎨 Passe graphique hub** (`Scripts/Hub/`) :
+  - **Profil graphique** : système GFX-1 (5 ambiances + LUT) **réduit à UN seul "Standard"** sur demande. Le profil **ne touche PLUS le post-process** (`OverridePostProcess=false`) → **le Volume de la scène fait foi (WYSIWYG)** + lumière/torches neutres (×1). "Sans effets" = off.
+  - **`HubAtmosphere`** (auto par HubBootstrap) : poussières + **lucioles clignotantes** + **brume de profondeur animée** (smoothstep plein écran + respiration/dérive) + **halos torches** (`HubTorchHalo`) + **ombres de contact** (`HubContactShadow`) + **ombres projetées noires dégradées** (`HubFloorReflection` + shader `HubFloorShadow`, sur torches/props, inclinées). 6 toggles par couche.
+  - **ShadowBlob (`HubAvatarShadow`) lissé** (ne vacille plus avec le flicker des torches).
+  - **Normal map** : `NormalMapGeneratorTool` (génère+assigne `_NormalMap`) + `SetupHubKeyLightTool` (normales sur torches + key light). **À calibrer en jeu** (relief localisé).
+- **🌫️ Atmo combat** : `AddAtmosphereToCombatTool` ajoute `HubAtmosphere` (**reflets OFF**) aux 3 scènes combat. **À lancer + valider.** Colorimétrie combat déjà OK (Volume `Combat_PostFX`).
+- **🎛️ Post-FX hub/combat dissociés** : `Hub_PostFX` (`3a6e`) ↔ `Combat_PostFX` (`0e60`), assets séparés, plus d'override code. `Hub_PostFX` **restauré** (sat 30 / temp +10 / split gris / vignette 0.254) après contamination par des valeurs combat.
+- **🔖 RELIQUAT prochaine session** :
+  1. **#1 Bandeau de clan propagé LIVE** (pas fait — visible seulement après relog ; invalider le cache client, cf [[project-clan-banner-system]]).
+  2. **#5 IA spawn parfois au milieu du terrain** (pas fait — investiguer `CombatantSystem` spawn slots / `CombatBootstrapIA`).
+  3. **Calibrer normal map + key light** + **lancer `Add Atmosphere to Combat`** et valider.
+  4. `SetupGfxLutResourcesTool` **devenu inutile** tant que le profil n'override pas le post-process (LUT swap non appelé) — garder ou retirer.
+- **À RETENIR** : (1) **`map_hub_sans_fond.png` supprimé + `map_hub.png` ajouté** (réorg art) → la normal map cible l'ancien nom, **à régénérer** sur la nouvelle map. (2) post-FX = éditer le Volume **de la bonne scène** (séparés). (3) couches `HubAtmosphere` désactivables par toggle.
+- **PROCHAIN STEP** : #1 (bandeau clan live) + #5 (IA spawn).
+
+---
+
+**SESSION 28 mai 2026 (bis) — 🚀 PUSH GITHUB (fin de session 28 mai) + 📦 MAJ CLIENT 0.1.5 PUBLIÉE PROD :** clôture de la session familiers/boutique/écran de chargement. Aucun code nouveau, livraison/publication uniquement.
+
+- **🚀 Push GitHub client** : les 12 commits locaux en attente poussés sur `origin/main` (`ef9416d..cb58d7a`, repo `DoctorL08/Nymora`, LFS inclus). Dont **2 commits de fin de session** : (1) `docs(comm)` — `07_PLAN_COMMUNICATION.md` + `08_KICKSTARTER_A_Z.md` + ref dans `INDEX.md` ; (2) `chore(assets)` — regen TMP SDF (Anton/Bangers/LiberationSans fallback) + `map_hub_sans_fond.png` + scène `10_CommunityHub` + `QuantumMap.asset` (les dérives non commitées des sessions précédentes, enfin intégrées). Working tree propre.
+- **📦 MaJ client 0.1.5 publiée en prod** : `nymora-0.1.5.zip` (70 124 383 o, sha256 `14437f9e7e5063968791cc6ac625f3e25d72a49e009c1a195b242b8d64b40fb4`) scp → `/opt/nymora-backend/downloads/` ; `version.service.ts` bumpé (`CURRENT_CLIENT_VERSION` 0.1.4→0.1.5 + `LATEST_ZIP_FILENAME` + `LATEST_ZIP_SHA256` **ENSEMBLE**) ; commit backend `f5d56fb` push + `deploy.sh` (aucune migration). `MIN_CLIENT_VERSION` reste `0.1.0` (additif). **Validé prod** : `/version` expose 0.1.5 + downloadUrl + sha256 ; `HEAD /downloads/nymora-0.1.5.zip` = 200, `application/zip`, 70 124 383 o (= local). Le launcher de Kyami DL+install auto au prochain démarrage (flow L4 validé depuis 0.1.3). Procédure cf [[project-launcher-publish-workflow]].
+- **PROCHAIN STEP** : à décider (nouveau chantier).
+
+---
+
 **SESSION 28 mai 2026 — 🐾 FAMILIERS (placement/combat/par-classe) + 🛒 BOUTIQUE (émotes/titres/logo + prévisu animée) + ⏳ ÉCRAN DE CHARGEMENT :** grosse session. **100% View/Hub/UI côté client → aucun bump `CombatRulesVersion`.** Backend **déployé prod** (3 commits). Client Unity **commité en local** (push GitHub à la fin de session).
 
 - **🐾 Familiers — suite & fin du chantier 5.10 :**

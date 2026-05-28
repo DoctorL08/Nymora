@@ -133,8 +133,13 @@ namespace Nymora.Hub.Menu
                 i => DisplaySettingsController.FpsLabels[i],
                 i => disp.TargetFps = DisplaySettingsController.FpsOptions[i]);
 
-            // Effets visuels (post-process URP)
-            SpawnToggleRow("Effets visuels (shaders)", disp.PostFx, v => disp.PostFx = v);
+            // Profil graphique (post-process + lumière globale) — inclut "Sans effets".
+            var gfxLabels = DisplaySettingsController.GfxProfileLabels;
+            SpawnSelectorRow("Profil graphique",
+                gfxLabels.Length, disp.GraphicsProfileIndex,
+                i => gfxLabels[i],
+                i => disp.GraphicsProfileIndex = i);
+
         }
 
         /// <summary>Ligne avec sélecteur ‹ valeur › à droite (cycle index 0..count-1, clampé).</summary>

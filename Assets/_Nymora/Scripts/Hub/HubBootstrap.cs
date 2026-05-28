@@ -34,6 +34,9 @@ namespace Nymora.Hub
             // C1 — routeur des bulles de chat (hub only : vit/meurt avec cette scène).
             if (GetComponent<HubChatBubbleRouter>() == null) gameObject.AddComponent<HubChatBubbleRouter>();
 
+            // GFX — atmosphère/profondeur (particules flottantes) du hub (hub only).
+            if (GetComponent<HubAtmosphere>() == null) gameObject.AddComponent<HubAtmosphere>();
+
             if (_autoStartOnPlay)
             {
                 await StartHub();

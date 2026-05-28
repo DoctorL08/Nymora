@@ -727,7 +727,7 @@ namespace Nymora.Hub
         /// « Titre : « l'Inebranlable » » cote backend -> on ne garde que le contenu entre
         /// les guillemets « ». Fallback = nom complet si pas de guillemets.
         /// </summary>
-        private static string ExtractTitleText(string raw)
+        public static string ExtractTitleText(string raw)
         {
             if (string.IsNullOrEmpty(raw)) return raw;
             int a = raw.IndexOf('«'); // «

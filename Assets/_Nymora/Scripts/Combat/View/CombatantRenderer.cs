@@ -841,6 +841,20 @@ namespace Nymora.Combat.View
             return skin;
         }
 
+        /// <summary>
+        /// PATCH — Materiau du SpriteRenderer d'un combattant (par entite). Utilise par DecoyView
+        /// pour que les leurres rendent avec le MEME materiau que la vraie Ghostra : sinon le leurre
+        /// (cree par AddComponent&lt;SpriteRenderer&gt; -> Sprites-Default UNLIT) ne reagit pas aux
+        /// lights 2D comme la vraie Ghostra (materiau 2D Lit), d'ou la difference de rendu cote adverse.
+        /// Null si la vue du combattant est inconnue.
+        /// </summary>
+        public Material GetCombatantSpriteMaterial(EntityRef entity)
+        {
+            if (_views.TryGetValue(entity, out var view) && view != null && view.Sprite != null)
+                return view.Sprite.sharedMaterial;
+            return null;
+        }
+
         private GameObject GetPrefabForClass(NymoraClass nymoraClass)
         {
             switch (nymoraClass)

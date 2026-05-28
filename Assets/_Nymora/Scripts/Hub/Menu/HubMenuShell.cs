@@ -86,6 +86,17 @@ namespace Nymora.Hub.Menu
         private UISpriteAnimator _pgPetPortraitAnim;
         private Vector2 _pgPetBoxCenter;
         private Vector2 _pgPetBoxSize;
+        // PATCH #2 — jeton de generation du portrait. RefreshClassPanel/ApplySkinToPortrait sont
+        // async (requetes backend) : en equipant/desequipant vite, plusieurs sont en vol et peuvent
+        // se terminer dans le DESORDRE -> un ancien applique un skin/echelle perimee dans la prevue.
+        // Chaque refresh incremente ce compteur ; une completion async abandonne si elle n'est plus
+        // la plus recente.
+        private int _portraitGen;
+        // PATCH #2 (anti-flash skin) — classe + skin actuellement affiches sur le portrait. Permet,
+        // lors d'un simple changement de titre (classe + skin inchanges), de GARDER le skin courant
+        // pendant le fetch async au lieu de flasher les frames de base ~1s. "" = frames de classe.
+        private string _pgPortraitClass;
+        private string _pgPortraitSkinId = "";
         private static PetCatalog _pgPetCatalog;
         private static bool _pgPetCatalogLoaded;
         private int _classIndex;
@@ -732,6 +743,11 @@ namespace Nymora.Hub.Menu
             _pgPortraitAnchor = new Vector2(cx, 150f);
             _pgPortraitSize = new Vector2(340f, 460f);
             _pgPortraitAnim = _pgPortrait.gameObject.AddComponent<UISpriteAnimator>();
+            // PATCH #2 — portrait (re)créé vierge : on remet le suivi à zéro pour forcer un rendu
+            // complet au prochain RefreshClassPanel (sinon le "keep" anti-flash garderait un état
+            // périmé sur une Image neuve = portrait vide).
+            _pgPortraitClass = null;
+            _pgPortraitSkinId = "";
 
             // Familier équipé, idle animé, à droite du perso près des pieds (compagnon).
             _pgPetPortrait = _f.MakeImage("PetPreview", root, Color.white, rounded: false);
@@ -872,8 +888,35 @@ namespace Nymora.Hub.Menu
             trt.sizeDelta = new Vector2(560f, 60f); trt.anchoredPosition = Vector2.zero;
         }
 
+        // PATCH #2 — Pose les frames idle de classe (mode aligné) sur le portrait. Factorisé pour
+        // être réutilisé par le chemin "pas de skin" d'ApplySkinToPortrait (au lieu de réinitialiser
+        // systématiquement dans RefreshClassPanel, ce qui flashait le skin de base pendant le fetch).
+        private void ApplyClassFramesToPortrait(NymoraClassDefinition def)
+        {
+            if (_pgPortrait == null) return;
+            _pgPortrait.rectTransform.localScale = Vector3.one; // baseline classe (le skin override ensuite)
+            if (def != null && def.IdleFrames != null && def.IdleFrames.Length > 0)
+            {
+                _pgPortrait.enabled = true;
+                if (_pgPortraitAnim != null)
+                {
+                    // Centre visé = centre de la box portrait (ancre basse + demi-hauteur) ->
+                    // toutes les classes centrées au même endroit, quelle que soit leur taille.
+                    Vector2 boxCenter = _pgPortraitAnchor + new Vector2(0f, _pgPortraitSize.y * 0.5f);
+                    _pgPortraitAnim.PlayAligned(_pgPortrait, def.IdleFrames, def.IdleFps, boxCenter, _pgPortraitSize);
+                }
+                else _pgPortrait.sprite = def.IdleFrames[0];
+            }
+            else if (def != null && def.PortraitSprite != null) { _pgPortrait.enabled = true; _pgPortrait.sprite = def.PortraitSprite; }
+            else _pgPortrait.enabled = false;
+            _pgPortraitSkinId = ""; // frames de classe affichées (aucun skin)
+        }
+
         private async void RefreshClassPanel()
         {
+            // PATCH #2 — nouvelle generation : invalide toute completion async d'un refresh anterieur.
+            int gen = ++_portraitGen;
+
             var def = (_classDefinitions != null && _classIndex >= 0 && _classIndex < _classDefinitions.Length)
                 ? _classDefinitions[_classIndex] : null;
             string cls = def != null ? def.ClassId.ToString() : CurrentClass();
@@ -882,27 +925,20 @@ namespace Nymora.Hub.Menu
             if (_pgPseudo != null) _pgPseudo.text = HubChatClient.Instance?.MyDisplayName ?? "";
             if (_pgTitle != null) _pgTitle.text = HubAvatar.Local != null ? HubAvatar.Local.NetTitle.ToString() : "";
 
-            if (_pgPortrait != null)
-            {
-                _pgPortrait.rectTransform.localScale = Vector3.one; // baseline classe (le skin override ensuite)
-                if (def != null && def.IdleFrames != null && def.IdleFrames.Length > 0)
-                {
-                    _pgPortrait.enabled = true;
-                    if (_pgPortraitAnim != null)
-                    {
-                        // Centre visé = centre de la box portrait (ancre basse + demi-hauteur) ->
-                        // toutes les classes centrées au même endroit, quelle que soit leur taille.
-                        Vector2 boxCenter = _pgPortraitAnchor + new Vector2(0f, _pgPortraitSize.y * 0.5f);
-                        _pgPortraitAnim.PlayAligned(_pgPortrait, def.IdleFrames, def.IdleFps, boxCenter, _pgPortraitSize);
-                    }
-                    else _pgPortrait.sprite = def.IdleFrames[0];
-                }
-                else if (def != null && def.PortraitSprite != null) { _pgPortrait.enabled = true; _pgPortrait.sprite = def.PortraitSprite; }
-                else _pgPortrait.enabled = false;
-            }
+            // PATCH #2 (anti-flash) — si un SKIN est déjà affiché et qu'on ne change PAS de classe
+            // (ex : simple changement de titre), on NE réinitialise PAS le portrait aux frames de
+            // base pendant le fetch async : on garde le skin courant. ApplySkinToPortrait posera
+            // l'état final (même skin = aucun changement visible ; skin retiré = frames de classe ;
+            // skin changé = nouveau skin). Sinon (1re fois / changement de classe), on pose les
+            // frames de classe comme placeholder pendant le gap.
+            bool classChanged = cls != _pgPortraitClass;
+            _pgPortraitClass = cls;
+            bool keepCurrentDuringGap = !classChanged && !string.IsNullOrEmpty(_pgPortraitSkinId);
+            if (!keepCurrentDuringGap)
+                ApplyClassFramesToPortrait(def);
 
             // Le sprite reflète le skin équipé s'il y en a un (sinon reste sur les frames de classe).
-            ApplySkinToPortrait(cls);
+            ApplySkinToPortrait(cls, gen);
 
             SetXp(1, 0, 0);
             if (_api == null) return;
@@ -911,7 +947,7 @@ namespace Nymora.Hub.Menu
             _api.SetBearerToken(token);
             var res = await _api.GetProgressionMeAsync();
             if (!res.IsSuccess || res.Data?.progressions == null) return;
-            if (_currentScreenId != "character") return;
+            if (gen != _portraitGen || _currentScreenId != "character") return;
             foreach (var p in res.Data.progressions)
                 if (p.classId == cls) { SetXp(p.level, p.xp, p.xpToNext); break; }
         }
@@ -924,7 +960,7 @@ namespace Nymora.Hub.Menu
         }
 
         // Si un skin est équipé pour la classe affichée, joue SES frames idle sur le portrait.
-        private async void ApplySkinToPortrait(string cls)
+        private async void ApplySkinToPortrait(string cls, int gen)
         {
             if (_api == null || _skinDefinitions == null || _pgPortrait == null || _pgPortraitAnim == null) return;
             string token = HubChatClient.Instance?.DevToken;
@@ -933,20 +969,40 @@ namespace Nymora.Hub.Menu
             // activeClass = classe affichée -> le familier équipé reflété est celui de CETTE classe.
             var res = await _api.GetInventoryAsync(cls);
             if (!res.IsSuccess || res.Data.items == null) return;
-            if (_currentScreenId != "character" || _pgPortrait == null) return;
+            // PATCH #2 — abandonne si un refresh plus recent est passe pendant l'await (sinon on
+            // applique un skin/echelle perimee par-dessus le portrait courant).
+            if (gen != _portraitGen || _currentScreenId != "character" || _pgPortrait == null) return;
 
             // Familier équipé (pas de class-lock, un seul) -> idle à côté du perso, peu importe la classe.
             string petId = null;
             string skinId = null;
+            string titleName = null;
             foreach (var it in res.Data.items)
             {
                 if (it == null || !it.equipped) continue;
                 if (it.type == "skin" && it.classLock == cls && skinId == null) skinId = it.id;
                 else if (it.type == "pet" && petId == null) petId = it.id;
+                // PATCH #2 — titre equipe : resolu depuis l'inventaire FRAIS (et non NetTitle qui se
+                // met a jour async via RefreshEquippedSkin). Corrige : titre qui reste apres desequip
+                // / mauvais titre apres re-equip dans la prevue. Vide => plus de titre affiche.
+                else if (it.type == "title" && titleName == null) titleName = it.name;
             }
             ApplyPetToPreview(petId);
+            if (_pgTitle != null)
+                _pgTitle.text = string.IsNullOrEmpty(titleName) ? "" : HubAvatar.ExtractTitleText(titleName);
 
-            if (string.IsNullOrEmpty(skinId)) return; // pas de skin -> on garde les frames de classe
+            // PATCH #2 — pas de skin equipe -> (re)pose les frames de classe. C'est ICI (et non plus
+            // systematiquement dans RefreshClassPanel) qu'on revient aux frames de base, une fois
+            // l'inventaire frais connu -> pas de flash du skin de base pendant le fetch.
+            if (string.IsNullOrEmpty(skinId))
+            {
+                ApplyClassFramesToPortrait(CurrentClassDef());
+                return;
+            }
+
+            // PATCH #2 — anti-flash/anti-hitch : le bon skin est deja affiche -> rien a refaire
+            // (cas typique d'un simple changement de titre, skin inchange).
+            if (skinId == _pgPortraitSkinId) return;
 
             var skin = FindSkinDef(skinId);
             if (skin != null && skin.IdleFrames != null && skin.IdleFrames.Length > 0)
@@ -966,6 +1022,7 @@ namespace Nymora.Hub.Menu
                 float classScale = (cdef != null && cdef.HubVisualScale > 0f) ? cdef.HubVisualScale : 1f;
                 float skinScale = skin.HubVisualScale > 0f ? skin.HubVisualScale : 1f;
                 _pgPortrait.rectTransform.localScale = Vector3.one * (skinScale / classScale) * SkinPortraitBoost;
+                _pgPortraitSkinId = skinId; // skin desormais affiche (anti-flash au prochain refresh)
             }
         }
 

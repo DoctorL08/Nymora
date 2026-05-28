@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Nymora.Combat.Grid;
+using Nymora.Core.ScriptableObjects;
 using Quantum;
 using UnityEngine;
 
@@ -48,6 +49,52 @@ namespace Nymora.Combat.View
         // Cle composite (ghostraEntity, slotIndex) -> GameObject leurre actif.
         private readonly Dictionary<(EntityRef ghostra, int slot), GameObject> _decoyVisuals
             = new Dictionary<(EntityRef, int), GameObject>(6);
+
+        // PATCH #6/#7 — familier sur CHAQUE leurre (indiscernabilite cote adverse) : meme cle
+        // que _decoyVisuals -> la CombatPetView qui colle au leurre.
+        private readonly Dictionary<(EntityRef ghostra, int slot), CombatPetView> _decoyPets
+            = new Dictionary<(EntityRef, int), CombatPetView>(6);
+
+        private const string PetCatalogResourcePath = "Cosmetics/PetCatalog";
+        private PetCatalog _petCatalog;
+        private bool _petCatalogLoaded;
+
+        private PetCatalog PetCatalog
+        {
+            get
+            {
+                if (!_petCatalogLoaded)
+                {
+                    _petCatalog = Resources.Load<PetCatalog>(PetCatalogResourcePath);
+                    _petCatalogLoaded = true;
+                    if (_petCatalog == null)
+                        Debug.LogWarning($"[Nymora.DecoyView] PetCatalog introuvable (Resources/{PetCatalogResourcePath}) — familiers de leurres desactives.");
+                }
+                return _petCatalog;
+            }
+        }
+
+        // PATCH — skin equipe de la Ghostra : le leurre doit utiliser les MEMES controllers combat
+        // (sinon le leurre a l'apparence de base alors que la vraie Ghostra a son skin -> distinguable
+        // cote adverse). Catalogue charge depuis Resources (meme path que CombatantRenderer).
+        private const string SkinCatalogResourcePath = "Cosmetics/CosmeticSkinCatalog";
+        private CosmeticSkinCatalog _skinCatalog;
+        private bool _skinCatalogLoaded;
+
+        private CosmeticSkinCatalog SkinCatalog
+        {
+            get
+            {
+                if (!_skinCatalogLoaded)
+                {
+                    _skinCatalog = Resources.Load<CosmeticSkinCatalog>(SkinCatalogResourcePath);
+                    _skinCatalogLoaded = true;
+                    if (_skinCatalog == null)
+                        Debug.LogWarning($"[Nymora.DecoyView] CosmeticSkinCatalog introuvable (Resources/{SkinCatalogResourcePath}) — leurres en sprites de base.");
+                }
+                return _skinCatalog;
+            }
+        }
 
         private Vector3 _centerOffset;
         private bool _gridReady;
@@ -100,6 +147,26 @@ namespace Nymora.Combat.View
                     continue;
                 }
 
+                // PATCH #6/#7 — familier equipe de la Ghostra (resolu une fois par Ghostra) :
+                // il sera replique sur CHAQUE leurre pour rester indiscernable cote adverse.
+                var ownerPet = ResolveOwnerPetDef(frame, ghostra.PlayerIndex);
+
+                // Le client LOCAL possede-t-il cette Ghostra ? (source de verite robuste : GetLocalPlayers
+                // en online, slot 0 en IA). Si oui = caster -> teinte cyan ; sinon adversaire -> blanc
+                // opaque (indiscernable). Corrige le guest PvP qui voyait les leurres ennemis teintes.
+                bool localOwnsGhostra = LocalPlayerResolver.LocalOwns(game, ghostra.PlayerIndex);
+
+                // PATCH — skin combat de la Ghostra (resolu une fois) : applique aux leurres pour
+                // qu'ils aient la MEME apparence que la vraie Ghostra (indiscernable cote adverse).
+                var ownerSkin = ResolveOwnerSkinDef(frame, ghostra);
+
+                // PATCH — materiau du SpriteRenderer de la vraie Ghostra (materiau 2D Lit) : on le
+                // donne aux leurres pour qu'ils reagissent aux lights 2D exactement comme elle
+                // (sinon leurre = Sprites-Default UNLIT -> rendu plus "plat/opaque" cote adverse).
+                Material ghostraMat = _combatantRenderer != null
+                    ? _combatantRenderer.GetCombatantSpriteMaterial(ghostraEntity)
+                    : null;
+
                 for (int slot = 0; slot < 3; slot++)
                 {
                     var d = ghostra.Decoys[slot];
@@ -118,6 +185,7 @@ namespace Nymora.Combat.View
                     Vector3 world = IsoProjection.GridToWorld(
                         d.PosX, d.PosY,
                         _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight) + _centerOffset + transform.position;
+                    Vector3 decoyBaseWorld = world; // position "root" (avant offset visuel), pour placer le familier
                     world.y += _decoyYOffset;
                     go.transform.position = world;
 
@@ -129,6 +197,9 @@ namespace Nymora.Combat.View
                     if (decoySr != null)
                     {
                         decoySr.sortingOrder = 1000 - (d.PosX + d.PosY) * 10;
+                        // Meme materiau que la vraie Ghostra (2D Lit) -> rendu identique sous les lights.
+                        if (ghostraMat != null && decoySr.sharedMaterial != ghostraMat)
+                            decoySr.sharedMaterial = ghostraMat;
                     }
 
                     // Sync sprite avec la vraie Ghostra (Bible "indiscernable cote adversaire").
@@ -136,12 +207,17 @@ namespace Nymora.Combat.View
 
                     // Refresh tint chaque frame : robuste au tweak Inspector en Play Mode et
                     // au cas ou LocalPlayer change (improbable mais safe).
-                    ApplyTintForOwnership(go, ghostra.PlayerIndex);
+                    ApplyTintForOwnership(go, localOwnsGhostra);
 
                     // Sync stage chaque frame : le Ghostra parent peut changer de stage
                     // (0/1/2 = Angle 1/2/3 Bible V7.1, base sur nb leurres actifs). Le leurre
                     // suit visuellement le stage du parent (cohenrence indiscernable Bible).
-                    SyncStageFromGhostra(go, ghostra);
+                    // ownerSkin != null -> le leurre utilise les controllers du SKIN equipe.
+                    SyncStageFromGhostra(go, ghostra, ownerSkin);
+
+                    // PATCH #6/#7 — familier colle au leurre (meme pet que la Ghostra), teinte
+                    // comme le leurre. Indiscernable cote adverse (la vraie Ghostra a aussi le sien).
+                    UpdateDecoyPet(key, go, ownerPet, localOwnsGhostra, decoyBaseWorld);
                 }
             }
 
@@ -160,6 +236,13 @@ namespace Nymora.Combat.View
                         Destroy(go);
                     }
                     _decoyVisuals.Remove(key);
+
+                    // Familier du leurre supprime en meme temps.
+                    if (_decoyPets.TryGetValue(key, out var deadPet) && deadPet != null)
+                    {
+                        Destroy(deadPet.gameObject);
+                    }
+                    _decoyPets.Remove(key);
                 }
             }
         }
@@ -206,7 +289,7 @@ namespace Nymora.Combat.View
         /// Fallback descendant si le controller stage demande est null (stage 2 -> stage 1 ->
         /// stage 0 / idle).
         /// </summary>
-        private void SyncStageFromGhostra(GameObject decoyGo, Combatant ghostra)
+        private void SyncStageFromGhostra(GameObject decoyGo, Combatant ghostra, CosmeticSkinDefinition skin)
         {
             var anim = decoyGo.GetComponent<Animator>();
             if (anim == null) return; // mode fallback sprite statique : pas de stage swap
@@ -218,10 +301,22 @@ namespace Nymora.Combat.View
             }
             int stage = active >= 3 ? 2 : active >= 1 ? 1 : 0;
 
-            RuntimeAnimatorController target =
-                stage == 2 ? (_decoyStage2Controller ?? _decoyStage1Controller ?? _decoyIdleController)
-              : stage == 1 ? (_decoyStage1Controller ?? _decoyIdleController)
-              :              _decoyIdleController;
+            RuntimeAnimatorController target;
+            if (skin != null && skin.HasCombatControllers)
+            {
+                // PATCH — la Ghostra a un SKIN equipe : le leurre doit l'avoir aussi (indiscernable
+                // cote adverse). Les leurres sont SE -> controllers SE du skin par stage (fallback
+                // descendant si un stage du skin manque).
+                target = stage == 2 ? (skin.Stage2ControllerSE ?? skin.Stage1ControllerSE ?? skin.Stage0ControllerSE)
+                       : stage == 1 ? (skin.Stage1ControllerSE ?? skin.Stage0ControllerSE)
+                       :              skin.Stage0ControllerSE;
+            }
+            else
+            {
+                target = stage == 2 ? (_decoyStage2Controller ?? _decoyStage1Controller ?? _decoyIdleController)
+                       : stage == 1 ? (_decoyStage1Controller ?? _decoyIdleController)
+                       :              _decoyIdleController;
+            }
 
             if (target != null && !ReferenceEquals(anim.runtimeAnimatorController, target))
             {
@@ -230,18 +325,17 @@ namespace Nymora.Combat.View
         }
 
         /// <summary>
-        /// Applique le tint au sprite leurre selon LocalPlayer vs Ghostra owner :
-        /// - LocalPlayer == ghostraPlayerIndex (le caster Ghostra voit son propre leurre)
+        /// Applique le tint au sprite leurre selon que le client LOCAL possede la Ghostra :
+        /// - localOwns == true (le caster Ghostra voit son propre leurre)
         ///   -> tint cyan + alpha 0.85 (aide visuelle a distinguer ses leurres).
-        /// - LocalPlayer != ghostraPlayerIndex (l'adversaire voit le leurre)
+        /// - localOwns == false (l'adversaire voit le leurre)
         ///   -> tint blanc opaque (1,1,1,1) = indiscernable du vrai Ghostra (Bible V7.1).
         /// </summary>
-        private void ApplyTintForOwnership(GameObject decoyGo, int ghostraPlayerIndex)
+        private void ApplyTintForOwnership(GameObject decoyGo, bool localOwns)
         {
             var sr = decoyGo.GetComponent<SpriteRenderer>();
             if (sr == null) return;
-            int localPlayer = LocalPlayerResolver.Resolve();
-            Color target = (localPlayer == ghostraPlayerIndex)
+            Color target = localOwns
                 ? new Color(_decoyTint.r, _decoyTint.g, _decoyTint.b, _decoyAlpha)
                 : Color.white;
             if (sr.color != target) sr.color = target;
@@ -267,6 +361,81 @@ namespace Nymora.Combat.View
             }
         }
 
+        /// <summary>
+        /// PATCH #6/#7 — Resout la PetDefinition du familier equipe par la Ghostra proprietaire
+        /// (depuis RuntimePlayer.PetId, sync Quantum AddPlayer). Null si pas de familier equipe
+        /// ou catalogue absent. Meme pattern que CombatantRenderer.SpawnPetFor.
+        /// </summary>
+        private PetDefinition ResolveOwnerPetDef(Frame frame, int playerIndex)
+        {
+            var catalog = PetCatalog;
+            if (catalog == null || frame == null) return null;
+            var rp = frame.GetPlayerData((PlayerRef)playerIndex);
+            string petId = rp != null ? rp.PetId : null;
+            return string.IsNullOrEmpty(petId) ? null : catalog.Resolve(petId);
+        }
+
+        /// <summary>
+        /// PATCH — Resout le skin combat equipe par la Ghostra (depuis RuntimePlayer.SkinId, sync
+        /// Quantum AddPlayer local+adverse). Garde-fou class-lock identique a CombatantRenderer.
+        /// Null si pas de skin / catalogue absent / classe non concordante. Sert a donner au leurre
+        /// les MEMES controllers combat que la vraie Ghostra (indiscernable cote adverse).
+        /// </summary>
+        private CosmeticSkinDefinition ResolveOwnerSkinDef(Frame frame, Combatant ghostra)
+        {
+            var catalog = SkinCatalog;
+            if (catalog == null || frame == null) return null;
+            var rp = frame.GetPlayerData((PlayerRef)ghostra.PlayerIndex);
+            string skinId = rp != null ? rp.SkinId : null;
+            if (string.IsNullOrEmpty(skinId)) return null;
+            var skin = catalog.Resolve(skinId);
+            if (skin == null) return null;
+            if (skin.ClassId != Nymora.Core.Enums.NymoraClass.None
+                && skin.ClassId.ToString() != ghostra.Class.ToString())
+                return null;
+            return skin;
+        }
+
+        /// <summary>
+        /// PATCH #6/#7 — Cree/maintient le familier qui colle a un leurre (memes frames idle que
+        /// le familier de la vraie Ghostra), teinte comme le leurre (cyan/translucide cote caster,
+        /// opaque cote adverse). Si la Ghostra n'a pas de familier (petDef null), cleanup eventuel.
+        /// Pose idle SE (comme le corps du leurre). View-only.
+        /// </summary>
+        private void UpdateDecoyPet((EntityRef ghostra, int slot) key, GameObject decoyGo,
+            PetDefinition petDef, bool localOwns, Vector3 ownerBaseWorld)
+        {
+            bool hasPet = _decoyPets.TryGetValue(key, out var pet) && pet != null;
+
+            if (petDef == null)
+            {
+                if (hasPet) { Destroy(pet.gameObject); _decoyPets.Remove(key); }
+                return;
+            }
+
+            var decoySr = decoyGo.GetComponent<SpriteRenderer>();
+            int order = decoySr != null ? decoySr.sortingOrder : 0;
+            int layer = decoySr != null ? decoySr.sortingLayerID : 0;
+
+            if (!hasPet)
+            {
+                var petGo = new GameObject($"DecoyPet_{decoyGo.name}");
+                petGo.transform.SetParent(transform, worldPositionStays: false);
+                pet = petGo.AddComponent<CombatPetView>();
+                pet.Init(petDef, layer);
+                _decoyPets[key] = pet;
+            }
+
+            // isLocal:false -> ne pousse PAS LastLocalFacingIndex (reserve au familier du joueur local).
+            pet.Drive(ownerBaseWorld, IsoFacing.SE, order, layer, isLocal: false, dt: Time.deltaTime);
+
+            // Teinte identique au leurre (cf ApplyTintForOwnership) : indiscernable cote adverse.
+            Color tint = localOwns
+                ? new Color(_decoyTint.r, _decoyTint.g, _decoyTint.b, _decoyAlpha)
+                : Color.white;
+            pet.SetTint(tint);
+        }
+
         private void ClearAll()
         {
             foreach (var kvp in _decoyVisuals)
@@ -274,6 +443,12 @@ namespace Nymora.Combat.View
                 if (kvp.Value != null) Destroy(kvp.Value);
             }
             _decoyVisuals.Clear();
+
+            foreach (var kvp in _decoyPets)
+            {
+                if (kvp.Value != null) Destroy(kvp.Value.gameObject);
+            }
+            _decoyPets.Clear();
         }
 
         // Petit helper pour eviter d'allouer une nouvelle List a chaque cleanup.

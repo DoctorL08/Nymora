@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
@@ -28,6 +29,66 @@ namespace Nymora.Hub
         private const string KeyScreenMode = "nymora.display.screenmode";  // (int)FullScreenMode
         private const string KeyVSync = "nymora.display.vsync";            // 1 on / 0 off
         private const string KeyFps = "nymora.display.fps";                // 0 = illimité
+        private const string KeyGfxProfile = "nymora.display.gfxprofile";  // index dans GfxProfiles
+
+        // GFX-1 — Profil graphique : retravaille le post-process ET l'intensite/teinte de la lumiere
+        // GLOBALE 2D (multiplicateur sur la valeur de base de la scene -> non destructif). Le dernier
+        // profil (PostProcess=false) = "Sans effets". Ordre = index du selecteur UI.
+        public sealed class GfxProfile
+        {
+            public string Name;
+            public bool PostProcess = true;
+            // Si false, le profil NE touche PAS le post-process : le Volume de la scène (réglé à la
+            // main dans l'éditeur) fait foi. Utile quand on peaufine directement le Volume (WYSIWYG).
+            public bool OverridePostProcess = true;
+            // ColorAdjustments
+            public float PostExposure;
+            public float Contrast;
+            public float Saturation;
+            // WhiteBalance
+            public float Temperature;
+            public float Tint;
+            // SplitToning
+            public Color SplitShadows;
+            public Color SplitHighlights;
+            public float SplitBalance;
+            // Vignette / Bloom
+            public float Vignette = 0.15f;
+            public float BloomIntensity = 14f;
+            // ColorLookup : LUT chargee depuis Resources/PostProcessing/<Lut> (null = pas de LUT)
+            public string Lut;
+            public float LutContribution = 0.35f;
+            // Lumiere globale 2D : multiplicateur sur l'intensite de base + teinte (multiplicative,
+            // blanc = identite -> aucune alteration).
+            public float LightIntensityMul = 1f;
+            public Color LightTint = Color.white;
+            // Torches : multiplicateur applique par TorchLightFlicker sur l'intensite de base de
+            // CHAQUE torche (par-dessus le flicker) -> profondeur de lumiere (puits chauds) par profil.
+            public float TorchIntensityMul = 1f;
+        }
+
+        // 5 ambiances + "Sans effets". Valeurs de depart ; calibrables ensuite.
+        public static readonly GfxProfile[] GfxProfiles =
+        {
+            // Profil UNIQUE : ne touche PAS le post-process -> le Volume (Hub_PostFX / Combat_PostFX)
+            // réglé à la main dans l'éditeur fait foi (WYSIWYG). N'ajuste ni la lumière globale ni les
+            // torches (1× / blanc) -> le Play correspond exactement à l'éditeur.
+            new GfxProfile {
+                Name = "Standard", OverridePostProcess = false,
+                LightIntensityMul = 1f, LightTint = Color.white, TorchIntensityMul = 1f,
+            },
+            new GfxProfile { Name = "Sans effets", PostProcess = false, LightIntensityMul = 1f, LightTint = Color.white },
+        };
+
+        public static string[] GfxProfileLabels
+        {
+            get
+            {
+                var a = new string[GfxProfiles.Length];
+                for (int i = 0; i < a.Length; i++) a[i] = GfxProfiles[i].Name;
+                return a;
+            }
+        }
 
         // Modes d'affichage exposés (ordre = index du sélecteur UI).
         public static readonly FullScreenMode[] ScreenModes =
@@ -46,6 +107,14 @@ namespace Nymora.Hub
 
         private readonly List<Vector2Int> _resolutions = new List<Vector2Int>();
         private Image _overlay;
+
+        // GFX-1 — lumiere globale 2D de la scene + son intensite/couleur de BASE (valeurs serialisees
+        // de la scene, capturees une fois par scene). Le profil applique un multiplicateur/teinte
+        // dessus -> on n'ecrase jamais les valeurs de Lorenzo, on les module.
+        private Light2D _globalLight;
+        private float _globalLightBaseIntensity = 1f;
+        private Color _globalLightBaseColor = Color.white;
+        private bool _globalLightCaptured;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         private static void Bootstrap()
@@ -71,7 +140,7 @@ namespace Nymora.Hub
             ApplyFrameSettings();
 
             SceneManager.sceneLoaded += OnSceneLoaded;
-            ApplyPostFx(); // caméras de la scène courante
+            ApplyGraphicsProfile(); // post-process + lumiere globale de la scene courante
         }
 
         private void OnDestroy()
@@ -80,8 +149,14 @@ namespace Nymora.Hub
             SceneManager.sceneLoaded -= OnSceneLoaded;
         }
 
-        // Les caméras changent à chaque scène : on ré-applique le toggle post-process.
-        private void OnSceneLoaded(Scene scene, LoadSceneMode mode) => ApplyPostFx();
+        // Les caméras + le Volume + la lumière globale changent à chaque scène : on re-capture la
+        // lumière de base et on ré-applique le profil graphique complet.
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+        {
+            _globalLight = null;
+            _globalLightCaptured = false;
+            ApplyGraphicsProfile();
+        }
 
         // ===== Résolution =====
 
@@ -238,28 +313,131 @@ namespace Nymora.Hub
             Application.targetFrameRate = fps <= 0 ? -1 : fps;
         }
 
-        // ===== Effets post-process (shaders) =====
+        // ===== Profil graphique (shaders / colorimétrie / lumière globale) =====
 
-        public bool PostFx
+        /// <summary>Index du profil choisi dans <see cref="GfxProfiles"/> (defaut 0 = Cendres).</summary>
+        public int GraphicsProfileIndex
         {
-            get => PlayerPrefs.GetInt(KeyPostFx, 1) != 0;
+            get
+            {
+                if (PlayerPrefs.HasKey(KeyGfxProfile))
+                    return Mathf.Clamp(PlayerPrefs.GetInt(KeyGfxProfile), 0, GfxProfiles.Length - 1);
+                // Migration : un ancien joueur ayant coupe les effets (KeyPostFx=0) tombe sur "Sans effets".
+                if (PlayerPrefs.GetInt(KeyPostFx, 1) == 0) return GfxProfiles.Length - 1;
+                return 0; // defaut = Cendres
+            }
             set
             {
-                PlayerPrefs.SetInt(KeyPostFx, value ? 1 : 0);
+                PlayerPrefs.SetInt(KeyGfxProfile, Mathf.Clamp(value, 0, GfxProfiles.Length - 1));
                 PlayerPrefs.Save();
-                ApplyPostFx();
+                ApplyGraphicsProfile();
             }
         }
 
-        private void ApplyPostFx()
+        public GfxProfile CurrentProfile => GfxProfiles[GraphicsProfileIndex];
+
+        // Applique le profil courant : post-process (Volume de la scene) + lumiere globale 2D.
+        private void ApplyGraphicsProfile()
         {
-            bool on = PostFx;
+            var p = CurrentProfile;
+            SetCamerasPostProcess(p.PostProcess);
+            if (p.PostProcess && p.OverridePostProcess) ApplyProfileToVolume(p);
+            ApplyProfileToGlobalLight(p);
+        }
+
+        private static void SetCamerasPostProcess(bool on)
+        {
             foreach (var cam in Camera.allCameras)
             {
                 if (cam == null) continue;
                 var data = cam.GetUniversalAdditionalCameraData();
                 if (data != null) data.renderPostProcessing = on;
             }
+        }
+
+        // Pousse les valeurs du profil sur le Volume post-process de la scene. On mute volume.profile
+        // (INSTANCE runtime, pas le sharedProfile) -> non destructif pour l'asset. Les composants
+        // existent deja sur Hub_PostFX / Combat_PostFX (sinon TryGet echoue silencieusement).
+        private void ApplyProfileToVolume(GfxProfile p)
+        {
+            var volume = FindFirstGlobalVolume();
+            if (volume == null) return;
+            var prof = volume.profile; // instance runtime
+            if (prof == null) return;
+
+            if (prof.TryGet<ColorAdjustments>(out var ca))
+            {
+                ca.postExposure.Override(p.PostExposure);
+                ca.contrast.Override(p.Contrast);
+                ca.saturation.Override(p.Saturation);
+            }
+            if (prof.TryGet<WhiteBalance>(out var wb))
+            {
+                wb.temperature.Override(p.Temperature);
+                wb.tint.Override(p.Tint);
+            }
+            if (prof.TryGet<SplitToning>(out var st))
+            {
+                st.shadows.Override(p.SplitShadows);
+                st.highlights.Override(p.SplitHighlights);
+                st.balance.Override(p.SplitBalance);
+            }
+            if (prof.TryGet<Vignette>(out var vg))
+                vg.intensity.Override(p.Vignette);
+            if (prof.TryGet<Bloom>(out var bl))
+                bl.intensity.Override(p.BloomIntensity);
+            // LUT par profil : charge la LUT de l'ambiance depuis Resources/PostProcessing/ (copiées
+            // par SetupGfxLutResourcesTool) et la pousse sur le ColorLookup -> chaque profil a sa vraie
+            // colorimétrie (Braises chaud, Spectre froid…), pas juste le grading.
+            if (prof.TryGet<ColorLookup>(out var cl) && !string.IsNullOrEmpty(p.Lut))
+            {
+                var lutTex = Resources.Load<Texture>("PostProcessing/" + p.Lut);
+                if (lutTex != null)
+                {
+                    cl.texture.Override(lutTex);
+                    cl.contribution.Override(p.LutContribution);
+                }
+            }
+        }
+
+        // Module l'intensite + teinte de la lumiere GLOBALE 2D de la scene a partir de sa valeur de
+        // BASE (capturee une fois). Multiplicateur/teinte -> on preserve le reglage de la scene.
+        private void ApplyProfileToGlobalLight(GfxProfile p)
+        {
+            if (!_globalLightCaptured)
+            {
+                _globalLight = FindGlobalLight2D();
+                if (_globalLight != null)
+                {
+                    _globalLightBaseIntensity = _globalLight.intensity;
+                    _globalLightBaseColor = _globalLight.color;
+                    _globalLightCaptured = true;
+                }
+            }
+            if (_globalLight == null) return;
+            _globalLight.intensity = _globalLightBaseIntensity * Mathf.Max(0f, p.LightIntensityMul);
+            _globalLight.color = _globalLightBaseColor * p.LightTint;
+        }
+
+        private static Volume FindFirstGlobalVolume()
+        {
+            var volumes = FindObjectsByType<Volume>(FindObjectsSortMode.None);
+            Volume fallback = null;
+            foreach (var v in volumes)
+            {
+                if (v == null || v.profile == null) continue;
+                if (v.isGlobal) return v;
+                fallback = v;
+            }
+            return fallback;
+        }
+
+        private static Light2D FindGlobalLight2D()
+        {
+            var lights = FindObjectsByType<Light2D>(FindObjectsSortMode.None);
+            foreach (var l in lights)
+                if (l != null && l.lightType == Light2D.LightType.Global) return l;
+            return null;
         }
     }
 }

@@ -1,4 +1,5 @@
 using Nymora.Combat.Bootstrap;
+using Quantum;
 
 namespace Nymora.Combat.View
 {
@@ -25,6 +26,39 @@ namespace Nymora.Combat.View
             var casual = CombatBootstrapCasual.Instance;
             if (casual != null && casual.LocalPlayerSlot >= 0) return casual.LocalPlayerSlot;
             return 0;
+        }
+
+        /// <summary>
+        /// True si le client LOCAL possede le joueur `playerIndex`. Source de verite robuste
+        /// (cf piege Quantum PlayerRef != slot suppose) :
+        ///   - ONLINE (CombatBootstrapCasual present) : lit les PlayerRef locaux directement
+        ///     dans la frame via `game.GetLocalPlayers()` (1 seul en PvP). Evite le fallback
+        ///     trompeur de Resolve() (slot 0) quand LocalPlayerSlot n'est pas encore resolu —
+        ///     c'est ce fallback qui faisait voir au guest les leurres ennemis teintes "caster".
+        ///   - IA / local (pas de bootstrap Casual) : les 2 joueurs sont locaux, donc on NE PEUT
+        ///     PAS utiliser GetLocalPlayers (renverrait les 2). L'humain est slot 0 (AddPlayer
+        ///     deterministe), donc owner == (playerIndex == 0).
+        /// </summary>
+        public static bool LocalOwns(QuantumGame game, int playerIndex)
+        {
+            if (CombatBootstrapCasual.Instance != null)
+            {
+                if (game != null)
+                {
+                    var locals = game.GetLocalPlayers();
+                    if (locals != null)
+                    {
+                        for (int i = 0; i < locals.Count; i++)
+                        {
+                            int pr = locals[i];
+                            if (pr == playerIndex) return true;
+                        }
+                    }
+                }
+                return false; // online : si on ne se reconnait pas proprietaire -> NON (indiscernable)
+            }
+            // IA / local : humain = slot 0.
+            return playerIndex == 0;
         }
     }
 }
