@@ -225,6 +225,9 @@ namespace Nymora.Combat.Bootstrap
             // rien (AISystem.Update lit ce flag). false en match IA normal -> bot agit comme avant.
             runtimeConfig.TutorialPassiveBot = Nymora.Core.Data.TutorialContext.Active;
 
+            // Tuto T5 : gel du timer pendant le tour du joueur (il prend son temps pour lire).
+            runtimeConfig.TutorialFreezeTimer = Nymora.Core.Data.TutorialContext.Active;
+
             // PATCH 22 mai (test designer) — Seed RNG aleatoire par match (meme bug latent qu'en
             // casual : Seed=0 -> initiative toujours P0). Local single-client : Guid suffit.
             if (runtimeConfig.Seed == 0)

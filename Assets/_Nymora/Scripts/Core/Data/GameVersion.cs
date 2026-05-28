@@ -30,7 +30,9 @@ namespace Nymora.Core.Data
         // 84 (Tuto T2) : flag RuntimeConfig.TutorialPassiveBot — en mode tutoriel le bot rend son
         //                tour sans agir (mannequin passif). N'affecte aucun match IA/PvP/ranked
         //                (flag false partout ailleurs).
-        public const int CombatRulesVersion = 84;
+        // 85 (Tuto T5) : flag RuntimeConfig.TutorialFreezeTimer — en tutoriel le timer ne décrémente
+        //                pas pendant le tour du joueur (il prend son temps). Idem : false ailleurs.
+        public const int CombatRulesVersion = 85;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

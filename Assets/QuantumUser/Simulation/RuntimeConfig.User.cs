@@ -15,5 +15,10 @@
         // f.RuntimeConfig (pas un field [Networked] => aucun regen prefab/scene requis), mais
         // c'est une modif de logique sim -> CombatRulesVersion bumpe (84).
         public bool TutorialPassiveBot;
+
+        // Tuto T5 — Gel du timer. TRUE => TurnSystem ne décrémente PAS le timer pendant le tour du
+        // JOUEUR (slot 0) : pas de fin de tour automatique, le joueur prend son temps et termine
+        // manuellement. N'affecte pas le tour du bot (qui se rend seul). CombatRulesVersion bumpe (85).
+        public bool TutorialFreezeTimer;
     }
 }

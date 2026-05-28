@@ -358,6 +358,12 @@ namespace Quantum
                 return;
             }
 
+            // Tuto T5 — Gel du timer pendant le tour du joueur : pas de décrément => pas de fin de
+            // tour automatique, le joueur lit les explications et termine manuellement (EndTurnCommand
+            // géré ci-dessus). Le tour du bot n'est pas gelé (il se rend seul via AISystem).
+            if (f.RuntimeConfig.TutorialFreezeTimer && state->ActivePlayerIndex == 0)
+                return;
+
             state->TurnTimerTicks -= 1;
             if (state->TurnTimerTicks <= 0)
             {

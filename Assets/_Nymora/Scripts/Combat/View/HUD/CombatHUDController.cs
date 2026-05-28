@@ -62,6 +62,15 @@ namespace Nymora.Combat.View.HUD
         public SpellId? ArmedSpell => _armedSpell;
         public event Action ArmedSpellChanged;
 
+        // Tuto T5 — Accesseurs lecture seule des RectTransform de widgets HUD, pour que le
+        // TutorialDirector positionne ses coach marks (halo) dessus. Null si non câblé en scène.
+        public RectTransform EndTurnButtonRect => _endTurnButton != null ? (RectTransform)_endTurnButton.transform : null;
+        public RectTransform SpellBarRect =>
+            (_spellSlots != null && _spellSlots.Length > 0 && _spellSlots[0] != null)
+                ? _spellSlots[0].transform.parent as RectTransform : null;
+        public RectTransform LocalResourcePanelRect => _p0Panel != null ? (RectTransform)_p0Panel.transform : null;
+        public RectTransform SignatureSlotRect => _signatureSlot != null ? (RectTransform)_signatureSlot.transform : null;
+
         // J10 — true uniquement quand c'est le tour du joueur que CE HUD controle. Sert a bloquer
         // l'armement de sort et a griser la barre pendant le tour adverse (notamment le bot en IA).
         private bool _isLocalTurn;
