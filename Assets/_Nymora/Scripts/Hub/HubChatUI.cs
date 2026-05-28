@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Nymora.Hub.Menu;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -33,6 +34,11 @@ namespace Nymora.Hub
         // Couleur du LABEL selon l'état (sinon texte blanc sur onglet actif clair = illisible).
         [SerializeField] private Color _tabActiveTextColor = new Color(0.10f, 0.10f, 0.12f, 1f);
         [SerializeField] private Color _tabInactiveTextColor = new Color(0.78f, 0.80f, 0.85f, 1f);
+        // Rayon des coins arrondis des onglets, appliqué au runtime via HubMenuUIFactory.RoundedSprite.
+        // Aligné sur HubMenuTheme.CornerRadius (14). Le sprite est généré en mémoire (pas un asset),
+        // donc il ne peut pas être baké dans le prefab ChatPanel -> il faut le réappliquer au runtime,
+        // sinon les instances combat (qui n'ont jamais vu le restyle éditeur) gardent des coins carrés.
+        [SerializeField] private float _tabCornerRadius = 14f;
 
         private ChatTab _activeTab = ChatTab.Global;
         private string _joinedClanChannel; // "clan:<clanId>" si rejoint, sinon null
@@ -71,6 +77,7 @@ namespace Nymora.Hub
             // sinon elle se duplique à chaque retour dans le hub.
             if (ChatFeed.Global.Count == 0)
                 AppendSystemLine(ChatTab.Global, "--- Chat connecting ---");
+            EnsureTabSprites();
             UpdateTabStyles();
             RefreshHistoryText();
             EnsureHistoryClickHandler();
@@ -320,6 +327,31 @@ namespace Nymora.Hub
             ApplyTabColor(_tabGlobalButton, _activeTab == ChatTab.Global);
             ApplyTabColor(_tabPrivateButton, _activeTab == ChatTab.Private);
             ApplyTabColor(_tabClanButton, _activeTab == ChatTab.Clan);
+        }
+
+        // Pose le sprite arrondi sur les onglets au runtime (le sprite généré en mémoire ne se bake
+        // pas dans le prefab ChatPanel). Couvre l'Image propre ET la targetGraphic comme le restyle
+        // éditeur, et passe la transition en None pour que ApplyTabColor pilote bien img.color.
+        private void EnsureTabSprites()
+        {
+            RoundTab(_tabGlobalButton);
+            RoundTab(_tabPrivateButton);
+            RoundTab(_tabClanButton);
+        }
+
+        private void RoundTab(Button btn)
+        {
+            if (btn == null) return;
+            btn.transition = Selectable.Transition.None;
+            RoundImage(btn.GetComponent<Image>());
+            RoundImage(btn.targetGraphic as Image);
+        }
+
+        private void RoundImage(Image img)
+        {
+            if (img == null) return;
+            img.sprite = HubMenuUIFactory.RoundedSprite(_tabCornerRadius);
+            img.type = Image.Type.Sliced;
         }
 
         private void ApplyTabColor(Button btn, bool active)
