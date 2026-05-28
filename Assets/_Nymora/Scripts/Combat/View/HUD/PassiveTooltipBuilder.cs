@@ -88,12 +88,14 @@ namespace Nymora.Combat.View.HUD
             switch (cls)
             {
                 case NymoraClass.Soulrender:
-                    return "<color=#ffe2a0><b>Stage 0</b></color> — 0-1 HG : peau normale\n" +
-                           "  <i>Bonus : aucun</i>\n\n" +
-                           "<color=#ffb060><b>Stage 1</b></color> — 2-4 HG : aura rouge progressive\n" +
-                           "  <i>Bonus : sorts à coût HG disponibles</i>\n\n" +
-                           "<color=#ff6060><b>Stage 2</b></color> — 5 HG (cap) : fissures écarlates\n" +
-                           "  <i><color=#ffd060>Bonus : signature Âme Lacérée prête</color></i>";
+                    return "<color=#ffe2a0><b>Appel du Sang</b></color> — bonus selon les PV de la cible :\n" +
+                           "<color=#ffb060><b>Cible sous 70% PV</b></color> (Marquage)\n" +
+                           "  <i><color=#ffd060>Tous tes sorts coûtent -1 PA (min 1)</color></i>\n\n" +
+                           "<color=#ff8848><b>Cible sous 40% PV</b></color> (Rage Ouverte)\n" +
+                           "  <i><color=#ffd060>Tes sorts de mêlée ignorent 50% du bouclier</color></i>\n\n" +
+                           "<color=#ff6060><b>Cible sous 20% PV</b></color> (Le Cri)\n" +
+                           "  <i><color=#ffd060>Sang Coagulé croix 5 autour de toi (30 dgts/début de tour, 2t)</color></i>\n\n" +
+                           "<color=#ffd060><b>5 HG (cap)</b></color> : signature Âme Lacérée prête (320 dgts + heal 50%)";
                 case NymoraClass.Colossar:
                     return "<color=#a0c8ff><b>Stage 0</b></color> — 0 obstacle\n" +
                            "  <i>Bonus : aucune réduction</i>\n\n" +
@@ -109,17 +111,17 @@ namespace Nymora.Combat.View.HUD
                            "<color=#8060ff><b>Stage 2</b></color> — Angle 3 (3 leurres)\n" +
                            "  <i><color=#d0b0ff>Bonus : +80 dgts dorsaux + signature Exécution Spectrale</color></i>";
                 case NymoraClass.Necram:
-                    return "<color=#a0e090><b>Stage 0</b></color> — ressource basse\n" +
+                    return "<color=#a0e090><b>Stage 0</b></color> — moins de 4 marques actives\n" +
                            "  <i>Bonus : marques venin/peste appliquées par les sorts</i>\n\n" +
-                           "<color=#80c070><b>Stage 1</b></color> — ressource moyenne\n" +
-                           "  <i><color=#b0e090>Bonus : Floraison augmente le tick des marques</color></i>\n\n" +
-                           "<color=#60a050><b>Stage 2</b></color> — ressource au cap\n" +
-                           "  <i><color=#b0e090>Bonus : signature Virus Fatal prête (x3 ticks instant)</color></i>";
+                           "<color=#80c070><b>Stage 1</b></color> — 4+ marques actives (Floraison)\n" +
+                           "  <i><color=#b0e090>Bonus : +10 HP par marque (régen) + halo toxique rayon 3 (20 dgts aux ennemis proches)</color></i>\n\n" +
+                           "<color=#60a050><b>Stage 2</b></color> — ressource au cap (6 PT)\n" +
+                           "  <i><color=#b0e090>Bonus : signature Virus Fatal prête (×3 ticks instant)</color></i>";
                 case NymoraClass.Nightseer:
-                    return "<color=#9090a0><b>Pas de phases visuelles</b></color>\n\n" +
-                           "Le Nightseer reste discret. Sa puissance se mesure aux pièges et voiles posés, " +
-                           "pas à son apparence.\n\n" +
-                           "<i><color=#b0a0c0>Mindgame : l'adversaire ne sait jamais ce que cache un voile.</color></i>";
+                    return "<color=#9090a0><b>Pas de paliers de jauge</b></color> — la puissance vient des MARQUES (1 max/cible) :\n" +
+                           "<color=#b0b0c0><b>Traqué</b></color> (unité) : tes sorts dessus ignorent 30% de ses boucliers\n\n" +
+                           "<color=#b0b0c0><b>Voilé</b></color> (case) : brouillard pour l'adversaire jusqu'à ce qu'une unité y entre\n\n" +
+                           "<color=#b0b0c0><b>Empreinté</b></color> (unité) : tu vois son sillage 1 tour";
                 default: return "<i>(Phases non documentées)</i>";
             }
         }

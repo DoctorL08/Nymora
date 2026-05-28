@@ -330,12 +330,14 @@ namespace Nymora.Hub
             {
                 case NymoraClass.Soulrender:
                     generation = "<color=#ffd060><b>Génération HG :</b></color>  <b>+1 HG par sort qui inflige des dégâts</b> (max 1/sort).  Bonus +1 si la cible était <i>Marquée de Carnage</i>.  Cap 5.";
-                    body = "<color=#ffe2a0><b>Stage 0</b></color> — <b>0-1 HG</b> : peau normale\n" +
-                           "  <i>Bonus : aucun (accumulation passive via dégâts subis)</i>\n\n" +
-                           "<color=#ffb060><b>Stage 1</b></color> — <b>2-4 HG</b> : aura rouge progressive\n" +
-                           "  <i>Bonus : aucun (HG dépensable sur sorts à coût HG)</i>\n\n" +
-                           "<color=#ff6060><b>Stage 2</b></color> — <b>5 HG (cap)</b> : fissures écarlates\n" +
-                           "  <i><color=#ffd060>Bonus : <b>signature Âme Lacérée prête</b> (320 dgts + heal 50% dgts passés)</color></i>";
+                    body = "<color=#ffe2a0><b>Appel du Sang</b></color> — bonus selon les PV de la <b>cible</b> :\n" +
+                           "<color=#ffb060><b>Cible sous 70% PV</b></color> (Marquage)\n" +
+                           "  <i><color=#ffd060>Tous tes sorts coûtent <b>-1 PA</b> (min 1)</color></i>\n\n" +
+                           "<color=#ff8848><b>Cible sous 40% PV</b></color> (Rage Ouverte)\n" +
+                           "  <i><color=#ffd060>Tes sorts de mêlée <b>ignorent 50% du bouclier</b> de la cible</color></i>\n\n" +
+                           "<color=#ff6060><b>Cible sous 20% PV</b></color> (Le Cri)\n" +
+                           "  <i><color=#ffd060><b>Sang Coagulé</b> en croix de 5 cases autour de toi (30 dgts/début de tour, 2t)</color></i>\n\n" +
+                           "<color=#ffd060><b>5 HG (cap)</b></color> : signature <b>Âme Lacérée</b> prête (320 dgts + heal 50%)";
                     break;
                 case NymoraClass.Colossar:
                     generation = "<color=#a0d0ff><b>Génération FD :</b></color>  <b>+1 FD par obstacle spawné</b> (pilier ou mur).  Le compteur d'obstacles actifs déclenche aussi le passif <i>Densité Inerte</i> (réduction dgts).  Cap 3.";
@@ -357,18 +359,22 @@ namespace Nymora.Hub
                     break;
                 case NymoraClass.Necram:
                     generation = $"<color=#b0e090><b>Génération PT :</b></color>  <b>+1 PT par marque de venin/peste appliquée</b> (cap +2/tour via marques).  <b>+1 PT par tick global</b> de marques sur la map.  Cap {def.ResourceCap}.";
-                    body = $"<color=#a0e090><b>Stage 0</b></color> — ressource basse : posture standard\n" +
+                    body = $"<color=#a0e090><b>Stage 0</b></color> — moins de 4 marques actives\n" +
                            $"  <i>Bonus : marques de venin/peste appliquées par les sorts (DoT empilable)</i>\n\n" +
-                           $"<color=#80c070><b>Stage 1</b></color> — ressource moyenne : aura putride\n" +
-                           $"  <i><color=#b0e090>Bonus : Floraison augmente le tick des marques (DoT plus violent)</color></i>\n\n" +
+                           $"<color=#80c070><b>Stage 1</b></color> — <b>4+ marques actives</b> (Floraison)\n" +
+                           $"  <i><color=#b0e090>Bonus : <b>+10 HP par marque</b> (régen/tour) + <b>halo toxique rayon 3</b> : 20 dgts aux ennemis qui commencent leur tour près de toi</color></i>\n\n" +
                            $"<color=#60a050><b>Stage 2</b></color> — ressource au cap ({def.ResourceCap} {def.ResourceKind})\n" +
-                           $"  <i><color=#b0e090>Bonus : <b>signature Virus Fatal prête</b> (déclenche ×3 tous les ticks de marques en un coup)</color></i>";
+                           $"  <i><color=#b0e090>Bonus : <b>signature Virus Fatal prête</b> (déclenche ×3 tous les ticks de marques)</color></i>";
                     break;
                 case NymoraClass.Nightseer:
                     generation = "<color=#c0b0d0><b>Génération PR :</b></color>  <b>+1 PR par round SANS dégâts subis</b>.  <b>-1 PR par round avec dégâts subis</b> (plancher 0).  Récompense la furtivité totale.  Cap 4.";
-                    body = "<color=#9090a0><b>Pas de phases visuelles</b></color>\n\n" +
-                           "Le Nightseer reste discret. Sa puissance se mesure aux pièges et voiles posés, pas à son apparence.\n\n" +
-                           "<i><color=#b0a0c0>Mindgame Bible : l'adversaire ne sait jamais ce qui se cache sous un voile (piège ou rien). C'est le seul kit de Nymora basé 100% sur l'information asymétrique.</color></i>";
+                    body = "<color=#9090a0><b>Pas de paliers de jauge</b></color> — la puissance vient des MARQUES (1 max/cible) :\n" +
+                           "<color=#b0b0c0><b>Traqué</b></color> (sur une unité)\n" +
+                           "  <i><color=#c0b0d0>Tes sorts sur cette cible <b>ignorent 30% de ses boucliers</b> + lecture facilitée</color></i>\n\n" +
+                           "<color=#b0b0c0><b>Voilé</b></color> (sur une case)\n" +
+                           "  <i><color=#c0b0d0>La case devient du brouillard pour l'adversaire jusqu'à ce qu'une unité y entre</color></i>\n\n" +
+                           "<color=#b0b0c0><b>Empreinté</b></color> (sur une unité)\n" +
+                           "  <i><color=#c0b0d0>Tu vois son sillage pendant 1 tour</color></i>";
                     break;
                 default:
                     generation = "";
