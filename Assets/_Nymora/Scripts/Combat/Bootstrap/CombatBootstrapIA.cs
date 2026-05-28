@@ -87,6 +87,15 @@ namespace Nymora.Combat.Bootstrap
 
         private async void Start()
         {
+            // Garde 0 (replay) : si un replay est en cours de lecture dans cette scène, le
+            // ReplayPlaybackController (-1000) a déjà démarré son runner. Le bootstrap doit
+            // s'abstenir (sinon son ShutdownAll pré-clean tuerait le runner replay).
+            if (Nymora.Combat.Replay.ReplayPlaybackController.ReplaybackActive)
+            {
+                Log("Mode replay actif -> bootstrap IA skip (le ReplayPlaybackController pilote la sim).");
+                return;
+            }
+
             // Garde 1 (forte) : si un CombatBootstrapCasual est instancie ailleurs dans
             // la session (peu importe la scene de hosting), on est en match PvP en cours.
             // IA skip total -> sinon son QuantumRunner.ShutdownAll() pre-clean ligne ~144
@@ -174,6 +183,8 @@ namespace Nymora.Combat.Bootstrap
             // Log explicite du mode : aide a debugger si jamais quelqu'un confond
             // 30_CombatIA (offline) avec 33_CombatCasual (Photon Realtime PvP).
             Log("MODE OFFLINE LOCAL — instance isolee, aucune connexion reseau pour la sim.");
+            if (Nymora.Core.Data.TutorialContext.Active)
+                Log("MODE TUTORIEL ACTIF — slot 0 force Soulrender + deck tuto (DeckBridge ignore).");
 
             // ===== 1. Clone runtime config + bind map IA dediee =====
             // On NE FAIT PAS FindAnyObjectByType<QuantumMapData>() car ca retomberait
@@ -271,6 +282,10 @@ namespace Nymora.Combat.Bootstrap
         /// </summary>
         private static QuantumNymoraClass ResolveLorenzoClassId()
         {
+            // Tuto (T1) : classe Soulrender imposée, on ignore le DeckBridge pour un scénario prévisible.
+            if (Nymora.Core.Data.TutorialContext.Active)
+                return QuantumNymoraClass.Soulrender;
+
             if (!DeckBridge.HasPending)
             {
                 Debug.LogWarning("[CombatBootstrapIA] DeckBridge vide (scene lancee direct Editor ?) — fallback class Soulrender slot 0.");
@@ -292,12 +307,17 @@ namespace Nymora.Combat.Bootstrap
         /// </summary>
         private int[] ResolveLorenzoSpellIdValues()
         {
-            var result = new int[6];
-            if (!DeckBridge.HasPending || SpellCatalog == null) return result;
+            // Tuto (T1) : deck Soulrender fixe (TutorialContext), on ignore le DeckBridge.
+            string[] sourceIds = Nymora.Core.Data.TutorialContext.Active
+                ? Nymora.Core.Data.TutorialContext.SoulrenderTutorialDeck
+                : (DeckBridge.HasPending ? DeckBridge.PendingSpellIds : null);
 
-            for (int i = 0; i < 6 && i < DeckBridge.PendingSpellIds.Length; i++)
+            var result = new int[6];
+            if (sourceIds == null || SpellCatalog == null) return result;
+
+            for (int i = 0; i < 6 && i < sourceIds.Length; i++)
             {
-                var spellIdTech = DeckBridge.PendingSpellIds[i];
+                var spellIdTech = sourceIds[i];
                 if (string.IsNullOrEmpty(spellIdTech)) continue;
                 var def = SpellCatalog.FindBySpellId(spellIdTech);
                 if (def == null)
@@ -313,6 +333,9 @@ namespace Nymora.Combat.Bootstrap
         private void OnDestroy()
         {
             if (Instance == this) Instance = null;
+            // Tuto : on quitte le combat -> on désarme le mode tuto pour ne pas contaminer un
+            // futur match IA normal de la même session (le déclencheur le re-pose si besoin).
+            Nymora.Core.Data.TutorialContext.Reset();
             _cts?.Cancel();
             _ = ShutdownAsync();
         }
