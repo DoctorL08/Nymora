@@ -279,6 +279,13 @@ namespace Nymora.Combat.Bootstrap
             };
             Runner.Game.AddPlayer(1, bot);
             Log($"AddPlayer slot 1 (Bot) class={bot.ClassId}");
+
+            // Tuto T3 : instancie le director (overlay + étapes guidées + gating). 100% View.
+            if (Nymora.Core.Data.TutorialContext.Active)
+            {
+                Nymora.Combat.View.Tutorial.TutorialDirector.EnsureSpawned();
+                Log("TutorialDirector instancie (mode tutoriel).");
+            }
         }
 
         // ====== Helpers ======
