@@ -28,14 +28,19 @@ namespace Quantum
             state->SubTurnInRound = 0; // 2.14 : 1er sous-tour du round 1
             state->WinnerPlayerIndex = -1; // 2.16.c.i : -1 = match en cours / pas de winner
 
-            // Tirage d'initiative deterministe (Bible V7.1 : random tour 1, alternance ensuite).
-            // f.RNG->Next(0, max) retourne un int dans [0, max) - donc [0, 2) = 0 ou 1.
-            state->ActivePlayerIndex = f.RNG->Next(0, TurnConstants.PlayerCount);
-
             // 4.14.b — Copie le flag mode IA/PvP depuis RuntimeConfig vers le CombatState.
             // AISystem.Update lira state->IsBotMatch pour decider d'agir ou non.
             // Int32 0/1 cote sim (Quantum .qtn ne supporte pas Bool), bool cote Unity.
             state->IsBotMatch = f.RuntimeConfig.IsBotMatch ? 1 : 0;
+
+            // Initiative round 1.
+            //   - PvP / ranked : tirage aleatoire (Bible V7.1 : random tour 1, alternance ensuite).
+            //     f.RNG->Next(0, max) retourne un int dans [0, max) - donc [0, 2) = 0 ou 1.
+            //   - IA / entrainement (5.12) : le JOUEUR (P0) commence TOUJOURS (deviation volontaire
+            //     de la Bible, reservee au PvE : pas de surprise "le bot joue avant moi" en training).
+            state->ActivePlayerIndex = state->IsBotMatch == 1
+                ? 0
+                : f.RNG->Next(0, TurnConstants.PlayerCount);
 
             // PATCH 22 mai (test designer) — Intro "pile ou face" CASUAL : on reste en PreMatch
             // un court delai (timer d'intro stocke dans TurnTimerTicks, GELE cote tour) pendant

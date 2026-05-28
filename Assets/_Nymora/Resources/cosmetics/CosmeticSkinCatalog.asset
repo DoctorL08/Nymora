@@ -13,4 +13,8 @@ MonoBehaviour:
   m_Name: CosmeticSkinCatalog
   m_EditorClassIdentifier: 
   Skins:
+  - {fileID: 11400000, guid: da0ac3a25acea4341b475e07ae69a80c, type: 2}
+  - {fileID: 11400000, guid: d09861814aec84149a1f180fad3cb6e9, type: 2}
+  - {fileID: 11400000, guid: acdb0f43d0df93a448cf148d0db8daf9, type: 2}
+  - {fileID: 11400000, guid: 93dc4b1a0fe44cd48ba399ee94991aaf, type: 2}
   - {fileID: 11400000, guid: 66a92e214feeb834cb4b70fd80d180ae, type: 2}

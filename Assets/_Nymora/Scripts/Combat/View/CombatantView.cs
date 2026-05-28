@@ -171,6 +171,7 @@ namespace Nymora.Combat.View
         {
             if (skin == null || !skin.HasCombatControllers) return;
 
+            AppliedSkinId = skin.CosmeticId;
             _stage0ControllerSE = skin.Stage0ControllerSE;
             _stage1ControllerSE = skin.Stage1ControllerSE;
             _stage2ControllerSE = skin.Stage2ControllerSE;
@@ -188,6 +189,36 @@ namespace Nymora.Combat.View
             _currentStage = -1;
             _currentFacing = (IsoFacing)(-1);
             SetStageAndFacing(stage, facing);
+        }
+
+        /// <summary>cosmeticId du skin combat applique (ApplySkin), "" si aucun. Lu par le tuner Y.</summary>
+        public string AppliedSkinId { get; private set; } = "";
+
+        /// <summary>True si le SpriteRenderer est sur un child (=> le Y offset par stage est applicable).
+        /// False pour les prefabs mono-GO (Soulrender/Nightseer) ou l'offset est ignore.</summary>
+        public bool SpriteOnChild => _sprite != null && _sprite.transform != transform;
+
+        /// <summary>
+        /// Tuner dev (CombatSkinYTuner) — pousse les 3 Y offsets de stage en LIVE et re-applique
+        /// celui du stage courant SANS reset d'animation (contrairement a ApplySkin qui re-swap le
+        /// controller). No-op visuel si mono-GO (cf SpriteOnChild).
+        /// </summary>
+        public void SetCombatYOffsets(float s0, float s1, float s2)
+        {
+            _stage0VisualYOffset = s0;
+            _stage1VisualYOffset = s1;
+            _stage2VisualYOffset = s2;
+            if (_sprite == null || _sprite.transform == transform) return;
+            int stage = _currentStage < 0 ? 0 : _currentStage;
+            float off = stage == 0 ? _stage0VisualYOffset
+                      : stage == 1 ? _stage1VisualYOffset
+                      : _stage2VisualYOffset;
+            Vector3 pos = _sprite.transform.localPosition;
+            if (!Mathf.Approximately(pos.y, off))
+            {
+                pos.y = off;
+                _sprite.transform.localPosition = pos;
+            }
         }
 
         // ======================================================================

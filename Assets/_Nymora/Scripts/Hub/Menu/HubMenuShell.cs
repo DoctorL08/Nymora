@@ -39,9 +39,6 @@ namespace Nymora.Hub.Menu
         [System.Serializable]
         public struct CardArt { public string Id; public Sprite Sprite; }
 
-        // Boost d'échelle du sprite quand un skin est équipé (frames natives + petites que la classe).
-        private const float SkinPortraitBoost = 1.4f;
-
         // M8 — Lien Discord Nymora (section report de bug), ouvert dans le navigateur.
         private const string BugReportUrl = "https://discord.gg/haRtXKCERx";
 
@@ -962,7 +959,8 @@ namespace Nymora.Hub.Menu
         // Si un skin est équipé pour la classe affichée, joue SES frames idle sur le portrait.
         private async void ApplySkinToPortrait(string cls, int gen)
         {
-            if (_api == null || _skinDefinitions == null || _pgPortrait == null || _pgPortraitAnim == null) return;
+            // _skinDefinitions peut être vide : FindSkinDef retombe sur le catalogue Resources.
+            if (_api == null || _pgPortrait == null || _pgPortraitAnim == null) return;
             string token = HubChatClient.Instance?.DevToken;
             if (string.IsNullOrEmpty(token)) return;
             _api.SetBearerToken(token);
@@ -1008,20 +1006,14 @@ namespace Nymora.Hub.Menu
             if (skin != null && skin.IdleFrames != null && skin.IdleFrames.Length > 0)
             {
                 _pgPortrait.enabled = true;
-                // Le mode aligné (chemin classe) a pu modifier pivot/sizeDelta/preserveAspect ->
-                // on restaure le rect par défaut avant le chemin legacy du skin (preserveAspect).
-                _pgPortrait.preserveAspect = true;
-                var rt = _pgPortrait.rectTransform;
-                rt.pivot = new Vector2(0.5f, 0f);
-                rt.sizeDelta = _pgPortraitSize;
-                rt.anchoredPosition = _pgPortraitAnchor;
-                _pgPortraitAnim.Play(_pgPortrait, skin.IdleFrames, skin.IdleFps);
-                // Les frames de skin sont souvent plus petites (contenu natif) -> boost d'échelle
-                // pour matcher la taille du sprite de classe. SkinPortraitBoost ajustable.
-                var cdef = CurrentClassDef();
-                float classScale = (cdef != null && cdef.HubVisualScale > 0f) ? cdef.HubVisualScale : 1f;
-                float skinScale = skin.HubVisualScale > 0f ? skin.HubVisualScale : 1f;
-                _pgPortrait.rectTransform.localScale = Vector3.one * (skinScale / classScale) * SkinPortraitBoost;
+                // 5.12 — MÊME rendu que les frames de classe (PlayAligned : échelle constante ajustée
+                // à la box + centrage par pivot). Avant, le skin passait par Play + un boost manuel
+                // (SkinPortraitBoost) calé sur Ashen -> les nouveaux skins ressortaient plus GRANDS
+                // que les classes. PlayAligned normalise chaque skin à la box -> taille homogène.
+                _pgPortrait.rectTransform.localScale = Vector3.one;
+                Vector2 boxCenter = _pgPortraitAnchor + new Vector2(0f, _pgPortraitSize.y * 0.5f);
+                float ps = skin.MenuPortraitScale > 0f ? skin.MenuPortraitScale : 1f;
+                _pgPortraitAnim.PlayAligned(_pgPortrait, skin.IdleFrames, skin.IdleFps, boxCenter, _pgPortraitSize, ps);
                 _pgPortraitSkinId = skinId; // skin desormais affiche (anti-flash au prochain refresh)
             }
         }
@@ -1059,11 +1051,23 @@ namespace Nymora.Hub.Menu
                 ? _classDefinitions[_classIndex] : null;
         }
 
+        private static CosmeticSkinCatalog _skinCatalogFallback;
+        private static bool _skinCatalogLoaded;
+
         private CosmeticSkinDefinition FindSkinDef(string id)
         {
-            if (_skinDefinitions == null) return null;
-            foreach (var s in _skinDefinitions) if (s != null && s.CosmeticId == id) return s;
-            return null;
+            if (string.IsNullOrEmpty(id)) return null;
+            if (_skinDefinitions != null)
+                foreach (var s in _skinDefinitions) if (s != null && s.CosmeticId == id) return s;
+            // Repli sur le catalogue global (Resources/Cosmetics/CosmeticSkinCatalog), comme
+            // HubMenuShop : source UNIQUE de tous les skins -> pas besoin de recâbler le tableau
+            // local _skinDefinitions par scène à chaque nouveau skin (ex : les 4 skins 5.12).
+            if (!_skinCatalogLoaded)
+            {
+                _skinCatalogFallback = Resources.Load<CosmeticSkinCatalog>("Cosmetics/CosmeticSkinCatalog");
+                _skinCatalogLoaded = true;
+            }
+            return _skinCatalogFallback != null ? _skinCatalogFallback.Resolve(id) : null;
         }
 
         private void SetXp(int level, int xp, int xpToNext)

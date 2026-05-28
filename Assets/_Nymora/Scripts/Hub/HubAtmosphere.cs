@@ -172,6 +172,9 @@ namespace Nymora.Hub
             vel.enabled = true;
             vel.y = new ParticleSystem.MinMaxCurve(0.28f, 0.65f);
             vel.x = new ParticleSystem.MinMaxCurve(-0.22f, 0.22f);
+            // Z DOIT être dans le même mode (TwoConstants) que X/Y, sinon Unity spamme
+            // "Particle Velocity curves must all be in the same mode" chaque frame.
+            vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);
 
             // Turbulence : c'est ce qui rend le mouvement VIVANT (avant : trop lent/figé).
             var noise = _ps.noise;
@@ -241,6 +244,8 @@ namespace Nymora.Hub
             vel.enabled = true;
             vel.y = new ParticleSystem.MinMaxCurve(0.05f, 0.30f);
             vel.x = new ParticleSystem.MinMaxCurve(-0.30f, 0.30f);
+            // Z aligné sur le même mode (TwoConstants) que X/Y -> pas de warning de mode mixte.
+            vel.z = new ParticleSystem.MinMaxCurve(0f, 0f);
 
             // Mouvement erratique (les lucioles ne vont pas droit).
             var noise = _fireflies.noise;

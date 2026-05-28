@@ -51,6 +51,7 @@ MonoBehaviour:
   WalkFps: 12
   HubVisualScale: 1
   HubVisualYOffset: 0.5
+  MenuPortraitScale: 1.4
   Stage0ControllerSE: {fileID: 9100000, guid: 4378a90b15e2c7b4c9607901a2f79464, type: 2}
   Stage1ControllerSE: {fileID: 9100000, guid: a4a7ac873e3f9ba43a8b130edb1924df, type: 2}
   Stage2ControllerSE: {fileID: 9100000, guid: a949df57d34e80d40a93a2c20c5bbdd2, type: 2}

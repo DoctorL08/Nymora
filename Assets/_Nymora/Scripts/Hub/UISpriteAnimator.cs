@@ -34,6 +34,7 @@ namespace Nymora.Hub
         private Vector2 _boxSize;      // box cible servant à calculer l'échelle constante
         private Vector2 _pivotAnchor;  // position fixe où planter le pivot du sprite (calée frame 0)
         private float _scale;          // échelle px->UI, calée sur la 1re frame
+        private float _extraScale = 1f; // multiplicateur d'échelle (mode aligné) pour réglage par skin
         private bool _ready;
 
         /// <summary>Mode historique : swap simple du sprite (le rendu/preserveAspect est géré dehors).</summary>
@@ -51,11 +52,12 @@ namespace Nymora.Hub
         /// depuis la 1re frame -> chaque classe (hauteur/pivot différents) tombe au même endroit.
         /// L'appelant doit utiliser un rect à ancre ponctuelle (anchorMin == anchorMax).
         /// </summary>
-        public void PlayAligned(Image image, Sprite[] frames, float fps, Vector2 boxCenter, Vector2 boxSize)
+        public void PlayAligned(Image image, Sprite[] frames, float fps, Vector2 boxCenter, Vector2 boxSize, float extraScale = 1f)
         {
             Bind(image, frames, fps, Mode.Aligned);
             _boxCenter = boxCenter;
             _boxSize = boxSize;
+            _extraScale = extraScale > 0f ? extraScale : 1f;
             _ready = false;
             if (_image != null)
             {
@@ -105,7 +107,7 @@ namespace Nymora.Hub
 
             if (!_ready && _boxSize.x > 0f && _boxSize.y > 0f)
             {
-                _scale = Mathf.Min(_boxSize.x / sp.x, _boxSize.y / sp.y);
+                _scale = Mathf.Min(_boxSize.x / sp.x, _boxSize.y / sp.y) * _extraScale;
                 // Décale le pivot pour que le centre du rect de la 1re frame tombe sur _boxCenter :
                 // centre - pivot (en px scalés), puis pivotAnchor = boxCenter - (centre - pivot).
                 Vector2 centerMinusPivot = ((sp * 0.5f) - sprite.pivot) * _scale;

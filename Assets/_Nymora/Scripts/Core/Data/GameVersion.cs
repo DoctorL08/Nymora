@@ -24,7 +24,10 @@ namespace Nymora.Core.Data
         /// - Modifications du schema Combatant DSL (impact compatibilite replay)
         /// - Modifications du schema Tile DSL (idem)
         /// </summary>
-        public const int CombatRulesVersion = 81;
+        // 82 (5.12) : délai de 1re action du bot IA (BotFirstMoveDelayTicks) — corrige le bot qui
+        //             apparaissait au milieu (move exécuté avant le spawn de sa vue en IA).
+        // 83 (5.12) : en mode IA, le joueur (P0) commence toujours (PvP/ranked = aléatoire Bible).
+        public const int CombatRulesVersion = 83;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

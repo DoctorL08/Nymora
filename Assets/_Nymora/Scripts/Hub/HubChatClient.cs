@@ -147,7 +147,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, ClanBannerUpdated, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate }
 
         private struct IncomingEvent
         {
@@ -586,6 +586,16 @@ namespace Nymora.Hub
                             ClanId = msg.payload?.clanId ?? "",
                         });
                         break;
+                    case "CLAN_BANNER_UPDATED":
+                        // 5.12 — Propagation LIVE du bandeau de clan : invalide le cache local
+                        // (traité sur le main thread via la file) -> re-fetch au prochain survol.
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.ClanBannerUpdated,
+                            ClanId = msg.payload?.clanId ?? "",
+                            ClanName = msg.payload?.clanName ?? "",
+                        });
+                        break;
                     case "XP_AWARDED":
                         _queue.Enqueue(new IncomingEvent
                         {
@@ -870,6 +880,12 @@ namespace Nymora.Hub
                         break;
                     case EventKind.ClanDisbanded:
                         OnClanDisbanded?.Invoke(ev.ClanId);
+                        break;
+                    case EventKind.ClanBannerUpdated:
+                        // 5.12 — Bandeau de clan modifié par le chef : vide le cache du tooltip pour
+                        // ce clan -> le prochain survol d'un de ses membres refetch la config à jour
+                        // (pas de relog). Main thread : safe pour le Dictionary statique.
+                        HubAvatarHoverTooltip.InvalidateClanBanner(ev.ClanName);
                         break;
                     case EventKind.XpAwarded:
                         OnXpAwarded?.Invoke(new XpAwardedData

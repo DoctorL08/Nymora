@@ -69,8 +69,11 @@ namespace Quantum
             bool isMedium = AIConstants.CurrentDifficulty == AIDifficulty.Medium;
             int maxCasts = isMedium ? AIConstants.MaxCastsPerTurnMedium : AIConstants.MaxCastsPerTurnEasy;
 
-            // Phase MOVE : tick 0.
-            if (elapsed == 0)
+            // Phase MOVE : petit délai (BotFirstMoveDelayTicks) au lieu de tick 0, pour laisser le
+            // CombatantRenderer poser la vue du bot sur sa case de SPAWN avant qu'il se déplace
+            // (sinon la vue, créée paresseusement en IA, apparaît directement sur la case d'arrivée
+            // ≈ milieu — cf AIConstants.BotFirstMoveDelayTicks).
+            if (elapsed == AIConstants.BotFirstMoveDelayTicks)
             {
                 TryGreedyMove(f, botEntity, bot);
                 return; // attend le prochain interval pour le 1er cast

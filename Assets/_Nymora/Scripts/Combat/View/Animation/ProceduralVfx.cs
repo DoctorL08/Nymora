@@ -164,7 +164,12 @@ namespace Nymora.Combat.View.Animation
 
             var emission = ps.emission; emission.rateOverTime = 32f;
             var shape = ps.shape; shape.shapeType = ParticleSystemShapeType.Circle; shape.radius = 0.3f; shape.radiusThickness = 0.5f;
-            var vol = ps.velocityOverLifetime; vol.enabled = true; vol.space = ParticleSystemSimulationSpace.World; vol.y = new ParticleSystem.MinMaxCurve(1.2f);
+            // X/Y/Z doivent TOUS être dans le même mode (Constant) sinon Unity spamme
+            // "Particle Velocity curves must all be in the same mode" chaque frame.
+            var vol = ps.velocityOverLifetime; vol.enabled = true; vol.space = ParticleSystemSimulationSpace.World;
+            vol.x = new ParticleSystem.MinMaxCurve(0f);
+            vol.y = new ParticleSystem.MinMaxCurve(1.2f);
+            vol.z = new ParticleSystem.MinMaxCurve(0f);
             var col = ps.colorOverLifetime; col.enabled = true; col.color = FadeInOutGradient();
 
             SetupParticleRenderer(go, sortingLayer, sortingOrder);

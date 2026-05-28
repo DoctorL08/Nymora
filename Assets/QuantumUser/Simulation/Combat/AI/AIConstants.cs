@@ -46,6 +46,15 @@ namespace Quantum
         // passe.
         public const int BotEndTurnDelayTicks = 30;
 
+        // 5.12 — Délai avant la 1re action (move) du bot, en ticks. AVANT : le bot bougeait à
+        // elapsed==0, donc dans le MÊME batch de simulation de rattrapage que son spawn — avant que
+        // le CombatantRenderer (qui spawn les vues paresseusement en IA) n'ait créé la vue du bot.
+        // Résultat : la vue naissait directement sur la case d'arrivée (≈ milieu) au lieu d'animer
+        // depuis le coin de spawn (incident "IA spawn au milieu"). 18 ticks = 0.3s : garantit
+        // qu'au moins un OnUpdateView a posé la vue à la case de spawn AVANT le déplacement.
+        // Non multiple de ActionIntervalTicks (60) → aucune collision avec le calendrier de casts.
+        public const int BotFirstMoveDelayTicks = 18;
+
         // 2.16.c.v — Intervalle entre actions du bot (move puis casts). 60 ticks = 1s
         // a 60Hz. Espace les casts dans le temps pour que le joueur voie chaque effet
         // (-dgts, push, tp...) sequentiellement, comme face a un vrai joueur.

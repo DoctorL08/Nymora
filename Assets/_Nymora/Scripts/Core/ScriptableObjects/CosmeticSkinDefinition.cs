@@ -50,6 +50,11 @@ namespace Nymora.Core.ScriptableObjects
         public float HubVisualScale = 1f;
         public float HubVisualYOffset = 0f;
 
+        [Tooltip("5.12 — Échelle de la prévisu dans le MENU perso uniquement (indépendant du hub). " +
+                 "1 = ajusté à la box comme les classes ; >1 agrandit, <1 réduit. Réglable PAR skin " +
+                 "car chaque art a une marge native différente (ex Ashen ~1.4).")]
+        public float MenuPortraitScale = 1f;
+
         // ==================================================================
         // Brique 5.10 — Skin en COMBAT.
         // Le combat anime un combattant via 6 AnimatorController (stage 0/1/2 × NE/SE)
