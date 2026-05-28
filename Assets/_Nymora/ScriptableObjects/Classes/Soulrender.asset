@@ -29,7 +29,7 @@ MonoBehaviour:
     ET en infliger en melee genere de la ressource. Aura rouge progressive, fissures
     ecarlates a 5/5."
   PassiveName: L'Appel du Sang
-  PassiveDescription: 'Montee non-lineaire indexee sur les PV de la CIBLE (pas de palier de jauge) : cible >70% PV, aucun bonus. Cible <70% PV (Marquage) : tous tes sorts coutent -1 PA (min 1). Cible <40% PV (Rage Ouverte) : tes sorts de melee ignorent 50% du bouclier de la cible. Cible <20% PV (Le Cri) : du Sang Coagule nait en croix de 5 cases autour de toi (30 degats par debut de tour, pendant 2 tours).'
+  PassiveDescription: 'Montee non-lineaire indexee sur les seuils de PV de la cible (pas de palier de jauge fixe) : plus la cible descend bas, plus le Soulrender gagne en puissance contre elle.'
   SignatureName: "Ame Lac\xE9r\xE9ee"
   SignatureCooldownTurns: 4
   SignatureDescription: Sort signature debloque a 5 HG. Cooldown 4 tours apres usage.

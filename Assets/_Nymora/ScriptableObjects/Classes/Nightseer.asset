@@ -29,7 +29,7 @@ MonoBehaviour:
   ResourceDescription: "PRESCIENCE \u2014 generee par la pose et la consommation
     de marques (Traque, Voile, Empreinte). Cap 4."
   PassiveName: L'Oeil qui n'est pas
-  PassiveDescription: 'Pas de palier de jauge : ta force vient des MARQUES posees (1 seule marque active par cible). TRAQUE (sur une unite) : tes sorts sur cette cible ignorent 30% de ses boucliers et tu la lis mieux. VOILE (sur une case) : la case devient du brouillard pour l''adversaire jusqu''a ce qu''une unite y entre (toi, tu la vois). EMPREINTE (sur une unite) : tu vois son sillage pendant 1 tour. L''avantage est informationnel : vous ne voyez pas la meme grille.'
+  PassiveDescription: 'La puissance du Nightseer depend du nombre de marques actives : sur la grille, sur l''adversaire, ou les deux. Pas de palier de jauge classique.'
   SignatureName: Traquenard
   SignatureCooldownTurns: 4
   SignatureDescription: Sort signature debloque a 4 PR. Cooldown 4 tours apres usage.
