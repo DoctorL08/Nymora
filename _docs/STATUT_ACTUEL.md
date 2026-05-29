@@ -3,6 +3,20 @@
 > **À mettre à jour à chaque fin de session avec Claude.**  
 > Ce fichier écrase tous les autres docs en cas de conflit. C'est la source de vérité du moment présent.
 
+**SESSION 29 mai 2026 (bis) — ⚖️ REFONTE D'ÉQUILIBRAGE DES 5 CLASSES (DESIGN COMPLET, PAS ENCORE CODÉ) :** grosse session de design pur (checkup équilibrage demandé par Lorenzo). **Aucun code touché → `CombatRulesVersion` inchangé (85).** Tout est **figé en design** et documenté.
+
+- **📄 Doc maître livré : `_docs/REEQUILIBRAGE_2026-05-29.md`** — les 5 classes complètes (passif + ressource + 15 sorts + signature + limites/tour + relances). C'est LA référence pour la brique d'implémentation. Détail aussi en mémoire auto (`project_<classe>_refonte_design.md`).
+- **Principe Lorenzo :** rééquilibrage par **synergie de classe**, pas tuning de constante. Pas de data PvP → design-driven assumé. Le DoT/bleed doit rester une vraie menace → **plus aucun anti-DoT cleanse dans le jeu** (Soulrender Cautérisation + Ghostra Voile retirés).
+- **🩸 Ghostra** : refonte par les leurres → **Permutation** (sort 1 PA déckable, réutilise `PermutationCommand`/`GhostraSystem` en relâchant le gate Angle 3), **Éveil Spectral** (un leurre poignarde), **Nuée Spectrale** (ex-Danse, 100+70/leurre+30/adjacent), **Communion** (consomme 1 leurre → heal 150), **Voile Spectral** (TP tous les leurres autour de l'ennemi). Supprimés : Volte-Face, Dague, Danse, Pas de l'Au-Delà.
+- **🏹 Nightseer** : **passif phasé sur Prescience (cap 4→5)** ; marques simplifiées à **Traqué seul** (Voilé/Empreinté supprimés) ; pièges = moteur de phase, **visibles par défaut → invisibles à la phase 3** ; push directionnel (Bourrasque + **Piège Bondissant**) ; **Flèche Traçante** (ex-Voile d'Ombre, 60/PM dépensé) ; Champ de Mines en chaîne.
+- **⚔️ Soulrender** : « très bien » → ajustements. Appel du Sang <70% = −1 PA sur le 1er sort seul, <40% = vol de vie 20% (retire +1 PM & bypass bouclier). Sève Vive 1×/tour ; Charge Brutale portée 4 ; Ouvre-Plaie cap 2× + anti-heal ÷2 1t ; **Éventration** (ex-Curée, 5 PA) ; **Sang Bouillant** (ex-Cautérisation) ; Frénésie (ex-Rage Insatiable) ; Empoignade reworké.
+- **🛡️ Colossar** : **3 PM (était 2 → plus aucune classe à 2 PM)** ; **Fondation cap 3→5** ; Effondrement **déclenchement immédiat** (imparable) + retrait +1 PM ; **Éboulement** (ex-Soin Lourd) ; nerf tankiness (Densité Inerte −6%/cap −18%, Garde Protectrice −15%) pour compenser les buffs.
+- **☠️ Necram** : anti feast-or-famine → **Détonation Virulente = tick à la demande sans consommer les marques** ; clock **40/50/60** ; Floraison palier 2 dès **densité 3** ; **Virus Fatal ×3→×2.5** ; Symbiose +15/tick ; Contagion auto-propagée ; **Échange Spectral** (ex-Pas Spectral, swap + 80) ; Nuée de Spores (ex-Voile de Pestilence) ; Drain Vital scale marques ; Brume simplifiée.
+- **Limites/tour + relances** posées sur les 80 sorts (logique, pas punitif : illimité par défaut, cap sur buffs/heals/setups, relance 2t sur les boucliers 200 = Peau de Fer + Stoïcisme, cooldown 4t sur les signatures).
+- **PROCHAINE ÉTAPE** : **LA grosse brique d'implémentation** (sim → bump 85→86 + rebuild standalone + resync 3 copies tooltip + deck builder + SpellDefinition + VFX + IA). Ordre conseillé : **Soulrender → Colossar → Necram → Nightseer → Ghostra**, une classe = une sous-brique validée Play Mode. **Gardé pour la prochaine session.**
+
+---
+
 **SESSION 29 mai 2026 — 🎓 TUTORIEL NOUVEAUX COMPTES (T1→T5) + 📜 DESCRIPTIONS DE PASSIFS FIDÈLES AU CODE + 🔧 FIX CHAT COMBAT :** grosse session. Sim touchée → `CombatRulesVersion` 83→**85**. Tout **commité en local** (push GitHub en fin de session, pas fait).
 
 - **🎓 Chantier TUTORIEL (T1→T5 livrés)** — combat scripté guidé, classe **Soulrender** imposée, mannequin passif, **lançable à volonté en DEV** (menu `Nymora > Tutorial > Launch Tutorial (DEV)` + toggle `Force Tutorial Mode (DEV)`, via `PlayerPrefs` lu au runtime → robuste domain-reload) :
