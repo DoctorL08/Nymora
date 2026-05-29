@@ -1,110 +1,90 @@
+using System.Collections.Generic;
+using Nymora.Combat.View.HUD;
 using Nymora.Core.SceneFlow;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Button = UnityEngine.UI.Button;
+using Image = UnityEngine.UI.Image;
 
 namespace Nymora.Combat.Replay
 {
     /// <summary>
-    /// Brique 3.E.2 — Overlay UI pour piloter la lecture du replay. Bindings :
-    ///   - Play/Pause (toggle)
-    ///   - Step (+1 tick puis pause)
-    ///   - Speed (cycle 0.5× / 1× / 2× / 4×)
-    ///   - Restart (3.E.2.b) : rewind a tick 0 puis pause
-    ///   - Seek (3.E.2.b) : InputField tick cible + bouton Go
-    ///   - Quit (3.E.polish) : clear flag replay et reload scene
-    ///   - Label "Tick X / Y", "Seeking..." pendant un seek
-    ///   - Label error / desync warning
+    /// Overlay de pilotage du replay — UI CONSTRUITE AU RUNTIME sur son PROPRE Canvas dédié
+    /// (indépendant du HUD de combat, pour pouvoir masquer le reste en mode cinématique).
+    ///
+    /// Barre de transport (HAUT-CENTRE) :  «  <<  ·  Play/Pause  ·  >>  ·  Cacher  »
+    ///   - <<  : vitesse précédente (cycle 1× / 1.5× / 2× / 4× en sens inverse)
+    ///   - Play/Pause : lecture / pause (« Fin » en bout de replay)
+    ///   - >>  : vitesse suivante (1× -> 1.5× -> 2× -> 4× -> 1×)
+    ///   - Cacher : masque TOUTE l'interface de la scène (HUD + cette barre) pour filmer en
+    ///     cinématique. Touche H pour ré-afficher.
+    ///   + label « Tick X / Y  ×N ».
+    ///
+    /// Menu Échap : pause + voile avec « Quitter le replay » (-> hub) et une croix (X) pour
+    /// fermer et reprendre. Raccourcis : Espace = play/pause · ← = << · → = >> · H = cacher/montrer
+    /// l'interface · F11 = plein écran · Échap = menu pause.
     /// </summary>
     public class ReplayPlaybackControls : MonoBehaviour
     {
-        [Tooltip("Reference au controller. Auto-resolu si laisse vide (FindObjectByType).")]
-        [SerializeField] private ReplayPlaybackController _controller;
+        private const string HubSceneName = "10_CommunityHub";
 
-        [Header("Boutons playback")]
-        [SerializeField] private Button _playPauseButton;
-        [SerializeField] private TMP_Text _playPauseLabel;
-        [SerializeField] private Button _stepButton;
-        [SerializeField] private Button _speedButton;
-        [SerializeField] private TMP_Text _speedLabel;
+        private ReplayPlaybackController _controller;
 
-        [Header("Seek (3.E.2.b)")]
-        [SerializeField] private Button _restartButton;
-        [SerializeField] private TMP_InputField _seekInput;
-        [SerializeField] private Button _seekButton;
+        private Canvas _uiCanvas;
+        private GameObject _transportBar;
+        private TMP_Text _playPauseLabel;
+        private TMP_Text _tickLabel;
+        private TMP_Text _errorLabel;
 
-        [Header("Exit (3.E.polish)")]
-        [SerializeField] private Button _quitButton;
+        private GameObject _escapeMenu;
+        private bool _wasPlayingBeforeMenu;
 
-        [Header("Labels info")]
-        [SerializeField] private TMP_Text _tickLabel;
-        [SerializeField] private TMP_Text _errorLabel;
-        [SerializeField] private TMP_Text _matchInfoLabel;
+        private bool _cinematicHidden;
+        private readonly List<Canvas> _canvasesHidden = new List<Canvas>();
 
         private void Awake()
         {
-            if (_controller == null) _controller = FindAnyObjectByType<ReplayPlaybackController>();
+            _controller = FindAnyObjectByType<ReplayPlaybackController>();
 
-            // Single-scene mode : si pas de replay actif, on hide le panel pour ne
-            // pas polluer l'UI du match normal. Le controller a deja self-disable
-            // dans son Awake (DefaultExecutionOrder=-1000 garantit l'ordre).
+            // Pas de replay actif -> on s'efface (le controller a déjà self-disable, -1000).
             if (_controller == null || !_controller.enabled)
             {
                 gameObject.SetActive(false);
                 return;
             }
 
-            if (_playPauseButton != null) _playPauseButton.onClick.AddListener(OnPlayPauseClicked);
-            if (_stepButton != null) _stepButton.onClick.AddListener(OnStepClicked);
-            if (_speedButton != null) _speedButton.onClick.AddListener(OnSpeedClicked);
-            if (_restartButton != null) _restartButton.onClick.AddListener(OnRestartClicked);
-            if (_seekButton != null) _seekButton.onClick.AddListener(OnSeekClicked);
-            if (_quitButton != null) _quitButton.onClick.AddListener(OnQuitClicked);
+            BuildUI();
         }
 
         private void Update()
         {
             if (_controller == null) return;
 
+            // Raccourcis clavier.
+            if (Input.GetKeyDown(KeyCode.F11)) Screen.fullScreen = !Screen.fullScreen;
+            if (Input.GetKeyDown(KeyCode.Escape)) ToggleEscapeMenu();
+            if (Input.GetKeyDown(KeyCode.H)) ToggleCinematic();
+            if (Input.GetKeyDown(KeyCode.Space)) OnPlayPause();
+            if (Input.GetKeyDown(KeyCode.LeftArrow)) OnRewind();
+            if (Input.GetKeyDown(KeyCode.RightArrow)) OnForward();
+
             bool hasErr = !string.IsNullOrEmpty(_controller.ErrorMessage);
             bool hasDesync = _controller.HasDesync;
-            bool seeking = _controller.IsSeeking;
-
             if (_errorLabel != null)
             {
                 _errorLabel.gameObject.SetActive(hasErr || hasDesync);
                 if (hasErr) _errorLabel.text = _controller.ErrorMessage;
-                else if (hasDesync) _errorLabel.text = string.Format(
-                    "DESYNC au frame {0} — replay diverge de la simulation courante.",
-                    _controller.DesyncFrameNumber);
+                else if (hasDesync) _errorLabel.text =
+                    "DESYNC au frame " + _controller.DesyncFrameNumber + " — replay divergent.";
             }
-
-            if (hasErr)
-            {
-                // Erreur fatale = tout grise sauf Quit (pour pouvoir sortir).
-                SetPlaybackInteractable(false);
-                SetSeekInteractable(false);
-                if (_quitButton != null) _quitButton.interactable = true;
-                return;
-            }
-
-            // Pendant un seek : grise tout sauf Quit.
-            bool playbackOk = !seeking;
-            SetPlaybackInteractable(playbackOk);
-            SetSeekInteractable(playbackOk);
-            if (_quitButton != null) _quitButton.interactable = true;
 
             if (_tickLabel != null)
             {
-                if (seeking)
-                {
-                    _tickLabel.text = "Seeking...";
-                }
-                else
-                {
-                    _tickLabel.text = string.Format("Tick {0} / {1}", _controller.CurrentTick, _controller.LastTick);
-                }
+                _tickLabel.text = _controller.IsSeeking
+                    ? "Chargement…"
+                    : "Tick " + _controller.CurrentTick + " / " + _controller.LastTick
+                      + "   ×" + _controller.Speed.ToString("0.##");
             }
 
             if (_playPauseLabel != null)
@@ -112,64 +92,262 @@ namespace Nymora.Combat.Replay
                 if (_controller.IsReplayFinished) _playPauseLabel.text = "Fin";
                 else _playPauseLabel.text = _controller.IsPaused ? "Play" : "Pause";
             }
-
-            if (_speedLabel != null)
-            {
-                _speedLabel.text = string.Format("{0}×", _controller.Speed);
-            }
-
-            if (_matchInfoLabel != null)
-            {
-                var m = _controller.Metadata;
-                if (m != null)
-                {
-                    _matchInfoLabel.text = string.Format("{0} vs {1} · {2} round(s)",
-                        m.Player0Class, m.Player1Class, m.TotalRounds);
-                }
-                else _matchInfoLabel.text = "";
-            }
         }
 
-        private void SetPlaybackInteractable(bool on)
+        // ============================ Construction UI ============================
+
+        private void BuildUI()
         {
-            if (_playPauseButton != null) _playPauseButton.interactable = on;
-            if (_stepButton != null) _stepButton.interactable = on;
-            if (_speedButton != null) _speedButton.interactable = on;
+            // Vide l'ancien panneau (outil) hébergé par ce GameObject.
+            var root = transform as RectTransform;
+            if (root != null)
+                for (int i = root.childCount - 1; i >= 0; i--) Destroy(root.GetChild(i).gameObject);
+            var rootImg = GetComponent<Image>();
+            if (rootImg != null) rootImg.enabled = false;
+
+            // Canvas dédié (overlay, au-dessus du HUD) — pour pouvoir masquer le HUD sans se masquer soi-même.
+            var canvasGo = new GameObject("ReplayUICanvas");
+            _uiCanvas = canvasGo.AddComponent<Canvas>();
+            _uiCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            _uiCanvas.sortingOrder = 5000;
+            var scaler = canvasGo.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+            canvasGo.AddComponent<GraphicRaycaster>();
+
+            var uiRoot = (RectTransform)canvasGo.transform;
+            BuildTransportBar(uiRoot);
+            BuildEscapeMenu(uiRoot);
+
+            HideReplayIrrelevantUI();
         }
 
-        private void SetSeekInteractable(bool on)
+        // Désactive les éléments de HUD sans objet en replay. Le timer : la lecture n'est pas
+        // chronométrée. On désactive le GameObject (pas juste le Canvas) -> il reste caché même
+        // après un toggle cinématique (H), qui ne touche qu'à Canvas.enabled.
+        private void HideReplayIrrelevantUI()
         {
-            if (_restartButton != null) _restartButton.interactable = on;
-            if (_seekButton != null) _seekButton.interactable = on;
-            if (_seekInput != null) _seekInput.interactable = on;
+            var timer = FindAnyObjectByType<Nymora.Combat.View.HUD.TimerView>();
+            if (timer != null) timer.gameObject.SetActive(false);
         }
 
-        private void OnPlayPauseClicked() { if (_controller != null) _controller.TogglePause(); }
-        private void OnStepClicked() { if (_controller != null) _controller.Step(); }
-        private void OnSpeedClicked() { if (_controller != null) _controller.CycleSpeed(); }
-        private void OnRestartClicked() { if (_controller != null) _controller.Restart(); }
-
-        private void OnSeekClicked()
+        private void BuildTransportBar(RectTransform uiRoot)
         {
-            if (_controller == null || _seekInput == null) return;
-            if (int.TryParse(_seekInput.text, out int target))
-            {
-                _controller.SeekTo(target);
-            }
+            // Conteneur HAUT-centre.
+            var bar = NewRect("ReplayTransport", uiRoot);
+            bar.anchorMin = new Vector2(0.5f, 1f); bar.anchorMax = new Vector2(0.5f, 1f); bar.pivot = new Vector2(0.5f, 1f);
+            bar.anchoredPosition = new Vector2(0f, -16f);
+            bar.sizeDelta = new Vector2(560f, 96f);
+            _transportBar = bar.gameObject;
+
+            var bg = bar.gameObject.AddComponent<Image>();
+            bg.color = CombatUiKit.PanelBg;
+            CombatUiKit.ApplyRounded(bg, CombatUiKit.CornerRadius);
+
+            // Label tick + vitesse (EN HAUT de la barre).
+            _tickLabel = MakeText(bar, "Tick", "", 18f, CombatUiKit.TextSecondary, TextAlignmentOptions.Center);
+            var tl = _tickLabel.rectTransform;
+            tl.anchorMin = new Vector2(0f, 1f); tl.anchorMax = new Vector2(1f, 1f); tl.pivot = new Vector2(0.5f, 1f);
+            tl.offsetMin = new Vector2(8f, -30f); tl.offsetMax = new Vector2(-8f, -6f);
+
+            // Boutons (rangée basse, sous le label tick).
+            MakeButton(bar, "<<", new Vector2(-180f, -24f), new Vector2(90f, 50f), OnRewind);
+            var playBtn = MakeButton(bar, "Play", new Vector2(-72f, -24f), new Vector2(110f, 50f), OnPlayPause);
+            _playPauseLabel = playBtn.GetComponentInChildren<TMP_Text>();
+            MakeButton(bar, ">>", new Vector2(36f, -24f), new Vector2(90f, 50f), OnForward);
+            MakeButton(bar, "Cacher", new Vector2(160f, -24f), new Vector2(120f, 50f), ToggleCinematic);
+
+            // Erreur / desync (sous la barre), caché par défaut. Sous la barre -> masqué en cinématique.
+            _errorLabel = MakeText(bar, "ReplayError", "", 18f, new Color(0.86f, 0.36f, 0.33f, 1f), TextAlignmentOptions.Center);
+            var er = _errorLabel.rectTransform;
+            er.anchorMin = new Vector2(0.5f, 0f); er.anchorMax = new Vector2(0.5f, 0f); er.pivot = new Vector2(0.5f, 1f);
+            er.anchoredPosition = new Vector2(0f, -6f);
+            er.sizeDelta = new Vector2(760f, 28f);
+            _errorLabel.gameObject.SetActive(false);
         }
 
-        private void OnQuitClicked()
+        private void BuildEscapeMenu(RectTransform uiRoot)
         {
-            // 3.E.polish : sortir du mode replay = clear le flag et reload la scene
-            // courante. Le ReplayPlaybackController detectera Consume() = null et
-            // self-disable -> retour au mode match normal.
+            _escapeMenu = NewRect("ReplayEscapeMenu", uiRoot).gameObject;
+            var veil = _escapeMenu.GetComponent<RectTransform>();
+            Stretch(veil);
+            var veilImg = _escapeMenu.AddComponent<Image>();
+            veilImg.color = new Color(0f, 0f, 0f, 0.6f);
+
+            var box = NewRect("Box", veil);
+            box.anchorMin = box.anchorMax = new Vector2(0.5f, 0.5f); box.pivot = new Vector2(0.5f, 0.5f);
+            box.anchoredPosition = Vector2.zero;
+            box.sizeDelta = new Vector2(460f, 250f);
+            var boxImg = box.gameObject.AddComponent<Image>();
+            boxImg.color = CombatUiKit.PanelBg;
+            CombatUiKit.ApplyRounded(boxImg, CombatUiKit.CornerRadius);
+
+            var title = MakeText(box, "Title", "Replay en pause", 26f, CombatUiKit.TextPrimary, TextAlignmentOptions.Center);
+            var trt = title.rectTransform;
+            trt.anchorMin = new Vector2(0f, 1f); trt.anchorMax = new Vector2(1f, 1f); trt.pivot = new Vector2(0.5f, 1f);
+            trt.offsetMin = new Vector2(16f, -62f); trt.offsetMax = new Vector2(-16f, -16f);
+
+            var quit = MakeButton(box, "Quitter le replay", new Vector2(0f, -10f), new Vector2(300f, 56f), OnQuitToHub);
+            var qrt = (RectTransform)quit.transform;
+            qrt.anchorMin = qrt.anchorMax = new Vector2(0.5f, 0.5f);
+
+            var x = MakeButton(box, "X", Vector2.zero, new Vector2(40f, 40f), CloseEscapeMenu);
+            var xrt = (RectTransform)x.transform;
+            xrt.anchorMin = xrt.anchorMax = new Vector2(1f, 1f); xrt.pivot = new Vector2(1f, 1f);
+            xrt.anchoredPosition = new Vector2(-8f, -8f);
+
+            var hint = MakeText(box, "Hint",
+                "Échap : reprendre   ·   Espace : lecture   ·   ← / → : vitesse   ·   H : cacher l'interface",
+                14f, CombatUiKit.TextMuted, TextAlignmentOptions.Center);
+            var hrt = hint.rectTransform;
+            hrt.anchorMin = new Vector2(0f, 0f); hrt.anchorMax = new Vector2(1f, 0f); hrt.pivot = new Vector2(0.5f, 0f);
+            hrt.offsetMin = new Vector2(12f, 12f); hrt.offsetMax = new Vector2(-12f, 52f);
+            hint.enableWordWrapping = true;
+
+            _escapeMenu.SetActive(false);
+        }
+
+        // ============================ Actions playback ============================
+
+        private void OnPlayPause() { if (_controller != null) _controller.TogglePause(); }
+
+        // >> : vitesse suivante (1× -> 1.5× -> 2× -> 4× -> 1×) + reprend la lecture.
+        private void OnForward()
+        {
+            if (_controller == null) return;
+            _controller.CycleSpeed();
+            _controller.Resume();
+        }
+
+        // << : vitesse précédente (sens inverse) + reprend la lecture.
+        private void OnRewind()
+        {
+            if (_controller == null) return;
+            _controller.CycleSpeedBack();
+            _controller.Resume();
+        }
+
+        // ============================ Menu Échap ============================
+
+        private void ToggleEscapeMenu()
+        {
+            if (_escapeMenu == null) return;
+            if (_escapeMenu.activeSelf) CloseEscapeMenu();
+            else OpenEscapeMenu();
+        }
+
+        private void OpenEscapeMenu()
+        {
+            if (_escapeMenu == null || _controller == null) return;
+            _wasPlayingBeforeMenu = !_controller.IsPaused;
+            _controller.Pause();
+            _escapeMenu.SetActive(true);
+            _escapeMenu.transform.SetAsLastSibling();
+        }
+
+        private void CloseEscapeMenu()
+        {
+            if (_escapeMenu == null) return;
+            _escapeMenu.SetActive(false);
+            if (_controller != null && _wasPlayingBeforeMenu) _controller.Resume();
+        }
+
+        private void OnQuitToHub()
+        {
             ReplayPlaybackBridge.RequestedReplayPath = null;
-            var active = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
-            SceneTransition.Load(active.name, () =>
+            SceneTransition.Load(HubSceneName, () =>
             {
                 try { Quantum.QuantumRunner.ShutdownAll(); }
                 catch { }
             });
+        }
+
+        // ============================ Mode cinématique ============================
+
+        // Masque / ré-affiche TOUTE l'interface : la barre de transport + tous les autres Canvas
+        // de la scène (HUD combat). Le Canvas replay dédié reste actif (pour le menu Échap), mais
+        // on cache sa barre. Re-bascule via le bouton « Cacher » ou la touche H.
+        private void ToggleCinematic()
+        {
+            _cinematicHidden = !_cinematicHidden;
+
+            if (_transportBar != null) _transportBar.SetActive(!_cinematicHidden);
+
+            if (_cinematicHidden)
+            {
+                _canvasesHidden.Clear();
+                foreach (var c in FindObjectsByType<Canvas>(FindObjectsSortMode.None))
+                {
+                    if (c == null || c == _uiCanvas) continue;        // garde notre canvas replay
+                    if (!c.isRootCanvas) continue;                    // un seul toggle par hiérarchie
+                    if (!c.enabled) continue;                         // déjà masqué : ne pas le rallumer après
+                    c.enabled = false;
+                    _canvasesHidden.Add(c);
+                }
+            }
+            else
+            {
+                foreach (var c in _canvasesHidden) if (c != null) c.enabled = true;
+                _canvasesHidden.Clear();
+            }
+        }
+
+        // ============================ Helpers UGUI ============================
+
+        private static void Stretch(RectTransform rt)
+        {
+            rt.anchorMin = Vector2.zero; rt.anchorMax = Vector2.one;
+            rt.offsetMin = Vector2.zero; rt.offsetMax = Vector2.zero;
+        }
+
+        private static RectTransform NewRect(string name, Transform parent)
+        {
+            var go = new GameObject(name, typeof(RectTransform));
+            go.transform.SetParent(parent, false);
+            return (RectTransform)go.transform;
+        }
+
+        private static TMP_Text MakeText(Transform parent, string name, string text, float size, Color color, TextAlignmentOptions align)
+        {
+            var rt = NewRect(name, parent);
+            var tmp = rt.gameObject.AddComponent<TextMeshProUGUI>();
+            tmp.text = text; tmp.fontSize = size; tmp.color = color; tmp.alignment = align;
+            tmp.raycastTarget = false; tmp.enableWordWrapping = false; tmp.richText = true;
+            return tmp;
+        }
+
+        private Button MakeButton(Transform parent, string label, Vector2 anchoredPos, Vector2 size, UnityEngine.Events.UnityAction onClick)
+        {
+            var rt = NewRect("Btn_" + label, parent);
+            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f); rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.anchoredPosition = anchoredPos; rt.sizeDelta = size;
+
+            var img = rt.gameObject.AddComponent<Image>();
+            img.color = CombatUiKit.GhostBg;
+            CombatUiKit.ApplyRounded(img, CombatUiKit.CornerRadius - 4f); // coins arrondis (DA menu)
+            var btn = rt.gameObject.AddComponent<Button>();
+            btn.targetGraphic = img;
+            // Pas de navigation : évite qu'Espace/Entrée ne « clique » un bouton resté sélectionné
+            // (sinon conflit avec le raccourci Espace = play/pause).
+            btn.navigation = new Navigation { mode = Navigation.Mode.None };
+            var colors = btn.colors;
+            colors.normalColor = CombatUiKit.GhostBg;
+            colors.highlightedColor = CombatUiKit.GhostBgHover;
+            colors.pressedColor = CombatUiKit.GhostBgHover;
+            btn.colors = colors;
+            if (onClick != null) btn.onClick.AddListener(onClick);
+
+            var lbl = MakeText(rt, "Label", label, 22f, CombatUiKit.TextPrimary, TextAlignmentOptions.Center);
+            Stretch(lbl.rectTransform);
+            return btn;
+        }
+
+        private void OnDestroy()
+        {
+            // Nettoie notre canvas dédié (sinon il survit au reload de scène via rien — mais par
+            // sécurité on le détruit avec le component).
+            if (_uiCanvas != null) Destroy(_uiCanvas.gameObject);
         }
     }
 }

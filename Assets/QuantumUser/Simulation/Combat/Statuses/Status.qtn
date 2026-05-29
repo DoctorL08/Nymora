@@ -85,8 +85,19 @@ enum StatusKind : Byte
                                        //   min(target.VeninStacks, 4) * Magnitude HP a chaque tick venin sur
                                        //   un ennemi (max +32 HP/tick, +64 sur 2 rounds avec 4 marques).
 
-    // Necram (3.5.c.i — Survie aura)
-    PestilenceAura               = 21, // Bible V7.1 : aura defensive 2 rounds. Magnitude inutilisee (0).
+    // Necram — refonte 29 mai
+    Contagious                   = 32, // Contagion (refonte) : posé sur un ENNEMI 2 rounds. Magnitude
+                                       //   inutilisée (0). Hook TurnSystem.EnterTurnEnd : à la fin du
+                                       //   sub-turn du porteur, +1 marque venin AUTO sur lui-même
+                                       //   (auto-propagation). Skip si DotImmune.
+
+    // Necram (3.5.c.i) — refonte 29 mai : ex-Voile de Pestilence, désormais NUÉE DE SPORES.
+    PestilenceAura               = 21, // Refonte : buff self du Necram 2 rounds (Nuée de Spores).
+                                       //   Magnitude inutilisée (0). Hook (SpellSystem post-cast) :
+                                       //   tant qu'actif, chaque sort du Necram visant un ennemi pose
+                                       //   +1 marque venin BONUS sur la cible. (Anciens hooks aura
+                                       //   adjacence/riposte mêlée RETIRÉS.)
+                                       // --- ancienne doc Voile de Pestilence (obsolète) ---
                                        //   Hook 1 (TurnSystem.EnterTurnEnd) : fin du sub-turn d'un ennemi a
                                        //     Manhattan <= 2 du porteur -> +1 marque venin sur l'ennemi.
                                        //   Hook 2 (SpellSystem damage loop) : si le porteur subit une ATTAQUE
@@ -183,6 +194,20 @@ enum StatusKind : Byte
                                        //     activer le BFS preview / anim path traversant (parite Pas Spectral).
                                        //   Pas de consume au move : le status reste actif pour tout le tour Ghostra
                                        //   (multi-moves benefice du bypass, coherent avec "+2 PM ce tour" Bible).
+
+    // Soulrender (refonte 29 mai)
+    HealReductionPercent         = 29, // Ouvre-Plaie 1 HG : Magnitude = % de reduction des soins ET
+                                       //   des boucliers RECUS par le porteur (50 = ÷2). Duree 1 tour
+                                       //   (skip-decrement au tour d'application). Hooks : HealHelper.ApplyHeal
+                                       //   (reduit le heal) + HealHelper.EffectiveShieldGain (reduit le shield
+                                       //   pose). Remplace l'AntiHealShield d'Ouvre-Plaie (qui bloquait tout).
+    SangBouillantActive          = 30, // Sang Bouillant (ex-Cautérisation) : flag 2 rounds. Magnitude
+                                       //   inutilisee (0). Hook (SpellSystem damage loop, cote VICTIME) :
+                                       //   quand le porteur SUBIT des degats -> +1 HG (cap) + applique
+                                       //   NextStrikeBonus (prochaine frappe +30). Refresh-only.
+    NextStrikeBonus              = 31, // Magnitude = bonus de degats FLAT sur la prochaine frappe offensive
+                                       //   du porteur (Sang Bouillant = 30). Consomme apres application sur
+                                       //   le 1er sort offensif qui inflige des degats. Refresh (pas de stack).
 
     LinceulDOmbres               = 26, // Bible V7.1 Ghostra ligne 1173 : flag bouclier epineux Ghostra.
                                        //   Magnitude = dgts riposte (40). Duree 2 rounds, applique en

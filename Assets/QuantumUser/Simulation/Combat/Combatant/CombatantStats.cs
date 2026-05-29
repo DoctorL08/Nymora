@@ -10,12 +10,15 @@ namespace Quantum
         public const int BaseMaxHP = 1500;
         public const int BaseMaxPA = 8;
         public const int DefaultMaxPM = 3;
-        public const int ColossarMaxPM = 2;
+        // Refonte 29 mai : Colossar passe a 3 PM (plus aucune classe a 2 PM).
+        public const int ColossarMaxPM = 3;
 
         // Caps de ressource de classe (Bible V7.1).
         public const int SoulrenderMaxHemoglyph = 5;
-        public const int NightseerMaxPrescience = 4;
-        public const int ColossarMaxFondation = 3;
+        // Refonte 29 mai : Prescience cap 4 -> 5 (passif phasé, palier 3 à 5 PR).
+        public const int NightseerMaxPrescience = 5;
+        // Refonte 29 mai : Fondation cap 3 -> 5.
+        public const int ColossarMaxFondation = 5;
         public const int NecramMaxPutrefaction = 6;
         public const int GhostraMaxRemanence = 3;
 
@@ -25,7 +28,7 @@ namespace Quantum
 
         public static int GetMaxPM(NymoraClass nymoraClass)
         {
-            // Bible V7.1 : seul le Colossar a 2 PM (les autres = 3).
+            // Refonte 29 mai : toutes les classes a 3 PM (Colossar n'est plus a 2).
             return nymoraClass == NymoraClass.Colossar ? ColossarMaxPM : DefaultMaxPM;
         }
 

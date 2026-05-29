@@ -210,6 +210,7 @@ namespace Nymora.Hub.Menu
             hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
             AddTab(bar, "social", "Social");
             AddTab(bar, "progression", "Progression");
+            AddTab(bar, "replays", "Replays");
             AddTab(bar, "settings", "Paramètres");
             AddTab(bar, "report", "Report bug");
             AddTab(bar, "logout", "Déconnexion");
@@ -273,6 +274,7 @@ namespace Nymora.Hub.Menu
             {
                 case "social": return "ui_icon_social";
                 case "progression": return "ui_icon_progression";
+                case "replays": return "ui_icon_replays";
                 case "settings": return "ui_icon_settings";
                 case "report": return "ui_icon_report_bug";
                 case "logout": return "ui_icon_logout";
@@ -390,6 +392,7 @@ namespace Nymora.Hub.Menu
             else if (id == "character") BuildPersonnage();
             else if (id == "social") BuildSocial();
             else if (id == "progression") BuildProgression();
+            else if (id == "replays") BuildReplays();
             else if (id == "settings") BuildSettings();
             else if (id == "shop") BuildShop();
             else if (id == "battlepass") BuildBattlePass();
@@ -1138,6 +1141,25 @@ namespace Nymora.Hub.Menu
             _currentScreen = holder.gameObject;
         }
 
+        // ===== Écran Replays (liste des .nymrep du joueur) =====
+
+        private void BuildReplays()
+        {
+            var holder = _f.MakeRect("Replays", _contentArea);
+            HubMenuUIFactory.Stretch(holder);
+
+            var panel = _f.MakePanel(holder);
+            panel.sprite = HubMenuUIFactory.RoundedSprite(28f); panel.type = UnityEngine.UI.Image.Type.Sliced;
+            var prt = panel.rectTransform;
+            prt.anchorMin = new Vector2(0.5f, 0f); prt.anchorMax = new Vector2(0.5f, 1f); prt.pivot = new Vector2(0.5f, 0.5f);
+            prt.sizeDelta = new Vector2(1040f, -8f);
+            prt.anchoredPosition = Vector2.zero;
+            new HubMenuReplays(_theme, _f).Build(prt);
+
+            AddBackButton(holder);
+            _currentScreen = holder.gameObject;
+        }
+
         // ===== M6 — Écran Paramètres (Audio + Affichage) =====
 
         private void BuildSettings()
@@ -1393,6 +1415,7 @@ namespace Nymora.Hub.Menu
                 case "shop": return "Boutique";
                 case "social": return "Social";
                 case "progression": return "Progression";
+                case "replays": return "Replays";
                 case "settings": return "Paramètres";
                 case "report": return "Report bug";
                 case "logout": return "Déconnexion";

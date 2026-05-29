@@ -238,21 +238,21 @@ namespace Nymora.Hub.Menu
                     generation = "<color=#ffd060><b>Génération HG :</b></color>  <b>+1 HG par sort qui inflige des dégâts</b> (max 1/sort).  Bonus +1 si la cible était <i>Marquée de Carnage</i>.  Cap 5.";
                     body = "<color=#ffe2a0><b>Appel du Sang</b></color> — bonus selon les PV de la <b>cible</b> :\n" +
                            "<color=#ffb060><b>Cible sous 70% PV</b></color> (Marquage)\n" +
-                           "  <i><color=#ffd060>Tous tes sorts coûtent <b>-1 PA</b> (min 1)</color></i>\n\n" +
-                           "<color=#ff8848><b>Cible sous 40% PV</b></color> (Rage Ouverte)\n" +
-                           "  <i><color=#ffd060>Tes sorts de mêlée <b>ignorent 50% du bouclier</b> de la cible</color></i>\n\n" +
+                           "  <i><color=#ffd060><b>-1 PA</b> sur le 1er sort du tour (min 1)</color></i>\n\n" +
+                           "<color=#ff8848><b>Cible sous 40% PV</b></color> (Vampirisme)\n" +
+                           "  <i><color=#ffd060><b>Vol de vie 20%</b> des dégâts que tu infliges à la cible</color></i>\n\n" +
                            "<color=#ff6060><b>Cible sous 20% PV</b></color> (Le Cri)\n" +
                            "  <i><color=#ffd060><b>Sang Coagulé</b> en croix de 5 cases autour de toi (30 dgts/début de tour, 2t)</color></i>\n\n" +
                            "<color=#ffd060><b>5 HG (cap)</b></color> : signature <b>Âme Lacérée</b> prête (320 dgts + heal 50%)";
                     break;
                 case NymoraClass.Colossar:
-                    generation = "<color=#a0d0ff><b>Génération FD :</b></color>  <b>+1 FD par obstacle spawné</b> (pilier ou mur).  Le compteur d'obstacles actifs déclenche aussi le passif <i>Densité Inerte</i> (réduction dgts).  Cap 3.";
+                    generation = "<color=#a0d0ff><b>Génération FD :</b></color>  <b>+1 FD par obstacle spawné</b> (pilier ou mur)  ·  <b>+1 FD par ennemi poussé contre un obstacle</b>.  Cap 5.";
                     body = "<color=#a0c8ff><b>Stage 0</b></color> — <b>0 obstacle actif</b> : posture standard\n" +
                            "  <i>Bonus : aucune réduction de dégâts</i>\n\n" +
                            "<color=#80b0ff><b>Stage 1</b></color> — <b>1-2 obstacles</b> : densité partielle\n" +
-                           "  <i><color=#a0d0ff>Bonus : <b>-8% à -16% dégâts subis</b> + +20 dmg sorts portée 1-2 si adjacent à un obstacle</color></i>\n\n" +
+                           "  <i><color=#a0d0ff>Bonus : <b>-6% à -12% dégâts subis</b> + +20 dmg sorts portée 1-2 si adjacent à un obstacle</color></i>\n\n" +
                            "<color=#6090ff><b>Stage 2</b></color> — <b>3 obstacles (cap)</b> : densité maximale\n" +
-                           "  <i><color=#a0d0ff>Bonus : <b>-24% dégâts subis</b> (cap) + +30 HP à chaque destruction de pilier + signature prête</color></i>";
+                           "  <i><color=#a0d0ff>Bonus : <b>-18% dégâts subis</b> (cap) + +30 HP à chaque destruction de pilier + signature prête</color></i>";
                     break;
                 case NymoraClass.Ghostra:
                     generation = "<color=#d0b0ff><b>Génération RM :</b></color>  <b>Resource = nombre de leurres actifs</b> sur le terrain (synchro auto avec les sorts Réplique).  Pose / perte / expiration de leurre met à jour le compteur en temps réel.  Cap 3.";
@@ -265,22 +265,23 @@ namespace Nymora.Hub.Menu
                     break;
                 case NymoraClass.Necram:
                     generation = $"<color=#b0e090><b>Génération PT :</b></color>  <b>+1 PT par marque de venin/peste appliquée</b> (cap +2/tour via marques).  <b>+1 PT par tick global</b> de marques sur la map.  Cap {def.ResourceCap}.";
-                    body = $"<color=#a0e090><b>Stage 0</b></color> — moins de 4 marques actives\n" +
-                           $"  <i>Bonus : marques de venin/peste appliquées par les sorts (DoT empilable)</i>\n\n" +
-                           $"<color=#80c070><b>Stage 1</b></color> — <b>4+ marques actives</b> (Floraison)\n" +
-                           $"  <i><color=#b0e090>Bonus : <b>+10 HP par marque</b> (régen/tour) + <b>halo toxique rayon 3</b> : 20 dgts aux ennemis qui commencent leur tour près de toi</color></i>\n\n" +
-                           $"<color=#60a050><b>Stage 2</b></color> — ressource au cap ({def.ResourceCap} {def.ResourceKind})\n" +
-                           $"  <i><color=#b0e090>Bonus : <b>signature Virus Fatal prête</b> (déclenche ×3 tous les ticks de marques)</color></i>";
+                    body = $"<color=#a0e090><b>Densité 1-2</b></color> — Floraison naissante\n" +
+                           $"  <i><color=#b0e090>Tick venin : <b>40 dgts/marque</b> au début du tour du porteur</color></i>\n\n" +
+                           $"<color=#80c070><b>Densité 3-6</b></color> — Floraison (palier 2)\n" +
+                           $"  <i><color=#b0e090>Tick <b>50 dgts/marque</b> + <b>+10 HP/marque</b> (régen/tour) + <b>halo toxique rayon 3</b> : 20 dgts aux ennemis près de toi</color></i>\n\n" +
+                           $"<color=#60a050><b>Densité 7+</b></color> — Floraison maximale\n" +
+                           $"  <i><color=#b0e090>Tick <b>60 dgts/marque</b></color></i>\n\n" +
+                           $"<color=#60a050><b>{def.ResourceCap} PT (cap)</b></color> : signature <b>Virus Fatal</b> prête (toutes les marques tiquent <b>×1,5</b>). Le DoT venin ignore boucliers ET réductions.";
                     break;
                 case NymoraClass.Nightseer:
-                    generation = "<color=#c0b0d0><b>Génération PR :</b></color>  <b>+1 PR par round SANS dégâts subis</b>.  <b>-1 PR par round avec dégâts subis</b> (plancher 0).  Récompense la furtivité totale.  Cap 4.";
-                    body = "<color=#9090a0><b>Pas de paliers de jauge</b></color> — la puissance vient des MARQUES (1 max/cible) :\n" +
-                           "<color=#b0b0c0><b>Traqué</b></color> (sur une unité)\n" +
-                           "  <i><color=#c0b0d0>Tes sorts sur cette cible <b>ignorent 30% de ses boucliers</b> + lecture facilitée</color></i>\n\n" +
-                           "<color=#b0b0c0><b>Voilé</b></color> (sur une case)\n" +
-                           "  <i><color=#c0b0d0>La case devient du brouillard pour l'adversaire jusqu'à ce qu'une unité y entre</color></i>\n\n" +
-                           "<color=#b0b0c0><b>Empreinté</b></color> (sur une unité)\n" +
-                           "  <i><color=#c0b0d0>Tu vois son sillage pendant 1 tour</color></i>";
+                    generation = $"<color=#c0b0d0><b>Génération PR :</b></color>  <b>+1 PR par piège posé</b>  ·  <b>+1 PR par piège déclenché</b>  ·  <b>+1 PR par marque (Traqué) appliquée</b>.  Max +3 PR/tour.  Cap {def.ResourceCap}.";
+                    body = "<color=#9090a0><b>Passif phasé sur la Prescience</b></color> — marque unique <b>Traqué</b> (les pièges sont visibles par défaut) :\n" +
+                           "<color=#b0b0c0><b>Phase 1</b></color> — <b>1-2 PR</b>\n" +
+                           "  <i><color=#c0b0d0>+15% dégâts de tes pièges</color></i>\n\n" +
+                           "<color=#a0a0c0><b>Phase 2</b></color> — <b>3-4 PR</b>\n" +
+                           "  <i><color=#c0b0d0>+ tes sorts gagnent +30 dégâts et +1 portée</color></i>\n\n" +
+                           "<color=#9090d0><b>Phase 3</b></color> — <b>5 PR (cap)</b>\n" +
+                           "  <i><color=#c0b0d0>+ ignore 50% des boucliers · tes pièges deviennent INVISIBLES · signature Traquenard prête</color></i>";
                     break;
                 default:
                     generation = "";

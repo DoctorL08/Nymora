@@ -27,6 +27,10 @@ struct FogTile {
     TrapKind Trap;
     Int32 TrapOwner;
     Int32 TrapAppliedOnTurn;
+
+    // Refonte 29 mai — Piège Bondissant : direction d'éjection choisie à la pose. Encodage
+    //   cardinal : 0 = aucune (pièges normaux), 1 = +X, 2 = -X, 3 = +Y, 4 = -Y.
+    Byte TrapDir;
 }
 
 singleton component FogSingleton {

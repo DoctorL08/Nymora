@@ -98,7 +98,10 @@ namespace Quantum
                 case SpellId.SoulrenderDernierSouffle:
                     return TryComputeHealSelf(f, caster, SpellRegistry.DernierSouffleHealAmount, out preview);
                 case SpellId.SoulrenderCauterisation:
-                    return TryComputeHealSelf(f, caster, SpellRegistry.CauterisationHealMin, out preview);
+                    // SANG BOUILLANT (refonte 29 mai) : buff reactif sans nombre immediat -> pas de
+                    //   preview chiffre (comme Frenesie / Riposte Carmin).
+                    preview = default;
+                    return false;
 
                 // ============== NIGHTSEER ==============
                 case SpellId.NightseerTirPrecis:
@@ -114,8 +117,20 @@ namespace Quantum
                     return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.DetonationOniriqueDmg, out preview);
                 case SpellId.NightseerFrappeDeLOmbre:
                 {
-                    bool moved = target->PM < target->MaxPM / 2;
-                    int dmg = moved ? SpellRegistry.FrappeDeLOmbreDmgIfMoved : SpellRegistry.FrappeDeLOmbreDmg;
+                    // Refonte 29 mai : 160 (+50 si le Nightseer a dépensé >= 3 PM au dernier tour).
+                    int dmg = SpellRegistry.FrappeDeLOmbreDmg;
+                    if (caster->PMSpentLastTurn >= 3) dmg += SpellRegistry.FrappeDeLOmbreDmgBonusPM;
+                    return TryComputeOffensiveSimple(f, caster, target, dmg, out preview);
+                }
+                case SpellId.NightseerVoileDOmbre: // FLÈCHE TRAÇANTE (refonte 29 mai)
+                {
+                    // 60/PM dépensé au dernier tour (max 180) si la cible est Traqué, sinon 0.
+                    int dmg = 0;
+                    if (MarkHelpers.HasMark(target, MarkKind.Traque))
+                    {
+                        dmg = caster->PMSpentLastTurn * SpellRegistry.FlecheTracanteDmgPerPM;
+                        if (dmg > SpellRegistry.FlecheTracanteMaxDmg) dmg = SpellRegistry.FlecheTracanteMaxDmg;
+                    }
                     return TryComputeOffensiveSimple(f, caster, target, dmg, out preview);
                 }
                 case SpellId.NightseerSalveMortelle:
@@ -125,8 +140,10 @@ namespace Quantum
                     if (MarkHelpers.HasMark(target, MarkKind.Traque)) dmg += SpellRegistry.SalveMortelleDmgIfTraque;
                     return TryComputeOffensiveSimple(f, caster, target, dmg, out preview);
                 }
-                case SpellId.NightseerSouffleGlacial:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.SouffleGlacialDmg, out preview);
+                case SpellId.NightseerSouffleGlacial: // PIÈGE BONDISSANT (refonte 29 mai)
+                    // Pose de piège-catapulte (pas de dégât direct) -> pas de preview chiffré.
+                    preview = default;
+                    return false;
                 case SpellId.NightseerFiletDeRonces:
                     return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.FiletDeRoncesDmg, out preview);
                 case SpellId.NightseerChampDeMines:
@@ -179,7 +196,10 @@ namespace Quantum
                 case SpellId.ColossarRessacVital:
                     return TryComputeHealSelf(f, caster, SpellRegistry.RessacVitalHealBase, out preview);
                 case SpellId.ColossarSoinLourd:
-                    return TryComputeHealSelf(f, caster, SpellRegistry.SoinLourdHeal, out preview);
+                    // EBOULEMENT (refonte 29 mai) : AoE 150 autour d'un Pilier ciblé (pas de cible
+                    //   combattant directe) -> pas de preview chiffré sur la case.
+                    preview = default;
+                    return false;
 
                 // ============== NECRAM ==============
                 case SpellId.NecramCrachatAcide:
@@ -193,16 +213,22 @@ namespace Quantum
                 }
                 case SpellId.NecramDetonationVirulente:
                 {
-                    int marks = target->VeninStacks;
-                    int bonus = marks * SpellRegistry.DetonationVirulenteDmgPerMark;
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.DetonationVirulenteDmgBase + bonus, out preview);
+                    // Refonte 29 mai : tick venin complet = marques * clock Floraison + Marque Sac (bypass).
+                    int density = VeninHelpers.GetGlobalDensity(f);
+                    int dmg = target->VeninStacks * VeninHelpers.GetTickDmgPerMark(density)
+                            + StatusHelper.GetMagnitude(target, StatusKind.MarqueSacrificielle, 0);
+                    return TryComputeOffensiveSimple(f, caster, target, dmg, out preview);
                 }
                 case SpellId.NecramFauxDecharnee:
                     return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.FauxDecharneeDmg, out preview);
                 case SpellId.NecramBrumeToxique:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.BrumeToxiqueDmgImmediate, out preview);
+                    // Refonte 29 mai : zone de marques + tick majoré, plus de dégâts directs -> pas de preview chiffré.
+                    preview = default;
+                    return false;
                 case SpellId.NecramDrainVital:
                     return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.DrainVitalDamage, out preview);
+                case SpellId.NecramPasSpectral: // ÉCHANGE SPECTRAL (refonte 29 mai) : swap + 80 dmg
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.EchangeSpectralDamage, out preview);
                 case SpellId.NecramPulseSanguinVert:
                 {
                     // Heal = base + 15 par marque venin sur ennemis dans rayon, cap 90

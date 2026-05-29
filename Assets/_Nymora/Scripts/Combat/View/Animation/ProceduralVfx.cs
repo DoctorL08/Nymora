@@ -328,6 +328,57 @@ namespace Nymora.Combat.View.Animation
 
         // ---------- Helpers ----------
 
+        /// <summary>
+        /// Bouffée de FUMÉE one-shot à <paramref name="pos"/> : gris doux, monte légèrement,
+        /// s'étale et se dissipe. Refonte 29 mai — feedback de déclenchement du Piège Bondissant.
+        /// Auto-détruit.
+        /// </summary>
+        public static void Smoke(Transform parent, Vector3 pos, string sortingLayer, int sortingOrder,
+                                 Color? tint = null, int count = 20, float lifetime = 0.85f)
+        {
+            var go = NewVfxGo(parent, "vfx_smoke", pos);
+            var ps = go.AddComponent<ParticleSystem>();
+            ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+
+            var main = ps.main;
+            main.duration = 0.5f;
+            main.loop = false;
+            main.playOnAwake = false;
+            main.startLifetime = lifetime;
+            main.startSpeed = 0.5f;
+            main.startSize = new ParticleSystem.MinMaxCurve(0.24f, 0.42f);
+            main.startColor = tint ?? new Color(0.80f, 0.80f, 0.82f, 0.7f);
+            main.gravityModifier = -0.05f; // monte légèrement (fumée)
+            main.maxParticles = count + 8;
+            main.simulationSpace = ParticleSystemSimulationSpace.World;
+            main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
+
+            var emission = ps.emission;
+            emission.rateOverTime = 0f;
+            emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)Mathf.Max(1, count)) });
+
+            var shape = ps.shape;
+            shape.shapeType = ParticleSystemShapeType.Circle;
+            shape.radius = 0.22f;
+            shape.radiusThickness = 1f;
+
+            // Montée + léger étalement. X/Y/Z dans le MÊME mode (Constant) sinon Unity spamme
+            // "Particle Velocity curves must all be in the same mode" chaque frame.
+            var vol = ps.velocityOverLifetime; vol.enabled = true; vol.space = ParticleSystemSimulationSpace.World;
+            vol.x = new ParticleSystem.MinMaxCurve(0f);
+            vol.y = new ParticleSystem.MinMaxCurve(0.6f);
+            vol.z = new ParticleSystem.MinMaxCurve(0f);
+
+            var col = ps.colorOverLifetime; col.enabled = true; col.color = FadeInOutGradient();
+
+            var sol = ps.sizeOverLifetime; sol.enabled = true;
+            sol.size = new ParticleSystem.MinMaxCurve(1f, GrowCurve()); // la fumée s'étale
+
+            SetupParticleRenderer(go, sortingLayer, sortingOrder);
+            ps.Play();
+            UnityEngine.Object.Destroy(go, lifetime + 0.5f);
+        }
+
         private static GameObject NewVfxGo(Transform parent, string name, Vector3 pos)
         {
             var go = new GameObject(name);
@@ -368,6 +419,12 @@ namespace Nymora.Combat.View.Animation
         private static AnimationCurve ShrinkCurve()
         {
             return new AnimationCurve(new Keyframe(0f, 1f), new Keyframe(0.25f, 1f), new Keyframe(1f, 0.05f));
+        }
+
+        private static AnimationCurve GrowCurve()
+        {
+            // Fumée : démarre petite, gonfle en se dissipant.
+            return new AnimationCurve(new Keyframe(0f, 0.5f), new Keyframe(1f, 1.5f));
         }
     }
 

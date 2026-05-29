@@ -75,7 +75,8 @@ namespace Quantum
                 case SpellId.SoulrenderOuvrePlaie:          return hgSpend > 0 ? 230 : 110;
                 case SpellId.SoulrenderChargeBrutale:       return 180;
                 case SpellId.SoulrenderDetonationSanglante: return 60 + 40 * (hgMandatory + hgSpend);
-                case SpellId.SoulrenderCuree:               return 150;
+                case SpellId.SoulrenderCuree:               return 220; // Eventration (refonte 29 mai)
+                case SpellId.SoulrenderEmpoignade:          return 90;  // refonte : devient offensive
                 case SpellId.SoulrenderAmeLaceree:          return 320;
                 default:                                    return 0;
             }

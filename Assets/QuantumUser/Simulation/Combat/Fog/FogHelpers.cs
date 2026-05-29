@@ -105,7 +105,9 @@ namespace Quantum
         /// <summary>
         /// Pose un piege sur une case. Ecrase tout piege existant (semantique simple 2.14).
         /// </summary>
-        public static void PlaceTrap(Frame f, int x, int y, TrapKind kind, int ownerPlayer, int currentTurn)
+        // trapDir (refonte 29 mai) : direction d'éjection du Piège Bondissant (0 = aucune pour les
+        //   pièges normaux ; 1=+X 2=-X 3=+Y 4=-Y). Optionnel -> calls existants inchangés.
+        public static void PlaceTrap(Frame f, int x, int y, TrapKind kind, int ownerPlayer, int currentTurn, byte trapDir = 0)
         {
             if (!GridHelpers.InBounds(x, y)) return;
             if (kind == TrapKind.None)
@@ -118,6 +120,14 @@ namespace Quantum
             fog->Tiles[idx].Trap = kind;
             fog->Tiles[idx].TrapOwner = ownerPlayer;
             fog->Tiles[idx].TrapAppliedOnTurn = currentTurn;
+            fog->Tiles[idx].TrapDir = trapDir;
+
+            // Refonte 29 mai — les pièges N'UTILISENT PLUS le voile. Leur visibilité est purement
+            //   une décision de RENDU (TrapView) évaluée en continu sur la phase ACTUELLE du Nightseer :
+            //   visibles par défaut, invisibles (rien du tout, pas de brouillard) tant que le NS est
+            //   en phase 3 (PR 5) — y compris les pièges posés avant d'atteindre 5/5.
+            // + économie PR : +1 PR au poseur Nightseer (cap +3/tour).
+            NightseerPassif.GainPrescienceForPlayer(f, ownerPlayer, currentTurn, "piège posé");
         }
 
         public static void ClearTrap(Frame f, int x, int y)
@@ -128,6 +138,14 @@ namespace Quantum
             fog->Tiles[idx].Trap = TrapKind.None;
             fog->Tiles[idx].TrapOwner = 0;
             fog->Tiles[idx].TrapAppliedOnTurn = 0;
+            fog->Tiles[idx].TrapDir = 0;
+        }
+
+        public static byte GetTrapDir(Frame f, int x, int y)
+        {
+            if (!GridHelpers.InBounds(x, y)) return 0;
+            var fog = f.Unsafe.GetPointerSingleton<FogSingleton>();
+            return fog->Tiles[GridHelpers.Index(x, y)].TrapDir;
         }
 
         public static TrapKind GetTrapKind(Frame f, int x, int y)
@@ -165,9 +183,109 @@ namespace Quantum
             if (trapOwner < 0) return false;
             if (trapOwner == entererC->PlayerIndex) return false; // pas son propre trap
 
+            // Refonte 29 mai — PIÈGE BONDISSANT : éjecte l'enterer de 3 cases dans la direction stockée
+            //   (catapulte), pas de dégâts. Applique Traqué + clear + PR. L'éjection part de la position
+            //   COURANTE de l'enterer (move déjà appliqué -> pas de ré-entrance).
+            if (trap == TrapKind.Bondissant)
+            {
+                byte dir = GetTrapDir(f, x, y);
+                int edx = 0, edy = 0;
+                switch (dir)
+                {
+                    case 1: edx = 1; break;
+                    case 2: edx = -1; break;
+                    case 3: edy = 1; break;
+                    case 4: edy = -1; break;
+                }
+                // FALLBACK (refonte 29 mai) : si aucune direction valide n'a été stockée (2e clic
+                //   ambigu / non capturé -> TrapDir=0), éjecte l'enterer LOIN du propriétaire du
+                //   piège. Garantit que la catapulte pousse TOUJOURS (fix "parfois ça pousse pas").
+                if (edx == 0 && edy == 0)
+                {
+                    var ownerLookup = f.Filter<Combatant>();
+                    while (ownerLookup.NextUnsafe(out EntityRef _, out Combatant* ow))
+                    {
+                        if (ow->PlayerIndex != trapOwner) continue;
+                        int ddx = entererC->GridX - ow->GridX;
+                        int ddy = entererC->GridY - ow->GridY;
+                        int aDx = ddx < 0 ? -ddx : ddx;
+                        int aDy = ddy < 0 ? -ddy : ddy;
+                        if (aDx >= aDy) edx = ddx >= 0 ? 1 : -1;
+                        else            edy = ddy >= 0 ? 1 : -1;
+                        break;
+                    }
+                    if (edx == 0 && edy == 0) edx = 1; // ultime défaut (owner sur même case, improbable)
+                    Log.Info($"[Trap] Piège Bondissant : pas de direction stockée -> fallback éjection loin du propriétaire (edx={edx}, edy={edy})");
+                }
+                {
+                    // Lancement DEPUIS la case du piège (la catapulte), pas depuis l'arrivée du move.
+                    //   On libère d'abord la case courante de l'enterer (il a pu passer/finir ailleurs)
+                    //   pour ne pas bloquer le calcul sur lui-même, puis on projette depuis (x,y).
+                    GridHelpers.SetOccupant(f, entererC->GridX, entererC->GridY, EntityRef.None);
+                    int curX = x, curY = y;
+                    int landed = 0;
+                    for (int s = 0; s < Quantum.SpellRegistry.PiegeBondissantEjectDist; s++)
+                    {
+                        int nx = curX + edx, ny = curY + edy;
+                        if (!GridHelpers.InBounds(nx, ny)) break;
+                        if (!GridHelpers.IsWalkable(f, nx, ny)) break;
+                        if (ObstacleHelpers.HasObstacleAt(f, nx, ny)) break;
+                        if (GridHelpers.GetOccupant(f, nx, ny) != EntityRef.None) break;
+                        curX = nx; curY = ny; landed++;
+                    }
+                    entererC->GridX = curX; entererC->GridY = curY;
+                    entererC->Facing = FacingHelpers.FacingFromGridDelta(edx, edy);
+                    GridHelpers.SetOccupant(f, curX, curY, enterer);
+                    // Signal View : rendre l'éjection comme un LANCEMENT (dash), pas un walk.
+                    entererC->LastEjectedSequence += 1;
+                    Log.Info($"[Trap] Piège Bondissant ({x},{y}) éjecte P{entererC->PlayerIndex} de {landed} cases (dir {dir}) -> ({curX},{curY})");
+
+                    // FIX 30 mai — pièges déclenchés AU PASSAGE sur la trajectoire de CATAPULTE.
+                    //   La projection ci-dessus survole jusqu'à `landed` cases sans rien déclencher :
+                    //   un autre piège (Filet/Mine/Bondissant) sur la trajectoire d'éjection était
+                    //   ignoré (« la poussée passe dessus et rien ne se passe »). On rejoue les cases
+                    //   survolées depuis le piège (x,y exclu, déjà en cours de traitement) jusqu'à
+                    //   l'atterrissage inclus, et on déclenche chaque piège rencontré.
+                    int fxc = x, fyc = y;
+                    for (int s = 1; s <= landed; s++)
+                    {
+                        if (entererC->HP <= 0) break;
+                        fxc += edx; fyc += edy;
+                        TryTriggerTrapOnEnter(f, enterer, entererC, fxc, fyc, currentTurn);
+                    }
+                }
+                MarkHelpers.ApplyMark(entererC, MarkKind.Traque,
+                    Quantum.SpellRegistry.ChampDeMinesEmpreinteTurns, trapOwner, currentTurn);
+                ClearTrap(f, x, y);
+                ClearVeil(f, x, y);
+                var bondFilter = f.Filter<Combatant>();
+                while (bondFilter.NextUnsafe(out EntityRef _, out Combatant* bc))
+                {
+                    if (bc->PlayerIndex == trapOwner) { bc->LastTrapTriggeredOnTurn = currentTurn; break; }
+                }
+                NightseerPassif.GainPrescienceForPlayer(f, trapOwner, currentTurn, "piège bondissant déclenché");
+                return true;
+            }
+
             int dmg = trap == TrapKind.FiletRonces
                 ? Quantum.SpellRegistry.FiletDeRoncesDmg
                 : Quantum.SpellRegistry.ChampDeMinesDmg;
+
+            // Refonte 29 mai — Passif phasé P1+ : +15% dégâts des pièges si le Nightseer proprietaire
+            //   est en phase >= 1 (PR >= 1). Lookup du owner pour lire sa Prescience.
+            {
+                var ownerFilter = f.Filter<Combatant>();
+                while (ownerFilter.NextUnsafe(out EntityRef _, out Combatant* owner))
+                {
+                    if (owner->PlayerIndex != trapOwner) continue;
+                    if (owner->Class == NymoraClass.Nightseer
+                        && NightseerPassif.TrapDamageBonusActive(owner->Resource))
+                    {
+                        dmg += dmg * NightseerPassif.TrapDamageBonusPct / 100;
+                    }
+                    break;
+                }
+            }
 
             int hpBefore = entererC->HP;
             entererC->HP -= dmg;
@@ -175,11 +293,11 @@ namespace Quantum
             entererC->DamageTakenThisRound += dmg;
             Log.Info($"[Trap] {trap} declenche sur P{entererC->PlayerIndex} ({x},{y}) : -{dmg} HP ({hpBefore} -> {entererC->HP})");
 
-            // Empreinte 2 tours.
-            int empreinteTurns = trap == TrapKind.FiletRonces
+            // Refonte 29 mai — marque unique TRAQUÉ (Empreinté supprimé). Le piège applique Traqué.
+            int markTurns = trap == TrapKind.FiletRonces
                 ? Quantum.SpellRegistry.FiletDeRoncesEmpreinteTurns
                 : Quantum.SpellRegistry.ChampDeMinesEmpreinteTurns;
-            MarkHelpers.ApplyMark(entererC, MarkKind.Empreinte, empreinteTurns, trapOwner, currentTurn);
+            MarkHelpers.ApplyMark(entererC, MarkKind.Traque, markTurns, trapOwner, currentTurn);
 
             // -2 PM si Filet de Ronces (MovementMalus 1 tour).
             if (trap == TrapKind.FiletRonces)
@@ -192,26 +310,48 @@ namespace Quantum
             ClearTrap(f, x, y);
             ClearVeil(f, x, y);
 
-            // Gain +1 PR au owner si Nightseer (Bible : declenchement de marque) +
-            // tracking LastTrapTriggeredOnTurn (Seve Sauvage bonus heal).
+            // Refonte 29 mai — Champ de Mines CHAÎNE : déclencher une Mine détonne les mines proches
+            //   du même owner (cluster, Manhattan <= 2) sur l'enterer : +40 chacune, cap 2 chaînées.
+            //   Total typique 70 + 40 + 40 = 150.
+            if (trap == TrapKind.Mine)
+            {
+                int chained = 0;
+                int r = Quantum.SpellRegistry.ChampDeMinesChainRadius;
+                for (int oy = y - r; oy <= y + r && chained < Quantum.SpellRegistry.ChampDeMinesChainMax; oy++)
+                {
+                    for (int ox = x - r; ox <= x + r && chained < Quantum.SpellRegistry.ChampDeMinesChainMax; ox++)
+                    {
+                        if (ox == x && oy == y) continue;
+                        if (GetTrapKind(f, ox, oy) != TrapKind.Mine) continue;
+                        if (GetTrapOwner(f, ox, oy) != trapOwner) continue;
+
+                        int chainDmg = Quantum.SpellRegistry.ChampDeMinesChainDmg;
+                        int hbChain = entererC->HP;
+                        entererC->HP -= chainDmg;
+                        if (entererC->HP < 0) entererC->HP = 0;
+                        entererC->DamageTakenThisRound += chainDmg;
+                        MarkHelpers.ApplyMark(entererC, MarkKind.Traque,
+                            Quantum.SpellRegistry.ChampDeMinesEmpreinteTurns, trapOwner, currentTurn);
+                        ClearTrap(f, ox, oy);
+                        ClearVeil(f, ox, oy);
+                        NightseerPassif.GainPrescienceForPlayer(f, trapOwner, currentTurn, "mine chaînée");
+                        Log.Info($"[Trap] Mine CHAÎNÉE ({ox},{oy}) sur P{entererC->PlayerIndex} : -{chainDmg} HP ({hbChain}->{entererC->HP})");
+                        chained++;
+                    }
+                }
+            }
+
+            // Tracking LastTrapTriggeredOnTurn (Seve Sauvage bonus heal) — tous casters.
             var filter = f.Filter<Combatant>();
             while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
             {
                 if (c->PlayerIndex != trapOwner) continue;
-                c->LastTrapTriggeredOnTurn = currentTurn; // 2.15.c — tous casters (pas que Nightseer)
-                if (c->Class != NymoraClass.Nightseer)
-                {
-                    break;
-                }
-                int maxRes = Quantum.CombatantStats.GetMaxResource(c->Class);
-                int beforeRes = c->Resource;
-                c->Resource = beforeRes + 1 > maxRes ? maxRes : beforeRes + 1;
-                if (c->Resource != beforeRes)
-                {
-                    Log.Info($"[Prescience] +1 PR sur P{c->PlayerIndex} (Trap {trap} declenche) : {beforeRes} -> {c->Resource}");
-                }
+                c->LastTrapTriggeredOnTurn = currentTurn;
                 break;
             }
+
+            // Refonte 29 mai — économie PR : +1 PR au Nightseer (piège déclenché), cappé +3/tour.
+            NightseerPassif.GainPrescienceForPlayer(f, trapOwner, currentTurn, "piège déclenché");
             return true;
         }
     }

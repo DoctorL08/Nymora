@@ -128,6 +128,15 @@ namespace Quantum.Prototypes {
     public Int32 DagueLanceeCountThisTurn;
     public Int32 LastExecutionSpectraleUsedOnTurn;
     public Quantum.QEnum8<IsoFacing> Facing;
+    [ArrayLengthAttribute(16)]
+    public Quantum.QEnum8<SpellId>[] CastsThisTurnLog = new Quantum.QEnum8<SpellId>[16];
+    public Int32 CastsThisTurnCount;
+    public Int32 CastsThisTurnLoggedTurn;
+    [ArrayLengthAttribute(110)]
+    public Int32[] SpellCooldownLastTurn = new Int32[110];
+    public Int32 PrescienceGainedThisTurn;
+    public Int32 PMSpentLastTurn;
+    public Int32 LastEjectedSequence;
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
         Quantum.Combatant component = default;
         Materialize((Frame)f, ref component, in context);
@@ -185,6 +194,17 @@ namespace Quantum.Prototypes {
         result.DagueLanceeCountThisTurn = this.DagueLanceeCountThisTurn;
         result.LastExecutionSpectraleUsedOnTurn = this.LastExecutionSpectraleUsedOnTurn;
         result.Facing = this.Facing;
+        for (int i = 0, count = PrototypeValidator.CheckLength(CastsThisTurnLog, 16, in context); i < count; ++i) {
+          *result.CastsThisTurnLog.GetPointer(i) = this.CastsThisTurnLog[i];
+        }
+        result.CastsThisTurnCount = this.CastsThisTurnCount;
+        result.CastsThisTurnLoggedTurn = this.CastsThisTurnLoggedTurn;
+        for (int i = 0, count = PrototypeValidator.CheckLength(SpellCooldownLastTurn, 110, in context); i < count; ++i) {
+          result.SpellCooldownLastTurn[i] = this.SpellCooldownLastTurn[i];
+        }
+        result.PrescienceGainedThisTurn = this.PrescienceGainedThisTurn;
+        result.PMSpentLastTurn = this.PMSpentLastTurn;
+        result.LastEjectedSequence = this.LastEjectedSequence;
     }
   }
   [System.SerializableAttribute()]
@@ -232,6 +252,7 @@ namespace Quantum.Prototypes {
     public Quantum.QEnum8<TrapKind> Trap;
     public Int32 TrapOwner;
     public Int32 TrapAppliedOnTurn;
+    public Byte TrapDir;
     partial void MaterializeUser(Frame frame, ref Quantum.FogTile result, in PrototypeMaterializationContext context);
     public void Materialize(Frame frame, ref Quantum.FogTile result, in PrototypeMaterializationContext context = default) {
         result.VeiledByPlayer = this.VeiledByPlayer;
@@ -240,6 +261,7 @@ namespace Quantum.Prototypes {
         result.Trap = this.Trap;
         result.TrapOwner = this.TrapOwner;
         result.TrapAppliedOnTurn = this.TrapAppliedOnTurn;
+        result.TrapDir = this.TrapDir;
         MaterializeUser(frame, ref result, in context);
     }
   }

@@ -172,10 +172,19 @@ namespace Nymora.Editor.Setup
         {
             if (btn == null) return;
             btn.transition = Selectable.Transition.None; // ApplyTabColor pilote img.color
-            var img = btn.GetComponent<Image>();
-            if (img != null) { img.sprite = HubMenuUIFactory.RoundedSprite(theme.CornerRadius); img.type = Image.Type.Sliced; }
+            // Arrondit l'Image propre du bouton ET sa targetGraphic : selon la structure du prefab,
+            // la rect visible de l'onglet peut être l'une ou l'autre -> on couvre les deux.
+            RoundImage(btn.GetComponent<Image>(), theme);
+            RoundImage(btn.targetGraphic as Image, theme);
             var lbl = btn.GetComponentInChildren<TextMeshProUGUI>(true);
             if (lbl != null) { lbl.font = theme.Font; lbl.color = theme.TextPrimary; }
+        }
+
+        private static void RoundImage(Image img, HubMenuTheme theme)
+        {
+            if (img == null) return;
+            img.sprite = HubMenuUIFactory.RoundedSprite(theme.CornerRadius);
+            img.type = Image.Type.Sliced;
         }
     }
 }

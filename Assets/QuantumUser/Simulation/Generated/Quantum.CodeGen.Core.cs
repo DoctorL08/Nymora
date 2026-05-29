@@ -201,6 +201,7 @@ namespace Quantum {
     EffondrementActive = 17,
     MarqueSacrificielle = 18,
     SymbioseMorbide = 19,
+    Contagious = 32,
     PestilenceAura = 21,
     PasSpectralReady = 20,
     PlaieOuverte = 23,
@@ -209,6 +210,9 @@ namespace Quantum {
     CarapaceVisqueuse = 22,
     DotImmune = 27,
     PasAuDelaReady = 28,
+    HealReductionPercent = 29,
+    SangBouillantActive = 30,
+    NextStrikeBonus = 31,
     LinceulDOmbres = 26,
   }
   public enum TargetingFilter : byte {
@@ -248,6 +252,7 @@ namespace Quantum {
     None = 0,
     FiletRonces = 1,
     Mine = 2,
+    Bondissant = 3,
   }
   [System.FlagsAttribute()]
   public enum InputButtons : int {
@@ -747,18 +752,20 @@ namespace Quantum {
   public unsafe partial struct FogTile {
     public const Int32 SIZE = 20;
     public const Int32 ALIGNMENT = 4;
-    [FieldOffset(0)]
+    [FieldOffset(1)]
     public Byte VeiledByPlayer;
     [FieldOffset(16)]
     public Int32 VeiledTurnsLeft;
     [FieldOffset(12)]
     public Int32 VeiledAppliedOnTurn;
-    [FieldOffset(1)]
+    [FieldOffset(2)]
     public TrapKind Trap;
     [FieldOffset(8)]
     public Int32 TrapOwner;
     [FieldOffset(4)]
     public Int32 TrapAppliedOnTurn;
+    [FieldOffset(0)]
+    public Byte TrapDir;
     public override readonly Int32 GetHashCode() {
       unchecked { 
         var hash = 10613;
@@ -768,11 +775,13 @@ namespace Quantum {
         hash = hash * 31 + (Byte)Trap;
         hash = hash * 31 + TrapOwner.GetHashCode();
         hash = hash * 31 + TrapAppliedOnTurn.GetHashCode();
+        hash = hash * 31 + TrapDir.GetHashCode();
         return hash;
       }
     }
     public static void Serialize(void* ptr, FrameSerializer serializer) {
         var p = (FogTile*)ptr;
+        serializer.Stream.Serialize(&p->TrapDir);
         serializer.Stream.Serialize(&p->VeiledByPlayer);
         serializer.Stream.Serialize((Byte*)&p->Trap);
         serializer.Stream.Serialize(&p->TrapAppliedOnTurn);
@@ -1004,106 +1013,121 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct Combatant : Quantum.IComponent {
-    public const Int32 SIZE = 368;
+    public const Int32 SIZE = 840;
     public const Int32 ALIGNMENT = 8;
-    [FieldOffset(364)]
+    [FieldOffset(836)]
     private fixed Byte _alignment_padding_[4];
-    [FieldOffset(140)]
+    [FieldOffset(172)]
     public Int32 PlayerIndex;
     [FieldOffset(2)]
     public NymoraClass Class;
-    [FieldOffset(28)]
+    [FieldOffset(52)]
     public Int32 HP;
-    [FieldOffset(116)]
+    [FieldOffset(144)]
     public Int32 MaxHP;
-    [FieldOffset(132)]
+    [FieldOffset(160)]
     public Int32 PA;
-    [FieldOffset(120)]
+    [FieldOffset(148)]
     public Int32 MaxPA;
-    [FieldOffset(136)]
+    [FieldOffset(164)]
     public Int32 PM;
-    [FieldOffset(124)]
-    public Int32 MaxPM;
-    [FieldOffset(20)]
-    public Int32 GridX;
-    [FieldOffset(24)]
-    public Int32 GridY;
     [FieldOffset(152)]
+    public Int32 MaxPM;
+    [FieldOffset(44)]
+    public Int32 GridX;
+    [FieldOffset(48)]
+    public Int32 GridY;
+    [FieldOffset(188)]
     public Int32 Resource;
-    [FieldOffset(84)]
+    [FieldOffset(112)]
     public Int32 LastResourceGainOnHitTurn;
-    [FieldOffset(176)]
+    [FieldOffset(648)]
     [FramePrinter.FixedArrayAttribute(typeof(Status), 8)]
     private fixed Byte _Statuses_[128];
-    [FieldOffset(128)]
+    [FieldOffset(156)]
     public Int32 OncePerMatchUsedFlags;
-    [FieldOffset(4)]
+    [FieldOffset(20)]
     public Int32 BonusPANextTurn;
-    [FieldOffset(40)]
+    [FieldOffset(64)]
     public Int32 LastAmeLaceeUsedOnTurn;
-    [FieldOffset(44)]
+    [FieldOffset(68)]
     public Int32 LastCastOnTurn;
-    [FieldOffset(3)]
+    [FieldOffset(19)]
     public SpellId LastCastSpellId;
-    [FieldOffset(52)]
+    [FieldOffset(76)]
     public Int32 LastCastTargetX;
-    [FieldOffset(56)]
+    [FieldOffset(80)]
     public Int32 LastCastTargetY;
-    [FieldOffset(48)]
+    [FieldOffset(72)]
     public Int32 LastCastSequence;
     [FieldOffset(1)]
     public MarkKind CurrentMark;
-    [FieldOffset(112)]
+    [FieldOffset(140)]
     public Int32 MarkTurnsLeft;
-    [FieldOffset(104)]
+    [FieldOffset(132)]
     public Int32 MarkAppliedOnTurn;
-    [FieldOffset(108)]
+    [FieldOffset(136)]
     public Int32 MarkOwnerPlayer;
-    [FieldOffset(12)]
-    public Int32 DamageTakenThisRound;
-    [FieldOffset(88)]
-    public Int32 LastTrapTriggeredOnTurn;
-    [FieldOffset(92)]
-    public Int32 LastTraquenardUsedOnTurn;
-    [FieldOffset(148)]
-    public Int32 RepresaillesReflectsLeft;
-    [FieldOffset(156)]
-    public Int32 StoicismeExpiresOnTurn;
     [FieldOffset(36)]
+    public Int32 DamageTakenThisRound;
+    [FieldOffset(116)]
+    public Int32 LastTrapTriggeredOnTurn;
+    [FieldOffset(120)]
+    public Int32 LastTraquenardUsedOnTurn;
+    [FieldOffset(184)]
+    public Int32 RepresaillesReflectsLeft;
+    [FieldOffset(632)]
+    public Int32 StoicismeExpiresOnTurn;
+    [FieldOffset(60)]
     public Int32 HitsTakenThisRound;
-    [FieldOffset(32)]
+    [FieldOffset(56)]
     public Int32 HitsTakenLastRound;
-    [FieldOffset(16)]
+    [FieldOffset(40)]
     public Int32 EffondrementAnnouncedOnTurn;
-    [FieldOffset(64)]
+    [FieldOffset(88)]
     public Int32 LastEffondrementUsedOnTurn;
-    [FieldOffset(168)]
+    [FieldOffset(640)]
     public EntityRef EffondrementTargetEntity;
-    [FieldOffset(160)]
+    [FieldOffset(636)]
     public Int32 VeninStacks;
-    [FieldOffset(96)]
+    [FieldOffset(124)]
     public Int32 LastVeninTickOnTurn;
-    [FieldOffset(144)]
+    [FieldOffset(180)]
     public Int32 PutrefactionMarksGainedThisTurn;
-    [FieldOffset(100)]
+    [FieldOffset(128)]
     public Int32 LastVirusFatalUsedOnTurn;
-    [FieldOffset(304)]
+    [FieldOffset(776)]
     [FramePrinter.FixedArrayAttribute(typeof(DecoySlot), 3)]
     private fixed Byte _Decoys_[60];
-    [FieldOffset(80)]
+    [FieldOffset(108)]
     public Int32 LastPermutationOnTurn;
-    [FieldOffset(76)]
+    [FieldOffset(104)]
     public Int32 LastPasDansLOmbreOnTurn;
-    [FieldOffset(72)]
+    [FieldOffset(100)]
     public Int32 LastFacingForcedOnTurn;
-    [FieldOffset(60)]
+    [FieldOffset(84)]
     public Int32 LastDagueLanceeOnTurn;
-    [FieldOffset(8)]
+    [FieldOffset(32)]
     public Int32 DagueLanceeCountThisTurn;
-    [FieldOffset(68)]
+    [FieldOffset(96)]
     public Int32 LastExecutionSpectraleUsedOnTurn;
     [FieldOffset(0)]
     public IsoFacing Facing;
+    [FieldOffset(3)]
+    [FramePrinter.FixedArrayAttribute(typeof(SpellId), 16)]
+    private fixed Byte _CastsThisTurnLog_[16];
+    [FieldOffset(24)]
+    public Int32 CastsThisTurnCount;
+    [FieldOffset(28)]
+    public Int32 CastsThisTurnLoggedTurn;
+    [FieldOffset(192)]
+    public fixed Int32 SpellCooldownLastTurn[110];
+    [FieldOffset(176)]
+    public Int32 PrescienceGainedThisTurn;
+    [FieldOffset(168)]
+    public Int32 PMSpentLastTurn;
+    [FieldOffset(92)]
+    public Int32 LastEjectedSequence;
     public readonly FixedArray<Status> Statuses {
       get {
         fixed (byte* p = _Statuses_) { return new FixedArray<Status>(p, 16, 8); }
@@ -1112,6 +1136,11 @@ namespace Quantum {
     public readonly FixedArray<DecoySlot> Decoys {
       get {
         fixed (byte* p = _Decoys_) { return new FixedArray<DecoySlot>(p, 20, 3); }
+      }
+    }
+    public readonly FixedArray<SpellId> CastsThisTurnLog {
+      get {
+        fixed (byte* p = _CastsThisTurnLog_) { return new FixedArray<SpellId>(p, 1, 16); }
       }
     }
     public override readonly Int32 GetHashCode() {
@@ -1164,6 +1193,13 @@ namespace Quantum {
         hash = hash * 31 + DagueLanceeCountThisTurn.GetHashCode();
         hash = hash * 31 + LastExecutionSpectraleUsedOnTurn.GetHashCode();
         hash = hash * 31 + (Byte)Facing;
+        hash = hash * 31 + HashCodeUtils.GetArrayHashCode(CastsThisTurnLog);
+        hash = hash * 31 + CastsThisTurnCount.GetHashCode();
+        hash = hash * 31 + CastsThisTurnLoggedTurn.GetHashCode();
+        fixed (Int32* p = SpellCooldownLastTurn) hash = hash * 31 + HashCodeUtils.GetArrayHashCode(p, 110);
+        hash = hash * 31 + PrescienceGainedThisTurn.GetHashCode();
+        hash = hash * 31 + PMSpentLastTurn.GetHashCode();
+        hash = hash * 31 + LastEjectedSequence.GetHashCode();
         return hash;
       }
     }
@@ -1172,8 +1208,11 @@ namespace Quantum {
         serializer.Stream.Serialize((Byte*)&p->Facing);
         serializer.Stream.Serialize((Byte*)&p->CurrentMark);
         serializer.Stream.Serialize((Byte*)&p->Class);
+        FixedArray.Serialize(p->CastsThisTurnLog, serializer, Statics.SerializeSpellId);
         serializer.Stream.Serialize((Byte*)&p->LastCastSpellId);
         serializer.Stream.Serialize(&p->BonusPANextTurn);
+        serializer.Stream.Serialize(&p->CastsThisTurnCount);
+        serializer.Stream.Serialize(&p->CastsThisTurnLoggedTurn);
         serializer.Stream.Serialize(&p->DagueLanceeCountThisTurn);
         serializer.Stream.Serialize(&p->DamageTakenThisRound);
         serializer.Stream.Serialize(&p->EffondrementAnnouncedOnTurn);
@@ -1189,6 +1228,7 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->LastCastTargetY);
         serializer.Stream.Serialize(&p->LastDagueLanceeOnTurn);
         serializer.Stream.Serialize(&p->LastEffondrementUsedOnTurn);
+        serializer.Stream.Serialize(&p->LastEjectedSequence);
         serializer.Stream.Serialize(&p->LastExecutionSpectraleUsedOnTurn);
         serializer.Stream.Serialize(&p->LastFacingForcedOnTurn);
         serializer.Stream.Serialize(&p->LastPasDansLOmbreOnTurn);
@@ -1207,10 +1247,13 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->OncePerMatchUsedFlags);
         serializer.Stream.Serialize(&p->PA);
         serializer.Stream.Serialize(&p->PM);
+        serializer.Stream.Serialize(&p->PMSpentLastTurn);
         serializer.Stream.Serialize(&p->PlayerIndex);
+        serializer.Stream.Serialize(&p->PrescienceGainedThisTurn);
         serializer.Stream.Serialize(&p->PutrefactionMarksGainedThisTurn);
         serializer.Stream.Serialize(&p->RepresaillesReflectsLeft);
         serializer.Stream.Serialize(&p->Resource);
+        serializer.Stream.SerializeBuffer(&p->SpellCooldownLastTurn[0], 110);
         serializer.Stream.Serialize(&p->StoicismeExpiresOnTurn);
         serializer.Stream.Serialize(&p->VeninStacks);
         EntityRef.Serialize(&p->EffondrementTargetEntity, serializer);
@@ -1430,6 +1473,7 @@ namespace Quantum {
     }
   }
   public unsafe partial class Statics {
+    public static FrameSerializer.Delegate SerializeSpellId;
     public static FrameSerializer.Delegate SerializeDecoySlot;
     public static FrameSerializer.Delegate SerializeStatus;
     public static FrameSerializer.Delegate SerializeFogTile;
@@ -1437,6 +1481,7 @@ namespace Quantum {
     public static FrameSerializer.Delegate SerializeObstacleTile;
     public static FrameSerializer.Delegate SerializeInput;
     static partial void InitStaticDelegatesGen() {
+      SerializeSpellId = (v, s) => {{ s.Stream.Serialize((Byte*)v); }};
       SerializeDecoySlot = Quantum.DecoySlot.Serialize;
       SerializeStatus = Quantum.Status.Serialize;
       SerializeFogTile = Quantum.FogTile.Serialize;

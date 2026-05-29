@@ -37,6 +37,13 @@ namespace Quantum
         public byte HGCostMaxOptional;
         public byte OncePerMatchBit;
         public byte IsOffensive;     // 0/1 (Byte pour serialisation/copy clean)
+
+        // Refonte 29 mai 2026 — limites/relances generiques (cf SpellLimitsHelper).
+        //   MaxUsesPerTurn : cap "Nx/tour" (round). 0 = illimite (defaut).
+        //   CooldownTurns  : relance "N tours". 0 = pas de relance (defaut).
+        // Defaut 0 = comportement inchange pour tout sort qui ne les renseigne pas.
+        public byte MaxUsesPerTurn;
+        public byte CooldownTurns;
     }
 
     /// <summary>
@@ -58,6 +65,8 @@ namespace Quantum
         public const int PeauDeFerShieldHP            = 200;
         public const int PeauDeFerShieldTurns         = 2;
         public const int PeauDeFerMeleeDmgBonus       = 30;
+        // Refonte 29 mai : Ouvre-Plaie (1 HG) reduit les soins/boucliers RECUS par la cible de 50% (÷2) 1 tour.
+        public const int OuvrePlaieHealReductionPct   = 50;
         public const int MarqueDeCarnageTurns         = 3;
         public const int SeveViveHealBase             = 100;
         public const int SeveViveHealBonusHG          = 60;  // +60 si 1 HG depense -> 160
@@ -67,19 +76,33 @@ namespace Quantum
         public const int DernierSouffleHPThresholdPct = 30;  // utilisable uniquement a < 30% HP
 
         // 2.10.c constants
-        public const int ChargeBrutaleRange           = 5;
+        // Refonte 29 mai : portee Charge Brutale 5 -> 4 (design "p4 ligne").
+        public const int ChargeBrutaleRange           = 4;
         public const int ChargeBrutaleDamage          = 180;
         public const int VapeurCarminTurns            = 1;
         public const int DetonationBaseDamage         = 60;
         public const int DetonationDamagePerHG        = 40;
         public const int SangCoaguleTurns             = 2;
-        public const int CureeDamage                  = 150;
-        public const int CureeBonusPANextTurn         = 4;
-        public const int CureeMissSelfDamage          = 60;
-        public const int CauterisationHealMin         = 60;   // toujours applique (min)
-        public const int CauterisationHealPerDoT      = 60;   // chaque DoT retire ajoute 60
-        public const int CauterisationHealMax         = 180;  // cap 3 DoTs retires
+        // Refonte 29 mai — EVENTRATION (ex-Curee) : 5 PA, p1, 220 dgts + Plaie Ouverte 50/t x 3t.
+        //   (CureeBonusPANextTurn / CureeMissSelfDamage retires du gameplay, conserves morts.)
+        public const int CureeDamage                  = 220;  // Eventration : dgts directs
+        public const int EventrationPlaieDmgPerTurn   = 50;   // Plaie Ouverte posee : dgts/tour
+        public const int EventrationPlaieTurns        = 3;    // duree (rounds)
+        // Refonte 29 mai — SANG BOUILLANT (ex-Cauterisation) : 2t, subir degats -> +1 HG +
+        //   prochaine frappe +30. Plus d'anti-DoT cleanse.
+        public const int SangBouillantTurns           = 2;    // duree (rounds)
+        public const int SangBouillantHGPerHit        = 1;    // +1 HG par fois ou le porteur subit des degats
+        public const int SangBouillantNextStrikeBonus = 30;   // bonus dgts flat sur la prochaine frappe
         public const int TrancheAmeKillRecul          = 2;    // 2 cases de recul si kill
+
+        // Refonte 29 mai — EMPOIGNADE devient offensive : pull CaC + 90 dgts + -2 PM.
+        public const int EmpoignadeDamage             = 90;
+        public const int EmpoignadePMMalus            = 2;
+
+        // Refonte 29 mai — FRENESIE (ex-Rage Insatiable) : 2t, chaque offensif +1 HG + +10% dgts.
+        //   Reutilise StatusKind.RageInsatiableActive (renomme semantiquement). Plus de +1 PA cost.
+        public const int FrenesieDmgBonusPct          = 10;
+        public const int FrenesieHGPerOffensive       = 1;
 
         // 2.11 — Signature Ame Laceree + Passif Appel du Sang.
         public const int AmeLaceeDamage               = 320;  // dgts de base
@@ -88,7 +111,9 @@ namespace Quantum
         public const int AppelDuSangPalierMarquage    = 70;   // cible <70% HP -> -1 PA cost
         public const int AppelDuSangPalierRageOuverte = 40;   // cible <40% HP -> +1 PM Soulrender + 50% shield bypass melee
         public const int AppelDuSangPalierLeCri       = 20;   // cible <20% HP -> Sang Coagule croix 5 autour caster
-        public const int AppelDuSangShieldBypassPct   = 50;   // 50% des dgts mêlée ignorent le shield si target <40%
+        // Refonte 29 mai : le palier <40% ne donne plus +1 PM ni bypass bouclier (retires).
+        //   A la place : VOL DE VIE. Le Soulrender heal X% des dgts qui passent sur une cible <40% PV.
+        public const int AppelDuSangLifestealPct      = 20;   // vol de vie 20% sur cible <40% HP
 
         // 2.15.a — Nightseer (constantes Bible V7.1).
         public const int TirPrecisDmg                 = 200;  // dgts base
@@ -101,31 +126,45 @@ namespace Quantum
         public const int DetonationOniriqueRangeMaxBase    = 5;   // portee de base (Bible V7.1)
         public const int DetonationOniriqueRangeMaxBoosted = 10;  // portee si option 2 PR (Bible : "x2 -> 10")
         public const int DetonationOniriquePROptionCost    = 2;   // 2 PR (optionnel) pour bonus portee
-        public const int FrappeDeLOmbreDmg            = 200;  // dgts base
-        public const int FrappeDeLOmbreDmgIfMoved     = 300;  // 200 + 100 si target.PM < target.MaxPM/2 (deja deplacee)
-        public const int FrappeDeLOmbreEmpreinteTurns = 2;    // duree Empreinte si bonus declenche
-        public const int SalveMortelleDmgCenter       = 220;  // centre de la croix
-        public const int SalveMortelleDmgSide         = 130;  // 4 cases cardinales
+        // Refonte 29 mai : Frappe de l'Ombre 200 -> 160 + applique Traqué. Bonus +50 "si 3 PM
+        //   dépensés au dernier tour" branché en Passe 3b (tracker PM dépensés).
+        public const int FrappeDeLOmbreDmg            = 160;  // dgts base
+        public const int FrappeDeLOmbreDmgBonusPM     = 50;   // +50 si 3 PM dépensés au dernier tour (Passe 3b)
+        // Refonte 29 mai : Salve Mortelle 200/120 (était 220/130) + chaîne tes embûches (déclenche
+        //   tes pièges sous la croix) ; bonus voile retiré (pièges ne voilent plus).
+        public const int SalveMortelleDmgCenter       = 200;  // centre de la croix
+        public const int SalveMortelleDmgSide         = 120;  // 4 cases cardinales
         public const int SalveMortelleDmgIfTraque     = 60;   // +60 sur cibles Traque
-        public const int SalveMortelleDmgIfVoile      = 50;   // +50 dans cases Voilees + dechire
         public const int SalveMortelleHGCost          = 3;    // 3 PR mandatory (ressource Nightseer)
 
         // 2.15.b — Nightseer Tactiques + passif L'Œil qui n'est pas.
         public const int MarqueDuChasseurTurns        = 3;    // duree Traque applique
         public const int FiletDeRoncesDmg             = 100;  // dgts au declenchement (ennemi entre)
-        public const int FiletDeRoncesPMReduce        = 2;    // -2 PM apres declenchement
+        public const int FiletDeRoncesPMReduce        = 1;    // refonte 29 mai : -1 PM (était -2) après déclenchement
         public const int FiletDeRoncesEmpreinteTurns  = 2;    // duree Empreinte apres declenchement
-        public const int ChampDeMinesDmg              = 70;   // dgts par mine declenchee
+        public const int ChampDeMinesDmg              = 70;   // dgts de la 1ere mine declenchee
         public const int ChampDeMinesEmpreinteTurns   = 2;
-        public const int BourrasquePushBase           = 3;    // push 3 cases loin du caster
-        public const int BourrasquePushBonus1PR       = 5;    // push 5 cases avec 1 PR depense
-        public const int SouffleGlacialDmg            = 70;   // dgts AoE croix 3 autour caster
-        public const int SouffleGlacialPushDistance   = 1;    // push 1 case loin du caster
-        public const int SouffleGlacialPMReduce       = 1;    // MovementMalus -1 (1 tour)
-        public const int OeilQuiNestPasShieldPiercePct = 30;  // sorts Nightseer sur Traque ignorent 30% boucliers
+        // Refonte 29 mai — CHAÎNE : declencher 1 mine detonne les mines proches (cluster) du meme
+        //   owner sur l'enterer : 70 (1ere) + 40 + 40 (chainees). Manhattan <= 2, cap 2 chainees.
+        public const int ChampDeMinesChainDmg         = 40;
+        public const int ChampDeMinesChainRadius      = 2;
+        public const int ChampDeMinesChainMax         = 2;
+        // Refonte 29 mai : push directionnel nerfé à 2 cases (était 3).
+        public const int BourrasquePushBase           = 2;    // push 2 cases (direction choisie)
+        public const int BourrasquePushBonus1PR       = 4;    // push 4 cases avec 1 PR (était 5)
+        // Refonte 29 mai — PIÈGE BONDISSANT (ex-Souffle Glacial, ID NightseerSouffleGlacial réutilisé) :
+        //   2 PA, pose un piège-catapulte VISIBLE (invisible en phase 3) ; au déclenchement, éjecte
+        //   l'ennemi de 3 cases dans la direction choisie à la pose (2e clic) + Traqué. Pas de dégâts.
+        public const int PiegeBondissantPACost        = 2;
+        public const int PiegeBondissantRangeMax      = 4;    // portée de pose
+        public const int PiegeBondissantEjectDist     = 3;    // cases d'éjection (catapulte)
+        // Refonte 29 mai : pierce bouclier Nightseer déplacé en palier P3 (50%) -> NightseerPassif.ShieldIgnorePct.
 
         // 2.15.c — Nightseer Survie.
-        public const int VoileDOmbreTurns             = 1;    // Untargetable 1 round actif (skip-decrement convention)
+        // Refonte 29 mai — FLÈCHE TRAÇANTE (ex-Voile d'Ombre) : 60 dégâts par PM dépensé au dernier
+        //   tour (max 180 = 3 PM), uniquement si la cible est Traqué.
+        public const int FlecheTracanteDmgPerPM       = 60;
+        public const int FlecheTracanteMaxDmg         = 180;
         public const int PasFurtifRangeMax            = 4;    // teleport jusqu'a 4 cases (Manhattan)
         public const int PasFurtifVeilTurns           = 2;    // duree Voile bonus si 1 PR
         public const int CamouflageRoncesShieldHP     = 130;  // shield 130 HP
@@ -148,7 +187,7 @@ namespace Quantum
         public const int TraquenardParalysieAPMalus   = 2;    // -2 PA au prochain tour cible
         public const int TraquenardParalysieTurns     = 1;    // 1 tour actif (skip-decrement convention)
         public const int TraquenardCooldownTurns      = 4;    // 4 tours apres usage (re-castable si PR remonte a 4)
-        public const int TraquenardPRCost             = 4;    // 4/4 PR (consomme toute la jauge)
+        public const int TraquenardPRCost             = 5;    // refonte 29 mai : 5/5 PR (cap plein, phase 3)
         public const int TraquenardPRGainOnConsumeMark = 2;   // +2 PR au caster si bonus marque declenche
         public const int TraquenardRangeMax           = 5;    // portee Manhattan caster -> cible
 
@@ -239,10 +278,10 @@ namespace Quantum
         public const int StoicismeImmuneTurns         = 2;    // immune push/pull/tp pendant toute la duree
         public const int StoicismeHealIfSurvived      = 80;   // heal si shield Magnitude > 0 a expiration
 
-        // Garde Protectrice : 2 PA self, -30% dmg subis / 2 tours. Cap combine Densite Inerte 50%.
-        public const int GardeProtectricePercent      = 30;   // % reduction
+        // Garde Protectrice : 2 PA self, -15% dmg subis / 2 tours (refonte 29 mai, etait -30%).
+        public const int GardeProtectricePercent      = 15;   // % reduction (etait 30)
         public const int GardeProtectriceTurns        = 2;
-        public const int MaxCombinedDamageReductionPct = 50;  // Bible : "cap -50% total" combine Densite Inerte + Garde Prot
+        public const int MaxCombinedDamageReductionPct = 45;  // refonte 29 mai : cap combine -45% (etait -50)
 
         // Ressac Vital : 2 PA self, heal 80 + 30/hit subi tour precedent (max +120 HP = 4 hits).
         public const int RessacVitalHealBase          = 80;
@@ -255,13 +294,15 @@ namespace Quantum
         public const int RenvoiBouclierTurns          = 1;
         public const int RenvoiBouclierMaxTriggers    = 4;    // cap reflects (reuse RepresaillesReflectsLeft)
 
-        // Soin Lourd : 3 PA range 3 (self/allie). MVP 1v1 : Filter=Self range 0, heal 150 HP.
-        public const int SoinLourdHeal                = 150;
-        public const int SoinLourdRangeMax            = 3;    // Bible (gardee pour la transition 2v2/3v3)
+        // Refonte 29 mai — EBOULEMENT (ex-Soin Lourd) : 3 PA, p3, détruis un de tes Piliers ->
+        //   AoE 150 (rayon 1) + push autour. Le +30 HP vient du passif (destruction de pilier).
+        public const int EboulementDamage             = 150;
+        public const int EboulementRangeMax           = 3;
+        public const int EboulementPushDistance       = 2;
 
         // 3.3.d — Effondrement (signature Colossar, Bible V7.1).
         public const int EffondrementPACost           = 4;
-        public const int EffondrementFDCost           = 3;    // consomme TOUTE la jauge FD (cap 3)
+        public const int EffondrementFDCost           = 5;    // refonte 29 mai : consomme TOUTE la jauge FD (cap 5)
         public const int EffondrementAoeRadius        = 2;    // rayon 2 autour caster (Chebyshev/Manhattan ?)
         public const int EffondrementDamage           = 200;  // dgts ennemis dans la zone au trigger
         public const int EffondrementFailleTurns      = 2;    // duree des failles (cases impraticables)
@@ -286,8 +327,9 @@ namespace Quantum
 
         // 3.5.a.ii — Necram Offensifs burst/AoE (Bible V7.1).
         // Detonation Virulente : 80 dgts immediats + consomme TOUTES les marques (50/marque). 4 marques = 280.
-        public const int DetonationVirulenteDmgBase   = 80;    // dgts immediats
-        public const int DetonationVirulenteDmgPerMark = 50;   // dgts par marque consommee
+        // Refonte 29 mai : Détonation Virulente = tick venin complet instantané, SANS consommer
+        //   les marques (bypass shield/réduction). Plus de base ni de "par marque consommée"
+        //   (le tick = stacks * GetTickDmgPerMark + MarqueSac, calculé dans le handler).
         public const int DetonationVirulenteRangeMax  = 4;     // portee Manhattan
         public const int DetonationVirulentePACost    = 4;
 
@@ -297,13 +339,14 @@ namespace Quantum
         public const int FauxDecharneeHealCap         = 120;   // cap heal total (= 4 marques * 30)
         public const int FauxDecharneePACost          = 4;
 
-        // 3.5.a.iii — Brume Toxique : zone DoT 3x3 / 2 tours (Bible V7.1).
-        public const int BrumeToxiqueDmgImmediate     = 60;    // dgts pose sur unite deja dans zone
-        public const int BrumeToxiqueDmgOnEnter       = 30;    // dgts unite qui entre dans zone
-        public const int BrumeToxiqueMarksOnHit       = 1;     // 1 marque appliquee a chaque trigger (pose / entree / fin de tour)
-        public const int BrumeToxiqueRangeMax         = 4;     // portee Manhattan caster -> centre zone
-        public const int BrumeToxiqueTurns            = 2;     // duree (skip-decrement)
-        public const int BrumeToxiquePACost           = 4;
+        // Refonte 29 mai — Brume Toxique SIMPLIFIÉE : zone 3x3 / 3 tours. Plus de dégâts directs
+        //   (pose/entrée retirés). +1 marque par trigger (pose / entrée / fin de tour). Tick venin
+        //   MAJORÉ dans la zone : +BrumeToxiqueTickBonusPerMark par marque (valeur tunable choisie).
+        public const int BrumeToxiqueMarksOnHit         = 1;   // marque appliquee a chaque trigger
+        public const int BrumeToxiqueRangeMax           = 4;   // portee Manhattan caster -> centre zone
+        public const int BrumeToxiqueTurns              = 3;   // refonte : 3 tours (etait 2)
+        public const int BrumeToxiquePACost             = 4;
+        public const int BrumeToxiqueTickBonusPerMark   = 10;  // tick majoré dans la zone (tunable)
 
         // 3.5.b.i — Inoculation : setup pur, 1 PA range 5, 2 marques cap 4 (Bible V7.1).
         public const int InoculationPACost            = 1;
@@ -321,21 +364,16 @@ namespace Quantum
         // 3 PA, self, status 2 rounds. A chaque tick venin sur un ennemi, le Necram porteur
         // du status est soigne de min(stacks, 4) * 8 HP (max +32 HP/tick, +64 sur 2 rounds).
         public const int SymbioseMorbidePACost        = 3;
-        public const int SymbioseMorbideHealPerMarkPerTick = 8;
-        public const int SymbioseMorbideMaxMarksForHeal = 4;
+        // Refonte 29 mai : heal FLAT +15 HP par tick venin (n'echelonne plus par marque).
+        public const int SymbioseMorbideHealPerMarkPerTick = 15;
+        public const int SymbioseMorbideMaxMarksForHeal = 4; // (obsolete depuis le flat, gardé pour réf)
         public const int SymbioseMorbideTurns         = 2;
 
-        // 3.5.b.iv — Contagion : propagation AoE marques (Bible V7.1).
-        // 3 PA, range 5, target ennemie marquee requise. Copie min(stacks, cap) marques sur
-        // autres ennemis rayon 3 Manhattan de la cible. Cap 3 default, 4 avec 2 PT optionnel.
-        // En 1v1 (pas d'autres ennemis du caster) : +1 marque sur la cible (boost de tick).
+        // Refonte 29 mai — CONTAGION : 3 PA, p5, rend la cible ennemie CONTAGIOUS pendant 2 rounds.
+        //   Auto-propagation : à la fin de chaque tour de la cible, elle prend +1 marque venin.
         public const int ContagionPACost              = 3;
         public const int ContagionRangeMax            = 5;
-        public const int ContagionPropagationRadius   = 3;     // Manhattan rayon autour de la cible
-        public const int ContagionCapDefault          = 3;     // cap marques copiees default
-        public const int ContagionCapBoosted          = 4;     // cap avec 2 PT optionnel
-        public const int ContagionPTCostForBoost      = 2;     // PT optionnel pour cap boost
-        public const int Contagion1v1FallbackMarks    = 1;     // +1 marque sur cible en 1v1
+        public const int ContagionTurns               = 2;     // durée du status Contagious (rounds)
 
         // 3.5.b.iii — Pas Spectral : mobilite + traversee ennemis (Bible V7.1).
         // 2 PA, self. +2 PM ce tour (cap si refresh meme tour). Apply PasSpectralReady (sub-turn).
@@ -345,18 +383,18 @@ namespace Quantum
         public const int PasSpectralPACost            = 2;
         public const int PasSpectralPMBonus           = 2;
         public const int PasSpectralMarksPerCrossing  = 1;
+        // Refonte 29 mai — ÉCHANGE SPECTRAL (ex-Pas Spectral) : 2 PA, p5, swap de place avec
+        //   l'ennemi ciblé + 80 dgts. (Réutilise l'enum SoulId NecramPasSpectral.)
+        public const int EchangeSpectralDamage        = 80;
+        public const int EchangeSpectralRangeMax      = 5;
 
         // 3.5.c.i — Voile de Pestilence : aura defensive 2 rounds (Bible V7.1).
         // 3 PA self. Apply PestilenceAura turnsLeft=2 (refresh-only).
-        // Hook 1 (TurnSystem.EnterTurnEnd) : fin sub-turn d'un ennemi a Manhattan <=2 d'un
-        //   Necram porteur de Voile -> +1 marque venin sur l'ennemi.
-        // Hook 2 (SpellSystem damage loop, apres reflect) : si target porte Voile ET le sort
-        //   est melee (RangeMax == 1) -> +1 marque venin sur l'attaquant (cap 4 via ApplyMark).
+        // Refonte 29 mai — NUÉE DE SPORES (ex-Voile de Pestilence) : 3 PA self, buff 2 rounds.
+        //   Tant qu'actif, chaque sort du Necram visant un ennemi pose +1 marque venin bonus
+        //   (hook post-cast SpellSystem). Anciens hooks aura adjacence/riposte mêlée retirés.
         public const int VoilePestilencePACost            = 3;
         public const int VoilePestilenceTurns             = 2;
-        public const int VoilePestilenceAdjacencyRange    = 2;     // Manhattan <= 2 du Necram
-        public const int VoilePestilenceMarksOnAdjacency  = 1;
-        public const int VoilePestilenceMarksOnMeleeAttacker = 1;
 
         // 3.5.c.ii — Carapace Visqueuse : bouclier piege 2 rounds (Bible V7.1).
         // 3 PA self. Apply ShieldActive Magnitude=110 HP + status CarapaceVisqueuse flag 2 rounds.
@@ -366,7 +404,7 @@ namespace Quantum
         // Trigger meme si shield absorbe tout le dmg (HP_loss=0, "frappe le bouclier" Bible).
         // Pas de trigger si shield deja brise (shieldBefore=0).
         public const int CarapaceVisqueusePACost              = 3;
-        public const int CarapaceVisqueuseShieldHP            = 110;
+        public const int CarapaceVisqueuseShieldHP            = 160;  // refonte 29 mai : 110 -> 160
         public const int CarapaceVisqueuseTurns               = 2;
         public const int CarapaceVisqueuseMarksOnMeleeAttacker = 1;
 
@@ -377,10 +415,10 @@ namespace Quantum
         // Cap MaxHP standard. Pas de status applique.
         public const int DrainVitalPACost          = 3;
         public const int DrainVitalRangeMax        = 4;
-        public const int DrainVitalDamage          = 60;
-        public const int DrainVitalHealBase        = 30;
-        public const int DrainVitalHealBonus       = 60;
-        public const int DrainVitalMarksThreshold  = 3;
+        // Refonte 29 mai : 40 dmg + heal 40 HP/marque sur la cible (cap 160 = 4 marques).
+        public const int DrainVitalDamage          = 40;
+        public const int DrainVitalHealPerMark     = 40;
+        public const int DrainVitalHealMaxBonus    = 160;
 
         // 3.5.c.iv — Pulse Sanguin Vert : heal de zone (Bible V7.1 — sort canonique "REGENERATION NECROTIQUE").
         // NOTE NOM : la Bible nomme ce sort "Regeneration Necrotique" (ligne 971). On garde la constante
@@ -416,9 +454,9 @@ namespace Quantum
         // x3" (multiplicateur Floraison applique). Calcul handler :
         //   baseDmg = stacks * GetTickDmgPerMark(densityGlobal)
         //   marqueSacBonus = StatusHelper.GetMagnitude(target, MarqueSacrificielle, 0)
-        //   totalDmg = (baseDmg + marqueSacBonus) * VirusFatalMultiplier  // interpretation litterale "tick x3"
+        //   totalDmg = (baseDmg + marqueSacBonus) * 3 / 2  // refonte 29 mai : "tick x1.5" (etait x3)
         // Bypass shield + reduction (comme tick venin standard). Hook Symbiose Morbide :
-        // chaque Necram porteur heal min(stacks, 4) * Magnitude * VirusFatalMultiplier (idem x3).
+        // chaque Necram porteur heal FLAT (Magnitude) * 3 / 2 (idem x1.5).
         // Si cible survit : VeninStacks = 0 (Bible "Les marques sont consommees").
         // Si cible meurt : marques transferees sur ennemi vivant le plus proche via
         // VeninHelpers.TryTransferVeninOnKill (Bible "marques restent disponibles pour Contagion
@@ -426,7 +464,10 @@ namespace Quantum
         public const int VirusFatalPACost           = 2;
         public const int VirusFatalRangeMax         = 5;
         public const int VirusFatalPTCost           = 6;   // mandatory (consomme toute la jauge cap 6)
-        public const int VirusFatalMultiplier       = 3;   // "tick x 3" Bible
+        // Refonte 29 mai : "tick x1.5" (60 x 4 marques x 1.5 = 360 au max) -> nerf vs le boost
+        //   global du Necram. Applique en Num/Den entier (* 3 / 2).
+        public const int VirusFatalMultNum          = 3;
+        public const int VirusFatalMultDen          = 2;
         public const int VirusFatalCooldownTurns    = 4;   // 4 tours = 4 rounds (convention TurnNumber)
 
         // -------------------------------------------------------------
@@ -709,6 +750,7 @@ namespace Quantum
                         HGCostMaxOptional = 1,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                        MaxUsesPerTurn = 2, // Refonte 29 mai : cap 2x/tour
                     };
                     return true;
 
@@ -752,6 +794,8 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
+                        CooldownTurns = 2,  // Refonte 29 mai : relance 2 tours
                     };
                     return true;
 
@@ -815,11 +859,14 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
                 // Empoignade (2.10.b) : 3 PA, range 3, pull cible adjacent + AntiTeleport 1 tour.
                 // Pas de dgts. Si pas de case adjacente libre : no-op silencieux (rare).
+                // EMPOIGNADE (refonte 29 mai) : 3 PA, p3, pull CaC + 90 dgts + -2 PM. Devient
+                //   OFFENSIVE (le 90 passe par le pipeline standard, puis pull + MovementMalus 2).
                 case SpellId.SoulrenderEmpoignade:
                     def = new SpellDef
                     {
@@ -828,11 +875,12 @@ namespace Quantum
                         Filter = TargetingFilter.Enemy,
                         RangeMin = 1,
                         RangeMax = 3,
-                        DamageAmount = 0,
+                        DamageAmount = EmpoignadeDamage, // 90 (refonte)
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
-                        IsOffensive = 0,
+                        IsOffensive = 1, // refonte : devient offensive
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -851,6 +899,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        CooldownTurns = 2, // Refonte 29 mai : relance 2 tours (bouclier 200)
                     };
                     return true;
 
@@ -869,6 +918,7 @@ namespace Quantum
                         HGCostMaxOptional = 1,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -939,19 +989,24 @@ namespace Quantum
                 // Curee (2.10.c) : 2 PA, range 2, 2 HG (mandatory), 150 dgts.
                 // Kill chain : heal 50% HP manquants + 4 PA next turn.
                 // Miss (target encore vivante) : caster prend 60 dgts self.
+                // EVENTRATION (ex-Curee, refonte 29 mai) : 5 PA, p1 (melee), 220 dgts +
+                //   Plaie Ouverte 50/tour x 3 rounds. Plus de kill-heal / miss-selfdamage / cout HG.
+                //   Identifiant enum SoulrenderCuree conserve (eviter le churn de refs) ; nom
+                //   affiche = "Eventration" (cf SpellBibleTexts, Passe 2b).
                 case SpellId.SoulrenderCuree:
                     def = new SpellDef
                     {
-                        PACost = 2,
+                        PACost = 5,
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.Enemy,
                         RangeMin = 1,
-                        RangeMax = 2,
-                        DamageAmount = CureeDamage,
-                        HGCostMandatory = 2,
+                        RangeMax = 1,
+                        DamageAmount = CureeDamage, // 220
+                        HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1037,6 +1092,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1093,6 +1149,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1115,6 +1172,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1133,6 +1191,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 2, // Refonte 29 mai : cap 2x/tour
                     };
                     return true;
 
@@ -1152,6 +1211,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1170,24 +1230,27 @@ namespace Quantum
                         HGCostMaxOptional = 1,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 2, // Refonte 29 mai : cap 2x/tour
                     };
                     return true;
 
-                // Souffle Glacial (2.15.b) : 3 PA, AoE croix 3 autour caster, 70 dgts + push 1 + MovementMalus -1.
-                // Sort defensif anti-melee. Ciblage = case du caster (RangeMin/Max = 0, Filter = Self).
+                // PIÈGE BONDISSANT (ex-Souffle Glacial, refonte 29 mai) : 2 PA, pose un piège-catapulte
+                //   sur une case (p4) ; éjection directionnelle au déclenchement. DIRECTIONNEL (2 clics).
+                //   Identifiant enum NightseerSouffleGlacial conservé.
                 case SpellId.NightseerSouffleGlacial:
                     def = new SpellDef
                     {
-                        PACost = 3,
-                        Shape = TargetingShape.CrossSmall, // 5 cases mais on filtrera le centre (caster) dans damage loop
-                        Filter = TargetingFilter.Self,
-                        RangeMin = 0,
-                        RangeMax = 0,
-                        DamageAmount = SouffleGlacialDmg,
+                        PACost = PiegeBondissantPACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.AnyTile,    // pose sur une case
+                        RangeMin = 1,
+                        RangeMax = PiegeBondissantRangeMax,  // 4
+                        DamageAmount = 0,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
-                        IsOffensive = 1, // damage > 0 -> entre dans damage loop
+                        IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1195,20 +1258,23 @@ namespace Quantum
                 // NIGHTSEER 2.15.c — SURVIE
                 // -------------------------------------------------------------
 
-                // Voile d'Ombre : 3 PA, self, applique Untargetable 1 round (skip-decrement convention).
+                // FLÈCHE TRAÇANTE (ex-Voile d'Ombre, refonte 29 mai) : 3 PA, p5, ENEMY. Si la cible
+                //   est TRAQUÉ : inflige 60 dégâts par PM dépensé au dernier tour (max 180). Sinon 0.
+                //   Identifiant enum NightseerVoileDOmbre conservé (réutilisation d'ID).
                 case SpellId.NightseerVoileDOmbre:
                     def = new SpellDef
                     {
                         PACost = 3,
                         Shape = TargetingShape.SingleTile,
-                        Filter = TargetingFilter.Self,
-                        RangeMin = 0,
-                        RangeMax = 0,
-                        DamageAmount = 0,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = 5,
+                        DamageAmount = 0, // calculé dans le damage override (60/PM, max 180, si Traqué)
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
-                        IsOffensive = 0,
+                        IsOffensive = 1,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1227,6 +1293,7 @@ namespace Quantum
                         HGCostMaxOptional = 1,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1262,6 +1329,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1433,6 +1501,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 2, // Refonte 29 mai : cap 2x/tour
                     };
                     return true;
 
@@ -1452,6 +1521,7 @@ namespace Quantum
                         HGCostMaxOptional = 1,               // option 1 FD -> 5 segments (Bible)
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1470,6 +1540,8 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
+                        CooldownTurns = 2,  // Refonte 29 mai : relance 2 tours
                     };
                     return true;
 
@@ -1489,6 +1561,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1508,6 +1581,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,                     // pipeline standard (90 dmg -> Densite Inerte etc.)
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1530,6 +1604,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        CooldownTurns = 2, // Refonte 29 mai : relance 2 tours (bouclier 200)
                     };
                     return true;
 
@@ -1566,6 +1641,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1587,21 +1663,23 @@ namespace Quantum
                     };
                     return true;
 
-                // Soin Lourd : 3 PA self (MVP 1v1), heal 150 HP. Bible : range 3 self/allie en 2v2/3v3.
-                // Pour MVP, Filter=Self range 0 (Bible "en 1v1 : self-only"). TODO Phase 6 : Filter=Ally.
+                // EBOULEMENT (ex-Soin Lourd, refonte 29 mai) : 3 PA, p3, vise un de TES Piliers ->
+                //   le détruit -> AoE 150 rayon 1 (CircleSmall, via pipeline) + push autour + 30 HP
+                //   (passif destruction). Identifiant enum SoulLourd conservé (nom affiché "Éboulement").
                 case SpellId.ColossarSoinLourd:
                     def = new SpellDef
                     {
                         PACost = 3,
-                        Shape = TargetingShape.SingleTile,
-                        Filter = TargetingFilter.Self,
-                        RangeMin = 0,
-                        RangeMax = 0,
-                        DamageAmount = 0,
+                        Shape = TargetingShape.CircleSmall, // AoE rayon 1 autour du pilier ciblé
+                        Filter = TargetingFilter.AnyTile,   // on vise une case (un Pilier own)
+                        RangeMin = 1,
+                        RangeMax = EboulementRangeMax,       // 3
+                        DamageAmount = EboulementDamage,     // 150 (pipeline standard)
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
-                        IsOffensive = 0,
+                        IsOffensive = 1,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1609,9 +1687,9 @@ namespace Quantum
                 // COLOSSAR — Bible V7.1 (3.3.d) — SIGNATURE
                 // -------------------------------------------------------------
 
-                // Effondrement : 4 PA, self, 3 FD mandatory (consomme tout). Cast pose juste l'annonce.
-                // Le trigger (damage AoE rayon 2 + Failles + buff) se fait au prochain sub-turn du caster
-                // via TurnSystem.EnterTurnStart en lisant EffondrementAnnouncedOnTurn.
+                // Effondrement : 4 PA, self, 5 FD mandatory (consomme tout). Refonte 29 mai :
+                // déclenchement IMMÉDIAT au cast (damage AoE rayon 2 + éjection + Failles + buff
+                // -1 PA/-30%, plus de +1 PM) via TurnSystem.TriggerEffondrement.
                 case SpellId.ColossarEffondrement:
                     def = new SpellDef
                     {
@@ -1678,11 +1756,12 @@ namespace Quantum
                         Filter = TargetingFilter.Enemy,
                         RangeMin = 1,
                         RangeMax = DetonationVirulenteRangeMax,
-                        DamageAmount = DetonationVirulenteDmgBase, // 80 base, +50/marque modife en handler
+                        DamageAmount = 0,                    // refonte : tick appliqué dans le handler (bypass)
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1717,11 +1796,12 @@ namespace Quantum
                         Filter = TargetingFilter.AnyTile,  // case quelconque (vide ou avec unite)
                         RangeMin = 1,
                         RangeMax = BrumeToxiqueRangeMax,
-                        DamageAmount = BrumeToxiqueDmgImmediate, // 60 dgts par cible deja dans la zone
+                        DamageAmount = 0,                    // refonte : plus de dégâts directs (zone DoT marques)
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
-                        IsOffensive = 1,
+                        IsOffensive = 0,                     // refonte : pose de zone, pas d'attaque directe
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1760,6 +1840,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1795,28 +1876,30 @@ namespace Quantum
                         RangeMax = ContagionRangeMax,
                         DamageAmount = 0,
                         HGCostMandatory = 0,
-                        HGCostMaxOptional = ContagionPTCostForBoost,
+                        HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
                 // 3.5.b.iii — Pas Spectral : mobilite + traversee ennemis. 2 PA self. Pas de
-                // damage direct (IsOffensive=0). Effet gere dans le handler SpellSystem (PM +2
-                // + Apply PasSpectralReady) puis dans MovementSystem (A* traverse + marques).
+                // ÉCHANGE SPECTRAL (ex-Pas Spectral, refonte 29 mai) : 2 PA, p5, ENEMY. Swap de
+                //   place avec la cible + 80 dgts (pipeline). Le swap est appliqué dans le handler.
                 case SpellId.NecramPasSpectral:
                     def = new SpellDef
                     {
                         PACost = PasSpectralPACost,
                         Shape = TargetingShape.SingleTile,
-                        Filter = TargetingFilter.Self,
-                        RangeMin = 0,
-                        RangeMax = 0,
-                        DamageAmount = 0,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = EchangeSpectralRangeMax,  // 5
+                        DamageAmount = EchangeSpectralDamage, // 80 (pipeline)
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
-                        IsOffensive = 0,
+                        IsOffensive = 1,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -1857,6 +1940,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        CooldownTurns = 2, // Refonte 29 mai : relance 2 tours (bouclier 160)
                     };
                     return true;
 
@@ -1876,6 +1960,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour (rework scale marques en Passe 2)
                     };
                     return true;
 
@@ -1895,6 +1980,7 @@ namespace Quantum
                         HGCostMaxOptional = 1,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
                     };
                     return true;
 
@@ -2271,16 +2357,15 @@ namespace Quantum
         /// ou 100 si pas de cible ennemie (sorts self/AnyTile sans ennemi). Sert au passif
         /// Appel du Sang : -1 PA si caster Soulrender et target < 70% HP. Min 1 PA.
         /// </summary>
-        public static int GetPACost(in SpellDef def, Combatant* caster, int targetHPRatio)
+        public static int GetPACost(in SpellDef def, Combatant* caster, int targetHPRatio, int currentTurn)
         {
             int cost = def.PACost;
-            if (StatusHelper.Has(caster, StatusKind.RageInsatiableActive))
-            {
-                cost += 1; // Rage Insatiable : sorts coutent +1 PA pendant 2 tours
-            }
-            // Passif Appel du Sang : caster Soulrender + cible <70% HP -> -1 PA (min 1).
+            // Refonte 29 mai : Frenesie (ex-Rage Insatiable) ne fait PLUS +1 PA cost (retire).
+            // Passif Appel du Sang (refonte 29 mai) : -1 PA si caster Soulrender ET cible <70% HP
+            //   ET c'est le 1ER SORT DU TOUR (avant ce cast, 0 sort journalise ce round). Min 1 PA.
             if (caster->Class == NymoraClass.Soulrender
-                && targetHPRatio < SpellRegistry.AppelDuSangPalierMarquage)
+                && targetHPRatio < SpellRegistry.AppelDuSangPalierMarquage
+                && SpellLimitsHelper.TotalCastsThisTurn(caster, currentTurn) == 0)
             {
                 cost -= 1;
                 if (cost < 1) cost = 1;

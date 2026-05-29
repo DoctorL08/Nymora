@@ -66,6 +66,27 @@ namespace Nymora.Combat.View
         private Vector3 _centerOffset;
         private bool _gridReady;
 
+        // Refonte 29 mai — sorts à PUSH DIRECTIONNEL (Bourrasque...) : ciblage en 2 clics.
+        //   1er clic = cible (stockée ici, cast PAS encore envoyé) ; 2e clic = case définissant
+        //   le sens. Annulé si on arme un autre sort.
+        private bool _awaitingPushDir;
+        private SpellId _pushDirSpell;
+        private int _pushDirTargetX;
+        private int _pushDirTargetY;
+
+        // Exposé au TargetingPreviewView pour afficher la prévisu de sélection de direction
+        //   pendant le 2e clic d'un sort directionnel (refonte 29 mai).
+        public bool AwaitingPushDir => _awaitingPushDir;
+        public int PushDirTargetX => _pushDirTargetX;
+        public int PushDirTargetY => _pushDirTargetY;
+
+        /// <summary>Sorts à ciblage directionnel 2-clics (refonte 29 mai).</summary>
+        private static bool IsDirectionalSpell(SpellId spell)
+        {
+            return spell == SpellId.NightseerBourrasque
+                || spell == SpellId.NightseerSouffleGlacial; // Piège Bondissant (pose + sens d'éjection)
+        }
+
         private void Awake()
         {
             QuantumCallback.Subscribe(this, (CallbackGameStarted c) => OnGameStarted(c.Game));
@@ -259,6 +280,7 @@ namespace Nymora.Combat.View
             if (anySlotKey)
             {
                 if (_hudController == null) return;
+                _awaitingPushDir = false; // armer un sort annule un ciblage directionnel en attente
                 int slotIdx = slot1 ? 0 : slot2 ? 1 : slot3 ? 2 : slot4 ? 3 : slot5 ? 4 : slot6 ? 5 : 6;
                 bool armed = _hudController.TryArmSlotByIndex(slotIdx);
                 if (armed)
@@ -275,6 +297,15 @@ namespace Nymora.Combat.View
             // 2) Mouvement classique : MoveCommand.
             if (mouseDown)
             {
+                // Refonte 29 mai — 2e clic d'un sort directionnel : la case cliquée définit le sens.
+                if (_awaitingPushDir)
+                {
+                    _awaitingPushDir = false;
+                    SendSpellAt(game, splitscreenSlot, senderPlayer, _pushDirSpell,
+                        _pushDirTargetX, _pushDirTargetY, 0, dirX: gx, dirY: gy);
+                    return;
+                }
+
                 if (_hudController != null && _hudController.ConsumeArmedSpell(out SpellId armedSpell))
                 {
                     int tx = gx;
@@ -286,6 +317,19 @@ namespace Nymora.Combat.View
                         tx = cx;
                         ty = cy;
                     }
+
+                    // Refonte 29 mai — sort directionnel : 1er clic = cible, on attend un 2e clic
+                    //   pour le sens (cast PAS encore envoyé).
+                    if (IsDirectionalSpell(armedSpell))
+                    {
+                        _awaitingPushDir = true;
+                        _pushDirSpell = armedSpell;
+                        _pushDirTargetX = tx;
+                        _pushDirTargetY = ty;
+                        Debug.Log($"[Nymora.CombatInput] {armedSpell} : cible ({tx},{ty}) — clique une 2e case pour le sens du push.");
+                        return;
+                    }
+
                     SendSpellAt(game, splitscreenSlot, senderPlayer, armedSpell, tx, ty, 0);
                     return;
                 }
@@ -298,12 +342,13 @@ namespace Nymora.Combat.View
             }
         }
 
-        private static void SendSpellAt(QuantumGame game, int splitscreenSlot, int sender, SpellId spell, int tx, int ty, byte hgSpend)
+        private static void SendSpellAt(QuantumGame game, int splitscreenSlot, int sender, SpellId spell, int tx, int ty, byte hgSpend, int dirX = -1, int dirY = -1)
         {
             // splitscreenSlot = index local cote ce client (0 en prod, ActivePlayerIndex en
             // legacy debug auto-add). sender = PlayerRef global Quantum, sert uniquement au
             // logging ici. Cf rationale dans Update() au-dessus.
-            var cmd = new CastSpellCommand { Spell = spell, TargetX = tx, TargetY = ty, HGSpend = hgSpend };
+            // dirX/dirY (-1 = absent) : sens du push pour les sorts directionnels (refonte 29 mai).
+            var cmd = new CastSpellCommand { Spell = spell, TargetX = tx, TargetY = ty, HGSpend = hgSpend, DirX = dirX, DirY = dirY };
             game.SendCommand(splitscreenSlot, cmd);
             // 19 mai POLISH-6h — Memorise le cast pour permettre au FloatingTextManager de
             // spawner un texte epique (or + scale bounce) si le sort est signature.

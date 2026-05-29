@@ -147,7 +147,9 @@ namespace Nymora.Combat.View.Animation
             if (game == null) return;
 
             var frame = game.Frames.Verified;
-            // Securite : si la GridSingleton n'est pas encore prete (resync), on skip.
+            // Securite : frame null pendant un seek replay (runner relance, pas encore de frame
+            // verifiee) OU GridSingleton pas prete (resync) -> skip cette frame.
+            if (frame == null) return;
             if (!frame.TryGetSingleton<GridSingleton>(out _)) return;
 
             for (int y = 0; y < _height; y++)

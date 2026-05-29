@@ -166,6 +166,9 @@ namespace Quantum
                 return;
             }
 
+            // Refonte 29 mai — le Piège Bondissant se déclenche AU PASSAGE comme les autres pièges
+            //   (crossing loop + destination dans ApplyMove -> FogHelpers.TryTriggerTrapOnEnter).
+            //   Pas de troncature : l'éjection part de la case DU PIÈGE (gérée dans FogHelpers).
             ApplyMove(f, combatant, combatantEntity, targetX, targetY, totalCost, pathBuffer, pathLength, pasSpectralActive, pasAuDelaActive);
         }
 
@@ -269,22 +272,14 @@ namespace Quantum
                 FogHelpers.TryTriggerTrapOnEnter(f, entity, combatant, targetX, targetY, currentTurn);
             }
 
-            // 3.5.a.iii — Brume Toxique entry : -30 HP bypass shield/reduction + 1 marque venin
-            // si l'unite entre sur une case BrumeToxique. Skip Necram (decision design : classe
-            // immunisee a la Brume des autres Necram + a sa propre Brume).
+            // Refonte 29 mai — Brume Toxique entry SIMPLIFIÉE : plus de dégâts d'entrée. Entrer
+            // sur une case BrumeToxique pose juste +1 marque venin. Skip Necram (immunisé).
             if (combatant->HP > 0
                 && combatant->Class != NymoraClass.Necram
                 && GridHelpers.GetTerrainKind(f, targetX, targetY) == TerrainKind.BrumeToxique)
             {
-                int hpBefore = combatant->HP;
-                combatant->HP -= SpellRegistry.BrumeToxiqueDmgOnEnter;
-                if (combatant->HP < 0) combatant->HP = 0;
-                combatant->DamageTakenThisRound += SpellRegistry.BrumeToxiqueDmgOnEnter;
-                Log.Info($"[Movement] Brume Toxique entry : -{SpellRegistry.BrumeToxiqueDmgOnEnter} HP bypass sur P{combatant->PlayerIndex} ({targetX},{targetY}) HP {hpBefore} -> {combatant->HP}");
-                if (combatant->HP > 0)
-                {
-                    VeninHelpers.ApplyMark(f, combatant, SpellRegistry.BrumeToxiqueMarksOnHit, currentTurn);
-                }
+                VeninHelpers.ApplyMark(f, combatant, SpellRegistry.BrumeToxiqueMarksOnHit, currentTurn);
+                Log.Info($"[Movement] Brume Toxique entry : +{SpellRegistry.BrumeToxiqueMarksOnHit} marque venin sur P{combatant->PlayerIndex} ({targetX},{targetY})");
             }
         }
     }

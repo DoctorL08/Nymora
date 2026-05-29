@@ -32,19 +32,28 @@ namespace Nymora.Combat.Replay
     [DefaultExecutionOrder(-1000)]
     public class ReplayPlaybackController : MonoBehaviour
     {
-        private static readonly float[] SpeedSteps = new[] { 0.5f, 1f, 2f, 4f };
+        // Cycle de vitesse classique : 1× -> 1.5× -> 2× -> 4× -> (retour) 1×.
+        private static readonly float[] SpeedSteps = new[] { 1f, 1.5f, 2f, 4f };
 
         private NymoraReplayFile _file;
         private QuantumReplayFile _quantumReplay;
         private QuantumRunner _runner;
         private int _lastTick;
-        private int _speedIndex = 1; // 1× par defaut
+        private int _speedIndex = 0; // 1× par defaut (index 0 de SpeedSteps)
         private bool _paused;
         private string _errorMessage;
         private bool _readyToStart;
         private bool _desyncDetected;
         private int _desyncFrameNumber = -1;
         private bool _isSeeking;
+
+        /// <summary>
+        /// True dès qu'un replay est en cours de lancement dans la scène (set en Awake, AVANT le
+        /// Start des bootstraps grâce à DefaultExecutionOrder=-1000). Les CombatBootstrap* le lisent
+        /// pour s'abstenir de démarrer un vrai match (sinon leur ShutdownAll tuerait le runner replay).
+        /// Réévalué à chaque chargement de scène (faux si aucun replay demandé).
+        /// </summary>
+        public static bool ReplaybackActive { get; private set; }
 
         public bool IsRunning { get { return _runner != null && _runner.Session != null; } }
         public bool IsPaused { get { return _paused; } }
@@ -72,6 +81,7 @@ namespace Nymora.Combat.Replay
         private void Awake()
         {
             string path = ReplayPlaybackBridge.Consume();
+            ReplaybackActive = !string.IsNullOrEmpty(path);
             if (string.IsNullOrEmpty(path))
             {
                 // Mode normal : aucun replay demande, on cede silencieusement la
@@ -260,9 +270,26 @@ namespace Nymora.Combat.Replay
             }
         }
 
+        /// <summary>Vitesse suivante (>>) : 1× -> 1.5× -> 2× -> 4× -> 1×.</summary>
         public void CycleSpeed()
         {
             _speedIndex = (_speedIndex + 1) % SpeedSteps.Length;
+        }
+
+        /// <summary>Vitesse précédente (<<) : sens inverse du cycle.</summary>
+        public void CycleSpeedBack()
+        {
+            _speedIndex = (_speedIndex - 1 + SpeedSteps.Length) % SpeedSteps.Length;
+        }
+
+        /// <summary>Recule d'un tick (frame par frame). Implémenté via SeekTo (re-sim depuis 0,
+        /// seul moyen de revenir en arrière dans un replay déterministe). No-op au tick 0.</summary>
+        public void StepBack()
+        {
+            if (!IsRunning) return;
+            int target = CurrentTick - 1;
+            if (target < 0) return;
+            SeekTo(target);
         }
 
         /// <summary>Rewind a tick 0 puis pause. Equivalent de SeekTo(0).</summary>
@@ -305,6 +332,22 @@ namespace Nymora.Combat.Replay
             if (_runner == null)
             {
                 _isSeeking = false;
+                yield break;
+            }
+
+            // StartGame est asynchrone : la Session / le Game / la 1re frame vérifiée ne sont pas
+            // prêts au tick suivant. On attend avant de fast-forward (sinon _runner.Session = null
+            // -> NRE ligne dtPerTick). Filet de sécurité ~10s à 60fps.
+            int readySafety = 0;
+            while ((_runner.Session == null || _runner.Game == null || _runner.Game.Frames.Verified == null)
+                   && readySafety++ < 600)
+            {
+                yield return null;
+            }
+            if (_runner.Session == null || _runner.Game == null)
+            {
+                _isSeeking = false;
+                _paused = true;
                 yield break;
             }
 

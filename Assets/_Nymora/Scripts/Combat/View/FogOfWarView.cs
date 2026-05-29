@@ -153,6 +153,7 @@ namespace Nymora.Combat.View
             var game = QuantumRunner.Default?.Game;
             if (game == null) return;
             var frame = game.Frames.Verified;
+            if (frame == null) return; // seek replay : runner relance, frame verifiee pas encore prete
             if (!frame.TryGetSingleton<CombatState>(out var state)) return;
             if (!frame.TryGetSingleton<FogSingleton>(out _)) return;
 

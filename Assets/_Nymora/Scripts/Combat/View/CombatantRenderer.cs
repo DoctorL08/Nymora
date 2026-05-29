@@ -52,6 +52,8 @@ namespace Nymora.Combat.View
         private readonly Dictionary<EntityRef, int> _lastTeleportCastSeq = new Dictionary<EntityRef, int>(2);
         // J9 — charge : suit LastCastSequence pour declencher le DASH (vitesse + trainee) au cast.
         private readonly Dictionary<EntityRef, int> _lastChargeCastSeq = new Dictionary<EntityRef, int>(2);
+        // Refonte 29 mai — Piège Bondissant : suit LastEjectedSequence pour rendre l'éjection en snap (lancement).
+        private readonly Dictionary<EntityRef, int> _lastEjectedSeq = new Dictionary<EntityRef, int>(2);
 
         // 3.7.a.i — Track Permutation Ghostra pour snap instantané au lieu de walk lerp.
         // Si combatant.LastPermutationOnTurn > cache -> une Permutation vient d'avoir lieu
@@ -346,6 +348,16 @@ namespace Nymora.Combat.View
                     _lastTeleportCastSeq[entity] = combatant.LastCastSequence;
                     if (!isTeleportSnap && castAdvanced && IsTeleportSpell(combatant.LastCastSpellId))
                         isTeleportSnap = true;
+                }
+
+                // Refonte 29 mai — Piège Bondissant : si LastEjectedSequence a avancé, ce combattant
+                // vient d'être ÉJECTÉ -> LANCEMENT (DASH rapide + traînée), pas un snap/TP. Lit
+                // comme une catapulte, plus comme une téléportation. Couplé à la fumée sur la case.
+                {
+                    int prevEjSeq = _lastEjectedSeq.TryGetValue(entity, out var ej) ? ej : combatant.LastEjectedSequence;
+                    bool ejAdvanced = combatant.LastEjectedSequence != prevEjSeq;
+                    _lastEjectedSeq[entity] = combatant.LastEjectedSequence;
+                    if (!isTeleportSnap && ejAdvanced) view.TriggerDash();
                 }
 
                 // J9 — Charge : un sort de charge declenche le DASH (mouvement rapide + trainee

@@ -196,6 +196,19 @@ namespace Quantum
             if (bestScore <= currentScore) return;
 
             Log.Info($"[AI] Bot P{bot->PlayerIndex} se deplace ({startX},{startY}) -> ({bestX},{bestY}) cost={bestCost} score={bestScore}");
+
+            int currentTurn = f.TryGetSingleton<CombatState>(out var st) ? st.TurnNumber : 0;
+
+            // FIX 30 mai — pieges declenches AU PASSAGE pour l'IA aussi. Le bot ne passait pas
+            // par MovementSystem.ApplyMove (il se deplace en direct ici), donc seule la case
+            // d'arrivee declenchait un piege : l'IA "marchait pile sur un piege en chemin et
+            // rien ne se passait". On recalcule le chemin A* emprunte AVANT de bouger le bot
+            // (A* exige la case cible LIBRE -> impossible une fois le bot pose dessus), puis on
+            // declenche tout piege sur les cases intermediaires + la destination, miroir exact
+            // de MovementSystem.ApplyMove (boucle [0, pathLen-1) = cases hors start/dest).
+            bool hasPath = AStarPathfinder.TryFindPath(
+                f, startX, startY, bestX, bestY, maxRange, pathBuf, out int finalPathLen);
+
             GridHelpers.SetOccupant(f, startX, startY, EntityRef.None);
             bot->GridX = bestX;
             bot->GridY = bestY;
@@ -205,8 +218,20 @@ namespace Quantum
             bot->Facing = FacingHelpers.FacingFromGridDelta(bestX - startX, bestY - startY);
             GridHelpers.SetOccupant(f, bestX, bestY, botEntity);
 
-            int currentTurn = f.TryGetSingleton<CombatState>(out var st) ? st.TurnNumber : 0;
-            FogHelpers.TryTriggerTrapOnEnter(f, botEntity, bot, bestX, bestY, currentTurn);
+            if (hasPath && finalPathLen > 1)
+            {
+                for (int i = 0; i < finalPathLen - 1; i++)
+                {
+                    if (bot->HP <= 0) break;
+                    int cidx = pathBuf[i];
+                    FogHelpers.TryTriggerTrapOnEnter(
+                        f, botEntity, bot, cidx % GridConstants.Width, cidx / GridConstants.Width, currentTurn);
+                }
+            }
+            if (bot->HP > 0)
+            {
+                FogHelpers.TryTriggerTrapOnEnter(f, botEntity, bot, bestX, bestY, currentTurn);
+            }
         }
 
         /// <summary>
@@ -267,9 +292,19 @@ namespace Quantum
                     if (turnsSince < SpellRegistry.AmeLaceeCooldownTurns) continue;
                 }
 
+                // Refonte 29 mai — respecte les caps Nx/tour + relances generiques (SpellLimitsHelper)
+                //   pour ne pas tenter de casts que la sim rejetterait (tour gaspille).
+                if (SpellLimitsHelper.CapReached(bot, spellId, def.MaxUsesPerTurn, state->TurnNumber)) continue;
+                if (SpellLimitsHelper.OnCooldown(bot, spellId, def.CooldownTurns, state->TurnNumber, out int _)) continue;
+
                 // Range Manhattan caster -> enemy.
                 int dist = AIEvaluator.Manhattan(bot->GridX, bot->GridY, enemyX, enemyY);
                 if (dist < def.RangeMin || dist > def.RangeMax) continue;
+
+                // Refonte 29 mai — Charge Brutale = ligne droite cardinale : skip si l'ennemi
+                //   n'est pas aligne (meme ligne ou colonne), sinon le cast est rejete (tour gaspille).
+                if (spellId == SpellId.SoulrenderChargeBrutale
+                    && bot->GridX != enemyX && bot->GridY != enemyY) continue;
 
                 affordable[affordableCount] = spellId;
                 affordableScore[affordableCount] = AIEvaluator.EstimateSpellDamage(spellId, hgSpend: 0, def.HGCostMandatory);

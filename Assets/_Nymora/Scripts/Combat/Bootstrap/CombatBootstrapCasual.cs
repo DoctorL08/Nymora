@@ -105,6 +105,14 @@ namespace Nymora.Combat.Bootstrap
 
         private async void Start()
         {
+            // Garde 0 (replay) : un replay enregistré en PvP peut être rejoué dans 33_CombatCasual.
+            // Le ReplayPlaybackController (-1000) a démarré son runner -> le bootstrap s'abstient.
+            if (Nymora.Combat.Replay.ReplayPlaybackController.ReplaybackActive)
+            {
+                Log("Mode replay actif -> bootstrap Casual skip (le ReplayPlaybackController pilote la sim).");
+                return;
+            }
+
             // Garde par nom de scene en dur : ce bootstrap n'a de sens QUE dans
             // 33_CombatCasual. Si on est ailleurs (additif fantome ou autre), no-op.
             if (gameObject.scene.name != _expectedSceneName)

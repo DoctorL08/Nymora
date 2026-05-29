@@ -239,6 +239,11 @@ namespace Quantum
                         Log.Info($"[TurnSystem] BonusPANextTurn +{combatant->BonusPANextTurn} PA sur P{combatant->PlayerIndex} (Curee kill chain)");
                         combatant->BonusPANextTurn = 0;
                     }
+                    // Refonte 29 mai — capture des PM dépensés au tour PRÉCÉDENT (avant le reset PM) :
+                    //   PM restant -> spent = MaxPM - restant (clamp >= 0). Sert Frappe de l'Ombre /
+                    //   Flèche Traçante (Nightseer). Approximation : ne compte que le mouvement (PM).
+                    int pmSpentLast = combatant->MaxPM - combatant->PM;
+                    combatant->PMSpentLastTurn = pmSpentLast < 0 ? 0 : pmSpentLast;
                     combatant->PM = combatant->MaxPM;
 
                     // 3.3.c : Snapshot Ressac Vital. Au debut du sub-turn du combattant actif,
@@ -247,6 +252,12 @@ namespace Quantum
                     // "Tour precedent" Bible = dernier sub-turn ou ce combatant n'etait pas actif.
                     combatant->HitsTakenLastRound = combatant->HitsTakenThisRound;
                     combatant->HitsTakenThisRound = 0;
+
+                    // Refonte 29 mai — Nightseer : reset du compteur de PR gagnées ce tour (cap +3).
+                    if (combatant->Class == NymoraClass.Nightseer)
+                    {
+                        combatant->PrescienceGainedThisTurn = 0;
+                    }
 
                     // 2.10.a : MovementMalus (Rugissement -1/-2, Riposte Carmin -1)
                     // reduit le PM disponible pour CE tour. Le status reste actif jusqu'a
@@ -279,53 +290,13 @@ namespace Quantum
                         Log.Info($"[TurnSystem] Sang Coagule tick : -30 HP sur P{combatant->PlayerIndex} ({combatant->GridX},{combatant->GridY}) HP {hpBefore} -> {combatant->HP}");
                     }
 
-                    // 2.11 Passif Appel du Sang RAGE OUVERTE : si Soulrender actif et au moins
-                    // 1 ennemi vivant a HP < 40% MaxHP -> +1 PM permanent (au reset TurnStart).
-                    // Bible : "+1 PM permanent jusqu'a fin du tour suivant la kill" — pour 2.11 on
-                    // applique simplement "+1 PM tant qu'un ennemi est <40%". La nuance "fin du
-                    // tour suivant la kill" se gere implicitement (1v1 = pas d'autres ennemis).
-                    if (combatant->Class == NymoraClass.Soulrender)
-                    {
-                        bool enemyBelow40 = false;
-                        var enemyFilter = f.Filter<Combatant>();
-                        while (enemyFilter.NextUnsafe(out EntityRef _, out Combatant* other))
-                        {
-                            if (other->PlayerIndex == combatant->PlayerIndex) continue;
-                            if (other->HP <= 0) continue;
-                            if (other->MaxHP <= 0) continue;
-                            if (other->HP * 100 < other->MaxHP * 40)
-                            {
-                                enemyBelow40 = true;
-                                break;
-                            }
-                        }
-                        if (enemyBelow40)
-                        {
-                            combatant->PM += 1;
-                            Log.Info($"[TurnSystem] Rage Ouverte : +1 PM sur P{combatant->PlayerIndex} (ennemi <40% HP) -> PM={combatant->PM}");
-                        }
-                    }
+                    // Refonte 29 mai : le palier Appel du Sang <40% ne donne PLUS de +1 PM
+                    //   (Rage Ouverte retiree). Remplace par le VOL DE VIE 20% applique cote
+                    //   damage loop (SpellSystem). Plus rien a faire ici pour le Soulrender.
 
-                    // 3.3.d — Effondrement : trigger differe. Si le Colossar a annonce au tour
-                    // precedent, on declenche maintenant : 200 dgts AoE rayon 2 + ejection
-                    // ennemis + Failles 2 tours + apply EffondrementActive 2T + DamageReductionPercent 30/2T.
-                    // Doit s'executer AVANT le buff +1 PM (qui depend de EffondrementActive).
-                    if (combatant->Class == NymoraClass.Colossar
-                        && combatant->EffondrementAnnouncedOnTurn >= 0
-                        && state->TurnNumber == combatant->EffondrementAnnouncedOnTurn + 1)
-                    {
-                        TriggerEffondrement(f, combatant, state->TurnNumber);
-                        combatant->EffondrementAnnouncedOnTurn = -1; // consume tracker
-                    }
-
-                    // 3.3.d — Buff Effondrement : +1 PM si actif. Hook similaire a Rage Ouverte.
-                    // Le -1 PA cost se gere dans EffectiveStats.GetPACost. Le -30% dgts subis via
-                    // DamageReductionPercent (cap combine 50% avec Densite Inerte/Garde Prot).
-                    if (StatusHelper.Has(combatant, StatusKind.EffondrementActive))
-                    {
-                        combatant->PM += 1;
-                        Log.Info($"[TurnSystem] Effondrement actif : +1 PM sur P{combatant->PlayerIndex} -> PM={combatant->PM}");
-                    }
+                    // Refonte 29 mai — Effondrement : déclenchement IMMÉDIAT au cast (plus d'annonce
+                    //   différée ici) ET retrait du +1 PM du buff. Le buff EffondrementActive ne donne
+                    //   plus que -1 PA cost (EffectiveStats.GetPACost) + -30% dgts subis (DamageReductionPercent).
 
                     // 3.4 — Passif Necram "La Floraison" : tick venin sur le porteur,
                     // regen Necram tier 2+, halo toxique sur ennemis adjacents tier 2+,
@@ -432,32 +403,19 @@ namespace Quantum
                 }
             }
 
-            // 3.5.c.i — Voile de Pestilence (hook adjacence) : a la fin du sub-turn de l'ennemi
-            // (= player actif qui finit son tour), iter les Necrams porteurs de PestilenceAura
-            // ennemis ; si Manhattan <= 2 entre Necram et l'ennemi finissant -> +1 marque venin
-            // sur l'ennemi. Skip si le Necram porteur est mort (HP <= 0).
+            // Refonte 29 mai — CONTAGION (auto-propagation) : à la fin du sub-turn du combattant
+            // actif, s'il porte le status Contagious, il prend +1 marque venin AUTO sur lui-même.
+            // (Remplace l'ancien hook adjacence de Voile de Pestilence, retiré.)
             {
                 var endingFilter = f.Filter<Combatant>();
                 while (endingFilter.NextUnsafe(out EntityRef _, out Combatant* ending))
                 {
                     if (ending->PlayerIndex != state->ActivePlayerIndex) continue;
                     if (ending->HP <= 0) break;
-                    // Iter tous les combattants porteurs de PestilenceAura ennemis du finissant.
-                    var veiledFilter = f.Filter<Combatant>();
-                    while (veiledFilter.NextUnsafe(out EntityRef _, out Combatant* veiled))
+                    if (StatusHelper.Has(ending, StatusKind.Contagious))
                     {
-                        if (veiled->PlayerIndex == ending->PlayerIndex) continue;
-                        if (veiled->HP <= 0) continue;
-                        if (!StatusHelper.Has(veiled, StatusKind.PestilenceAura)) continue;
-                        int dxV = ending->GridX - veiled->GridX;
-                        int dyV = ending->GridY - veiled->GridY;
-                        int adxV = dxV < 0 ? -dxV : dxV;
-                        int adyV = dyV < 0 ? -dyV : dyV;
-                        int distV = adxV + adyV;
-                        if (distV > SpellRegistry.VoilePestilenceAdjacencyRange) continue;
-                        VeninHelpers.ApplyMark(f, ending,
-                            SpellRegistry.VoilePestilenceMarksOnAdjacency, state->TurnNumber);
-                        Log.Info($"[Voile Pestilence] P{ending->PlayerIndex} fin sub-turn a Manhattan {distV} du Necram P{veiled->PlayerIndex} : +{SpellRegistry.VoilePestilenceMarksOnAdjacency} marque venin");
+                        VeninHelpers.ApplyMark(f, ending, 1, state->TurnNumber);
+                        Log.Info($"[Contagion] P{ending->PlayerIndex} fin de tour : +1 marque venin auto (Contagious actif)");
                     }
                     break;
                 }
@@ -530,37 +488,10 @@ namespace Quantum
                 FogHelpers.DecrementAllVeilsOnTurnEnd(f, state->TurnNumber);
                 MarkHelpers.DecrementAllMarksOnTurnEnd(f, state->TurnNumber);
 
-                // 2.15.a — Passif Prescience Nightseer (Bible "L'Œil qui n'est pas") :
-                //   +1 PR par round ou le Nightseer N'A PAS pris de degats directs.
-                //   -1 PR si degats directs subis ce round.
-                //   Cap a CombatantStats.GetMaxResource(Nightseer) = 4.
-                //   Plancher : 0 PR.
-                var prescienceFilter = f.Filter<Combatant>();
-                while (prescienceFilter.NextUnsafe(out EntityRef _, out Combatant* ns))
-                {
-                    if (ns->Class != NymoraClass.Nightseer) continue;
-                    if (ns->HP <= 0) continue; // mort, on ne touche pas
-                    int maxResource = CombatantStats.GetMaxResource(ns->Class);
-                    int beforeRes = ns->Resource;
-                    if (ns->DamageTakenThisRound == 0)
-                    {
-                        // Pas de degats ce round -> +1 PR
-                        ns->Resource = beforeRes + 1 > maxResource ? maxResource : beforeRes + 1;
-                        if (ns->Resource != beforeRes)
-                        {
-                            Log.Info($"[Prescience] +1 PR sur P{ns->PlayerIndex} (no damage round {state->TurnNumber}) : {beforeRes} -> {ns->Resource}");
-                        }
-                    }
-                    else
-                    {
-                        // A pris des degats -> -1 PR
-                        ns->Resource = beforeRes - 1 < 0 ? 0 : beforeRes - 1;
-                        if (ns->Resource != beforeRes)
-                        {
-                            Log.Info($"[Prescience] -1 PR sur P{ns->PlayerIndex} (dgts subis {ns->DamageTakenThisRound} round {state->TurnNumber}) : {beforeRes} -> {ns->Resource}");
-                        }
-                    }
-                }
+                // Refonte 29 mai — Prescience : l'ancienne génération de fin de round (+1 sans dégâts /
+                //   -1 avec dégâts) est RETIRÉE. Nouvelle économie : +1 PR par piège posé / déclenché /
+                //   marque appliquée (cap +3/tour), gérée par NightseerPassif.GainPrescienceForPlayer
+                //   aux hooks correspondants (FogHelpers / handlers de marque).
             }
 
             // 2.16.c.i — MATCH END check : si au moins un combattant a HP=0, fin du combat.
@@ -714,11 +645,12 @@ namespace Quantum
         ///   - 200 dgts sur la cible swap (damage compute avec shield/reductions).
         ///   - Pose Failles dans le rayon 2 autour de l'ANCIEN centre (= case ex-caster). Skip
         ///     la case caster post-swap pour ne pas l'enfermer.
-        ///   - Apply EffondrementActive (buff 2T : +1 PM / -1 PA cost / -30% dgts subis).
+        ///   - Apply EffondrementActive (buff 2T : -1 PA cost / -30% dgts subis ; refonte 29 mai : plus de +1 PM).
         ///   - Cas degenere : pas de cible snapshot ou cible morte -> pas de swap, juste Failles
         ///     autour de la case caster + buff.
+        /// Refonte 29 mai : appele IMMEDIATEMENT au cast (SpellSystem) au lieu d'un trigger differe.
         /// </summary>
-        private static void TriggerEffondrement(Frame f, Combatant* caster, int currentTurn)
+        internal static void TriggerEffondrement(Frame f, Combatant* caster, int currentTurn)
         {
             int casterStartX = caster->GridX;
             int casterStartY = caster->GridY;

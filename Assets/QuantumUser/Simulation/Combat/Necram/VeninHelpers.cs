@@ -13,10 +13,10 @@ namespace Quantum
     ///     Necram vs tanks Bible).
     ///
     /// Densite globale Floraison = somme(VeninStacks) sur TOUS les Combatants vivants
-    /// (toutes cibles confondues). 3 paliers Bible :
-    ///   - Densite 1-3 : 30 dmg/marque/tick
-    ///   - Densite 4-6 : 40 dmg/marque/tick + regen Necram +10/marque + halo toxique rayon 3
-    ///   - Densite 7+  : 50 dmg/marque/tick + Virus Fatal debloque
+    /// (toutes cibles confondues). 3 paliers (refonte 29 mai) :
+    ///   - Densite 1-2 : 40 dmg/marque/tick
+    ///   - Densite 3-6 : 50 dmg/marque/tick + regen Necram +10/marque + halo toxique rayon 3
+    ///   - Densite 7+  : 60 dmg/marque/tick + Virus Fatal debloque
     ///
     /// Ressource Putrefaction gain rules (Bible) :
     ///   - +1 PT par tick venin global (TickAll appel ce gain via Necram lookup).
@@ -27,11 +27,12 @@ namespace Quantum
         // Bible V7.1 — verrouille (modif = bump CombatRulesVersion).
         public const int MaxStacksPerTarget = 4;
 
-        public const int TickDmgPerMark_Tier1 = 30; // densite 1-3
-        public const int TickDmgPerMark_Tier2 = 40; // densite 4-6
-        public const int TickDmgPerMark_Tier3 = 50; // densite 7+
+        // Refonte 29 mai : clock renforce 40/50/60, palier 2 (tier 1) des densite 3.
+        public const int TickDmgPerMark_Tier1 = 40; // densite 1-2
+        public const int TickDmgPerMark_Tier2 = 50; // densite 3-6
+        public const int TickDmgPerMark_Tier3 = 60; // densite 7+
 
-        public const int Tier2Threshold = 4; // densite >= 4 -> tier 2
+        public const int Tier2Threshold = 3; // densite >= 3 -> tier 2 (refonte : etait 4)
         public const int Tier3Threshold = 7; // densite >= 7 -> tier 3
 
         public const int PutrefactionGainPerMarkApplied = 1;
@@ -215,6 +216,15 @@ namespace Quantum
                 totalDmg += marqueSacBonus;
             }
 
+            // Refonte 29 mai — Brume Toxique : tick MAJORÉ si le porteur se tient dans la zone
+            // (+BrumeToxiqueTickBonusPerMark par marque). Bypass shield/réduction comme le tick.
+            int brumeBonus = 0;
+            if (GridHelpers.GetTerrainKind(f, target->GridX, target->GridY) == TerrainKind.BrumeToxique)
+            {
+                brumeBonus = target->VeninStacks * SpellRegistry.BrumeToxiqueTickBonusPerMark;
+                totalDmg += brumeBonus;
+            }
+
             int hpBefore = target->HP;
             target->HP -= totalDmg;
             if (target->HP < 0) target->HP = 0;
@@ -238,27 +248,24 @@ namespace Quantum
                 Log.Info($"[Venin] Tick P{target->PlayerIndex} : {target->VeninStacks} marques * {dmgPerMark} dmg = -{totalDmg} HP (HP {hpBefore} -> {target->HP}, density {density})");
             }
 
-            // 3.5.b.ii — Symbiose Morbide : tout Necram vivant porteur du status est soigne
-            // de min(stacks, 4) * Magnitude HP a chaque tick venin sur un ennemi (Bible V7.1
-            // "cap 4 marques actives qui comptent pour le heal"). VeninStacks est deja cap 4
-            // via ApplyMark mais on garde le min(,4) defense en profondeur.
-            int stacksForHeal = target->VeninStacks > 4 ? 4 : target->VeninStacks;
-            if (stacksForHeal > 0)
+            // 3.5.b.ii — Symbiose Morbide (refonte 29 mai) : tout Necram vivant porteur du status
+            // est soigne d'un montant FLAT (Magnitude = 15 HP) a CHAQUE tick venin sur un ennemi
+            // (n'echelonne plus par nb de marques). Cap +60/tour Bible non traque ici (moot en 1v1,
+            // a brancher avec un compteur si besoin en 2v2/3v3).
             {
                 var symbioseFilter = f.Filter<Combatant>();
                 while (symbioseFilter.NextUnsafe(out EntityRef _, out Combatant* necram))
                 {
                     if (necram->Class != NymoraClass.Necram) continue;
                     if (necram->HP <= 0) continue;
-                    int healPerMark = StatusHelper.GetMagnitude(necram, StatusKind.SymbioseMorbide, 0);
-                    if (healPerMark <= 0) continue;
-                    int healAmount = stacksForHeal * healPerMark;
+                    int healPerTick = StatusHelper.GetMagnitude(necram, StatusKind.SymbioseMorbide, 0);
+                    if (healPerTick <= 0) continue;
                     int necramHpBefore = necram->HP;
-                    necram->HP = necram->HP + healAmount > necram->MaxHP ? necram->MaxHP : necram->HP + healAmount;
+                    necram->HP = necram->HP + healPerTick > necram->MaxHP ? necram->MaxHP : necram->HP + healPerTick;
                     int realHeal = necram->HP - necramHpBefore;
                     if (realHeal > 0)
                     {
-                        Log.Info($"[Symbiose Morbide] Necram P{necram->PlayerIndex} heal +{realHeal} HP (tick sur P{target->PlayerIndex}, {stacksForHeal} marques * {healPerMark}) : {necramHpBefore}->{necram->HP}");
+                        Log.Info($"[Symbiose Morbide] Necram P{necram->PlayerIndex} heal +{realHeal} HP (tick sur P{target->PlayerIndex}, flat {healPerTick}) : {necramHpBefore}->{necram->HP}");
                     }
                 }
             }

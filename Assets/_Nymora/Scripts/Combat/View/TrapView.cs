@@ -56,6 +56,8 @@ namespace Nymora.Combat.View
         [SerializeField] private Color _filetColor = new Color(0.20f, 0.85f, 0.20f, 0.95f);
         [Tooltip("Mine (Champ de Mines) — overlay rouge semi-transparent.")]
         [SerializeField] private Color _mineColor = new Color(0.95f, 0.20f, 0.20f, 0.95f);
+        [Tooltip("Piège Bondissant (catapulte) — overlay JAUNE pour le distinguer (refonte 29 mai).")]
+        [SerializeField] private Color _bondissantColor = new Color(0.98f, 0.85f, 0.15f, 0.95f);
 
         [Header("Rendu")]
         [Tooltip("Offset de sortingOrder par rapport a la tile de base (1 = juste au-dessus du sol, " +
@@ -173,6 +175,7 @@ namespace Nymora.Combat.View
             var game = QuantumRunner.Default?.Game;
             if (game == null) return;
             var frame = game.Frames.Verified;
+            if (frame == null) return; // seek replay : runner relance, frame verifiee pas encore prete
             if (!frame.TryGetSingleton<CombatState>(out var state)) return;
             if (!frame.TryGetSingleton<FogSingleton>(out _)) return;
 
@@ -187,7 +190,13 @@ namespace Nymora.Combat.View
 
                     TrapKind kind = FogHelpers.GetTrapKind(frame, x, y);
                     int owner = FogHelpers.GetTrapOwner(frame, x, y);
-                    bool show = kind != TrapKind.None && owner == viewer;
+                    // Refonte 29 mai — pièges VISIBLES par défaut, visibilité DYNAMIQUE (pas de voile) :
+                    //   le propriétaire voit toujours ses pièges ; l'adversaire les voit SAUF si le
+                    //   Nightseer propriétaire est ACTUELLEMENT en phase 3 (PR 5) -> tous ses pièges
+                    //   (même posés avant 5/5) disparaissent totalement, et réapparaissent s'il redescend.
+                    //   Le filtre ne tourne que sur les cases à piège ennemi (rares).
+                    bool show = kind != TrapKind.None
+                                && (owner == viewer || !NightseerPassif.TrapsInvisibleForOwner(frame, owner));
 
                     bool wasActive = _overlayGOs[idx].activeSelf;
                     bool kindOrOwnerChanged = _currentKind[idx] != kind || _currentOwner[idx] != owner;
@@ -237,6 +246,16 @@ namespace Nymora.Combat.View
                             }
                         }
                     }
+                    // Refonte 29 mai — Piège Bondissant DÉCLENCHÉ : la case passe de Bondissant à
+                    //   rien (ClearTrap au trigger) -> bouffée de FUMÉE à la position de la case,
+                    //   pour montrer clairement où/quand le piège a sauté. Spawn une seule fois.
+                    if (_currentKind[idx] == TrapKind.Bondissant && kind == TrapKind.None)
+                    {
+                        var psr = _overlayRenderers[idx];
+                        ProceduralVfx.Smoke(transform, _overlayGOs[idx].transform.position,
+                            psr.sortingLayerName, psr.sortingOrder + 5);
+                    }
+
                     _currentKind[idx] = kind;
                     _currentOwner[idx] = owner;
                 }
@@ -269,6 +288,7 @@ namespace Nymora.Combat.View
             {
                 case TrapKind.FiletRonces: return _filetColor;
                 case TrapKind.Mine:        return _mineColor;
+                case TrapKind.Bondissant:  return _bondissantColor; // jaune (refonte 29 mai)
                 default:                    return _filetColor;
             }
         }

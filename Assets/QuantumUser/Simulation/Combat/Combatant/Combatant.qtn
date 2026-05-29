@@ -268,4 +268,38 @@ component Combatant
     //   compute IsoFacing depuis dx/dy du dernier deplacement). Lu par GhostraPassif.IsDorsalHit
     //   pour le bonus dorsal Ghostra Bible V7.1 (+50 Angle 2 / +80 Angle 3 + Plaie Ouverte auto).
     IsoFacing Facing;
+
+    // Refonte 29 mai 2026 — MOTEUR GENERIQUE LIMITES/RELANCES (cf SpellLimitsHelper).
+    //   Remplace les champs dedies au cas par cas (DagueLanceeCountThisTurn, LastXxxUsedOnTurn)
+    //   pour les sorts touches par la refonte d'equilibrage. Les caps "Nx/tour" et les relances
+    //   "N tours" sont declares par sort dans SpellRegistry.SpellDef (MaxUsesPerTurn / CooldownTurns)
+    //   et appliques 100% generiquement par SpellSystem (gate pre-PA + commit post-PA).
+    //
+    //   CastsThisTurnLog : journal des SpellId castes pendant le ROUND courant (semantique Dofus,
+    //     "tour" = round = TurnNumber). 16 slots >> max de casts/round (8 PA, min 1 PA/sort).
+    //     Reset PARESSEUX : si CastsThisTurnLoggedTurn != TurnNumber courant, le journal est
+    //     considere vide (pattern DagueLanceeCountThisTurn) -> aucun hook dans TurnSystem.
+    array<SpellId>[16] CastsThisTurnLog;
+    Int32 CastsThisTurnCount;
+    Int32 CastsThisTurnLoggedTurn;
+
+    //   SpellCooldownLastTurn : round du dernier cast d'un sort a relance, indexe par (Int32)SpellId.
+    //     0 = jamais caste (sentinelle ; TurnNumber demarre a 1). Taille 110 >= max SpellId (101)
+    //     avec marge. SpellLimitsHelper garde-foue les index hors borne.
+    array<Int32>[110] SpellCooldownLastTurn;
+
+    // Refonte 29 mai — Nightseer : PR (Prescience) gagnees pendant le tour courant du Nightseer.
+    //   Nouvelle economie : +1 PR par piege pose / piege declenche / marque appliquee, cap +3/tour.
+    //   Reset au debut du sub-turn du Nightseer (TurnSystem.EnterTurnStart). Cf NightseerPassif.
+    Int32 PrescienceGainedThisTurn;
+
+    // Refonte 29 mai — PM depenses pendant le tour PRECEDENT du combattant (= MaxPM - PM restant,
+    //   capture au TurnStart AVANT le reset PM). Sert a Frappe de l'Ombre (+50 si 3 PM depenses)
+    //   et Fleche Tracante (60/PM depense, max 180). Approximation : compte le mouvement (PM).
+    Int32 PMSpentLastTurn;
+
+    // Refonte 29 mai — compteur monotone incremente quand ce combattant est EJECTE par un Piege
+    //   Bondissant. La View (CombatantRenderer) detecte l'increment pour rendre un LANCEMENT (snap +
+    //   flash) au lieu d'un walk trompeur. Init 0, jamais reset.
+    Int32 LastEjectedSequence;
 }

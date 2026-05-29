@@ -6,8 +6,8 @@ namespace Quantum
     /// Effets continus du passif au debut de chaque sub-turn (calcules a la volee depuis
     /// la densite globale, pas d'etat cache) :
     ///   1. Tick venin sur le porteur (delegue a <see cref="VeninHelpers.TryTick"/>).
-    ///   2. Si densite >= 4 (tier 2) : regen Necram +10 HP par marque GLOBALE active.
-    ///   3. Si densite >= 4 (tier 2) : halo toxique rayon 3 — chaque ennemi qui commence
+    ///   2. Si densite >= 3 (tier 2, refonte 29 mai) : regen Necram +10 HP par marque GLOBALE active.
+    ///   3. Si densite >= 3 (tier 2) : halo toxique rayon 3 — chaque ennemi qui commence
     ///      son sub-turn a Manhattan <= 3 du Necram prend 20 dmg.
     ///   4. Si densite >= 7 (tier 3) : Virus Fatal (signature 3.5.d) deviendrait
     ///      castable (gate handled cote SpellSystem quand 3.5.d sera livre).

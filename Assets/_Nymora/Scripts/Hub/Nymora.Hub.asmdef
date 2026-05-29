@@ -4,6 +4,7 @@
     "references": [
         "Nymora.Core",
         "Nymora.Network",
+        "Nymora.Combat",
         "Fusion.Unity",
         "Unity.TextMeshPro",
         "UniTask",

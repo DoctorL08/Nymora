@@ -6,7 +6,7 @@ namespace Quantum
     /// 3.2 — Helpers passif Colossar "Densite Inerte" (Bible V7.1).
     ///
     /// Effets continus du passif (etat lie au nb d'obstacles owner=Colossar actifs) :
-    ///   1. -8% degats subis par obstacle actif (cap -24% = 3 obstacles).
+    ///   1. -6% degats subis par obstacle actif (cap -18% = 3 obstacles) [refonte 29 mai].
     ///   2. +30 HP au Colossar quand un de ses Piliers est detruit.
     ///   3. +20 dmg sorts portee 1-2 si Colossar adjacent a un de ses obstacles
     ///      (sera branche en 3.3.a quand les sorts melee Colossar arrivent).
@@ -17,9 +17,9 @@ namespace Quantum
     /// </summary>
     public static unsafe class ColossarPassif
     {
-        // Bible V7.1 (verrouille — modif = bump CombatRulesVersion).
-        public const int DamageReductionPercentPerObstacle = 8;
-        public const int MaxDamageReductionPercent = 24; // cap = 3 obstacles
+        // Refonte 29 mai : nerf tankiness (compense 3 PM + signature imparable).
+        public const int DamageReductionPercentPerObstacle = 6;  // etait 8
+        public const int MaxDamageReductionPercent = 18; // cap = 3 obstacles (etait 24)
         public const int HpRestoredOnPillarDestroyed = 30;
         public const int AdjacentObstacleBonusDamage = 20;
         public const int AdjacentBonusMaxRange = 2; // sorts portee 1-2 (melee + courte distance)
@@ -64,7 +64,7 @@ namespace Quantum
         /// Densite Inerte — reduction % degats subis pour la cible si elle est Colossar.
         /// Retourne 0 si pas Colossar ou pas d'obstacle.
         ///
-        /// Formule : 8% par obstacle actif owner=cible, cap 24% (3 obstacles).
+        /// Formule : 6% par obstacle actif owner=cible, cap 18% (3 obstacles) [refonte 29 mai].
         /// </summary>
         public static int GetDamageReductionPercent(Frame f, Combatant* target)
         {

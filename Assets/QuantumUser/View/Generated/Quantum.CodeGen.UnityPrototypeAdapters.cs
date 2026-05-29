@@ -100,6 +100,15 @@ namespace Quantum.Prototypes.Unity {
     public Int32 DagueLanceeCountThisTurn;
     public Int32 LastExecutionSpectraleUsedOnTurn;
     public Quantum.QEnum8<IsoFacing> Facing;
+    [ArrayLengthAttribute(16)]
+    public Quantum.QEnum8<SpellId>[] CastsThisTurnLog = new Quantum.QEnum8<SpellId>[16];
+    public Int32 CastsThisTurnCount;
+    public Int32 CastsThisTurnLoggedTurn;
+    [ArrayLengthAttribute(110)]
+    public Int32[] SpellCooldownLastTurn = new Int32[110];
+    public Int32 PrescienceGainedThisTurn;
+    public Int32 PMSpentLastTurn;
+    public Int32 LastEjectedSequence;
     partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.CombatantPrototype prototype);
     public override Quantum.Prototypes.CombatantPrototype Convert(Quantum.QuantumEntityPrototypeConverter converter) {
       var result = new Quantum.Prototypes.CombatantPrototype();
@@ -150,6 +159,13 @@ namespace Quantum.Prototypes.Unity {
       converter.Convert(this.DagueLanceeCountThisTurn, out result.DagueLanceeCountThisTurn);
       converter.Convert(this.LastExecutionSpectraleUsedOnTurn, out result.LastExecutionSpectraleUsedOnTurn);
       converter.Convert(this.Facing, out result.Facing);
+      converter.Convert(this.CastsThisTurnLog, out result.CastsThisTurnLog);
+      converter.Convert(this.CastsThisTurnCount, out result.CastsThisTurnCount);
+      converter.Convert(this.CastsThisTurnLoggedTurn, out result.CastsThisTurnLoggedTurn);
+      converter.Convert(this.SpellCooldownLastTurn, out result.SpellCooldownLastTurn);
+      converter.Convert(this.PrescienceGainedThisTurn, out result.PrescienceGainedThisTurn);
+      converter.Convert(this.PMSpentLastTurn, out result.PMSpentLastTurn);
+      converter.Convert(this.LastEjectedSequence, out result.LastEjectedSequence);
       ConvertUser(converter, ref result);
       return result;
     }

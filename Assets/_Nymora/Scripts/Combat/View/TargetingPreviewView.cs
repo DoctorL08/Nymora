@@ -73,6 +73,29 @@ namespace Nymora.Combat.View
 
             if (_camera == null) return;
 
+            // Refonte 29 mai — PRÉVISU DE SÉLECTION DE DIRECTION (2e clic d'un sort directionnel,
+            //   ex Bourrasque) : on surligne les 4 axes cardinaux depuis la cible jusqu'à la distance
+            //   de push, pour montrer au joueur où cliquer pour choisir le sens. Le sort armé est
+            //   déjà consommé (1er clic), donc la range normale ne s'afficherait pas.
+            if (_inputController != null && _inputController.AwaitingPushDir)
+            {
+                int tx = _inputController.PushDirTargetX;
+                int ty = _inputController.PushDirTargetY;
+                int[] ddx = { 1, -1, 0, 0 };
+                int[] ddy = { 0, 0, 1, -1 };
+                for (int d = 0; d < 4; d++)
+                {
+                    // Une seule case adjacente par direction (indicateur de sens, pas la portée du push).
+                    int gx = tx + ddx[d];
+                    int gy = ty + ddy[d];
+                    var dirTile = _gridRenderer.GetTileView(gx, gy);
+                    if (dirTile == null) continue;
+                    dirTile.ApplyHighlight(_castableColor);
+                    _highlighted.Add(gy * GridConstants.Width + gx);
+                }
+                return;
+            }
+
             // Resolution de la source de preview : armed spell > debug mode > rien.
             // Note 2.13.b : on n'utilise plus le Filter cote View pour le highlight bleu.
             // La portee Manhattan complete est affichee ; Quantum filtre au cast.
@@ -91,7 +114,11 @@ namespace Nymora.Combat.View
                 shape = def.Shape;
                 rangeMin = def.RangeMin;
                 rangeMax = def.RangeMax;
-                isStraightLineSpell = _hudController.ArmedSpell.Value == SpellId.ColossarChocSismique;
+                // Sorts en LIGNE DROITE cardinale : Choc Sismique (Colossar) + Charge Brutale
+                //   (Soulrender, refonte 29 mai : "ligne de 4" — la portee castable se limite aux
+                //   cases cardinalement alignees, coherent avec le garde sim).
+                isStraightLineSpell = _hudController.ArmedSpell.Value == SpellId.ColossarChocSismique
+                                   || _hudController.ArmedSpell.Value == SpellId.SoulrenderChargeBrutale;
                 needsLineOfSight = SpellSystem.SpellNeedsLineOfSight(_hudController.ArmedSpell.Value);
             }
             else if (_inputController != null && _inputController.DebugShowTargeting)

@@ -22,6 +22,14 @@ namespace Quantum
         public int TargetY;
         public byte HGSpend;
 
+        // Refonte 29 mai — sorts à PUSH DIRECTIONNEL (Bourrasque, Piège Bondissant) : 2e clic.
+        //   (DirX, DirY) = case du 2e clic ; la direction = sens (TargetX,TargetY) -> (DirX,DirY),
+        //   réduit à une cardinale par le sim. Si (DirX,DirY) == (TargetX,TargetY) ou non renseigné
+        //   -> pas de direction (le sim retombe sur "loin du caster"). Défaut -1 = absent
+        //   (initialiseurs : tout cast non-directionnel — IA, tuto, debug — reste à -1/-1).
+        public int DirX = -1;
+        public int DirY = -1;
+
         public override void Serialize(BitStream stream)
         {
             // SpellId est un enum Byte. On serialise en byte puis on cast back.
@@ -32,6 +40,8 @@ namespace Quantum
             stream.Serialize(ref TargetX);
             stream.Serialize(ref TargetY);
             stream.Serialize(ref HGSpend);
+            stream.Serialize(ref DirX);
+            stream.Serialize(ref DirY);
         }
     }
 }

@@ -91,6 +91,22 @@ namespace Nymora.Combat.View.HUD
                 _returnToHubButton.onClick.AddListener(OnReturnToHubClicked);
             }
             Hide();
+            HideDeprecatedRestartButtons();
+        }
+
+        // Les boutons « Rejouer Easy / Medium » sont dépréciés (restartVisible toujours false :
+        // on relance un combat IA via Hub > Arène). Dans les scènes PvP (casual / ranked 1v1) leurs
+        // références ne sont PAS câblées sur l'overlay -> ils restaient visibles au match-end. On les
+        // masque par NOM dans la hiérarchie du panel, quelle que soit la scène / le câblage.
+        private void HideDeprecatedRestartButtons()
+        {
+            var root = _panel != null ? _panel.transform : transform;
+            foreach (var t in root.GetComponentsInChildren<Transform>(true))
+            {
+                if (t == null) continue;
+                if (t.name == "RestartEasyButton" || t.name == "RestartMediumButton")
+                    t.gameObject.SetActive(false);
+            }
         }
 
         /// <summary>

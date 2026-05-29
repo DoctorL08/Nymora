@@ -25,6 +25,8 @@ enum TrapKind : Byte
     None        = 0,
     FiletRonces = 1,
     Mine        = 2,
+    Bondissant  = 3,  // Refonte 29 mai — Piège Bondissant : éjecte l'ennemi dans la direction
+                      //   choisie à la pose (FogTile.TrapDir). Pas de dégâts directs (catapulte).
 }
 
 struct Tile {

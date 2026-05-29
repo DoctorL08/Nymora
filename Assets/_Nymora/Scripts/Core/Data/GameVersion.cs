@@ -32,7 +32,20 @@ namespace Nymora.Core.Data
         //                (flag false partout ailleurs).
         // 85 (Tuto T5) : flag RuntimeConfig.TutorialFreezeTimer — en tutoriel le timer ne décrémente
         //                pas pendant le tour du joueur (il prend son temps). Idem : false ailleurs.
-        public const int CombatRulesVersion = 85;
+        // 86 (Refonte 29 mai, Brique 0) : moteur GENERIQUE limites/relances. Ajout des champs
+        //                [Networked] Combatant (CastsThisTurnLog/Count/LoggedTurn + SpellCooldownLastTurn)
+        //                + SpellDef.MaxUsesPerTurn/CooldownTurns + gates SpellSystem + garde IA.
+        //                Purement additif : aucun sort ne renseigne encore de cap/relance
+        //                (comportement inchange), les briques de classe rempliront les valeurs.
+        // 87 (Fix pièges au passage, 30 mai) : les pièges se déclenchent désormais sur TOUTES les
+        //                cases traversées (1) par l'IA — qui se déplace en direct hors
+        //                MovementSystem.ApplyMove, ne déclenchait qu'à l'arrêt — (2) par une
+        //                poussée (Bourrasque/Onde de Choc/Éboulement) sur toute la trajectoire,
+        //                plus seulement la case d'arrivée, et (3) par la CATAPULTE du Piège
+        //                Bondissant (éjection FogHelpers) qui survolait les autres pièges sans
+        //                les déclencher. Aligne IA + push + catapulte sur le comportement joueur
+        //                (MovementSystem.ApplyMove boucle de traversée).
+        public const int CombatRulesVersion = 87;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

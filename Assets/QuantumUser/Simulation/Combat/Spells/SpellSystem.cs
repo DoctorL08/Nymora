@@ -76,7 +76,9 @@ namespace Quantum
             // 2.11 : compute target HP ratio for passif Appel du Sang (Soulrender -1 PA si <70% HP).
             int targetHPRatio = EffectiveStats.ResolveTargetHPRatio(f, cmd.TargetX, cmd.TargetY, playerIndex);
 
-            int effectivePACost = EffectiveStats.GetPACost(spellDef, caster, targetHPRatio);
+            // Refonte 29 mai : round courant pour le passif "-1 PA sur le 1er sort du tour".
+            int turnForPACost = f.TryGetSingleton<CombatState>(out var statePA) ? statePA.TurnNumber : 0;
+            int effectivePACost = EffectiveStats.GetPACost(spellDef, caster, targetHPRatio, turnForPACost);
 
             // 3.3.b.iii — Provocation Bible : sorts non-ciblant le provocateur coutent +2 PA.
             // Magnitude Provoked = PlayerIndex du provocateur. Lookup combatant correspondant, si la
@@ -272,12 +274,7 @@ namespace Quantum
                     Log.Warn($"[Spell] rejet : Effondrement en cooldown ({turnsSinceUse}/{SpellRegistry.EffondrementCooldownTurns} tours depuis dernier usage tour {caster->LastEffondrementUsedOnTurn})");
                     return;
                 }
-                // Garde-fou : refuse re-annonce tant qu'une annonce precedente n'a pas trigger.
-                if (caster->EffondrementAnnouncedOnTurn >= 0)
-                {
-                    Log.Warn($"[Spell] rejet : Effondrement deja annonce au tour {caster->EffondrementAnnouncedOnTurn} (en attente de trigger)");
-                    return;
-                }
+                // Refonte 29 mai : plus d'annonce différée -> plus de garde-fou "déjà annoncé".
                 // 3.3.d design Lorenzo : refuse le cast si aucun ennemi vivant dans le rayon 2.
                 // Le sort coute 4 PA + 3 FD = pas gachis sur cast a vide. Force un setup melee
                 // (Empoignade pull, ou ennemi proche naturellement).
@@ -332,6 +329,14 @@ namespace Quantum
                 && hgSpend >= SpellRegistry.DetonationOniriquePROptionCost)
             {
                 effectiveRangeMax = SpellRegistry.DetonationOniriqueRangeMaxBoosted;
+            }
+            // Refonte 29 mai — Nightseer Passif phasé P2+ : +1 portée sur les sorts à distance
+            //   (RangeMax >= 1, exclut self) si le Nightseer est en phase >= 2 (PR 3-4+).
+            if (caster->Class == NymoraClass.Nightseer
+                && spellDef.RangeMax >= 1
+                && NightseerPassif.FlatDamageRangeBonusActive(caster->Resource))
+            {
+                effectiveRangeMax += NightseerPassif.RangeBonus;
             }
 
             if (dist < spellDef.RangeMin || dist > effectiveRangeMax)
@@ -475,6 +480,71 @@ namespace Quantum
                 }
             }
 
+            // Refonte 29 mai — Charge Brutale : ligne DROITE de 4 uniquement. La cible doit etre
+            //   alignee cardinalement (meme ligne OU meme colonne) avec le caster. Sans ce garde,
+            //   l'axe dominant snappait une cible diagonale (Manhattan 4) sur un axe -> "pas en ligne".
+            if (cmd.Spell == SpellId.SoulrenderChargeBrutale)
+            {
+                int cbdx = cmd.TargetX - caster->GridX;
+                int cbdy = cmd.TargetY - caster->GridY;
+                if (cbdx != 0 && cbdy != 0)
+                {
+                    Log.Warn($"[Spell] rejet : Charge Brutale cible non alignee (ligne droite cardinale requise) dx={cbdx} dy={cbdy}");
+                    return;
+                }
+            }
+
+            // Refonte 29 mai — Éboulement (ex-Soin Lourd) : requiert un de TES Piliers sur la case
+            //   ciblée. Reject AVANT consommation PA (pas de cast à vide).
+            if (cmd.Spell == SpellId.ColossarSoinLourd)
+            {
+                EntityRef ebObs = ObstacleHelpers.GetObstacleAt(f, cmd.TargetX, cmd.TargetY);
+                bool ownPillar = ebObs != EntityRef.None
+                    && f.Unsafe.TryGetPointer<Obstacle>(ebObs, out Obstacle* ebObsC)
+                    && ebObsC->Kind == ObstacleKind.Pillar
+                    && ebObsC->OwnerPlayerIndex == caster->PlayerIndex
+                    && ebObsC->HP > 0;
+                if (!ownPillar)
+                {
+                    Log.Warn($"[Spell] rejet : Éboulement requiert un de tes Piliers sur ({cmd.TargetX},{cmd.TargetY})");
+                    return;
+                }
+            }
+
+            // Refonte 29 mai — Détonation Virulente : requiert une cible ennemie MARQUÉE (venin)
+            //   vivante. Reject AVANT consommation PA (pas de tick à vide).
+            if (cmd.Spell == SpellId.NecramDetonationVirulente)
+            {
+                EntityRef dvGateTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                bool dvHasMarked = dvGateTarget != EntityRef.None
+                    && f.Unsafe.TryGetPointer<Combatant>(dvGateTarget, out Combatant* dvGateC)
+                    && dvGateC->PlayerIndex != caster->PlayerIndex
+                    && dvGateC->HP > 0
+                    && dvGateC->VeninStacks > 0;
+                if (!dvHasMarked)
+                {
+                    Log.Warn($"[Spell] rejet : Détonation Virulente requiert une cible marquée (venin) vivante en ({cmd.TargetX},{cmd.TargetY})");
+                    return;
+                }
+            }
+
+            // Refonte 29 mai — GATE GENERIQUE limites/relances (cap Nx/tour + relance N tours).
+            //   Declare par sort dans SpellDef.MaxUsesPerTurn / CooldownTurns. Reject AVANT
+            //   consommation des PA (pas de cast "perdu"). No-op si les deux valent 0 (defaut).
+            {
+                int genTurn = f.TryGetSingleton<CombatState>(out var stGen) ? stGen.TurnNumber : 0;
+                if (SpellLimitsHelper.CapReached(caster, cmd.Spell, spellDef.MaxUsesPerTurn, genTurn))
+                {
+                    Log.Warn($"[Spell] rejet : {cmd.Spell} cap {spellDef.MaxUsesPerTurn}x/tour atteint (round {genTurn})");
+                    return;
+                }
+                if (SpellLimitsHelper.OnCooldown(caster, cmd.Spell, spellDef.CooldownTurns, genTurn, out int genRem))
+                {
+                    Log.Warn($"[Spell] rejet : {cmd.Spell} en relance ({genRem} tour(s) restant(s))");
+                    return;
+                }
+            }
+
             // ===== Consommation des ressources =====
             caster->PA -= effectivePACost;
 
@@ -490,6 +560,14 @@ namespace Quantum
             }
 
             int currentTurn = f.TryGetSingleton<CombatState>(out var state) ? state.TurnNumber : 0;
+
+            // Refonte 29 mai — COMMIT limites/relances : journalise le cast (caps Nx/tour) et
+            //   arme la relance si CooldownTurns > 0. Apres consommation PA = cast valide.
+            SpellLimitsHelper.RecordCast(caster, cmd.Spell, currentTurn);
+            if (spellDef.CooldownTurns > 0)
+            {
+                SpellLimitsHelper.SetCooldown(caster, cmd.Spell, currentTurn);
+            }
 
             // ===== Calcul damage effectif (buffs + HG variants) =====
             int effectiveDmg = spellDef.DamageAmount;
@@ -528,6 +606,20 @@ namespace Quantum
                 && StatusHelper.GetMagnitude(caster, StatusKind.ShieldActive, 0) > 0)
             {
                 effectiveDmg += SpellRegistry.PeauDeFerMeleeDmgBonus;
+            }
+            // Frenesie (ex-Rage Insatiable, refonte 29 mai) : +10% dgts sur les sorts offensifs
+            //   tant que RageInsatiableActive (= Frenesie) est actif. Le +1 HG/offensif est gere
+            //   apres le damage loop (hook ex-regen PA).
+            if (effectiveDmg > 0 && StatusHelper.Has(caster, StatusKind.RageInsatiableActive))
+            {
+                effectiveDmg += effectiveDmg * SpellRegistry.FrenesieDmgBonusPct / 100;
+            }
+            // Sang Bouillant : bonus FLAT "prochaine frappe +30" (NextStrikeBonus), consomme apres
+            //   le loop si le sort a inflige des degats. Applique apres les % (flat additif).
+            int nextStrikeBonus = StatusHelper.GetMagnitude(caster, StatusKind.NextStrikeBonus, 0);
+            if (effectiveDmg > 0 && nextStrikeBonus > 0)
+            {
+                effectiveDmg += nextStrikeBonus;
             }
 
             // ===== Resolution AoE =====
@@ -581,18 +673,14 @@ namespace Quantum
             int lastHitHPLoss = 0;                 // 2.11 : HP loss de la derniere cible touchee (Ame Laceree heal 50%)
             bool castTriggeredLeCri = false;       // 2.11 : passif <20% HP -> Sang Coagule croix 5
             // 2.15.a — tracking pour effets Nightseer post-damage / per-cast.
-            int nightseerPrescienceGain = 0;       // Tir Precis sur Traque : +1 PR cumulable per hit
             int volEpinesLastHitX = -1;            // Volee d'Epines : derniere case touchee pour pose Filet
             int volEpinesLastHitY = -1;
             // 3.5.a.ii — Faux Decharnee : somme cumulee des marques sur cibles touchees (pour heal post-loop).
             int fauxDecharneeMarksTotal = 0;
 
-            // 3.5.a.iii — Brume Toxique : custom handler. Pose terrain BrumeToxique sur les 9
-            // cases AoE 3x3 (effectBuffer). Pour chaque occupant present ET non-Necram (decision
-            // design caster + classe immunisee) : 60 dmg BYPASS shield/reduction (Bible V7.1
-            // "DoT ignore boucliers, reductions, sustains") + 1 marque venin. Skip damage loop
-            // standard via early return : pas de HG gain, pas de reflect, pas de Densite Inerte
-            // — la Brume est une zone DoT, pas une attaque directe.
+            // Refonte 29 mai — Brume Toxique SIMPLIFIÉE : pose terrain BrumeToxique sur les 9 cases
+            // AoE 3x3 (effectBuffer). Plus de dégâts directs : pour chaque occupant ennemi déjà dans
+            // la zone, juste +1 marque venin (le tick majoré dans la zone fait le reste). Zone 3 tours.
             if (cmd.Spell == SpellId.NecramBrumeToxique)
             {
                 for (int bi = 0; bi < effectCount; bi++)
@@ -601,29 +689,16 @@ namespace Quantum
                     int bcx = bidx % GridConstants.Width;
                     int bcy = bidx / GridConstants.Width;
 
-                    // Pose terrain (override SangCoagule/VapeurCarmin si present sur la case).
                     GridHelpers.SetTerrain(f, bcx, bcy, TerrainKind.BrumeToxique,
                         SpellRegistry.BrumeToxiqueTurns, currentTurn);
 
                     EntityRef bocc = GridHelpers.GetOccupant(f, bcx, bcy);
-                    if (bocc == EntityRef.None) continue;
-                    if (bocc == casterEntity) continue;
+                    if (bocc == EntityRef.None || bocc == casterEntity) continue;
                     if (!f.Unsafe.TryGetPointer<Combatant>(bocc, out Combatant* boccC)) continue;
-                    if (boccC->Class == NymoraClass.Necram) continue; // skip Necram (design)
-                    if (boccC->HP <= 0) continue;
-
-                    int hpBefore = boccC->HP;
-                    boccC->HP -= SpellRegistry.BrumeToxiqueDmgImmediate;
-                    if (boccC->HP < 0) boccC->HP = 0;
-                    boccC->DamageTakenThisRound += SpellRegistry.BrumeToxiqueDmgImmediate;
-                    Log.Info($"[Spell] Brume Toxique pose : -{SpellRegistry.BrumeToxiqueDmgImmediate} HP bypass sur P{boccC->PlayerIndex} ({bcx},{bcy}) HP {hpBefore} -> {boccC->HP}");
-
-                    if (boccC->HP > 0)
-                    {
-                        VeninHelpers.ApplyMark(f, boccC, SpellRegistry.BrumeToxiqueMarksOnHit, currentTurn);
-                    }
+                    if (boccC->Class == NymoraClass.Necram || boccC->HP <= 0) continue;
+                    VeninHelpers.ApplyMark(f, boccC, SpellRegistry.BrumeToxiqueMarksOnHit, currentTurn);
                 }
-                Log.Info($"[Spell] Brume Toxique posee centree ({cmd.TargetX},{cmd.TargetY}), 9 cases, {SpellRegistry.BrumeToxiqueTurns} rounds");
+                Log.Info($"[Spell] Brume Toxique posée centrée ({cmd.TargetX},{cmd.TargetY}), 9 cases, {SpellRegistry.BrumeToxiqueTurns} rounds (zone marques + tick majoré, sans dégâts directs)");
                 return;
             }
 
@@ -719,21 +794,35 @@ namespace Quantum
                         if (MarkHelpers.HasMark(targetC, MarkKind.Traque))
                         {
                             dmgThisTarget = SpellRegistry.TirPrecisDmgIfTraque;
-                            nightseerPrescienceGain += 1;
                         }
                     }
                     else if (cmd.Spell == SpellId.NightseerFrappeDeLOmbre)
                     {
-                        // Bonus si target s'est deplacee : PM courant < MaxPM/2.
-                        if (targetC->MaxPM > 0 && targetC->PM * 2 < targetC->MaxPM)
+                        // Refonte 29 mai — base 160 + TRAQUÉ. Bonus +50 si le Nightseer a dépensé >= 3 PM
+                        //   au tour précédent (mobilité récompensée). +1 PR "marque".
+                        if (caster->PMSpentLastTurn >= 3)
                         {
-                            dmgThisTarget = SpellRegistry.FrappeDeLOmbreDmgIfMoved;
-                            // Empreinte 2 tours posee a la fin de la boucle (apres damage applique).
-                            // On le fait ici (juste apres calcul dmg) car simple et evite tracker side-effect.
-                            MarkHelpers.ApplyMark(targetC, MarkKind.Empreinte,
-                                SpellRegistry.FrappeDeLOmbreEmpreinteTurns,
-                                caster->PlayerIndex, currentTurn);
-                            Log.Info($"[Spell] Frappe de l'Ombre : Empreinte {SpellRegistry.FrappeDeLOmbreEmpreinteTurns} tours sur P{targetC->PlayerIndex} (PM {targetC->PM}/{targetC->MaxPM})");
+                            dmgThisTarget += SpellRegistry.FrappeDeLOmbreDmgBonusPM;
+                        }
+                        MarkHelpers.ApplyMark(targetC, MarkKind.Traque,
+                            SpellRegistry.MarqueDuChasseurTurns, caster->PlayerIndex, currentTurn);
+                        NightseerPassif.GainPrescienceForPlayer(f, caster->PlayerIndex, currentTurn, "marque (Frappe de l'Ombre)");
+                        Log.Info($"[Spell] Frappe de l'Ombre : {dmgThisTarget} dgts (PM dépensés dernier tour {caster->PMSpentLastTurn}) + Traqué sur P{targetC->PlayerIndex}");
+                    }
+                    else if (cmd.Spell == SpellId.NightseerVoileDOmbre) // FLÈCHE TRAÇANTE (refonte 29 mai)
+                    {
+                        // 60 dégâts par PM dépensé au dernier tour (max 180), UNIQUEMENT si Traqué.
+                        if (MarkHelpers.HasMark(targetC, MarkKind.Traque))
+                        {
+                            int ft = caster->PMSpentLastTurn * SpellRegistry.FlecheTracanteDmgPerPM;
+                            if (ft > SpellRegistry.FlecheTracanteMaxDmg) ft = SpellRegistry.FlecheTracanteMaxDmg;
+                            dmgThisTarget = ft;
+                            Log.Info($"[Spell] Flèche Traçante : {ft} dgts sur P{targetC->PlayerIndex} (Traqué, {caster->PMSpentLastTurn} PM dépensés)");
+                        }
+                        else
+                        {
+                            dmgThisTarget = 0;
+                            Log.Info($"[Spell] Flèche Traçante : cible P{targetC->PlayerIndex} non Traqué -> 0 dégât");
                         }
                     }
                     else if (cmd.Spell == SpellId.NightseerSalveMortelle)
@@ -745,27 +834,17 @@ namespace Quantum
                         if (MarkHelpers.HasMark(targetC, MarkKind.Traque))
                         {
                             dmgThisTarget += SpellRegistry.SalveMortelleDmgIfTraque;
-                            nightseerPrescienceGain += 1; // 2.15.b — declenchement Traque
                         }
-                        // Voile dans la cell : +50 dgts ET dechire le voile (cleared apres apply dmg).
-                        int veilOwnerHere = FogHelpers.GetVeilOwner(f, cx, cy);
-                        if (veilOwnerHere >= 0)
-                        {
-                            dmgThisTarget += SpellRegistry.SalveMortelleDmgIfVoile;
-                            FogHelpers.ClearVeil(f, cx, cy);
-                            nightseerPrescienceGain += 1; // 2.15.b — declenchement Voile
-                            Log.Info($"[Spell] Salve Mortelle dechire Voile sur ({cx},{cy})");
-                        }
+                        // Refonte 29 mai — bonus voile retiré. "Chaîne tes embûches" (déclenchement
+                        //   des pièges sous la croix) viendra en Passe 3b.
                     }
                     else if (cmd.Spell == SpellId.NightseerDetonationOnirique)
                     {
-                        int veilOwnerHere = FogHelpers.GetVeilOwner(f, cx, cy);
-                        if (veilOwnerHere >= 0)
+                        // Refonte 29 mai — +80 si la zone couvre un de TES pièges (au lieu d'un voile).
+                        if (FogHelpers.GetTrapOwner(f, cx, cy) == caster->PlayerIndex)
                         {
                             dmgThisTarget += SpellRegistry.DetonationOniriqueDmgVoile;
-                            FogHelpers.ClearVeil(f, cx, cy);
-                            nightseerPrescienceGain += 1; // 2.15.b — declenchement Voile
-                            Log.Info($"[Spell] Detonation Onirique dechire Voile sur ({cx},{cy})");
+                            Log.Info($"[Spell] Détonation Onirique : +{SpellRegistry.DetonationOniriqueDmgVoile} (couvre un piège) sur ({cx},{cy})");
                         }
                     }
                     else if (cmd.Spell == SpellId.ColossarFrappeLourde)
@@ -807,19 +886,9 @@ namespace Quantum
                             Log.Info($"[Spell] Morsure Putride : {SpellRegistry.MorsurePutrideDmgBase} + {bonus} dgts ({marks} marques * {SpellRegistry.MorsurePutrideDmgPerMark}, cap {SpellRegistry.MorsurePutrideDmgBonusCap}) = {dmgThisTarget} sur P{targetC->PlayerIndex}");
                         }
                     }
-                    else if (cmd.Spell == SpellId.NecramDetonationVirulente)
-                    {
-                        // 3.5.a.ii — Bible Detonation Virulente : 80 base + 50 par marque consommee.
-                        // 4 marques = 80 + 200 = 280 dmg. Marques sont retirees en post-damage (apres
-                        // que targetC->VeninStacks ait servi a calculer le bonus).
-                        int marks = targetC->VeninStacks;
-                        if (marks > 0)
-                        {
-                            int bonus = marks * SpellRegistry.DetonationVirulenteDmgPerMark;
-                            dmgThisTarget = SpellRegistry.DetonationVirulenteDmgBase + bonus;
-                            Log.Info($"[Spell] Detonation Virulente : {SpellRegistry.DetonationVirulenteDmgBase} + {bonus} dgts ({marks} marques * {SpellRegistry.DetonationVirulenteDmgPerMark}) = {dmgThisTarget} sur P{targetC->PlayerIndex}");
-                        }
-                    }
+                    // Refonte 29 mai — Détonation Virulente : retirée de la boucle standard. C'est
+                    //   désormais un TICK VENIN complet instantané (bypass shield + réduction, sans
+                    //   consommer les marques), appliqué dans son handler dédié (ApplySpellSpecificEffects).
                     else if (cmd.Spell == SpellId.GhostraLameSpectrale)
                     {
                         // 3.7.a.i.2 — Bible Lame Spectrale : 170 base + 60 si target a PlaieOuverte (NON consommee).
@@ -876,6 +945,15 @@ namespace Quantum
                             dmgThisTarget += markBonus;
                             Log.Info($"[Marque de l'Ombre] +{markBonus} dmg sur P{targetC->PlayerIndex} (sort {cmd.Spell}) -> total {dmgThisTarget}");
                         }
+                    }
+
+                    // Refonte 29 mai — Nightseer Passif phasé P2+ : +30 dégâts flat sur les sorts
+                    //   offensifs si le Nightseer est en phase >= 2 (PR 3-4+). Avant les réductions.
+                    if (caster->Class == NymoraClass.Nightseer
+                        && dmgThisTarget > 0
+                        && NightseerPassif.FlatDamageRangeBonusActive(caster->Resource))
+                    {
+                        dmgThisTarget += NightseerPassif.FlatDamageBonus;
                     }
 
                     // 3.3.a.i — Passif Densite Inerte bonus adjacence : si caster Colossar
@@ -976,29 +1054,23 @@ namespace Quantum
                     // 2.11 Passif RAGE OUVERTE : si target <40% HP pre-damage ET caster Soulrender ET
                     // sort melee -> 50% des dgts bypass shield direct au HP. L'autre 50% va shield -> HP overflow.
                     int targetHPRatioPreDmg = targetC->MaxHP > 0 ? (targetC->HP * 100 / targetC->MaxHP) : 100;
-                    int rageOuverteBypass = 0;
                     int shieldBefore = StatusHelper.GetMagnitude(targetC, StatusKind.ShieldActive, 0);
-                    if (caster->Class == NymoraClass.Soulrender
-                        && isMelee
-                        && shieldBefore > 0
-                        && targetHPRatioPreDmg < SpellRegistry.AppelDuSangPalierRageOuverte)
-                    {
-                        rageOuverteBypass = dmgThisTarget * SpellRegistry.AppelDuSangShieldBypassPct / 100;
-                        Log.Info($"[Spell] Rage Ouverte (<{SpellRegistry.AppelDuSangPalierRageOuverte}% HP) : {rageOuverteBypass} dgts bypass shield sur P{targetC->PlayerIndex}");
-                    }
+                    // Refonte 29 mai : le palier Appel du Sang <40% ne donne PLUS de bypass bouclier
+                    //   (ni +1 PM). Il est remplace par un VOL DE VIE applique plus bas (apres HP loss).
 
-                    // 2.15.b — Passif L'Œil qui n'est pas (Bible V7.1) : sorts Nightseer sur cible
-                    // Traque ignorent 30% du shield (= 30% des dgts bypass shield direct au HP).
+                    // Refonte 29 mai — Passif phasé P3 : le Nightseer ignore 50% des boucliers
+                    //   (= 50% des dgts bypass shield direct au HP) si en phase >= 3 (PR 5). Plus lié
+                    //   à la marque Traqué (c'est un effet de palier).
                     int oeilTraqueBypass = 0;
                     if (caster->Class == NymoraClass.Nightseer
                         && shieldBefore > 0
-                        && MarkHelpers.HasMark(targetC, MarkKind.Traque))
+                        && NightseerPassif.ShieldIgnoreActive(caster->Resource))
                     {
-                        oeilTraqueBypass = dmgThisTarget * SpellRegistry.OeilQuiNestPasShieldPiercePct / 100;
-                        Log.Info($"[Spell] L'Œil qui n'est pas : {oeilTraqueBypass} dgts pierce shield sur P{targetC->PlayerIndex} (Traque, {SpellRegistry.OeilQuiNestPasShieldPiercePct}%)");
+                        oeilTraqueBypass = dmgThisTarget * NightseerPassif.ShieldIgnorePct / 100;
+                        Log.Info($"[Spell] Prescience P3 : {oeilTraqueBypass} dgts ignorent le bouclier de P{targetC->PlayerIndex} ({NightseerPassif.ShieldIgnorePct}%)");
                     }
 
-                    int totalShieldBypass = rageOuverteBypass + oeilTraqueBypass;
+                    int totalShieldBypass = oeilTraqueBypass; // Refonte 29 mai : plus de bypass Rage Ouverte
                     int dmgToShield = dmgThisTarget - totalShieldBypass; // partie shield-able
                     int shieldAbsorbedThisHit = 0; // tracker pour hook Carapace Visqueuse (3.5.c.ii)
                     if (shieldBefore > 0 && dmgToShield > 0)
@@ -1102,6 +1174,35 @@ namespace Quantum
                         // 3.3.c — tracker nb d'attaques subies ce round (Ressac Vital Bible : +30/hit).
                         targetC->HitsTakenThisRound += 1;
 
+                        // Refonte 29 mai — Passif Appel du Sang VOL DE VIE : si caster Soulrender et
+                        //   cible <40% PV (pre-dmg), heal 20% des dgts qui passent. Remplace l'ancien
+                        //   +1 PM / bypass bouclier. Via HealHelper (respecte AntiHealShield + ÷2 soin).
+                        if (caster->Class == NymoraClass.Soulrender
+                            && caster->PlayerIndex != targetC->PlayerIndex
+                            && targetHPRatioPreDmg < SpellRegistry.AppelDuSangPalierRageOuverte
+                            && caster->HP > 0)
+                        {
+                            int lifesteal = totalHPLoss * SpellRegistry.AppelDuSangLifestealPct / 100;
+                            int healedLS = HealHelper.ApplyHeal(caster, lifesteal);
+                            if (healedLS > 0)
+                                Log.Info($"[Appel du Sang] Vol de vie {SpellRegistry.AppelDuSangLifestealPct}% : +{healedLS} HP sur P{caster->PlayerIndex} (cible <{SpellRegistry.AppelDuSangPalierRageOuverte}% PV)");
+                        }
+
+                        // Refonte 29 mai — SANG BOUILLANT (hook victime) : si le combattant qui subit
+                        //   les degats porte SangBouillantActive ET survit -> +1 HG + sa prochaine
+                        //   frappe gagne +30 (NextStrikeBonus). SangBouillantActive n'est porte que par
+                        //   un Soulrender (Resource = HG).
+                        if (targetC->HP > 0 && StatusHelper.Has(targetC, StatusKind.SangBouillantActive))
+                        {
+                            int maxResSB = CombatantStats.GetMaxResource(targetC->Class);
+                            int hgBeforeSB = targetC->Resource;
+                            targetC->Resource += SpellRegistry.SangBouillantHGPerHit;
+                            if (targetC->Resource > maxResSB) targetC->Resource = maxResSB;
+                            StatusHelper.Apply(targetC, StatusKind.NextStrikeBonus,
+                                magnitude: SpellRegistry.SangBouillantNextStrikeBonus, turnsLeft: 99, currentTurn);
+                            Log.Info($"[Sang Bouillant] P{targetC->PlayerIndex} subit des degats -> +{targetC->Resource - hgBeforeSB} HG + prochaine frappe +{SpellRegistry.SangBouillantNextStrikeBonus}");
+                        }
+
                         // 2.10.c : Kill detection. Tracker si au moins 1 cible est tombee a HP=0.
                         // killedTargetX/Y sert au recul Tranche-Ame (direction opposee a la cible tuee).
                         if (targetC->HP == 0 && before > 0)
@@ -1181,27 +1282,8 @@ namespace Quantum
                             }
                         }
 
-                        // 3.5.c.i — Voile de Pestilence (hook 2) : si la cible porte PestilenceAura
-                        // et le sort est ATTAQUE MELEE (Chebyshev caster-cible <= 1 au moment du dmg),
-                        // +1 marque venin sur l'attaquant.
-                        // Bible-strict : couvre Tranche-Ame (range 1), Charge Brutale post-move (caster
-                        // adjacent target), Faux Decharnee (AoE 8 voisines), Curee... Rejette les sorts
-                        // distants (Crachat Acide range 4, Tir Precis range 4, etc.).
-                        // Conditionne au caster encore vivant (sinon Riposte Carmin l'a tue avant).
-                        // Pas de check VeninStacks cap : ApplyMark cap deja a 4 en interne.
-                        int dxAtt = caster->GridX - cx; if (dxAtt < 0) dxAtt = -dxAtt;
-                        int dyAtt = caster->GridY - cy; if (dyAtt < 0) dyAtt = -dyAtt;
-                        bool isMeleeAttack = dxAtt <= 1 && dyAtt <= 1;
-                        if (isMeleeAttack
-                            && StatusHelper.Has(targetC, StatusKind.PestilenceAura)
-                            && caster->PlayerIndex != targetC->PlayerIndex
-                            && caster->HP > 0)
-                        {
-                            int attackerStacksBefore = caster->VeninStacks;
-                            VeninHelpers.ApplyMark(f, caster,
-                                SpellRegistry.VoilePestilenceMarksOnMeleeAttacker, currentTurn);
-                            Log.Info($"[Voile Pestilence] P{caster->PlayerIndex} attaque melee P{targetC->PlayerIndex} (porteur Voile) : +{SpellRegistry.VoilePestilenceMarksOnMeleeAttacker} marque sur attaquant (stacks {attackerStacksBefore} -> {caster->VeninStacks})");
-                        }
+                        // Refonte 29 mai — l'ancien hook riposte mêlée de Voile de Pestilence est RETIRÉ
+                        // (Voile devient Nuée de Spores, un buff offensif sans riposte).
 
                         // Gain HG cote CIBLE (Bible V7.1) : Soulrender qui subit, max 1 par tour adverse.
                         // Conditionne a dgts effectifs au HP (shield total absorption = pas de gain).
@@ -1229,30 +1311,25 @@ namespace Quantum
                         VeninHelpers.ApplyMark(f, targetC, SpellRegistry.CrachatAcideMarksApplied, currentTurn);
                     }
 
-                    // 3.5.c.iii — Drain Vital : heal Necram caster post-damage. Base 30 HP, bonus
-                    // 60 HP si target.VeninStacks >= 3 au moment du cast (snapshot post-damage,
-                    // marques cible NON consommees). Heal applique meme si target meurt sur les 60
-                    // dmg (Bible : le siphon). Cap MaxHP standard. Skip si caster mort.
+                    // 3.5.c.iii — Drain Vital (refonte 29 mai) : 40 dmg (pipeline) + heal Necram caster
+                    // = 40 HP par marque venin sur la cible (cap 160 = 4 marques), marques NON
+                    // consommees. Heal applique meme si la cible meurt sur les 40 dmg. Cap MaxHP.
                     if (cmd.Spell == SpellId.NecramDrainVital && caster->HP > 0)
                     {
                         int targetMarks = targetC->VeninStacks;
-                        int healAmount = targetMarks >= SpellRegistry.DrainVitalMarksThreshold
-                            ? SpellRegistry.DrainVitalHealBonus
-                            : SpellRegistry.DrainVitalHealBase;
-                        int hpBeforeHeal = caster->HP;
-                        caster->HP += healAmount;
-                        if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
-                        Log.Info($"[Spell] Drain Vital : P{caster->PlayerIndex} heal +{healAmount} HP (target P{targetC->PlayerIndex} marques={targetMarks}/threshold {SpellRegistry.DrainVitalMarksThreshold}) HP {hpBeforeHeal} -> {caster->HP}");
+                        int healAmount = targetMarks * SpellRegistry.DrainVitalHealPerMark;
+                        if (healAmount > SpellRegistry.DrainVitalHealMaxBonus) healAmount = SpellRegistry.DrainVitalHealMaxBonus;
+                        if (healAmount > 0)
+                        {
+                            int hpBeforeHeal = caster->HP;
+                            caster->HP += healAmount;
+                            if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
+                            Log.Info($"[Spell] Drain Vital : P{caster->PlayerIndex} heal +{healAmount} HP ({targetMarks} marques * {SpellRegistry.DrainVitalHealPerMark}, cap {SpellRegistry.DrainVitalHealMaxBonus}) HP {hpBeforeHeal} -> {caster->HP}");
+                        }
                     }
 
-                    // 3.5.a.ii — Detonation Virulente : consomme TOUTES les marques de la cible
-                    // (post-damage, le bonus a deja ete applique en pre-damage). Reset stacks=0.
-                    if (cmd.Spell == SpellId.NecramDetonationVirulente && targetC->VeninStacks > 0)
-                    {
-                        int marksConsumed = targetC->VeninStacks;
-                        VeninHelpers.RemoveAllMarks(targetC);
-                        Log.Info($"[Spell] Detonation Virulente : {marksConsumed} marques consommees sur P{targetC->PlayerIndex}");
-                    }
+                    // Refonte 29 mai — Détonation Virulente ne consomme PLUS les marques (rework :
+                    //   tick à la demande). Effet appliqué dans son handler dédié.
 
                     // 3.7.a — Passif Ghostra Angle Mort : si caster Ghostra ET hit dorsal ET Angle 2+
                     // -> applique PlaieOuverte auto (40/tour x 2 rounds Bible). Helper no-op si:
@@ -1321,20 +1398,8 @@ namespace Quantum
                 }
             }
 
-            // 2.15.a — Gain Prescience cote CASTER Nightseer (Bible : +1 PR par hit Traque sur
-            // Tir Precis). Capacite a 4 PR. Pas de cap sur le gain per-cast (cumulable si
-            // plusieurs cibles Traque dans une AoE — mais Tir Precis SingleTile, donc max 1).
-            if (nightseerPrescienceGain > 0 && caster->Class == NymoraClass.Nightseer)
-            {
-                int maxResource = CombatantStats.GetMaxResource(caster->Class);
-                int beforeRes = caster->Resource;
-                caster->Resource = beforeRes + nightseerPrescienceGain;
-                if (caster->Resource > maxResource) caster->Resource = maxResource;
-                if (caster->Resource != beforeRes)
-                {
-                    Log.Info($"[Spell] PR +{nightseerPrescienceGain} sur P{caster->PlayerIndex} (Tir Precis sur Traque) : {beforeRes} -> {caster->Resource}");
-                }
-            }
+            // Refonte 29 mai — ancienne génération PR "+1 par hit Traqué" RETIRÉE (nouvelle économie
+            //   = pièges posés/déclenchés + marques appliquées, cf NightseerPassif).
 
             // 2.15.a — Volee d'Epines : pose un Filet de Ronces sur la DERNIERE case touchee.
             // Si aucune cible n'a ete touchee (ligne tiree dans le vide), pas de Filet pose.
@@ -1351,6 +1416,13 @@ namespace Quantum
                 Log.Info($"[Spell] BuffNextOffensiveDmgPercent consume sur P{caster->PlayerIndex} (+{pacteBuffPct}%)");
             }
 
+            // ===== Consume Sang Bouillant NextStrikeBonus si la frappe a touche =====
+            if (nextStrikeBonus > 0 && casterHitSomething)
+            {
+                StatusHelper.Consume(caster, StatusKind.NextStrikeBonus);
+                Log.Info($"[Spell] Sang Bouillant : NextStrikeBonus +{nextStrikeBonus} consomme sur P{caster->PlayerIndex}");
+            }
+
             // 2.11 Passif LE CRI : si target <20% HP post-hit, pose Sang Coagule sur croix 5
             // (caster + 4 cardinales). Une fois par cast peu importe le nb de cibles.
             if (castTriggeredLeCri)
@@ -1365,24 +1437,42 @@ namespace Quantum
                 Log.Info($"[Spell] LE CRI ! Cible <{SpellRegistry.AppelDuSangPalierLeCri}% HP, Sang Coagule pose en croix 5 autour P{caster->PlayerIndex} ({cx0},{cy0})");
             }
 
+            // Refonte 29 mai — NUÉE DE SPORES (ex-Voile de Pestilence) : tant que le Necram porte
+            //   PestilenceAura, chacun de ses sorts visant un ENNEMI pose +1 marque venin BONUS sur
+            //   la cible. Appliqué AVANT ApplySpellSpecificEffects (avant un éventuel swap Échange).
+            if (caster->Class == NymoraClass.Necram
+                && StatusHelper.Has(caster, StatusKind.PestilenceAura))
+            {
+                EntityRef nueeTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                if (nueeTarget != EntityRef.None
+                    && f.Unsafe.TryGetPointer<Combatant>(nueeTarget, out Combatant* nueeC)
+                    && nueeC->PlayerIndex != caster->PlayerIndex
+                    && nueeC->HP > 0)
+                {
+                    int nueeBefore = nueeC->VeninStacks;
+                    VeninHelpers.ApplyMark(f, nueeC, 1, currentTurn);
+                    if (nueeC->VeninStacks != nueeBefore)
+                        Log.Info($"[Nuée de Spores] +1 marque bonus sur P{nueeC->PlayerIndex} ({nueeBefore}->{nueeC->VeninStacks})");
+                }
+            }
+
             // ===== Effets specifiques par sort (apres damage) =====
             ApplySpellSpecificEffects(f, cmd, spellDef, caster, casterEntity,
                 casterHitSomething, hgSpend, currentTurn,
                 effectBuffer, effectCount,
                 wasKill, killedTargetX, killedTargetY, lastHitHPLoss);
 
-            // ===== Rage Insatiable : regen 1 PA si offensif (max 1 par tour) =====
+            // ===== Frenesie (ex-Rage Insatiable, refonte 29 mai) : +1 HG par sort OFFENSIF =====
+            //   (le +10% dgts est applique en amont dans le bloc effectiveDmg). Plus de regen PA,
+            //   plus de +1 PA cost. "chaque offensif" = pas de cap par tour.
             if (spellDef.IsOffensive != 0 && StatusHelper.Has(caster, StatusKind.RageInsatiableActive))
             {
-                int lastTurnGained = StatusHelper.GetMagnitude(caster, StatusKind.RageInsatiableActive, -1);
-                if (lastTurnGained != currentTurn)
-                {
-                    int paBefore = caster->PA;
-                    caster->PA += 1;
-                    if (caster->PA > caster->MaxPA) caster->PA = caster->MaxPA;
-                    StatusHelper.SetMagnitude(caster, StatusKind.RageInsatiableActive, currentTurn);
-                    Log.Info($"[Spell] Rage Insatiable : P{caster->PlayerIndex} regen 1 PA ({paBefore} -> {caster->PA})");
-                }
+                int maxResFr = CombatantStats.GetMaxResource(caster->Class);
+                int hgBeforeFr = caster->Resource;
+                caster->Resource += SpellRegistry.FrenesieHGPerOffensive;
+                if (caster->Resource > maxResFr) caster->Resource = maxResFr;
+                if (caster->Resource != hgBeforeFr)
+                    Log.Info($"[Spell] Frenesie : +{SpellRegistry.FrenesieHGPerOffensive} HG sur P{caster->PlayerIndex} ({hgBeforeFr} -> {caster->Resource})");
             }
 
             // 3.7.b.iii — Update caster.Facing au cast pour les sorts non-Self.
@@ -1468,15 +1558,18 @@ namespace Quantum
                 }
 
                 case SpellId.SoulrenderOuvrePlaie:
-                    // Si 1 HG depense ET cible touchee : applique AntiHealShield 2 tours sur la cible.
+                    // Refonte 29 mai : si 1 HG depense ET cible touchee -> soins/boucliers RECUS
+                    //   par la cible reduits de 50% (÷2) pendant 1 tour (HealReductionPercent),
+                    //   au lieu du blocage total AntiHealShield 2 tours d'avant.
                     if (hgSpend >= 1 && casterHitSomething)
                     {
                         EntityRef target = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
                         if (target != EntityRef.None
                             && f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC))
                         {
-                            StatusHelper.Apply(targetC, StatusKind.AntiHealShield, magnitude: 0, turnsLeft: 2, currentTurn);
-                            Log.Info($"[Spell] Ouvre-Plaie : AntiHealShield 2 tours sur P{targetC->PlayerIndex}");
+                            StatusHelper.Apply(targetC, StatusKind.HealReductionPercent,
+                                magnitude: SpellRegistry.OuvrePlaieHealReductionPct, turnsLeft: 1, currentTurn);
+                            Log.Info($"[Spell] Ouvre-Plaie : soins/boucliers ÷2 ({SpellRegistry.OuvrePlaieHealReductionPct}%) 1 tour sur P{targetC->PlayerIndex}");
                         }
                     }
                     break;
@@ -1518,10 +1611,12 @@ namespace Quantum
                     }
                     break;
 
-                case SpellId.SoulrenderRageInsatiable:
-                    // RageInsatiableActive 2 tours. Magnitude = LastTurnPAGained tracker (init -1).
-                    StatusHelper.Apply(caster, StatusKind.RageInsatiableActive, magnitude: -1, turnsLeft: 2, currentTurn);
-                    Log.Info($"[Spell] Rage Insatiable : actif 2 tours sur P{caster->PlayerIndex}");
+                case SpellId.SoulrenderRageInsatiable: // FRENESIE (refonte 29 mai)
+                    // Frenesie 2 tours : chaque sort offensif +1 HG + +10% dgts (geres dans le
+                    //   pipeline). Magnitude inutilisee (0). "1x actif" = refresh natif (recast
+                    //   remet 2 tours, pas de stack). Identifiant enum/status conserve.
+                    StatusHelper.Apply(caster, StatusKind.RageInsatiableActive, magnitude: 0, turnsLeft: 2, currentTurn);
+                    Log.Info($"[Spell] Frenesie : active 2 tours sur P{caster->PlayerIndex}");
                     break;
 
                 case SpellId.SoulrenderRiposteCarmin:
@@ -1557,36 +1652,44 @@ namespace Quantum
                     {
                         // 3.3.b.ii — Ancrage : cible AnchorImmune ne peut pas etre tiree.
                         // AntiTeleport non plus applique (Bible : ancrage = "rien ne me deplace").
+                        // Refonte 29 mai : le 90 dgts est applique par le pipeline (IsOffensive=1)
+                        //   AVANT ce handler. Si la cible est morte du coup, plus rien a faire.
+                        if (targetC->HP <= 0) break;
+
+                        // 3.3.b.ii — Ancrage : cible AnchorImmune ne peut pas etre tiree.
                         if (StatusHelper.Has(targetC, StatusKind.AnchorImmune))
                         {
-                            Log.Info($"[Ancrage] Empoignade annulee sur P{targetC->PlayerIndex} (AnchorImmune actif)");
-                            break;
-                        }
-                        int beforeX = targetC->GridX;
-                        int beforeY = targetC->GridY;
-                        bool pulled = PullTargetAdjacent(f, caster, target, targetC);
-                        if (pulled)
-                        {
-                            Log.Info($"[Spell] Empoignade : P{targetC->PlayerIndex} tire ({beforeX},{beforeY}) -> ({targetC->GridX},{targetC->GridY})");
+                            Log.Info($"[Ancrage] Empoignade : pull annule sur P{targetC->PlayerIndex} (AnchorImmune). -2 PM applique quand meme.");
                         }
                         else
                         {
-                            Log.Info($"[Spell] Empoignade : P{targetC->PlayerIndex} deja adjacent ou pas de case libre (no-op move)");
+                            int beforeX = targetC->GridX;
+                            int beforeY = targetC->GridY;
+                            bool pulled = PullTargetAdjacent(f, caster, target, targetC);
+                            if (pulled)
+                                Log.Info($"[Spell] Empoignade : P{targetC->PlayerIndex} tire ({beforeX},{beforeY}) -> ({targetC->GridX},{targetC->GridY})");
+                            else
+                                Log.Info($"[Spell] Empoignade : P{targetC->PlayerIndex} deja adjacent ou pas de case libre (no-op move)");
                         }
-                        // AntiTeleport applique meme si pas de pull (cible ne peut pas tp au prochain tour).
-                        StatusHelper.Apply(targetC, StatusKind.AntiTeleport, magnitude: 0, turnsLeft: 1, currentTurn);
+                        // Refonte 29 mai : -2 PM (MovementMalus) au lieu de l'AntiTeleport.
+                        StatusHelper.Apply(targetC, StatusKind.MovementMalus,
+                            magnitude: SpellRegistry.EmpoignadePMMalus, turnsLeft: 1, currentTurn);
+                        Log.Info($"[Spell] Empoignade : -{SpellRegistry.EmpoignadePMMalus} PM sur P{targetC->PlayerIndex}");
                     }
                     break;
                 }
 
                 case SpellId.SoulrenderPeauDeFer:
-                    // ShieldActive 2 tours, magnitude = 200 HP de shield.
-                    // Le bonus +30 dgts melee est calcule au runtime dans effective damage (lit Magnitude).
-                    StatusHelper.Apply(caster, StatusKind.ShieldActive,
-                        magnitude: SpellRegistry.PeauDeFerShieldHP,
-                        turnsLeft: SpellRegistry.PeauDeFerShieldTurns,
-                        currentTurn);
-                    Log.Info($"[Spell] Peau de Fer : ShieldActive {SpellRegistry.PeauDeFerShieldHP} HP / {SpellRegistry.PeauDeFerShieldTurns} tours sur P{caster->PlayerIndex}");
+                    // ShieldActive 2 tours, magnitude = 200 HP de shield (÷2 si HealReductionPercent
+                    //   actif sur le caster — Ouvre-Plaie). Bonus +30 dgts melee lu au runtime.
+                    {
+                        int pdfShield = HealHelper.EffectiveShieldGain(caster, SpellRegistry.PeauDeFerShieldHP);
+                        StatusHelper.Apply(caster, StatusKind.ShieldActive,
+                            magnitude: pdfShield,
+                            turnsLeft: SpellRegistry.PeauDeFerShieldTurns,
+                            currentTurn);
+                        Log.Info($"[Spell] Peau de Fer : ShieldActive {pdfShield} HP / {SpellRegistry.PeauDeFerShieldTurns} tours sur P{caster->PlayerIndex}");
+                    }
                     break;
 
                 case SpellId.SoulrenderSeveVive:
@@ -1598,35 +1701,17 @@ namespace Quantum
                     int bleedBonus = isBleeding ? SpellRegistry.SeveViveHealBonusBleed : 0;
                     healAmount += bleedBonus;
 
-                    if (StatusHelper.Has(caster, StatusKind.AntiHealShield))
-                    {
-                        Log.Info($"[Spell] Seve Vive : heal {healAmount} BLOQUE par AntiHealShield sur P{caster->PlayerIndex}");
-                    }
-                    else
-                    {
-                        int hpBeforeHeal = caster->HP;
-                        caster->HP += healAmount;
-                        if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
-                        int healed = caster->HP - hpBeforeHeal;
-                        Log.Info($"[Spell] Seve Vive : heal {healed} (base {SpellRegistry.SeveViveHealBase} + HG {hgBonus} + Bleed {bleedBonus}) HP {hpBeforeHeal} -> {caster->HP}");
-                    }
+                    // Via HealHelper : respecte AntiHealShield (bloque) + HealReductionPercent (÷2 Ouvre-Plaie).
+                    int healedSV = HealHelper.ApplyHeal(caster, healAmount);
+                    Log.Info($"[Spell] Seve Vive : heal {healedSV} (demande {healAmount} = base {SpellRegistry.SeveViveHealBase} + HG {hgBonus} + Bleed {bleedBonus}) sur P{caster->PlayerIndex}");
                     break;
                 }
 
                 case SpellId.SoulrenderDernierSouffle:
                 {
-                    // Heal 200 HP (bloque si AntiHealShield) + 3 HG (toujours applique).
-                    if (StatusHelper.Has(caster, StatusKind.AntiHealShield))
-                    {
-                        Log.Info($"[Spell] Dernier Souffle : heal {SpellRegistry.DernierSouffleHealAmount} BLOQUE par AntiHealShield sur P{caster->PlayerIndex}");
-                    }
-                    else
-                    {
-                        int hpBeforeHeal = caster->HP;
-                        caster->HP += SpellRegistry.DernierSouffleHealAmount;
-                        if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
-                        Log.Info($"[Spell] Dernier Souffle : heal {SpellRegistry.DernierSouffleHealAmount} sur P{caster->PlayerIndex} (HP {hpBeforeHeal} -> {caster->HP})");
-                    }
+                    // Heal 200 HP via HealHelper (AntiHealShield bloque, HealReductionPercent ÷2) + 3 HG (toujours).
+                    int healedDS = HealHelper.ApplyHeal(caster, SpellRegistry.DernierSouffleHealAmount);
+                    Log.Info($"[Spell] Dernier Souffle : heal {healedDS} (demande {SpellRegistry.DernierSouffleHealAmount}) sur P{caster->PlayerIndex}");
 
                     int maxResDS = CombatantStats.GetMaxResource(caster->Class);
                     int resBeforeDS = caster->Resource;
@@ -1822,19 +1907,8 @@ namespace Quantum
                             Log.Info($"[Spell] Charge Brutale : shield absorbe {absorbed} sur P{hitC->PlayerIndex}");
                         }
 
-                        // 3.5.c.i — Voile de Pestilence hook (Bible V7.1) : Charge Brutale finit
-                        // ADJACENT a la cible (post-move), donc c'est une attaque melee. Si la cible
-                        // porte PestilenceAura -> +1 marque venin sur l'attaquant. Charge Brutale
-                        // bypass le pipeline standard donc on rebranche le hook ici manuellement.
-                        if (StatusHelper.Has(hitC, StatusKind.PestilenceAura)
-                            && caster->PlayerIndex != hitC->PlayerIndex
-                            && caster->HP > 0)
-                        {
-                            int attackerStacksBefore = caster->VeninStacks;
-                            VeninHelpers.ApplyMark(f, caster,
-                                SpellRegistry.VoilePestilenceMarksOnMeleeAttacker, currentTurn);
-                            Log.Info($"[Voile Pestilence] P{caster->PlayerIndex} Charge Brutale sur P{hitC->PlayerIndex} (porteur Voile) : +{SpellRegistry.VoilePestilenceMarksOnMeleeAttacker} marque sur attaquant (stacks {attackerStacksBefore} -> {caster->VeninStacks})");
-                        }
+                        // Refonte 29 mai — ancien hook riposte Voile de Pestilence (Charge Brutale)
+                        // RETIRÉ (Voile devient Nuée de Spores, sans riposte).
 
                         // 3.5.c.ii — Carapace Visqueuse hook (Bible V7.1) : Charge Brutale est melee
                         // (caster adjacent post-move). Si la cible porte CarapaceVisqueuse ET le shield
@@ -1940,37 +2014,22 @@ namespace Quantum
                     break;
                 }
 
-                case SpellId.SoulrenderCuree:
+                case SpellId.SoulrenderCuree: // EVENTRATION (refonte 29 mai, ex-Curee)
                 {
-                    // Damage 150 deja applique par pipeline. Selon issue :
-                    //   - Kill : caster heal 50% HP manquants + BonusPANextTurn = 4
-                    //   - Miss (cible vivante) : caster -60 HP self
-                    if (wasKill)
+                    // 220 dgts deja appliques par le pipeline. Pose Plaie Ouverte 50/tour x 3 rounds
+                    //   sur la cible vivante (gros DoT). Plus de kill-heal / miss-selfdamage.
+                    //   Bloque si la cible est DotImmune (Voile Spectral Ghostra).
+                    EntityRef evTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (evTarget != EntityRef.None
+                        && f.Unsafe.TryGetPointer<Combatant>(evTarget, out Combatant* evTargetC)
+                        && evTargetC->HP > 0
+                        && evTargetC->PlayerIndex != caster->PlayerIndex
+                        && !StatusHelper.Has(evTargetC, StatusKind.DotImmune))
                     {
-                        int missingHP = caster->MaxHP - caster->HP;
-                        int healAmount = missingHP / 2; // 50% des HP manquants
-                        int hpBeforeCuree = caster->HP;
-                        if (StatusHelper.Has(caster, StatusKind.AntiHealShield))
-                        {
-                            Log.Info($"[Spell] Curee KILL : heal {healAmount} BLOQUE par AntiHealShield sur P{caster->PlayerIndex}");
-                        }
-                        else
-                        {
-                            caster->HP += healAmount;
-                            if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
-                            Log.Info($"[Spell] Curee KILL : heal {healAmount} (50% manquants) sur P{caster->PlayerIndex} HP {hpBeforeCuree} -> {caster->HP}");
-                        }
-                        // BonusPANextTurn applique au prochain TurnStart du caster (TurnSystem).
-                        caster->BonusPANextTurn += SpellRegistry.CureeBonusPANextTurn;
-                        Log.Info($"[Spell] Curee KILL : +{SpellRegistry.CureeBonusPANextTurn} PA next turn sur P{caster->PlayerIndex} (total BonusPANextTurn={caster->BonusPANextTurn})");
-                    }
-                    else
-                    {
-                        // Cible n'est pas morte : self-damage 60 HP au caster.
-                        int hpBeforeCureeMiss = caster->HP;
-                        caster->HP -= SpellRegistry.CureeMissSelfDamage;
-                        if (caster->HP < 0) caster->HP = 0;
-                        Log.Info($"[Spell] Curee MISS : -{SpellRegistry.CureeMissSelfDamage} HP self sur P{caster->PlayerIndex} HP {hpBeforeCureeMiss} -> {caster->HP}");
+                        StatusHelper.Apply(evTargetC, StatusKind.PlaieOuverte,
+                            magnitude: SpellRegistry.EventrationPlaieDmgPerTurn,
+                            turnsLeft: SpellRegistry.EventrationPlaieTurns, currentTurn);
+                        Log.Info($"[Spell] Eventration : Plaie Ouverte {SpellRegistry.EventrationPlaieDmgPerTurn}/tour x {SpellRegistry.EventrationPlaieTurns}t sur P{evTargetC->PlayerIndex}");
                     }
                     break;
                 }
@@ -1984,20 +2043,9 @@ namespace Quantum
                     //   3. Set LastAmeLaceeUsedOnTurn pour cooldown 4 tours.
 
                     int healAmt = lastHitHPLoss * SpellRegistry.AmeLaceeHealPercentOfPassed / 100;
+                    int healedAL = HealHelper.ApplyHeal(caster, healAmt);
                     if (healAmt > 0)
-                    {
-                        if (StatusHelper.Has(caster, StatusKind.AntiHealShield))
-                        {
-                            Log.Info($"[Spell] Ame Laceree : heal {healAmt} BLOQUE par AntiHealShield sur P{caster->PlayerIndex}");
-                        }
-                        else
-                        {
-                            int hpBeforeAL = caster->HP;
-                            caster->HP += healAmt;
-                            if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
-                            Log.Info($"[Spell] Ame Laceree : heal {healAmt} ({SpellRegistry.AmeLaceeHealPercentOfPassed}% des {lastHitHPLoss} dgts passes) sur P{caster->PlayerIndex} HP {hpBeforeAL} -> {caster->HP}");
-                        }
-                    }
+                        Log.Info($"[Spell] Ame Laceree : heal {healedAL} ({SpellRegistry.AmeLaceeHealPercentOfPassed}% des {lastHitHPLoss} dgts passes, demande {healAmt}) sur P{caster->PlayerIndex}");
 
                     if (wasKill)
                     {
@@ -2016,40 +2064,33 @@ namespace Quantum
                     break;
                 }
 
-                case SpellId.SoulrenderCauterisation:
+                case SpellId.SoulrenderCauterisation: // SANG BOUILLANT (refonte 29 mai)
+                    // Plus d'anti-DoT cleanse (le bleed reste menaçant, decision Lorenzo). A la place :
+                    //   applique SangBouillantActive 2 rounds. Pendant la duree, chaque fois que le
+                    //   Soulrender SUBIT des degats -> +1 HG + sa prochaine frappe gagne +30 dgts
+                    //   (NextStrikeBonus). Geres dans la boucle de degats (cote victime) + le calcul
+                    //   offensif. "1x actif" = refresh natif (recast remet 2 rounds, pas de stack).
+                    StatusHelper.Apply(caster, StatusKind.SangBouillantActive, magnitude: 0,
+                        turnsLeft: SpellRegistry.SangBouillantTurns, currentTurn);
+                    Log.Info($"[Spell] Sang Bouillant : actif {SpellRegistry.SangBouillantTurns} rounds sur P{caster->PlayerIndex}");
+                    break;
+
+                // Refonte 29 mai — Salve Mortelle "chaîne tes embûches" : déclenche les pièges du
+                //   Nightseer situés sous la croix sur les ennemis qui s'y trouvent (dégâts piège +
+                //   Traqué + chaîne de mines). Les 200/120 + Traqué sont déjà appliqués par le loop.
+                case SpellId.NightseerSalveMortelle:
                 {
-                    // Retire tous DoT (BleedDoT et futurs Necram). Pour 2.10.c : aucun DoT actuel,
-                    // donc on heal min 60 (toujours applique meme si 0 DoT retire).
-                    int dotsRemoved = 0;
-                    if (StatusHelper.Has(caster, StatusKind.BleedDoT))
+                    for (int i = 0; i < effectCount; i++)
                     {
-                        StatusHelper.Consume(caster, StatusKind.BleedDoT);
-                        dotsRemoved++;
-                    }
-                    // Futurs DoT (Necram poison etc) seront ajoutes ici en Phase 3.
-
-                    int healAmount;
-                    if (dotsRemoved == 0)
-                    {
-                        healAmount = SpellRegistry.CauterisationHealMin;
-                    }
-                    else
-                    {
-                        healAmount = dotsRemoved * SpellRegistry.CauterisationHealPerDoT;
-                        if (healAmount < SpellRegistry.CauterisationHealMin) healAmount = SpellRegistry.CauterisationHealMin;
-                        if (healAmount > SpellRegistry.CauterisationHealMax) healAmount = SpellRegistry.CauterisationHealMax;
-                    }
-
-                    if (StatusHelper.Has(caster, StatusKind.AntiHealShield))
-                    {
-                        Log.Info($"[Spell] Cauterisation : retire {dotsRemoved} DoT, heal {healAmount} BLOQUE par AntiHealShield sur P{caster->PlayerIndex}");
-                    }
-                    else
-                    {
-                        int hpBeforeCauter = caster->HP;
-                        caster->HP += healAmount;
-                        if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
-                        Log.Info($"[Spell] Cauterisation : retire {dotsRemoved} DoT, heal {healAmount} sur P{caster->PlayerIndex} HP {hpBeforeCauter} -> {caster->HP}");
+                        int idx = effectBuffer[i];
+                        int scx = idx % GridConstants.Width;
+                        int scy = idx / GridConstants.Width;
+                        if (FogHelpers.GetTrapOwner(f, scx, scy) != caster->PlayerIndex) continue;
+                        EntityRef occ = GridHelpers.GetOccupant(f, scx, scy);
+                        if (occ == EntityRef.None) continue;
+                        if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* occC)) continue;
+                        if (occC->PlayerIndex == caster->PlayerIndex || occC->HP <= 0) continue;
+                        FogHelpers.TryTriggerTrapOnEnter(f, occ, occC, scx, scy, currentTurn);
                     }
                     break;
                 }
@@ -2069,6 +2110,8 @@ namespace Quantum
                         MarkHelpers.ApplyMark(targetC, MarkKind.Traque,
                             SpellRegistry.MarqueDuChasseurTurns, caster->PlayerIndex, currentTurn);
                         Log.Info($"[Spell] Marque du Chasseur : Traque {SpellRegistry.MarqueDuChasseurTurns} tours sur P{targetC->PlayerIndex}");
+                        // Refonte 29 mai — économie PR : +1 PR (marque appliquée), cappé +3/tour.
+                        NightseerPassif.GainPrescienceForPlayer(f, caster->PlayerIndex, currentTurn, "marque appliquée");
                     }
                     break;
                 }
@@ -2086,6 +2129,50 @@ namespace Quantum
                     {
                         VeninHelpers.ApplyMark(f, targetInoc, SpellRegistry.InoculationMarksApplied, currentTurn);
                         Log.Info($"[Spell] Inoculation : +{SpellRegistry.InoculationMarksApplied} marques venin sur P{targetInoc->PlayerIndex} (silent, no damage)");
+                    }
+                    break;
+                }
+
+                // Refonte 29 mai — DÉTONATION VIRULENTE : TICK VENIN complet instantané sur la cible
+                //   (stacks * clock Floraison + Marque Sacrificielle), bypass shield + réduction,
+                //   SANS consommer les marques (rejouable chaque tour, cap 1x). Déclenche Symbiose.
+                case SpellId.NecramDetonationVirulente:
+                {
+                    EntityRef dvTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (dvTarget != EntityRef.None
+                        && f.Unsafe.TryGetPointer<Combatant>(dvTarget, out Combatant* dvC)
+                        && dvC->PlayerIndex != caster->PlayerIndex
+                        && dvC->HP > 0
+                        && dvC->VeninStacks > 0)
+                    {
+                        int dvDensity = VeninHelpers.GetGlobalDensity(f);
+                        int dvPerMark = VeninHelpers.GetTickDmgPerMark(dvDensity);
+                        int dvMarqueSac = StatusHelper.GetMagnitude(dvC, StatusKind.MarqueSacrificielle, 0);
+                        int dvTotal = dvC->VeninStacks * dvPerMark + dvMarqueSac;
+
+                        int dvHpBefore = dvC->HP;
+                        dvC->HP -= dvTotal; // bypass shield + réduction (comme un tick venin standard)
+                        if (dvC->HP < 0) dvC->HP = 0;
+                        dvC->DamageTakenThisRound += dvTotal;
+                        dvC->HitsTakenThisRound += 1;
+                        Log.Info($"[Spell] Détonation Virulente : tick instantané {dvC->VeninStacks} marques * {dvPerMark} + {dvMarqueSac} (MarqueSac) = -{dvTotal} HP sur P{dvC->PlayerIndex} (marques NON consommées, HP {dvHpBefore}->{dvC->HP})");
+
+                        // Hook Symbiose Morbide (heal flat par tick venin) sur les Necram porteurs.
+                        var dvSymFilter = f.Filter<Combatant>();
+                        while (dvSymFilter.NextUnsafe(out EntityRef _, out Combatant* dvNec))
+                        {
+                            if (dvNec->Class != NymoraClass.Necram || dvNec->HP <= 0) continue;
+                            int dvHealPerTick = StatusHelper.GetMagnitude(dvNec, StatusKind.SymbioseMorbide, 0);
+                            if (dvHealPerTick <= 0) continue;
+                            int dvNecBefore = dvNec->HP;
+                            dvNec->HP = dvNec->HP + dvHealPerTick > dvNec->MaxHP ? dvNec->MaxHP : dvNec->HP + dvHealPerTick;
+                            if (dvNec->HP != dvNecBefore)
+                                Log.Info($"[Symbiose Morbide] Détonation Virulente : Necram P{dvNec->PlayerIndex} heal +{dvNec->HP - dvNecBefore} HP");
+                        }
+                    }
+                    else
+                    {
+                        Log.Info($"[Spell] Détonation Virulente : aucune cible marquée vivante en ({cmd.TargetX},{cmd.TargetY}) — sans effet.");
                     }
                     break;
                 }
@@ -2112,16 +2199,16 @@ namespace Quantum
                 }
 
                 // 3.5.b.ii — Symbiose Morbide : self-buff lifesteal DoT. 3 PA, range 0. Applique
-                // status SymbioseMorbide sur le caster Necram (magnitude=8, duree 2 rounds).
-                // Le hook heal est dans VeninHelpers.TryTick : a chaque tick venin sur un ennemi,
-                // tout Necram porteur du status est soigne de min(stacks, 4) * 8 HP.
+                // Refonte 29 mai : status SymbioseMorbide sur le caster Necram (heal FLAT +15 HP par
+                // tick venin sur un ennemi, n'echelonne plus par marque), duree 2 rounds. Hook dans
+                // VeninHelpers.TryTick.
                 case SpellId.NecramSymbioseMorbide:
                 {
                     StatusHelper.Apply(caster, StatusKind.SymbioseMorbide,
                         magnitude: SpellRegistry.SymbioseMorbideHealPerMarkPerTick,
                         turnsLeft: SpellRegistry.SymbioseMorbideTurns,
                         currentTurn);
-                    Log.Info($"[Spell] Symbiose Morbide active sur P{caster->PlayerIndex} : heal +{SpellRegistry.SymbioseMorbideHealPerMarkPerTick}/marque/tick venin pendant {SpellRegistry.SymbioseMorbideTurns} rounds (cap {SpellRegistry.SymbioseMorbideMaxMarksForHeal} marques = max +{SpellRegistry.SymbioseMorbideHealPerMarkPerTick * SpellRegistry.SymbioseMorbideMaxMarksForHeal} HP/tick)");
+                    Log.Info($"[Spell] Symbiose Morbide active sur P{caster->PlayerIndex} : heal FLAT +{SpellRegistry.SymbioseMorbideHealPerMarkPerTick} HP/tick venin pendant {SpellRegistry.SymbioseMorbideTurns} rounds");
                     break;
                 }
 
@@ -2131,38 +2218,48 @@ namespace Quantum
                 // ActivePlayerIndex == porteur (= fin de SON sub-turn). Tant que actif :
                 // MovementSystem passe ignoreEnemyOccupants=true a A* et pose +1 marque venin par
                 // ennemi present sur les cases intermediaires du path.
-                case SpellId.NecramPasSpectral:
+                case SpellId.NecramPasSpectral: // ÉCHANGE SPECTRAL (refonte 29 mai)
                 {
-                    bool alreadyActive = StatusHelper.Has(caster, StatusKind.PasSpectralReady);
-                    if (!alreadyActive)
+                    // 80 dgts déjà appliqués par le pipeline. Ici : SWAP de place caster <-> cible.
+                    //   Bloqué si la cible est morte du coup ou AnchorImmune (Ancrage).
+                    EntityRef esTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                    if (esTarget != EntityRef.None
+                        && f.Unsafe.TryGetPointer<Combatant>(esTarget, out Combatant* esTargetC)
+                        && esTargetC->PlayerIndex != caster->PlayerIndex
+                        && esTargetC->HP > 0)
                     {
-                        caster->PM += SpellRegistry.PasSpectralPMBonus;
-                        Log.Info($"[Spell] Pas Spectral active sur P{caster->PlayerIndex} : +{SpellRegistry.PasSpectralPMBonus} PM (PM={caster->PM}), traversee ennemis armee pour ce sub-turn");
+                        if (StatusHelper.Has(esTargetC, StatusKind.AnchorImmune))
+                        {
+                            Log.Info($"[Ancrage] Échange Spectral : swap annulé sur P{esTargetC->PlayerIndex} (AnchorImmune). 80 dgts appliqués quand même.");
+                        }
+                        else
+                        {
+                            int esCasterX = caster->GridX, esCasterY = caster->GridY;
+                            int esTargetX = esTargetC->GridX, esTargetY = esTargetC->GridY;
+                            GridHelpers.SetOccupant(f, esCasterX, esCasterY, EntityRef.None);
+                            GridHelpers.SetOccupant(f, esTargetX, esTargetY, EntityRef.None);
+                            caster->GridX = esTargetX; caster->GridY = esTargetY;
+                            esTargetC->GridX = esCasterX; esTargetC->GridY = esCasterY;
+                            caster->Facing = FacingHelpers.FacingFromGridDelta(esCasterX - esTargetX, esCasterY - esTargetY);
+                            esTargetC->Facing = FacingHelpers.FacingFromGridDelta(esTargetX - esCasterX, esTargetY - esCasterY);
+                            GridHelpers.SetOccupant(f, esTargetX, esTargetY, casterEntity);
+                            GridHelpers.SetOccupant(f, esCasterX, esCasterY, esTarget);
+                            Log.Info($"[Spell] Échange Spectral : swap P{caster->PlayerIndex} <-> P{esTargetC->PlayerIndex} ({esCasterX},{esCasterY}) <-> ({esTargetX},{esTargetY})");
+                        }
                     }
-                    else
-                    {
-                        Log.Info($"[Spell] Pas Spectral re-cast sur P{caster->PlayerIndex} : refresh traversee (PM inchange, cap +{SpellRegistry.PasSpectralPMBonus} deja accorde)");
-                    }
-                    StatusHelper.Apply(caster, StatusKind.PasSpectralReady,
-                        magnitude: 0,
-                        turnsLeft: 1,
-                        currentTurn);
                     break;
                 }
 
-                // 3.5.c.i — Voile de Pestilence (Bible V7.1) : 3 PA self. Apply PestilenceAura
-                // turnsLeft=2 (refresh-only). 2 hooks distincts :
-                //   1. Adjacence fin de sub-turn : TurnSystem.EnterTurnEnd iter ennemi finissant
-                //      son sub-turn, +1 marque si Manhattan <=2 d'un Necram porteur.
-                //   2. Riposte marque : damage loop SpellSystem (ce fichier, bloc reflect),
-                //      +1 marque sur l'attaquant si sort melee (RangeMax==1).
+                // NUÉE DE SPORES (ex-Voile de Pestilence, refonte 29 mai) : 3 PA self. Apply
+                //   PestilenceAura 2 rounds (refresh-only). Hook unique : tant qu'actif, chaque sort
+                //   du Necram visant un ennemi pose +1 marque venin bonus (cf bloc post-cast TryCastSpell).
                 case SpellId.NecramVoilePestilence:
                 {
                     StatusHelper.Apply(caster, StatusKind.PestilenceAura,
                         magnitude: 0,
                         turnsLeft: SpellRegistry.VoilePestilenceTurns,
                         currentTurn);
-                    Log.Info($"[Spell] Voile de Pestilence active sur P{caster->PlayerIndex} : aura 2 rounds, +1 marque ennemi adjacent (Manhattan <={SpellRegistry.VoilePestilenceAdjacencyRange}) fin sub-turn + riposte +1 marque attaquant melee");
+                    Log.Info($"[Spell] Nuée de Spores active sur P{caster->PlayerIndex} : {SpellRegistry.VoilePestilenceTurns} rounds, +1 marque bonus sur tes sorts visant un ennemi");
                     break;
                 }
 
@@ -2539,7 +2636,8 @@ namespace Quantum
                     int vfDmgPerMark = VeninHelpers.GetTickDmgPerMark(vfDensity);
                     int vfBaseDmg = vfStacks * vfDmgPerMark;
                     int vfMarqueSacBonus = StatusHelper.GetMagnitude(vfTarget, StatusKind.MarqueSacrificielle, 0);
-                    int vfTotalDmg = (vfBaseDmg + vfMarqueSacBonus) * SpellRegistry.VirusFatalMultiplier;
+                    // Refonte 29 mai : x2.5 (= * 5 / 2) au lieu de x3.
+                    int vfTotalDmg = (vfBaseDmg + vfMarqueSacBonus) * SpellRegistry.VirusFatalMultNum / SpellRegistry.VirusFatalMultDen;
 
                     // Bypass shield + reduction (comme tick venin standard via VeninHelpers.TryTick).
                     int vfHpBefore = vfTarget->HP;
@@ -2548,25 +2646,24 @@ namespace Quantum
                     vfTarget->DamageTakenThisRound += vfTotalDmg;
                     bool vfKilled = (vfTarget->HP <= 0);
 
-                    Log.Info($"[Virus Fatal] P{caster->PlayerIndex} -> P{vfTarget->PlayerIndex} : {vfStacks} marques * {vfDmgPerMark} dmg/marque (density {vfDensity}) + {vfMarqueSacBonus} (MarqueSac) tout * {SpellRegistry.VirusFatalMultiplier} = -{vfTotalDmg} HP (HP {vfHpBefore} -> {vfTarget->HP}, killed={vfKilled})");
+                    Log.Info($"[Virus Fatal] P{caster->PlayerIndex} -> P{vfTarget->PlayerIndex} : {vfStacks} marques * {vfDmgPerMark} dmg/marque (density {vfDensity}) + {vfMarqueSacBonus} (MarqueSac) tout x1.5 = -{vfTotalDmg} HP (HP {vfHpBefore} -> {vfTarget->HP}, killed={vfKilled})");
 
-                    // Symbiose Morbide hook : tick venin -> heal Necram porteur. Interpretation
-                    // litterale "tick x 3" : heal aussi multiplie par VirusFatalMultiplier.
-                    int vfStacksForHeal = vfStacks > 4 ? 4 : vfStacks;
+                    // Symbiose Morbide hook (refonte 29 mai : heal FLAT par tick) : le méga-tick Virus
+                    // Fatal applique le heal flat x2.5.
                     var vfSymFilter = f.Filter<Combatant>();
                     while (vfSymFilter.NextUnsafe(out EntityRef _, out Combatant* vfNec))
                     {
                         if (vfNec->Class != NymoraClass.Necram) continue;
                         if (vfNec->HP <= 0) continue;
-                        int vfHealPerMark = StatusHelper.GetMagnitude(vfNec, StatusKind.SymbioseMorbide, 0);
-                        if (vfHealPerMark <= 0) continue;
-                        int vfHealAmount = vfStacksForHeal * vfHealPerMark * SpellRegistry.VirusFatalMultiplier;
+                        int vfHealPerTick = StatusHelper.GetMagnitude(vfNec, StatusKind.SymbioseMorbide, 0);
+                        if (vfHealPerTick <= 0) continue;
+                        int vfHealAmount = vfHealPerTick * SpellRegistry.VirusFatalMultNum / SpellRegistry.VirusFatalMultDen;
                         int vfNecHpBefore = vfNec->HP;
                         vfNec->HP = vfNec->HP + vfHealAmount > vfNec->MaxHP ? vfNec->MaxHP : vfNec->HP + vfHealAmount;
                         int vfRealHeal = vfNec->HP - vfNecHpBefore;
                         if (vfRealHeal > 0)
                         {
-                            Log.Info($"[Symbiose Morbide] Virus Fatal x{SpellRegistry.VirusFatalMultiplier} : Necram P{vfNec->PlayerIndex} heal +{vfRealHeal} HP : {vfNecHpBefore}->{vfNec->HP}");
+                            Log.Info($"[Symbiose Morbide] Virus Fatal x1.5 : Necram P{vfNec->PlayerIndex} heal +{vfRealHeal} HP : {vfNecHpBefore}->{vfNec->HP}");
                         }
                     }
 
@@ -2875,86 +2972,43 @@ namespace Quantum
                     break;
                 }
 
-                // 3.5.b.iv — Contagion : propagation AoE marques venin. La cible doit etre marquee
-                // (sinon no-op silencieux post-PA, Bible "Cible une unite ENNEMIE marquée").
-                // Copie min(target.stacks, cap) marques sur autres ennemis rayon 3 Manhattan
-                // de la cible. Cap default 3, ou 4 avec 2 PT optionnel (hgSpend >= 2). En 1v1
-                // (aucun autre ennemi du caster) : +1 marque sur la cible elle-meme (boost tick).
+                // Refonte 29 mai — CONTAGION (auto-propagation) : rend la cible ennemie CONTAGIOUS
+                //   pendant 2 rounds. À la fin de chaque tour de la cible, elle prend +1 marque venin
+                //   auto (hook TurnSystem.EnterTurnEnd). Pas besoin que la cible soit déjà marquée.
                 case SpellId.NecramContagion:
                 {
                     EntityRef contTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
-                    if (contTarget == EntityRef.None
-                        || !f.Unsafe.TryGetPointer<Combatant>(contTarget, out Combatant* targetCont)
-                        || targetCont->PlayerIndex == caster->PlayerIndex
-                        || targetCont->HP <= 0)
+                    if (contTarget != EntityRef.None
+                        && f.Unsafe.TryGetPointer<Combatant>(contTarget, out Combatant* targetCont)
+                        && targetCont->PlayerIndex != caster->PlayerIndex
+                        && targetCont->HP > 0)
                     {
-                        Log.Info($"[Spell] Contagion : pas de cible valide en ({cmd.TargetX},{cmd.TargetY}), PA deja consomme");
-                        break;
-                    }
-
-                    if (targetCont->VeninStacks <= 0)
-                    {
-                        Log.Info($"[Spell] Contagion : cible P{targetCont->PlayerIndex} non marquee, no-op");
-                        break;
-                    }
-
-                    int cap = (hgSpend >= SpellRegistry.ContagionPTCostForBoost)
-                        ? SpellRegistry.ContagionCapBoosted
-                        : SpellRegistry.ContagionCapDefault;
-                    int stacksToCopy = targetCont->VeninStacks > cap ? cap : targetCont->VeninStacks;
-
-                    // Cherche les autres ennemis du caster dans rayon Manhattan 3 de la cible.
-                    int propagated = 0;
-                    var contFilter = f.Filter<Combatant>();
-                    while (contFilter.NextUnsafe(out EntityRef _, out Combatant* otherC))
-                    {
-                        if (otherC == targetCont) continue;
-                        if (otherC->PlayerIndex == caster->PlayerIndex) continue; // pas allies/self
-                        if (otherC->HP <= 0) continue;
-                        int dxOther = otherC->GridX - targetCont->GridX;
-                        int dyOther = otherC->GridY - targetCont->GridY;
-                        int absDxO = dxOther < 0 ? -dxOther : dxOther;
-                        int absDyO = dyOther < 0 ? -dyOther : dyOther;
-                        int distOther = absDxO + absDyO;
-                        if (distOther > SpellRegistry.ContagionPropagationRadius) continue;
-
-                        VeninHelpers.ApplyMark(f, otherC, stacksToCopy, currentTurn);
-                        Log.Info($"[Spell] Contagion : +{stacksToCopy} marques copiees sur P{otherC->PlayerIndex} (rayon {distOther} de cible P{targetCont->PlayerIndex})");
-                        propagated++;
-                    }
-
-                    if (propagated == 0)
-                    {
-                        // 1v1 fallback : +1 marque sur la cible (boost tick).
-                        VeninHelpers.ApplyMark(f, targetCont, SpellRegistry.Contagion1v1FallbackMarks, currentTurn);
-                        Log.Info($"[Spell] Contagion 1v1 (pas d'autres ennemis) : +{SpellRegistry.Contagion1v1FallbackMarks} marque boost sur P{targetCont->PlayerIndex}");
+                        StatusHelper.Apply(targetCont, StatusKind.Contagious, magnitude: 0,
+                            turnsLeft: SpellRegistry.ContagionTurns, currentTurn);
+                        Log.Info($"[Spell] Contagion : P{targetCont->PlayerIndex} contagieux {SpellRegistry.ContagionTurns} rounds (+1 marque venin auto en fin de son tour)");
                     }
                     else
                     {
-                        Log.Info($"[Spell] Contagion propagation : {stacksToCopy} marques sur {propagated} ennemi(s) (cap {cap}, hgSpend={hgSpend})");
+                        Log.Info($"[Spell] Contagion : pas de cible valide en ({cmd.TargetX},{cmd.TargetY}), PA déjà consommé");
                     }
                     break;
                 }
 
                 case SpellId.NightseerFiletDeRonces:
                 {
-                    // Pose un Filet (Trap) + Voile sur la case ciblee. Trigger sur entree ennemie
-                    // gere par MovementSystem via FogHelpers.TryTriggerTrapOnEnter.
+                    // Refonte 29 mai — pose un Filet (Trap). VISIBLE par défaut ; PlaceTrap applique le
+                    //   voile (invisible) uniquement si le Nightseer est en phase 3. Trigger sur entrée
+                    //   ennemie via MovementSystem -> FogHelpers.TryTriggerTrapOnEnter.
                     FogHelpers.PlaceTrap(f, cmd.TargetX, cmd.TargetY,
                         TrapKind.FiletRonces, caster->PlayerIndex, currentTurn);
-                    // Le Filet est "embuscade Voilée" cote Bible : invisible pour l'adversaire.
-                    // Duree du voile : large pour rester invisible jusqu'au declenchement (10 rounds = practical "permanent").
-                    FogHelpers.ApplyVeil(f, cmd.TargetX, cmd.TargetY, caster->PlayerIndex, 10, currentTurn);
-                    Log.Info($"[Spell] Filet de Ronces pose sur ({cmd.TargetX},{cmd.TargetY}) par P{caster->PlayerIndex} (Voile + Trap)");
+                    Log.Info($"[Spell] Filet de Ronces posé sur ({cmd.TargetX},{cmd.TargetY}) par P{caster->PlayerIndex}");
                     break;
                 }
 
                 case SpellId.NightseerChampDeMines:
                 {
-                    // Bible V7.1 — voile la zone 3x3 entiere (9 cases) ET pose 3 mines dedans.
-                    // Adversaire voit 9 cases sombres uniformes (1/3 chance par case = paranoia).
-                    // Ordre de pose des 3 mines : centre + 2 cardinaux disponibles (placement
-                    // deterministe centre sur la case visee).
+                    // Refonte 29 mai — pose 3 mines VISIBLES par défaut (invisibles si phase 3, géré
+                    //   par PlaceTrap). Ordre : centre + cardinaux disponibles (placement déterministe).
                     int cx = cmd.TargetX, cy = cmd.TargetY;
                     int* candX = stackalloc int[9];
                     int* candY = stackalloc int[9];
@@ -2968,15 +3022,9 @@ namespace Quantum
                     candX[7] = cx - 1; candY[7] = cy + 1;
                     candX[8] = cx - 1; candY[8] = cy - 1;
 
-                    // 1) Voiler les 9 cases (toutes celles in-bounds, y compris case du caster).
-                    for (int i = 0; i < 9; i++)
-                    {
-                        int vx = candX[i], vy = candY[i];
-                        if (!GridHelpers.InBounds(vx, vy)) continue;
-                        FogHelpers.ApplyVeil(f, vx, vy, caster->PlayerIndex, 10, currentTurn);
-                    }
-
-                    // 2) Poser 3 mines (centre prioritaire, skip case caster).
+                    // Refonte 29 mai — plus de voile uniforme sur la zone : les mines sont VISIBLES
+                    //   par défaut (PlaceTrap applique le voile par mine uniquement si phase 3).
+                    // Poser 3 mines (centre prioritaire, skip case caster).
                     int placed = 0;
                     for (int i = 0; i < 9 && placed < 3; i++)
                     {
@@ -2986,13 +3034,15 @@ namespace Quantum
                         FogHelpers.PlaceTrap(f, mx, my, TrapKind.Mine, caster->PlayerIndex, currentTurn);
                         placed++;
                     }
-                    Log.Info($"[Spell] Champ de Mines : zone 3x3 voilee + {placed} mines par P{caster->PlayerIndex} (centre {cx},{cy})");
+                    Log.Info($"[Spell] Champ de Mines : {placed} mines posées par P{caster->PlayerIndex} (centre {cx},{cy}, visibles sauf phase 3)");
                     break;
                 }
 
                 case SpellId.NightseerBourrasque:
                 {
-                    // Push la cible 3 cases (5 avec 1 PR) loin du caster.
+                    // Refonte 29 mai — push DIRECTIONNEL : la cible est poussée dans le sens
+                    //   (TargetX,TargetY) -> (DirX,DirY) du 2e clic (réduit à une cardinale).
+                    //   Fallback "loin du caster" si pas de direction fournie (DirX/DirY absent).
                     int pushDist = hgSpend >= 1
                         ? SpellRegistry.BourrasquePushBonus1PR
                         : SpellRegistry.BourrasquePushBase;
@@ -3000,36 +3050,44 @@ namespace Quantum
                     if (target != EntityRef.None
                         && f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC))
                     {
-                        PushAndTrigger(f, targetC, target, caster->GridX, caster->GridY, pushDist, currentTurn, caster);
+                        int fromX = caster->GridX, fromY = caster->GridY; // fallback
+                        int dirDX = cmd.DirX - cmd.TargetX;
+                        int dirDY = cmd.DirY - cmd.TargetY;
+                        bool hasDir = cmd.DirX >= 0 && cmd.DirY >= 0 && (dirDX != 0 || dirDY != 0);
+                        if (hasDir)
+                        {
+                            int adx = dirDX < 0 ? -dirDX : dirDX;
+                            int ady = dirDY < 0 ? -dirDY : dirDY;
+                            int sx = 0, sy = 0;
+                            if (adx >= ady) sx = dirDX > 0 ? 1 : -1;
+                            else            sy = dirDY > 0 ? 1 : -1;
+                            // "from" = case derrière la cible dans le sens opposé -> push vers la cardinale.
+                            fromX = cmd.TargetX - sx;
+                            fromY = cmd.TargetY - sy;
+                        }
+                        PushAndTrigger(f, targetC, target, fromX, fromY, pushDist, currentTurn, caster);
                     }
                     break;
                 }
 
-                case SpellId.NightseerSouffleGlacial:
+                case SpellId.NightseerSouffleGlacial: // PIÈGE BONDISSANT (refonte 29 mai)
                 {
-                    // AoE croix 3 autour caster (gere par effectBuffer = 5 cases via CrossSmall).
-                    // Damage 70 deja applique par damage loop. Ici on push +1 case + MovementMalus -1.
-                    int casterX = caster->GridX;
-                    int casterY = caster->GridY;
-                    for (int i = 0; i < effectCount; i++)
+                    // Pose un piège-catapulte sur (TargetX,TargetY) avec la direction d'éjection
+                    //   choisie au 2e clic (cmd.DirX/DirY -> cardinale). Au déclenchement (FogHelpers),
+                    //   l'ennemi est éjecté de 3 cases dans ce sens. Visible (invisible en phase 3).
+                    byte trapDir = 0; // 0 = aucune (fallback : la cible ne sera pas éjectée)
+                    int dirDX = cmd.DirX - cmd.TargetX;
+                    int dirDY = cmd.DirY - cmd.TargetY;
+                    if (cmd.DirX >= 0 && cmd.DirY >= 0 && (dirDX != 0 || dirDY != 0))
                     {
-                        int idx = effectBuffer[i];
-                        int gx = idx % GridConstants.Width;
-                        int gy = idx / GridConstants.Width;
-                        if (gx == casterX && gy == casterY) continue; // skip caster
-                        EntityRef target = GridHelpers.GetOccupant(f, gx, gy);
-                        if (target == EntityRef.None) continue;
-                        if (target == casterEntity) continue;
-                        if (!f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC)) continue;
-
-                        // Push 1 case loin du caster (depuis position courante).
-                        PushAndTrigger(f, targetC, target, casterX, casterY,
-                            SpellRegistry.SouffleGlacialPushDistance, currentTurn, caster);
-                        // -1 PM (1 tour).
-                        StatusHelper.Apply(targetC, StatusKind.MovementMalus,
-                            magnitude: SpellRegistry.SouffleGlacialPMReduce, turnsLeft: 1, currentTurn);
-                        Log.Info($"[Spell] Souffle Glacial : push + MovementMalus -{SpellRegistry.SouffleGlacialPMReduce} sur P{targetC->PlayerIndex}");
+                        int adx = dirDX < 0 ? -dirDX : dirDX;
+                        int ady = dirDY < 0 ? -dirDY : dirDY;
+                        if (adx >= ady) trapDir = (byte)(dirDX > 0 ? 1 : 2);
+                        else            trapDir = (byte)(dirDY > 0 ? 3 : 4);
                     }
+                    FogHelpers.PlaceTrap(f, cmd.TargetX, cmd.TargetY, TrapKind.Bondissant,
+                        caster->PlayerIndex, currentTurn, trapDir);
+                    Log.Info($"[Spell] Piège Bondissant posé en ({cmd.TargetX},{cmd.TargetY}) par P{caster->PlayerIndex}, dir={trapDir}");
                     break;
                 }
 
@@ -3037,17 +3095,8 @@ namespace Quantum
                 // 2.15.c — NIGHTSEER SURVIE
                 // ====================================================================
 
-                case SpellId.NightseerVoileDOmbre:
-                {
-                    // Untargetable 1 round actif (skip-decrement -> reste actif tout le round courant
-                    // ET le round suivant cote owner, puis expire). Bible : "1 tour" = 1 round.
-                    StatusHelper.Apply(caster, StatusKind.Untargetable,
-                        magnitude: 0,
-                        turnsLeft: SpellRegistry.VoileDOmbreTurns,
-                        currentTurn);
-                    Log.Info($"[Spell] Voile d'Ombre : P{caster->PlayerIndex} devient Untargetable");
-                    break;
-                }
+                // Refonte 29 mai — Voile d'Ombre supprimé (ID réutilisé par Flèche Traçante, qui est
+                //   offensive : dégâts gérés dans le damage override, pas de handler dédié ici).
 
                 case SpellId.NightseerPasFurtif:
                 {
@@ -3061,12 +3110,12 @@ namespace Quantum
                     GridHelpers.SetOccupant(f, cmd.TargetX, cmd.TargetY, casterEntity);
                     Log.Info($"[Spell] Pas Furtif : P{caster->PlayerIndex} ({oldX},{oldY}) -> ({cmd.TargetX},{cmd.TargetY})");
 
-                    // 1 PR optionnel -> Voile 2 tours sur la case d'arrivee.
+                    // Refonte 29 mai — 1 PR optionnel -> pose un Filet de Ronces sur la case QUITTÉE
+                    //   (cadeau d'adieu), au lieu de l'ancien voile. Visible par défaut (cf phase).
                     if (hgSpend >= 1)
                     {
-                        FogHelpers.ApplyVeil(f, cmd.TargetX, cmd.TargetY,
-                            caster->PlayerIndex, SpellRegistry.PasFurtifVeilTurns, currentTurn);
-                        Log.Info($"[Spell] Pas Furtif : Voile 2 tours pose sur ({cmd.TargetX},{cmd.TargetY}) (1 PR)");
+                        FogHelpers.PlaceTrap(f, oldX, oldY, TrapKind.FiletRonces, caster->PlayerIndex, currentTurn);
+                        Log.Info($"[Spell] Pas Furtif : Filet de Ronces posé sur la case quittée ({oldX},{oldY}) (1 PR)");
                     }
                     break;
                 }
@@ -3097,31 +3146,11 @@ namespace Quantum
                         heal += SpellRegistry.SeveSauvageHealBonusTrap;
                     }
 
-                    // Bonus +30 si au moins 1 voile actif sur la map appartenant au caster.
-                    bool hasOwnVeil = false;
-                    if (f.TryGetSingleton<FogSingleton>(out _))
-                    {
-                        var fogPtr = f.Unsafe.GetPointerSingleton<FogSingleton>();
-                        for (int i = 0; i < GridConstants.Count; i++)
-                        {
-                            var t = fogPtr->Tiles[i];
-                            if (t.VeiledTurnsLeft > 0
-                                && t.VeiledByPlayer == (byte)(caster->PlayerIndex + 1))
-                            {
-                                hasOwnVeil = true;
-                                break;
-                            }
-                        }
-                    }
-                    if (hasOwnVeil)
-                    {
-                        heal += SpellRegistry.SeveSauvageHealBonusVeil;
-                    }
-
+                    // Refonte 29 mai — bonus voile retiré (les pièges ne voilent plus). Reste : base + trap.
                     int hpBeforeSeve = caster->HP;
                     caster->HP += heal;
                     if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
-                    Log.Info($"[Spell] Seve Sauvage : +{heal} HP sur P{caster->PlayerIndex} ({hpBeforeSeve} -> {caster->HP}) [base {SpellRegistry.SeveSauvageHealBase} +trap{(caster->LastTrapTriggeredOnTurn >= currentTurn - 1 ? SpellRegistry.SeveSauvageHealBonusTrap : 0)} +veil{(hasOwnVeil ? SpellRegistry.SeveSauvageHealBonusVeil : 0)}]");
+                    Log.Info($"[Spell] Sève Sauvage : +{heal} HP sur P{caster->PlayerIndex} ({hpBeforeSeve} -> {caster->HP}) [base {SpellRegistry.SeveSauvageHealBase} +trap{(caster->LastTrapTriggeredOnTurn >= currentTurn - 1 ? SpellRegistry.SeveSauvageHealBonusTrap : 0)}]");
                     break;
                 }
 
@@ -3140,10 +3169,10 @@ namespace Quantum
                     caster->HP += SpellRegistry.EvanescenceHeal;
                     if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
 
-                    FogHelpers.ApplyVeil(f, oldX, oldY,
-                        caster->PlayerIndex, SpellRegistry.EvanescenceVeilTurns, currentTurn);
+                    // Refonte 29 mai — pose un PIÈGE (Filet de Ronces) sur la case quittée, au lieu d'un voile.
+                    FogHelpers.PlaceTrap(f, oldX, oldY, TrapKind.FiletRonces, caster->PlayerIndex, currentTurn);
 
-                    Log.Info($"[Spell] Evanescence : P{caster->PlayerIndex} ({oldX},{oldY}) -> ({cmd.TargetX},{cmd.TargetY}) heal {hpBeforeEvan} -> {caster->HP} + Voile sur ({oldX},{oldY})");
+                    Log.Info($"[Spell] Évanescence : P{caster->PlayerIndex} ({oldX},{oldY}) -> ({cmd.TargetX},{cmd.TargetY}) heal {hpBeforeEvan} -> {caster->HP} + Filet sur ({oldX},{oldY})");
                     break;
                 }
 
@@ -3635,14 +3664,34 @@ namespace Quantum
                     break;
                 }
 
-                case SpellId.ColossarSoinLourd:
+                case SpellId.ColossarSoinLourd: // EBOULEMENT (refonte 29 mai)
                 {
-                    // Bible V7.1 : 3 PA range 3, heal 150 HP self/allie. MVP 1v1 : self-only
-                    // (SpellDef Filter=Self range 0). Le case en 2v2/3v3 sera ajoute en Phase 6.
-                    int hpBeforeSoin = caster->HP;
-                    caster->HP += SpellRegistry.SoinLourdHeal;
-                    if (caster->HP > caster->MaxHP) caster->HP = caster->MaxHP;
-                    Log.Info($"[Spell] Soin Lourd : +{SpellRegistry.SoinLourdHeal} HP sur P{caster->PlayerIndex} ({hpBeforeSoin} -> {caster->HP})");
+                    // Les 150 AoE (rayon 1 autour du Pilier) sont déjà appliqués par le pipeline
+                    //   (CircleSmall). Ici : détruis le Pilier ciblé (+30 HP via passif Densité Inerte)
+                    //   puis push les ennemis survivants autour, loin du pilier.
+                    int pillarX = cmd.TargetX;
+                    int pillarY = cmd.TargetY;
+                    EntityRef pillar = ObstacleHelpers.GetObstacleAt(f, pillarX, pillarY);
+                    if (pillar != EntityRef.None)
+                    {
+                        ObstacleHelpers.DestroyObstacle(f, pillar); // +30 HP owner (passif destruction)
+                        Log.Info($"[Spell] Éboulement : Pilier détruit en ({pillarX},{pillarY}) par P{caster->PlayerIndex}");
+                    }
+
+                    int[] ebDx = { 1, -1, 0, 0 };
+                    int[] ebDy = { 0, 0, 1, -1 };
+                    for (int i = 0; i < 4; i++)
+                    {
+                        int nx = pillarX + ebDx[i];
+                        int ny = pillarY + ebDy[i];
+                        if (!GridHelpers.InBounds(nx, ny)) continue;
+                        EntityRef occ = GridHelpers.GetOccupant(f, nx, ny);
+                        if (occ == EntityRef.None || occ == casterEntity) continue;
+                        if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* ebC)) continue;
+                        if (ebC->PlayerIndex == caster->PlayerIndex || ebC->HP <= 0) continue;
+                        PushAndTrigger(f, ebC, occ, pillarX, pillarY,
+                            SpellRegistry.EboulementPushDistance, currentTurn, caster);
+                    }
                     break;
                 }
 
@@ -3652,15 +3701,9 @@ namespace Quantum
 
                 case SpellId.ColossarEffondrement:
                 {
-                    // Bible V7.1 + design Lorenzo (swap anti-fuite) : ANNONCE 1 tour a l'avance.
-                    // Snapshot au cast : ennemi LE PLUS PROCHE actuellement dans le rayon 2.
-                    // Au trigger N+1, meme si cet ennemi a quitte la zone, il sera teleporte
-                    // AU CENTRE des Failles (= case ex-caster), et le caster ira sur la case
-                    // actuelle de l'ennemi (= position fuite). Mindgame "le Colossar dicte".
-                    //
-                    // FD : les 3 HG mandatory (= 3 FD) ont deja ete consommes par le pipeline standard
-                    // de cost. FD revient automatiquement a 0 vu qu'il etait au cap 3.
-                    caster->EffondrementAnnouncedOnTurn = currentTurn;
+                    // Refonte 29 mai : déclenchement IMMÉDIAT (plus d'annonce différée). Le swap
+                    //   anti-fuite cible l'ennemi le plus proche dans le rayon 2 AU MOMENT DU CAST.
+                    //   FD (5) déjà consommés par le pipeline standard de cost.
                     caster->LastEffondrementUsedOnTurn = currentTurn;
 
                     // Snapshot ennemi le plus proche dans rayon 2 (Manhattan).
@@ -3687,14 +3730,10 @@ namespace Quantum
                         }
                     }
                     caster->EffondrementTargetEntity = targetSnapshot;
-                    if (targetSnapshot != EntityRef.None)
-                    {
-                        Log.Info($"[Spell] Effondrement ANNONCE par P{caster->PlayerIndex} (tour {currentTurn}). Cible snapshot dist {bestDist}. Trigger au prochain sub-turn (swap au trigger).");
-                    }
-                    else
-                    {
-                        Log.Info($"[Spell] Effondrement ANNONCE par P{caster->PlayerIndex} (tour {currentTurn}). Aucun ennemi en zone au cast -> pas de swap, juste Failles + buff au trigger.");
-                    }
+                    Log.Info($"[Spell] Effondrement IMMÉDIAT par P{caster->PlayerIndex} (tour {currentTurn}). Cible snapshot dist {(targetSnapshot != EntityRef.None ? bestDist : -1)}.");
+
+                    // Refonte 29 mai : déclenche tout de suite (200 AoE + éjection + Failles + buff).
+                    TurnSystem.TriggerEffondrement(f, caster, currentTurn);
                     break;
                 }
             }
@@ -3761,15 +3800,15 @@ namespace Quantum
         /// 2.16 — True si la cible Traquenard a Traque/Empreinte OU si la case visee a un
         /// voile owned par le caster. Sert au bonus +80 dgts + gain +2 PR.
         /// </summary>
+        // Refonte 29 mai — Traquenard : bonus +80 si la cible est TRAQUÉ (marque unique).
+        //   Voilé/Empreinté supprimés du gameplay. (casterPlayerIndex conservé pour la signature.)
         private static bool TraquenardHasMarkOrOwnVeil(Frame f, int targetX, int targetY, int casterPlayerIndex)
         {
             EntityRef occ = GridHelpers.GetOccupant(f, targetX, targetY);
             if (occ != EntityRef.None && f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* targetC))
             {
                 if (MarkHelpers.HasMark(targetC, MarkKind.Traque)) return true;
-                if (MarkHelpers.HasMark(targetC, MarkKind.Empreinte)) return true;
             }
-            if (FogHelpers.GetVeilOwner(f, targetX, targetY) == casterPlayerIndex) return true;
             return false;
         }
 
@@ -3914,8 +3953,25 @@ namespace Quantum
             GridHelpers.SetOccupant(f, curX, curY, targetEntity);
             Log.Info($"[Spell] Push : P{targetC->PlayerIndex} pousse de {steps} case(s) -> ({curX},{curY})");
 
+            // FIX 30 mai — pieges declenches AU PASSAGE sur TOUTE la trajectoire de poussee, pas
+            // seulement la case d'arrivee. Avant, un piege traverse en cours de poussee (Bourrasque,
+            // Onde de Choc, Eboulement) etait ignore tant que la cible ne s'arretait pas pile dessus.
+            // On rejoue la trajectoire depuis la case de depart (pushFromX/Y) dans le sens
+            // (stepX,stepY) et on declenche chaque case intermediaire, puis la case finale.
+            int passX = pushFromX, passY = pushFromY;
+            for (int s = 1; s < steps; s++)
+            {
+                if (targetC->HP <= 0) break;
+                passX += stepX;
+                passY += stepY;
+                FogHelpers.TryTriggerTrapOnEnter(f, targetEntity, targetC, passX, passY, currentTurn);
+            }
+
             // Trigger trap eventuel sur la case d'arrivee.
-            FogHelpers.TryTriggerTrapOnEnter(f, targetEntity, targetC, curX, curY, currentTurn);
+            if (targetC->HP > 0)
+            {
+                FogHelpers.TryTriggerTrapOnEnter(f, targetEntity, targetC, curX, curY, currentTurn);
+            }
         }
 
         /// <summary>

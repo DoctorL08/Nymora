@@ -450,10 +450,16 @@ namespace Nymora.Combat.View.HUD
             if (c.PA < paCost) return SpellSlotView.SlotState.Disabled;
             if (c.Resource < def.HGCostMandatory) return SpellSlotView.SlotState.Disabled;
 
-            // 2.13.c : cooldown (signature Ame Laceree) et 1/match (Pacte de Sang, Dernier Souffle).
+            // 2.13.c : cooldown (signatures + relances generiques) et 1/match (Pacte, Dernier Souffle).
             if (ResolveCooldownTurnsLeft(spell, c, valid: true, turnNumber) > 0) return SpellSlotView.SlotState.Disabled;
             if (def.OncePerMatchBit != SpellRegistry.OncePerMatchBitNone
                 && (c.OncePerMatchUsedFlags & (1 << def.OncePerMatchBit)) != 0)
+            {
+                return SpellSlotView.SlotState.Disabled;
+            }
+            // Refonte 29 mai : cap "Nx/tour" atteint -> grise (plus castable ce tour).
+            if (def.MaxUsesPerTurn > 0
+                && SpellLimitsHelper.UsesThisTurn(c, spell, turnNumber) >= def.MaxUsesPerTurn)
             {
                 return SpellSlotView.SlotState.Disabled;
             }
@@ -462,14 +468,43 @@ namespace Nymora.Combat.View.HUD
         }
 
         /// <summary>
-        /// Tours de cooldown restants pour un sort, ou 0 s'il est dispo. Pour 2.13.c,
-        /// seule la signature Ame Laceree a un cooldown de 4 tours. Les autres retournent 0.
+        /// Tours de relance restants pour un sort, ou 0 s'il est dispo. Couvre :
+        ///   - les SIGNATURES a champ dedie (cooldown 4t) des 5 classes ;
+        ///   - les RELANCES GENERIQUES (refonte 29 mai) declarees dans SpellDef.CooldownTurns
+        ///     (Rugissement 2t, Peau de Fer 2t, etc.), lues via SpellLimitsHelper.
+        /// Pilote le grisage (ResolveSlotState) ET le label "Nt" du slot.
         /// </summary>
         private static int ResolveCooldownTurnsLeft(SpellId spell, in Combatant c, bool valid, int turnNumber)
         {
-            if (!valid || spell != SpellId.SoulrenderAmeLaceree) return 0;
-            int sinceLast = turnNumber - c.LastAmeLaceeUsedOnTurn;
-            int remaining = SpellRegistry.AmeLaceeCooldownTurns - sinceLast;
+            if (!valid || spell == SpellId.None) return 0;
+
+            // Signatures a champ dedie (init -1000 -> jamais en cooldown au depart).
+            switch (spell)
+            {
+                case SpellId.SoulrenderAmeLaceree:
+                    return RemainingCd(SpellRegistry.AmeLaceeCooldownTurns, turnNumber, c.LastAmeLaceeUsedOnTurn);
+                case SpellId.NightseerTraquenard:
+                    return RemainingCd(SpellRegistry.TraquenardCooldownTurns, turnNumber, c.LastTraquenardUsedOnTurn);
+                case SpellId.ColossarEffondrement:
+                    return RemainingCd(SpellRegistry.EffondrementCooldownTurns, turnNumber, c.LastEffondrementUsedOnTurn);
+                case SpellId.NecramVirusFatal:
+                    return RemainingCd(SpellRegistry.VirusFatalCooldownTurns, turnNumber, c.LastVirusFatalUsedOnTurn);
+                case SpellId.GhostraExecutionSpectrale:
+                    return RemainingCd(SpellRegistry.ExecutionSpectraleCooldownTurns, turnNumber, c.LastExecutionSpectraleUsedOnTurn);
+            }
+
+            // Relances generiques (SpellLimitsHelper + SpellCooldownLastTurn).
+            if (SpellRegistry.TryGet(spell, out SpellDef def) && def.CooldownTurns > 0)
+            {
+                return SpellLimitsHelper.CooldownRemaining(c, spell, def.CooldownTurns, turnNumber);
+            }
+            return 0;
+        }
+
+        /// <summary>Helper : tours restants = cooldown - (tour courant - dernier usage), clamp >= 0.</summary>
+        private static int RemainingCd(int cooldownTurns, int turnNumber, int lastUsedTurn)
+        {
+            int remaining = cooldownTurns - (turnNumber - lastUsedTurn);
             return remaining > 0 ? remaining : 0;
         }
 
