@@ -1535,6 +1535,7 @@ MonoBehaviour:
   _maxLines: 100
   _tabActiveColor: {r: 0.25, g: 0.4, b: 0.65, a: 1}
   _tabInactiveColor: {r: 0.2, g: 0.2, b: 0.24, a: 1}
+  _theme: {fileID: 11400000, guid: f44b5bce0fc2f9f44979421971e77fdc, type: 2}
 --- !u!1 &8796815928475627472
 GameObject:
   m_ObjectHideFlags: 0

@@ -409,7 +409,7 @@ namespace Nymora.Editor.Setup
             CreateText(go.transform, "Label",
                 anchorMin: new Vector2(0f, 0f), anchorMax: new Vector2(1f, 1f),
                 pivot: new Vector2(0.5f, 0.5f), anchoredPos: Vector2.zero, size: Vector2.zero,
-                content: "End Turn >", fontSize: 28f, align: TextAlignmentOptions.Center, color: Color.white)
+                content: "Fin de tour >", fontSize: 28f, align: TextAlignmentOptions.Center, color: Color.white)
                 .fontStyle = FontStyles.Bold;
 
             return btn;

@@ -9018,7 +9018,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: End Turn >
+  m_text: Fin de tour >
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 9c8a8667e2352a841a77df1104136a55, type: 2}
   m_sharedMaterial: {fileID: 7700272497058392182, guid: 9c8a8667e2352a841a77df1104136a55, type: 2}

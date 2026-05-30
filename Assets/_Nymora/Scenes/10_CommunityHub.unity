@@ -137344,6 +137344,7 @@ MonoBehaviour:
   _buttonHeight: 40
   _buttonFontSize: 16
   _chatUI: {fileID: 1226587304}
+  _theme: {fileID: 11400000, guid: f44b5bce0fc2f9f44979421971e77fdc, type: 2}
 --- !u!1 &1390959557
 GameObject:
   m_ObjectHideFlags: 0

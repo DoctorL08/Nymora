@@ -40,6 +40,13 @@ namespace Nymora.Hub
         // sinon les instances combat (qui n'ont jamais vu le restyle éditeur) gardent des coins carrés.
         [SerializeField] private float _tabCornerRadius = 14f;
 
+        [Header("Style barre de saisie (DA menu hub)")]
+        [Tooltip("Thème menu hub : style la barre de saisie + bouton Envoyer au runtime (identique hub/combat/replay). Si vide, fallback HubMenuShell.MenuTheme.")]
+        [SerializeField] private HubMenuTheme _theme;
+
+        /// <summary>Thème actif : champ sérialisé prioritaire, sinon celui posé par HubMenuShell. Peut être null.</summary>
+        private HubMenuTheme ActiveTheme => _theme != null ? _theme : HubMenuShell.MenuTheme;
+
         private ChatTab _activeTab = ChatTab.Global;
         private string _joinedClanChannel; // "clan:<clanId>" si rejoint, sinon null
 
@@ -79,6 +86,7 @@ namespace Nymora.Hub
                 AppendSystemLine(ChatTab.Global, "--- Chat connecting ---");
             EnsureTabSprites();
             UpdateTabStyles();
+            EnsureInputBarStyle();
             RefreshHistoryText();
             EnsureHistoryClickHandler();
             EnsureBadges();
@@ -352,6 +360,72 @@ namespace Nymora.Hub
             if (img == null) return;
             img.sprite = HubMenuUIFactory.RoundedSprite(_tabCornerRadius);
             img.type = Image.Type.Sliced;
+        }
+
+        private bool _inputBarStyled;
+
+        /// <summary>Aligne la barre de saisie + le bouton Envoyer sur la DA du chat hub, AU RUNTIME,
+        /// pour que ce soit identique dans toutes les scènes (hub/combat/replay) sans dépendre d'un
+        /// restyle baké par scène. Mirroir de HubChatRestyleTool (champ de saisie ghost arrondi +
+        /// bouton Envoyer accent arrondi + police Ari). No-op si aucun thème disponible.</summary>
+        private void EnsureInputBarStyle()
+        {
+            if (_inputBarStyled) return;
+            var t = ActiveTheme;
+            if (t == null) return; // pas de thème (ex : boot combat direct en éditeur) -> on garde tel quel
+
+            // --- Champ de saisie : fond ghost arrondi + police Ari + placeholder estompé ---
+            if (_inputField != null)
+            {
+                var bg = _inputField.GetComponent<Image>();
+                if (bg != null)
+                {
+                    bg.color = t.ButtonGhostBg;
+                    bg.sprite = HubMenuUIFactory.RoundedSprite(t.CornerRadius);
+                    bg.type = Image.Type.Sliced;
+                }
+                if (_inputField.textComponent != null)
+                {
+                    if (t.Font != null) _inputField.textComponent.font = t.Font;
+                    _inputField.textComponent.color = t.TextPrimary;
+                }
+                if (_inputField.placeholder is TextMeshProUGUI ph)
+                {
+                    if (t.Font != null) ph.font = t.Font;
+                    ph.color = t.TextMuted;
+                    ph.fontStyle = FontStyles.Italic;
+                }
+            }
+
+            // --- Bouton Envoyer : pilule accent claire arrondie + texte sombre Ari (ColorTint) ---
+            if (_sendButton != null)
+            {
+                var img = _sendButton.GetComponent<Image>();
+                if (img != null)
+                {
+                    img.color = Color.white; // base ; la teinte vient du ColorBlock
+                    img.sprite = HubMenuUIFactory.RoundedSprite(t.CornerRadius);
+                    img.type = Image.Type.Sliced;
+                    _sendButton.targetGraphic = img;
+                }
+                _sendButton.transition = Selectable.Transition.ColorTint;
+                var c = _sendButton.colors;
+                c.normalColor = t.Accent;
+                c.highlightedColor = Color.Lerp(t.Accent, Color.white, 0.15f);
+                c.pressedColor = Color.Lerp(t.Accent, Color.black, 0.10f);
+                c.selectedColor = t.Accent;
+                c.fadeDuration = 0.1f;
+                _sendButton.colors = c;
+
+                var lbl = _sendButton.GetComponentInChildren<TextMeshProUGUI>(true);
+                if (lbl != null)
+                {
+                    if (t.Font != null) lbl.font = t.Font;
+                    lbl.color = t.TextOnLight;
+                }
+            }
+
+            _inputBarStyled = true;
         }
 
         private void ApplyTabColor(Button btn, bool active)

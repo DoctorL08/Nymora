@@ -50,6 +50,10 @@ namespace Nymora.Hub.Menu
         // C1 — police de la DA menu (Ari), exposée pour les bulles de chat world-space.
         public static TMP_FontAsset MenuFont { get; private set; }
 
+        // Thème menu exposé pour les widgets hub hors-shell qui veulent la même DA monochrome
+        // (ex : ChallengePopup, menu contextuel avatar). Posé à l'init, comme MenuFont.
+        public static HubMenuTheme MenuTheme { get; private set; }
+
         private HubMenuUIFactory _f;
         private GameObject _menuRoot;
         private RectTransform _contentArea;
@@ -64,7 +68,8 @@ namespace Nymora.Hub.Menu
         // Matchmaking ranked (réutilise les events de file de HubChatClient)
         private bool _searching;
         private TextMeshProUGUI _mmStatus;
-        private TextMeshProUGUI _lbText;
+        private TextMeshProUGUI _lbText;  // statut (chargement / erreur / vide) centré
+        private RectTransform _lbList;    // conteneur des lignes du classement (VLG)
 
         // M3 — Personnage
         private NymoraApiClient _api;
@@ -120,6 +125,7 @@ namespace Nymora.Hub.Menu
             }
             _f = new HubMenuUIFactory(_theme);
             MenuFont = _theme.Font;
+            MenuTheme = _theme;
             if (_backendSettings != null) _api = new NymoraApiClient(_backendSettings);
             BuildUI();
         }
@@ -381,6 +387,7 @@ namespace Nymora.Hub.Menu
             if (_currentScreen != null) { Destroy(_currentScreen); _currentScreen = null; }
             _mmStatus = null;
             _lbText = null;
+            _lbList = null;
             _currentScreenId = id;
             for (int i = 0; i < _tabs.Count; i++)
                 _f.SetTabActive(_tabs[i].Label, _tabs[i].Icon, _tabs[i].Id == id);
@@ -436,19 +443,22 @@ namespace Nymora.Hub.Menu
             hlg.childControlWidth = true; hlg.childControlHeight = true;
             hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
 
+            _arenaRankBadges.Clear();
             MakeModeCard(row, "Entraînement", "Affronte l'IA", true,
                 () => { Close(); if (HubArenaPanel.Instance != null) HubArenaPanel.Instance.StartTraining(); }, "mode_training");
             MakeModeCard(row, "Ranked 1v1", "Classé · 1 contre 1", true,
-                () => ShowScreen("matchmaking"), "mode_1v1");
-            MakeModeCard(row, "Ranked 2v2", "Bientôt disponible", false, null, "mode_2v2");
-            MakeModeCard(row, "Ranked 3v3", "Bientôt disponible", false, null, "mode_3v3");
+                () => ShowScreen("matchmaking"), "mode_1v1", showRank: true);
+            MakeModeCard(row, "Ranked 2v2", "Bientôt disponible", false, null, "mode_2v2", showRank: true);
+            MakeModeCard(row, "Ranked 3v3", "Bientôt disponible", false, null, "mode_3v3", showRank: true);
 
             _currentScreen = holder.gameObject;
+            RefreshArenaRankBadges();
         }
 
-        private void MakeModeCard(RectTransform parent, string title, string sub, bool enabled, System.Action onClick, string cardKey = null)
+        private void MakeModeCard(RectTransform parent, string title, string sub, bool enabled, System.Action onClick, string cardKey = null, bool showRank = false)
         {
             var btn = _f.MakeCard(parent, title, sub, out _, CardSprite(cardKey));
+            if (showRank) AddRankBadge((RectTransform)btn.transform);
             if (enabled && onClick != null)
             {
                 btn.onClick.AddListener(() => onClick());
@@ -457,6 +467,65 @@ namespace Nymora.Hub.Menu
             {
                 btn.interactable = false;
                 btn.gameObject.AddComponent<CanvasGroup>().alpha = 0.5f;
+            }
+        }
+
+        // ===== Badge de rang sur les cartes ranked (icône + nom, haut de la carte) =====
+
+        private readonly List<(Image icon, TextMeshProUGUI name, TextMeshProUGUI mmr)> _arenaRankBadges
+            = new List<(Image, TextMeshProUGUI, TextMeshProUGUI)>();
+
+        /// <summary>Pose un badge vide (icône + nom + MMR) en haut de la carte ; rempli par
+        /// RefreshArenaRankBadges une fois le MMR récupéré.</summary>
+        private void AddRankBadge(RectTransform cardRoot)
+        {
+            var badge = _f.MakeRect("RankBadge", cardRoot);
+            badge.anchorMin = new Vector2(0.5f, 1f); badge.anchorMax = new Vector2(0.5f, 1f); badge.pivot = new Vector2(0.5f, 1f);
+            badge.anchoredPosition = new Vector2(0f, -16f);
+            badge.sizeDelta = new Vector2(_theme.CardSize.x - 24f, 96f);
+            var vlg = badge.gameObject.AddComponent<VerticalLayoutGroup>();
+            vlg.spacing = 1f; vlg.childAlignment = TextAnchor.UpperCenter;
+            vlg.childControlWidth = true; vlg.childControlHeight = true;
+            vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
+
+            var icon = _f.MakeImage("Icon", badge, Color.white, rounded: false);
+            icon.type = Image.Type.Simple; icon.preserveAspect = true; icon.raycastTarget = false;
+            icon.enabled = false; // caché tant qu'aucune icône
+            var ile = icon.gameObject.AddComponent<LayoutElement>();
+            ile.preferredWidth = 48f; ile.preferredHeight = 48f; ile.minHeight = 48f;
+
+            var name = _f.MakeText("Name", badge, "", _theme.FontSizeSmall, _theme.TextPrimary, _theme.FontBold, TextAlignmentOptions.Center);
+            name.raycastTarget = false;
+            name.enableWordWrapping = false;
+            var nle = name.gameObject.AddComponent<LayoutElement>();
+            nle.preferredHeight = 20f;
+
+            var mmr = _f.MakeText("Mmr", badge, "", _theme.FontSizeSmall, _theme.TextSecondary, _theme.Font, TextAlignmentOptions.Center);
+            mmr.raycastTarget = false;
+            mmr.enableWordWrapping = false;
+            var mle = mmr.gameObject.AddComponent<LayoutElement>();
+            mle.preferredHeight = 18f;
+
+            _arenaRankBadges.Add((icon, name, mmr));
+        }
+
+        private async void RefreshArenaRankBadges()
+        {
+            if (_arenaRankBadges.Count == 0) return;
+            int mmr = HubLeaderboardPanel.Instance != null
+                ? await HubLeaderboardPanel.Instance.FetchLocalMmrAsync()
+                : -1;
+            if (_currentScreenId != "arena") return; // écran quitté pendant le fetch
+            if (mmr < 0) return;                       // MMR indisponible : badges restent vides
+
+            var tier = RankLadder.Resolve(mmr);
+            var icon = RankLadder.ResolveIcon(mmr);
+            var color = ParseHex(tier.HexColor, _theme.TextPrimary);
+            foreach (var (img, nameLabel, mmrLabel) in _arenaRankBadges)
+            {
+                if (img != null && icon != null) { img.sprite = icon; img.enabled = true; }
+                if (nameLabel != null) { nameLabel.text = tier.Name; nameLabel.color = color; }
+                if (mmrLabel != null) mmrLabel.text = $"{mmr} MMR";
             }
         }
 
@@ -554,6 +623,18 @@ namespace Nymora.Hub.Menu
 
         // ===== M2 — Écran Classement (3 onglets 1v1/2v2/3v3, style menu) =====
 
+        // Largeur fixe de la table — assez large pour les pseudos. Décalée à gauche pour laisser
+        // place au panneau des paliers à droite.
+        private const float LbWidth = 640f;
+        private const float LbTableCenterX = -150f;   // décalage horizontal de la table
+        private const float LbLadderWidth = 230f;     // panneau "paliers" à droite
+        private const float LbLadderCenterX = 320f;
+        // Largeurs de colonnes (px), partagées en-tête + lignes pour un alignement parfait.
+        private const float LbColRankW = 48f;
+        private const float LbColTierW = 150f; // icône + nom du rang
+        private const float LbColMmrW = 64f;
+        private const float LbColWlW = 92f;
+
         private void BuildLeaderboard()
         {
             var holder = _f.MakeRect("Leaderboard", _contentArea);
@@ -568,7 +649,16 @@ namespace Nymora.Hub.Menu
             hlg.spacing = 10f; hlg.childAlignment = TextAnchor.MiddleCenter;
             hlg.childControlWidth = true; hlg.childControlHeight = true; hlg.childForceExpandWidth = false;
 
-            BuildScroll(holder, out _lbText);
+            BuildLbHeaderRow(holder, LbWidth, LbTableCenterX);
+            BuildLeaderboardScroll(holder, LbWidth, 90f, LbTableCenterX, out _lbList);
+            BuildRankLadderPanel(holder, LbLadderCenterX, LbLadderWidth, 90f);
+
+            // Texte de statut (chargement / erreur / vide), au-dessus de la zone de liste (alignée table).
+            _lbText = _f.MakeText("LbStatus", holder, "", _theme.FontSizeBody, _theme.TextSecondary, _theme.Font, TextAlignmentOptions.Center);
+            var strt = _lbText.rectTransform;
+            strt.anchorMin = new Vector2(0.5f, 0.5f); strt.anchorMax = new Vector2(0.5f, 0.5f); strt.pivot = new Vector2(0.5f, 0.5f);
+            strt.sizeDelta = new Vector2(440f, 60f);
+            strt.anchoredPosition = new Vector2(LbTableCenterX, -10f);
 
             var labels = new List<TextMeshProUGUI>();
             string[] ids = { "1v1", "2v2", "3v3" };
@@ -595,42 +685,251 @@ namespace Nymora.Hub.Menu
                 }
 
             if (idx == 0) LoadLeaderboard1v1();
-            else SetLb($"Classement {ids[idx]} — bientôt disponible.");
+            else { ClearLeaderboardRows(); ShowLbStatus($"Classement {ids[idx]} — bientôt disponible."); }
         }
 
         private async void LoadLeaderboard1v1()
         {
-            SetLb("Chargement du classement...");
-            if (HubLeaderboardPanel.Instance == null) { SetLb("Classement indisponible."); return; }
-            var txt = await HubLeaderboardPanel.Instance.GetLeaderboardTextAsync(100);
-            if (_currentScreenId == "leaderboard") SetLb(txt);
+            ClearLeaderboardRows();
+            ShowLbStatus("Chargement du classement...");
+            if (HubLeaderboardPanel.Instance == null) { ShowLbStatus("Classement indisponible."); return; }
+
+            var (entries, error) = await HubLeaderboardPanel.Instance.GetLeaderboardEntriesAsync(100);
+            if (_currentScreenId != "leaderboard") return; // écran changé pendant le fetch
+            if (entries == null) { ShowLbStatus(error); return; }
+
+            HideLbStatus();
+            RenderLeaderboardRows(entries);
         }
 
-        private void SetLb(string s) { if (_lbText != null) _lbText.text = s; }
-
-        /// <summary>Zone scrollable verticale avec un TMP de contenu (auto-dimensionné).</summary>
-        private void BuildScroll(RectTransform parent, out TextMeshProUGUI content)
+        private void ShowLbStatus(string s)
         {
-            var viewport = _f.MakeRect("Scroll", parent);
-            viewport.anchorMin = new Vector2(0f, 0f); viewport.anchorMax = new Vector2(1f, 1f);
-            viewport.offsetMin = new Vector2(40f, 20f);
-            viewport.offsetMax = new Vector2(-40f, -54f); // sous les onglets
-            var vpImg = viewport.gameObject.AddComponent<Image>();
-            vpImg.color = new Color(1f, 1f, 1f, 0.02f);
+            if (_lbText == null) return;
+            _lbText.text = s;
+            _lbText.gameObject.SetActive(true);
+        }
+
+        private void HideLbStatus()
+        {
+            if (_lbText != null) _lbText.gameObject.SetActive(false);
+        }
+
+        private void ClearLeaderboardRows()
+        {
+            if (_lbList == null) return;
+            for (int i = _lbList.childCount - 1; i >= 0; i--)
+                Destroy(_lbList.GetChild(i).gameObject);
+        }
+
+        private void RenderLeaderboardRows(LeaderboardEntry[] entries)
+        {
+            if (_lbList == null) return;
+            ClearLeaderboardRows();
+            string myId = HubLeaderboardPanel.LocalUserId;
+            for (int i = 0; i < entries.Length; i++)
+            {
+                var e = entries[i];
+                bool isMe = !string.IsNullOrEmpty(myId) && e.userId == myId;
+                MakeLbRow(_lbList, e, isMe, i);
+            }
+        }
+
+        // ===== Lignes du classement (cartes DA menu) =====
+
+        private static readonly Color LbMeRowBg = new Color(0.24f, 0.21f, 0.36f, 0.96f); // ligne "toi"
+        private static readonly Color LbRowAltBg = new Color(1f, 1f, 1f, 0.03f);          // ligne paire (léger)
+
+        private void MakeLbRow(RectTransform parent, LeaderboardEntry e, bool isMe, int index)
+        {
+            Color bg = isMe ? LbMeRowBg : (index % 2 == 0 ? _theme.CardBg : LbRowAltBg);
+            var row = _f.MakeImage("LbRow", parent, bg, rounded: true);
+            var le = row.gameObject.AddComponent<LayoutElement>();
+            le.preferredHeight = 46f; le.minHeight = 46f;
+
+            var hlg = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hlg.padding = new RectOffset(16, 16, 0, 0);
+            hlg.spacing = 8f;
+            hlg.childAlignment = TextAnchor.MiddleLeft;
+            hlg.childControlWidth = true; hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = true;
+
+            var nameFont = isMe ? _theme.FontBold : _theme.Font;
+            string pseudo = isMe ? e.displayName + "  (toi)" : e.displayName;
+
+            LbCell(row.transform, $"#{e.position}", LbColRankW, false, PodiumColor(e.position), TextAlignmentOptions.Center, _theme.FontBold, _theme.FontSizeBody);
+            LbCell(row.transform, pseudo, 0f, true, _theme.TextPrimary, TextAlignmentOptions.MidlineLeft, nameFont, _theme.FontSizeBody);
+            LbRankCell(row.transform, e.mmr, LbColTierW);
+            LbCell(row.transform, e.mmr.ToString(), LbColMmrW, false, _theme.TextPrimary, TextAlignmentOptions.MidlineRight, _theme.FontBold, _theme.FontSizeBody);
+            LbCell(row.transform, $"{e.rankedWins}V/{e.rankedLosses}D", LbColWlW, false, _theme.TextSecondary, TextAlignmentOptions.MidlineRight, _theme.Font, _theme.FontSizeSmall);
+        }
+
+        private void BuildLbHeaderRow(RectTransform holder, float width, float centerX)
+        {
+            var row = _f.MakeRect("LbHeaderRow", holder);
+            row.anchorMin = new Vector2(0.5f, 1f); row.anchorMax = new Vector2(0.5f, 1f); row.pivot = new Vector2(0.5f, 1f);
+            row.sizeDelta = new Vector2(width, 26f);
+            row.anchoredPosition = new Vector2(centerX, -54f);
+
+            var hlg = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hlg.padding = new RectOffset(16, 16, 0, 0);
+            hlg.spacing = 8f;
+            hlg.childAlignment = TextAnchor.MiddleLeft;
+            hlg.childControlWidth = true; hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = true;
+
+            LbCell(row, "#", LbColRankW, false, _theme.TextMuted, TextAlignmentOptions.Center, _theme.FontBold, _theme.FontSizeSmall);
+            LbCell(row, "JOUEUR", 0f, true, _theme.TextMuted, TextAlignmentOptions.MidlineLeft, _theme.FontBold, _theme.FontSizeSmall);
+            LbCell(row, "RANG", LbColTierW, false, _theme.TextMuted, TextAlignmentOptions.MidlineLeft, _theme.FontBold, _theme.FontSizeSmall);
+            LbCell(row, "MMR", LbColMmrW, false, _theme.TextMuted, TextAlignmentOptions.MidlineRight, _theme.FontBold, _theme.FontSizeSmall);
+            LbCell(row, "V/D", LbColWlW, false, _theme.TextMuted, TextAlignmentOptions.MidlineRight, _theme.FontBold, _theme.FontSizeSmall);
+
+            var divider = _f.MakeImage("LbHeaderDivider", holder, _theme.Divider, rounded: false);
+            var drt = divider.rectTransform;
+            drt.anchorMin = new Vector2(0.5f, 1f); drt.anchorMax = new Vector2(0.5f, 1f); drt.pivot = new Vector2(0.5f, 1f);
+            drt.sizeDelta = new Vector2(width, 1f);
+            drt.anchoredPosition = new Vector2(centerX, -82f);
+            divider.raycastTarget = false;
+        }
+
+        // ===== Panneau "Paliers" (à droite du classement) : les 8 rangs + MMR à atteindre =====
+
+        private void BuildRankLadderPanel(RectTransform holder, float centerX, float width, float topInset)
+        {
+            var panel = _f.MakeImage("RankLadder", holder, _theme.PanelBg, rounded: true);
+            var prt = panel.rectTransform;
+            prt.anchorMin = new Vector2(0.5f, 0f); prt.anchorMax = new Vector2(0.5f, 1f);
+            prt.pivot = new Vector2(0.5f, 0.5f);
+            prt.sizeDelta = new Vector2(width, -(topInset + 20f));
+            prt.anchoredPosition = new Vector2(centerX, (20f - topInset) / 2f);
+
+            var vlg = panel.gameObject.AddComponent<VerticalLayoutGroup>();
+            vlg.padding = new RectOffset(14, 14, 12, 12);
+            vlg.spacing = 5f;
+            vlg.childAlignment = TextAnchor.UpperCenter;
+            vlg.childControlWidth = true; vlg.childControlHeight = true;
+            vlg.childForceExpandWidth = true; vlg.childForceExpandHeight = false;
+
+            var title = _f.MakeText("Title", panel.transform, "PALIERS", _theme.FontSizeHeader, _theme.TextPrimary, _theme.FontBold, TextAlignmentOptions.Center);
+            title.raycastTarget = false;
+            var tle = title.gameObject.AddComponent<LayoutElement>();
+            tle.preferredHeight = 34f;
+
+            // Du plus haut (Légende) au plus bas (Bronze) — sens d'une échelle.
+            for (int i = RankLadder.TierCount - 1; i >= 0; i--)
+                MakeLadderRow(panel.transform, RankLadder.ByIndex(i));
+        }
+
+        private void MakeLadderRow(Transform parent, RankTier tier)
+        {
+            var row = _f.MakeRect("LadderRow", parent);
+            var le = row.gameObject.AddComponent<LayoutElement>();
+            le.preferredHeight = 30f; le.minHeight = 30f;
+
+            var hlg = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 8f; hlg.childAlignment = TextAnchor.MiddleLeft;
+            hlg.childControlWidth = true; hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = true;
+
+            var icon = _f.MakeImage("Icon", row, Color.white, rounded: false);
+            icon.sprite = RankLadder.ResolveIcon(tier.MinMmr);
+            icon.type = Image.Type.Simple; icon.preserveAspect = true; icon.raycastTarget = false;
+            if (icon.sprite == null) icon.enabled = false;
+            var ile = icon.gameObject.AddComponent<LayoutElement>();
+            ile.preferredWidth = 24f; ile.preferredHeight = 24f; ile.minWidth = 24f;
+
+            var name = _f.MakeText("Name", row, tier.Name, _theme.FontSizeSmall,
+                ParseHex(tier.HexColor, _theme.TextPrimary), _theme.Font, TextAlignmentOptions.MidlineLeft);
+            name.enableWordWrapping = false; name.raycastTarget = false;
+            var nle = name.gameObject.AddComponent<LayoutElement>();
+            nle.flexibleWidth = 1f;
+
+            string threshold = tier.MinMmr == 0 ? "0+" : $"{tier.MinMmr}+";
+            var mmr = _f.MakeText("Mmr", row, threshold, _theme.FontSizeSmall, _theme.TextSecondary, _theme.Font, TextAlignmentOptions.MidlineRight);
+            mmr.enableWordWrapping = false; mmr.raycastTarget = false;
+            var mle = mmr.gameObject.AddComponent<LayoutElement>();
+            mle.preferredWidth = 56f; mle.minWidth = 56f;
+        }
+
+        /// <summary>Cellule "Rang" : icône du palier (gauche) + nom coloré, largeur fixe.</summary>
+        private void LbRankCell(Transform parent, int mmr, float width)
+        {
+            var cell = _f.MakeRect("RankCell", parent);
+            var le = cell.gameObject.AddComponent<LayoutElement>();
+            le.preferredWidth = width; le.minWidth = width; le.flexibleWidth = 0f;
+
+            var hlg = cell.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 6f; hlg.childAlignment = TextAnchor.MiddleLeft;
+            hlg.childControlWidth = true; hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
+
+            var tier = RankLadder.Resolve(mmr);
+            var icon = RankLadder.ResolveIcon(mmr);
+            if (icon != null)
+            {
+                var img = _f.MakeImage("RankIcon", cell, Color.white, rounded: false);
+                img.sprite = icon; img.type = Image.Type.Simple; img.preserveAspect = true;
+                img.raycastTarget = false;
+                var ile = img.gameObject.AddComponent<LayoutElement>();
+                ile.preferredWidth = 24f; ile.preferredHeight = 24f; ile.minWidth = 24f; ile.minHeight = 24f;
+            }
+
+            var name = _f.MakeText("RankName", cell, tier.Name, _theme.FontSizeBody,
+                ParseHex(tier.HexColor, _theme.TextSecondary), _theme.Font, TextAlignmentOptions.MidlineLeft);
+            name.enableWordWrapping = false;
+            name.overflowMode = TextOverflowModes.Ellipsis;
+            var nle = name.gameObject.AddComponent<LayoutElement>();
+            nle.flexibleWidth = 1f;
+        }
+
+        /// <summary>Une cellule de colonne (TMP + LayoutElement). flexible = prend l'espace restant.</summary>
+        private TextMeshProUGUI LbCell(Transform parent, string text, float prefWidth, bool flexible,
+            Color color, TextAlignmentOptions align, TMP_FontAsset font, float size)
+        {
+            var tmp = _f.MakeText("Cell", parent, text, size, color, font, align);
+            tmp.enableWordWrapping = false;
+            tmp.overflowMode = TextOverflowModes.Ellipsis;
+            var le = tmp.gameObject.AddComponent<LayoutElement>();
+            if (flexible) { le.flexibleWidth = 1f; le.preferredWidth = 0f; le.minWidth = 0f; }
+            else { le.flexibleWidth = 0f; le.preferredWidth = prefWidth; le.minWidth = prefWidth; }
+            return tmp;
+        }
+
+        /// <summary>Zone scrollable verticale (liste de lignes en VerticalLayoutGroup), à largeur fixe et décalage horizontal.</summary>
+        private void BuildLeaderboardScroll(RectTransform holder, float width, float topInset, float centerX, out RectTransform list)
+        {
+            var viewport = _f.MakeRect("LbScroll", holder);
+            viewport.anchorMin = new Vector2(0.5f, 0f); viewport.anchorMax = new Vector2(0.5f, 1f);
+            viewport.pivot = new Vector2(0.5f, 0.5f);
+            viewport.sizeDelta = new Vector2(width, -(topInset + 20f));
+            viewport.anchoredPosition = new Vector2(centerX, (20f - topInset) / 2f);
             viewport.gameObject.AddComponent<RectMask2D>();
             var sr = viewport.gameObject.AddComponent<ScrollRect>();
-            sr.horizontal = false; sr.vertical = true; sr.scrollSensitivity = 24f;
+            sr.horizontal = false; sr.vertical = true; sr.scrollSensitivity = 28f;
             sr.viewport = viewport;
 
-            content = _f.MakeText("Lines", viewport, "", _theme.FontSizeBody, _theme.TextPrimary, _theme.Font, TextAlignmentOptions.TopLeft);
-            var crt = content.rectTransform;
-            crt.anchorMin = new Vector2(0f, 1f); crt.anchorMax = new Vector2(1f, 1f); crt.pivot = new Vector2(0.5f, 1f);
-            crt.offsetMin = new Vector2(10f, 0f); crt.offsetMax = new Vector2(-10f, 0f);
-            content.enableWordWrapping = true;
-            var fit = content.gameObject.AddComponent<ContentSizeFitter>();
+            list = _f.MakeRect("LbList", viewport);
+            list.anchorMin = new Vector2(0f, 1f); list.anchorMax = new Vector2(1f, 1f); list.pivot = new Vector2(0.5f, 1f);
+            list.offsetMin = new Vector2(0f, 0f); list.offsetMax = new Vector2(0f, 0f);
+            var vlg = list.gameObject.AddComponent<VerticalLayoutGroup>();
+            vlg.spacing = 4f; vlg.padding = new RectOffset(0, 0, 0, 0);
+            vlg.childForceExpandWidth = true; vlg.childControlWidth = true;
+            vlg.childForceExpandHeight = false; vlg.childControlHeight = true;
+            var fit = list.gameObject.AddComponent<ContentSizeFitter>();
             fit.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            sr.content = crt;
+            sr.content = list;
         }
+
+        // Couleur du rang : podium or/argent/bronze, sinon gris secondaire du thème.
+        private Color PodiumColor(int position) => position switch
+        {
+            1 => ParseHex("#ffd24a", _theme.TextSecondary),
+            2 => ParseHex("#c8d0da", _theme.TextSecondary),
+            3 => ParseHex("#d99a5b", _theme.TextSecondary),
+            _ => _theme.TextSecondary,
+        };
+
+        private static Color ParseHex(string hex, Color fallback)
+            => ColorUtility.TryParseHtmlString(hex, out var c) ? c : fallback;
 
         // ===== M3a — Écran Personnage (style "hero menu" de réf) =====
 
