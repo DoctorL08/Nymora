@@ -88,14 +88,11 @@ namespace Nymora.Combat.View.Animation
                     ProceduralVfx.Burst(parent, cb, B(Spectral, 12, 4f, 0.10f, 0.38f, 0.09f, -0.1f, layer, Order + 1));
                     return true;
 
-                case SpellId.GhostraDagueLancee: // dague spectrale lancée
+                case SpellId.GhostraEveilSpectral: // un leurre poignarde la cible (coup spectral)
                 {
-                    var p = parent; var l = layer; var dst = tb;
-                    ProceduralVfx.Projectile(parent, cb, tb, Pale, 0.13f, layer, Order + 2, onArrive: () =>
-                    {
-                        ProceduralVfx.Slash(p, dst, new Vector2(1f, 0.3f), Spectral, l, Order + 4);
-                        ProceduralVfx.Burst(p, dst, B(Spectral, 10, 6f, 0.09f, 0.3f, 0.04f, 0.5f, l, Order + 1));
-                    });
+                    ProceduralVfx.Slash(parent, tb, new Vector2(1f, 0.3f), Spectral, layer, Order + 4);
+                    ProceduralVfx.Slash(parent, tb, new Vector2(-0.6f, 0.4f), Pale, layer, Order + 4);
+                    ProceduralVfx.Burst(parent, tb, B(Spectral, 12, 6f, 0.09f, 0.32f, 0.05f, 0.4f, layer, Order + 1));
                     return true;
                 }
 

@@ -213,21 +213,9 @@ namespace Quantum
                 }
             }
 
-            // 3.7.b.iv — Dague Lancee : cap 2x/tour (amendement Lorenzo 16 mai). Reject AVANT consume PA.
-            //   Pattern : si LastDagueLanceeOnTurn == currentTurn ET DagueLanceeCountThisTurn >= 2 -> reject.
-            //   Sinon le handler post-damage incremente le compteur (et reset si nouveau tour).
-            if (cmd.Spell == SpellId.GhostraDagueLancee)
-            {
-                int currentTurnDL = f.TryGetSingleton<CombatState>(out var stateDL) ? stateDL.TurnNumber : 0;
-                int countThisRound = (caster->LastDagueLanceeOnTurn == currentTurnDL)
-                    ? caster->DagueLanceeCountThisTurn
-                    : 0;
-                if (countThisRound >= SpellRegistry.DagueLanceeMaxUsagesPerTurn)
-                {
-                    Log.Warn($"[Spell] rejet : Dague Lancee deja utilisee {countThisRound}x ce tour (cap {SpellRegistry.DagueLanceeMaxUsagesPerTurn}/tour, round {currentTurnDL})");
-                    return;
-                }
-            }
+            // 3.7.b — Éveil Spectral (ex-Dague Lancée slot 93) : le cap 2x/tour passe désormais par
+            //   le moteur générique (SpellDef.MaxUsesPerTurn). Gate dédié de présence du leurre
+            //   plus bas (après validation de la cible ennemie).
 
             // 3.7.a.iii — Frappe Fantome : pre-check case libre adjacente target. Reject AVANT consume PA
             // si aucune case dispo (4 cardinaux Manhattan=1 autour target tous occupes/obstacles/hors grille).
@@ -526,6 +514,27 @@ namespace Quantum
                     Log.Warn($"[Spell] rejet : Détonation Virulente requiert une cible marquée (venin) vivante en ({cmd.TargetX},{cmd.TargetY})");
                     return;
                 }
+            }
+
+            // 3.7.b — Éveil Spectral (refonte 30 mai) : requiert un de tes leurres ADJACENT (1 case)
+            //   à la cible ennemie. Reject AVANT consommation PA. On mémorise le leurre choisi
+            //   (dorsal prioritaire) dans eveilLeurreX/Y + eveilDorsal pour que le pipeline de
+            //   dégâts calcule le bonus dorsal + la Plaie depuis le LEURRE (et non depuis la Ghostra).
+            int eveilLeurreX = -1, eveilLeurreY = -1;
+            bool eveilDorsal = false;
+            if (cmd.Spell == SpellId.GhostraEveilSpectral)
+            {
+                EntityRef esTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
+                if (esTarget == EntityRef.None
+                    || !f.Unsafe.TryGetPointer<Combatant>(esTarget, out Combatant* esTargetC)
+                    || esTargetC->PlayerIndex == caster->PlayerIndex
+                    || esTargetC->HP <= 0
+                    || !DecoyHelpers.TryFindEveilLeurre(f, caster, esTargetC, out eveilLeurreX, out eveilLeurreY, out eveilDorsal))
+                {
+                    Log.Warn($"[Spell] rejet : Éveil Spectral requiert un de tes leurres adjacent à la cible ennemie en ({cmd.TargetX},{cmd.TargetY})");
+                    return;
+                }
+                Log.Info($"[Éveil Spectral] leurre choisi ({eveilLeurreX},{eveilLeurreY}) dorsal={eveilDorsal} sur cible ({cmd.TargetX},{cmd.TargetY})");
             }
 
             // Refonte 29 mai — GATE GENERIQUE limites/relances (cap Nx/tour + relance N tours).
@@ -929,7 +938,11 @@ namespace Quantum
                     // caster != Ghostra, donc safe pour tous les sorts.
                     if (caster->Class == NymoraClass.Ghostra)
                     {
-                        int dorsalBonus = GhostraPassif.GetDorsalBonusIfApplicable(caster, targetC);
+                        // 3.7.b — Éveil Spectral : dorsal calculé depuis le LEURRE (eveilDorsal), pas
+                        //   depuis la Ghostra. Les autres sorts gardent le dorsal caster standard.
+                        int dorsalBonus = (cmd.Spell == SpellId.GhostraEveilSpectral)
+                            ? (eveilDorsal ? GhostraPassif.GetDorsalBonusForGhostra(caster) : 0)
+                            : GhostraPassif.GetDorsalBonusIfApplicable(caster, targetC);
                         if (dorsalBonus > 0)
                         {
                             dmgThisTarget += dorsalBonus;
@@ -1343,7 +1356,12 @@ namespace Quantum
                         && targetC->HP > 0
                         && spellDef.IsOffensive == 1)
                     {
-                        GhostraPassif.ApplyPlaieOuverteIfAngle2Plus(f, caster, targetC, currentTurn);
+                        // 3.7.b — Éveil Spectral : Plaie évaluée depuis le LEURRE (dorsal du leurre),
+                        //   pas depuis la Ghostra. Les autres sorts gardent le dorsal caster standard.
+                        if (cmd.Spell == SpellId.GhostraEveilSpectral)
+                            GhostraPassif.ApplyPlaieOuverteFromPosition(f, caster, targetC, eveilLeurreX, eveilLeurreY, currentTurn);
+                        else
+                            GhostraPassif.ApplyPlaieOuverteIfAngle2Plus(f, caster, targetC, currentTurn);
                     }
 
                     // 3.5.a.ii — Faux Decharnee : accumule les marques sur cibles touchees (snapshot
@@ -2836,49 +2854,10 @@ namespace Quantum
                     break;
                 }
 
-                // Dague Lancee (3.7.b.iv, amendement Lorenzo 16 mai) — Bible V7.1 ligne 1148 :
-                //   Bible originale : "force la cible a faire face a la Ghostra (pivot vers
-                //     lanceur)". Mais en pratique la cible etait deja face-au-caster post-cast
-                //     (cast facing update naturel) -> sort sans valeur pivot.
-                //   AMENDEMENT : pivot 90° HORAIRE iso (NE -> SE -> SW -> NW -> NE) au lieu
-                //     du pivot face-caster. Deterministe et utile : casse le facing target
-                //     pour permettre dorsal indirect / preparer Frappe Fantome / etc.
-                //   + cap 2x/tour (LastDagueLanceeOnTurn + DagueLanceeCountThisTurn).
-                //
-                // Damage 80 deja applique par pipeline generique. Ici on :
-                //   1. Pivot target.Facing via FacingHelpers.RotateClockwise (90° horaire).
-                //   2. Set target.LastFacingForcedOnTurn = currentTurn -> combo Dague -> Frappe
-                //      Fantome dans le meme tour applique PlaieOuverte.
-                //   3. Increment compteur cap 2/tour (reset si nouveau round).
-                //   4. Cas degenere : target morte par les 80 dmg -> no-op (cadavre).
-                case SpellId.GhostraDagueLancee:
-                {
-                    EntityRef dlTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
-                    if (dlTarget != EntityRef.None
-                        && f.Unsafe.TryGetPointer<Combatant>(dlTarget, out Combatant* dlTargetC)
-                        && dlTargetC->HP > 0
-                        && dlTargetC->PlayerIndex != caster->PlayerIndex)
-                    {
-                        IsoFacing beforeFacing = dlTargetC->Facing;
-                        IsoFacing newFacing = FacingHelpers.RotateClockwise(beforeFacing);
-                        dlTargetC->Facing = newFacing;
-                        dlTargetC->LastFacingForcedOnTurn = currentTurn;
-                        Log.Info($"[Spell] Dague Lancee : P{dlTargetC->PlayerIndex} pivot 90° horaire {beforeFacing} -> {newFacing} (direction forcee tour {currentTurn})");
-                    }
-
-                    // Increment compteur cap 2/tour (reset implicite si nouveau round).
-                    if (caster->LastDagueLanceeOnTurn != currentTurn)
-                    {
-                        caster->DagueLanceeCountThisTurn = 1;
-                    }
-                    else
-                    {
-                        caster->DagueLanceeCountThisTurn += 1;
-                    }
-                    caster->LastDagueLanceeOnTurn = currentTurn;
-                    Log.Info($"[Spell] Dague Lancee : usage {caster->DagueLanceeCountThisTurn}/{SpellRegistry.DagueLanceeMaxUsagesPerTurn} ce tour (round {currentTurn})");
-                    break;
-                }
+                // Éveil Spectral (3.7.b refonte 30 mai, ex-Dague Lancée slot 93) : AUCUN effet
+                //   post-dégâts ici. Tout est géré dans TryCastSpell (boucle de dégâts) : base 100
+                //   + bonus dorsal + Plaie calculés depuis la position du leurre (eveilLeurreX/Y/
+                //   eveilDorsal). Le leurre n'est PAS consommé. Pas de case dédiée nécessaire.
 
                 // Frappe Fantome (3.7.a.iii) — Bible V7.1 ligne 1095 :
                 //   "Si la cible avait ete VOLTE-FACE ou que sa direction a ete modifiee ce tour :
@@ -3769,10 +3748,11 @@ namespace Quantum
                 //   NB : Permutation (swap avec son propre leurre, type teleport) est EXCLUE — elle
                 //   ignore les obstacles comme les autres teleports (cf Pas Furtif/Evanescence).
                 case SpellId.GhostraMarqueDeLOmbre:        // range 4, ENEMY, buff pression 2 rounds
-                // Ghostra offensifs distance (3.7.a.ii / 3.7.a.iii / 3.7.b.iv)
+                // Ghostra offensifs distance (3.7.a.ii / 3.7.a.iii)
+                //   NB : Éveil Spectral (ex-Dague) est EXCLU — c'est un leurre adjacent qui frappe
+                //   au corps-à-corps, pas un tir depuis la Ghostra : pas de LoS Ghostra requise.
                 case SpellId.GhostraSaigneAme:             // range 2, ENEMY, finisher PlaieOuverte
                 case SpellId.GhostraFrappeFantome:         // range 4, ENEMY, teleport + 200 dmg
-                case SpellId.GhostraDagueLancee:           // range 5, ENEMY, 40 dmg + pivot 90°
                 // Ghostra survie pose-leurre (3.7.c.iii)
                 case SpellId.GhostraRepliqueProtectrice:   // range 3, EmptyTile, pose decoy Protective
                     return true;

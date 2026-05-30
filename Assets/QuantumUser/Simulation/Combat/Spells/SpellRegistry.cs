@@ -512,18 +512,16 @@ namespace Quantum
         // 3.7.b — Volte-Face SUPPRIME du pool deckable (refonte 30 mai). Le slot SpellId 90 est
         //   reutilise par PERMUTATION (constantes Permutation* declarees plus bas, bloc signature).
 
-        // 3.7.b.iv — Dague Lancee (Bible V7.1 ligne 1148, amendee 16 mai sur damage + pivot + cap) :
-        //   1 PA, range 5 ENEMY. 40 dgts (+ bonus dorsal Angle Mort) + pivot target 90° HORAIRE
-        //   iso. Set target.LastFacingForcedOnTurn = currentTurn pour interaction Frappe Fantome
-        //   (PlaieOuverte si combo Dague->Frappe Fantome).
-        //   Bible "Le caillou dans la vitre" : sort spam-friendly 1 PA, harcelement / repositionnement.
-        //   AMENDEMENT 16 mai (suite balance) : passe de 80 -> 40 dmg pour coherence ratio PA :
-        //   Volte-Face (2 PA, 80 dmg, flip 180°) vs Dague Lancee (1 PA, 40 dmg, pivot 90°).
-        //   Volte-Face = 2x Dague Lancee en damage et en utilite tactique.
-        public const int DagueLanceePACost          = 1;
-        public const int DagueLanceeRangeMax        = 5;
-        public const int DagueLanceeDmgBase         = 40;
-        public const int DagueLanceeMaxUsagesPerTurn = 2; // amendement 16 mai (cap 2x/tour)
+        // 3.7.b — Éveil Spectral (refonte 30 mai, ex-Dague Lancée slot 93) :
+        //   2 PA, range 4 ENEMY, cap 2x/tour (moteur générique). Un de tes leurres ADJACENT
+        //   (Manhattan 1) à la cible la poignarde pour EveilSpectraleDamage. Bonus dorsal Angle
+        //   Mort + Plaie Ouverte calculés depuis la POSITION DU LEURRE (un leurre dans le dos de
+        //   la cible = dorsal, même si la Ghostra est en face). Leurre NON consommé. Respecte
+        //   boucliers/réductions (passe par le pipeline de dégâts standard).
+        public const int EveilSpectralePACost         = 2;
+        public const int EveilSpectraleRangeMax       = 4;
+        public const int EveilSpectraleDamage         = 100;
+        public const int EveilSpectraleMaxUsesPerTurn = 2;
 
         // 3.7.b.v — Marque de l'Ombre (Bible V7.1 ligne 1155) :
         //   2 PA, range 4 ENEMY. Aucun damage direct (buff pur).
@@ -2125,19 +2123,22 @@ namespace Quantum
 
                 // Dague Lancee (3.7.b.iv) : 1 PA, range 5 ENEMY. 80 dmg + force target.Facing vers caster
                 // + flag LastFacingForcedOnTurn (combo Dague -> Frappe Fantome = PlaieOuverte).
-                case SpellId.GhostraDagueLancee:
+                // Éveil Spectral (3.7.b refonte 30 mai, ex-Dague Lancée slot 93) : un leurre adjacent
+                //   à la cible la poignarde. Base 100 + dorsal/Plaie depuis le LEURRE (SpellSystem).
+                case SpellId.GhostraEveilSpectral:
                     def = new SpellDef
                     {
-                        PACost = DagueLanceePACost,
+                        PACost = EveilSpectralePACost,
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.Enemy,
                         RangeMin = 1,
-                        RangeMax = DagueLanceeRangeMax,
-                        DamageAmount = DagueLanceeDmgBase, // bonus dorsal en pipeline
+                        RangeMax = EveilSpectraleRangeMax,
+                        DamageAmount = EveilSpectraleDamage, // base ; dorsal calculé depuis le leurre (override SpellSystem)
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                        MaxUsesPerTurn = EveilSpectraleMaxUsesPerTurn,
                     };
                     return true;
 

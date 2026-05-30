@@ -119,6 +119,38 @@ namespace Quantum
         }
 
         /// <summary>
+        /// 3.7.b — Éveil Spectral : variante de <see cref="ApplyPlaieOuverteIfAngle2Plus"/> où le
+        /// dorsal est évalué depuis la CASE du leurre (ax,ay) et non depuis la Ghostra. Applique
+        /// PLAIE OUVERTE si le leurre frappe en dorsal ET (Angle 2+ OU cible Marquée). Mêmes gardes
+        /// (DotImmune skip, cible vivante).
+        /// </summary>
+        public static void ApplyPlaieOuverteFromPosition(Frame f, Combatant* caster, Combatant* target, int ax, int ay, int currentTurn)
+        {
+            if (caster == null || target == null) return;
+            if (target->HP <= 0) return;
+            if (caster->Class != NymoraClass.Ghostra) return;
+            if (!FacingHelpers.IsDorsalFromPosition(ax, ay, target)) return;
+
+            if (StatusHelper.Has(target, StatusKind.DotImmune))
+            {
+                Log.Info($"[Éveil Spectral] SKIP PlaieOuverte sur P{target->PlayerIndex} (DotImmune Voile Spectral actif)");
+                return;
+            }
+
+            bool hasMarque = StatusHelper.Has(target, StatusKind.MarqueDeLOmbre);
+            int active = DecoyHelpers.CountActive(caster);
+            int angle = ComputeAngleLevel(active);
+            if (angle < 2 && !hasMarque) return;
+
+            StatusHelper.Apply(target, StatusKind.PlaieOuverte,
+                magnitude: PlaieOuverteDmgPerTurn,
+                turnsLeft: PlaieOuverteDurationRounds,
+                currentTurn: currentTurn);
+            string source = (angle >= 2) ? $"Angle {angle}" : "MARQUE";
+            Log.Info($"[Éveil Spectral] {source} DORSAL (leurre {ax},{ay}) sur P{target->PlayerIndex} -> PLAIE OUVERTE ({PlaieOuverteDmgPerTurn}/tour x {PlaieOuverteDurationRounds}t)");
+        }
+
+        /// <summary>
         /// 3.7.a — Bonus dorsal Ghostra applique aux sorts offensifs (Lame Spectrale,
         /// Frappe Fantome, Lame Vorace, Saigne-Âme, Danse des Lames).
         /// Compute : check dorsal + lookup Angle Mort -> retourne 0/+50/+80.

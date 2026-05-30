@@ -156,7 +156,7 @@ namespace Nymora.Editor.Tools
             { "icon_replique_fantome",     SpellId.GhostraRepliqueFantome },
             { "icon_pas_dans_lombre",      SpellId.GhostraPasDansLOmbre },
             { "icon_permutation",          SpellId.GhostraPermutation }, // ex-icon_volte_face (slot 90 reutilise)
-            { "icon_dague_lancee",         SpellId.GhostraDagueLancee },
+            { "icon_eveil_spectral",       SpellId.GhostraEveilSpectral }, // ex-icon_dague_lancee (slot 93 reutilise)
             { "icon_marque_de_lombre",     SpellId.GhostraMarqueDeLOmbre },
             // Survie (5)
             { "icon_linceul_dombres",      SpellId.GhostraLinceulDOmbres },

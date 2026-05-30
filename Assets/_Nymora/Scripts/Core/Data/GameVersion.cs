@@ -54,7 +54,12 @@ namespace Nymora.Core.Data
         //                1x/tour ; caps 1x/tour sur Replique Protectrice / Marque de l'Ombre /
         //                Pas dans l'Ombre / Linceul d'Ombres (moteur generique MaxUsesPerTurn).
         //                + nerf portee Permutation (plateau -> 4 PO).
-        public const int CombatRulesVersion = 89;
+        // 90 (Ghostra brique 3/7 Éveil Spectral, 30 mai) : slot SpellId 93 (ex-Dague Lancée,
+        //                supprimée) reutilise par GhostraEveilSpectral (2 PA, range 4, cap 2x/tour).
+        //                Un leurre adjacent a la cible la poignarde (100) ; bonus dorsal + Plaie
+        //                calcules depuis la POSITION DU LEURRE (FacingHelpers.IsDorsalFromPosition,
+        //                DecoyHelpers.TryFindEveilLeurre, GhostraPassif.ApplyPlaieOuverteFromPosition).
+        public const int CombatRulesVersion = 90;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

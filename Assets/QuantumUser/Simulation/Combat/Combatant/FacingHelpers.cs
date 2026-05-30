@@ -112,5 +112,19 @@ namespace Quantum
             Log.Info($"[Dorsal check] caster P{caster->PlayerIndex}({caster->GridX},{caster->GridY}) -> target P{target->PlayerIndex}({target->GridX},{target->GridY}) | target.Facing={target->Facing}, dirFromTarget={dirFromTarget}, opposite={oppositeTargetFacing} -> dorsal={dorsal}");
             return dorsal;
         }
+
+        /// <summary>
+        /// 3.7.b — Variante position-based de <see cref="IsDorsalHit"/> : l'attaquant est une
+        /// CASE (ax,ay) et non un Combatant. Utilise par Éveil Spectral (le coup part d'un
+        /// leurre, pas de la Ghostra). dorsal = direction(target -> (ax,ay)) == Opposite(target.Facing).
+        /// </summary>
+        public static bool IsDorsalFromPosition(int ax, int ay, Combatant* target)
+        {
+            if (target == null) return false;
+            int dx = ax - target->GridX;
+            int dy = ay - target->GridY;
+            if (dx == 0 && dy == 0) return false;
+            return FacingFromGridDelta(dx, dy) == Opposite(target->Facing);
+        }
     }
 }

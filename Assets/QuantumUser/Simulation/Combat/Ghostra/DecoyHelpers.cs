@@ -239,6 +239,41 @@ namespace Quantum
         }
 
         /// <summary>
+        /// 3.7.b — Éveil Spectral : cherche un leurre du `ghostra` ADJACENT (Manhattan 1) à la
+        /// cible. Priorité au leurre qui frappe en DORSAL (derrière la cible) ; sinon le premier
+        /// leurre adjacent trouvé. Retourne false si aucun leurre adjacent. `outDorsal` indique si
+        /// le leurre choisi est dorsal (pour le bonus Angle Mort + Plaie côté SpellSystem).
+        /// </summary>
+        public static bool TryFindEveilLeurre(Frame f, Combatant* ghostra, Combatant* target,
+            out int outX, out int outY, out bool outDorsal)
+        {
+            outX = -1; outY = -1; outDorsal = false;
+            if (ghostra == null || target == null) return false;
+
+            int fallbackX = -1, fallbackY = -1;
+            bool found = false;
+            for (int i = 0; i < MaxDecoys; i++)
+            {
+                if (ghostra->Decoys[i].Kind == DecoyKind.None) continue;
+                int lx = ghostra->Decoys[i].PosX;
+                int ly = ghostra->Decoys[i].PosY;
+                int dist = (lx >= target->GridX ? lx - target->GridX : target->GridX - lx)
+                         + (ly >= target->GridY ? ly - target->GridY : target->GridY - ly);
+                if (dist != 1) continue; // adjacent Manhattan strict
+                found = true;
+                if (FacingHelpers.IsDorsalFromPosition(lx, ly, target))
+                {
+                    outX = lx; outY = ly; outDorsal = true; // dorsal prioritaire -> retour immediat
+                    return true;
+                }
+                if (fallbackX < 0) { fallbackX = lx; fallbackY = ly; } // garde le 1er adjacent non-dorsal
+            }
+            if (!found) return false;
+            outX = fallbackX; outY = fallbackY; outDorsal = false;
+            return true;
+        }
+
+        /// <summary>
         /// Refonte 30 mai — Permutation deckable : true si le joueur `ownerPlayerIndex` possede un
         /// de ses leurres sur (x,y). Sert au filtre de ciblage TargetingFilter.TileWithLure
         /// (la Ghostra ne peut permuter qu'avec SES propres leurres).
