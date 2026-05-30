@@ -555,17 +555,17 @@ namespace Quantum
         public const int SaigneAmePlaieBonus        = 70;
         public const int SaigneAmeHealOnKill        = 60;
 
-        // 3.7.a.iv — Danse des Lames (Bible V7.1 ligne 1116) :
-        //   5 PA, range 0 (Self target via Filter), AoE Square3x3 = 8 cases adjacentes (le caster
-        //   est exclu par le check `target == casterEntity` dans le damage loop standard).
-        //   180 dgts flat par cible ennemie touchee. Bonus dorsal Angle Mort + Marque de l'Ombre
-        //   + PlaieOuverte auto Angle 2+ : tout est applique generiquement par le pipeline.
-        //   Bible-ORIG mentionne aussi "consommation optionnelle : -1 leurre adjacent a la cible
-        //   -> bonus dorsal automatique". Decision Lorenzo 16 mai : on zappe l'option (redondante
-        //   avec la condition naturelle "leurre adjacent" deja appliquee via le bonus passif).
-        //   Le bonus dorsal s'applique donc UNIQUEMENT si dorsal physique (Bible-textuel partiel).
-        public const int DanseDesLamesPACost        = 5;
-        public const int DanseDesLamesDmg           = 180;
+        // 3.7.a — Nuée Spectrale (refonte 30 mai, ex-Danse des Lames slot 95) :
+        //   4 PA, range 2 ENEMY, cap 1x/tour. Burst CIBLE UNIQUE qui scale avec les leurres :
+        //   base 100 + 40 par leurre ACTIF + 20 par leurre ADJACENT à la cible (max 280 = 3 leurres
+        //   tous adjacents : 100 + 120 + 60). Ne consomme PAS les leurres. AUCUN bonus dorsal/Plaie
+        //   en plus (le scaling EST le bonus) -> skip dorsal + Plaie dans SpellSystem. +20 Marque conservé.
+        public const int NueeSpectralePACost         = 4;
+        public const int NueeSpectraleBaseDamage     = 100;
+        public const int NueeSpectralePerLeurre      = 40;
+        public const int NueeSpectralePerAdjacent    = 20;
+        public const int NueeSpectraleRangeMax       = 2;
+        public const int NueeSpectraleMaxUsesPerTurn = 1;
 
         // 3.7.c.i — Linceul d'Ombres (Bible V7.1 ligne 1173) :
         //   3 PA self. ShieldActive 130 HP / 2 rounds + LinceulDOmbres flag (Magnitude=40
@@ -696,14 +696,15 @@ namespace Quantum
         public const int ExecutionSpectraleKillRespawnDecoys   = 2;
 
         // 3.7.b — Permutation DECKABLE (refonte 30 mai) :
-        //   1 PA, cap 2x/tour (moteur generique MaxUsesPerTurn), swap Ghostra<->un de ses leurres
-        //   cible des 1 leurre actif. Pas de degats, pur repositionnement / mind-game.
+        //   1 PA (0 PA à l'Angle 3 = 3 leurres actifs, cf EffectiveStats.GetPACost), cap 1x/tour
+        //   (moteur generique MaxUsesPerTurn), swap Ghostra<->un de ses leurres cible des 1 leurre
+        //   actif. Pas de degats, pur repositionnement / mind-game.
         //   Ciblage Filter=TileWithLure (cible une case occupee par un leurre OWN). Portee 4 cases
         //   (PO, nerf 30 mai — etait plateau entier). Remplace l'ancienne Permutation gratuite Angle 3
         //   (touche P) qui reste DORMANTE (non reactivee, decision Lorenzo "vrai spell uniquement").
         public const int PermutationPACost          = 1;
         public const int PermutationRangeMax        = 4;   // refonte 30 mai : nerf portee (4 PO, etait plateau entier)
-        public const int PermutationMaxUsesPerTurn  = 2;
+        public const int PermutationMaxUsesPerTurn  = 1;   // nerf 30 mai : 2x -> 1x/tour
 
         public static bool TryGet(SpellId id, out SpellDef def)
         {
@@ -2178,22 +2179,24 @@ namespace Quantum
                     };
                     return true;
 
-                // Danse des Lames (3.7.a.iv) : 5 PA, Self AoE Square3x3 = 8 cases autour caster
-                // (caster auto-exclu via casterEntity check). 180 dgts par cible. Bonus dorsal
-                // + Marque + PlaieOuverte auto Angle 2+ : tout en pipeline generique, ZERO handler custom.
-                case SpellId.GhostraDanseDesLames:
+                // Nuée Spectrale (3.7.a refonte 30 mai, ex-Danse des Lames slot 95) : CIBLE UNIQUE,
+                //   4 PA, range 2 ENEMY, cap 1x/tour. Dégâts scalés sur les leurres (100 + 70/leurre
+                //   actif + 30/leurre adjacent), calculés dans SpellSystem (effectiveDmg). Pas de
+                //   dorsal/Plaie. DamageAmount = base 100 (le scaling s'ajoute dans le pipeline).
+                case SpellId.GhostraNueeSpectrale:
                     def = new SpellDef
                     {
-                        PACost = DanseDesLamesPACost,
-                        Shape = TargetingShape.Square3x3,        // 9 cases (centre + 8 voisines)
-                        Filter = TargetingFilter.Self,           // target redirigee vers caster cell par CombatInputController
-                        RangeMin = 0,
-                        RangeMax = 0,
-                        DamageAmount = DanseDesLamesDmg,         // 180 par cible ennemie touchee
+                        PACost = NueeSpectralePACost,
+                        Shape = TargetingShape.SingleTile,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = NueeSpectraleRangeMax,
+                        DamageAmount = NueeSpectraleBaseDamage,  // base ; +70/leurre +30/adjacent dans SpellSystem
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                        MaxUsesPerTurn = NueeSpectraleMaxUsesPerTurn,
                     };
                     return true;
 
@@ -2366,6 +2369,15 @@ namespace Quantum
         public static int GetPACost(in SpellDef def, Combatant* caster, int targetHPRatio, int currentTurn)
         {
             int cost = def.PACost;
+            // 3.7.b — Permutation (seul sort avec Filter TileWithLure) GRATUITE à l'ANGLE 3 :
+            //   si la Ghostra a 3 leurres actifs, son coût tombe à 0 PA (perk passif Angle Mort).
+            //   Sinon coût de base (1 PA). Court-circuite les autres modificateurs.
+            if (def.Filter == TargetingFilter.TileWithLure
+                && caster->Class == NymoraClass.Ghostra
+                && DecoyHelpers.CountActive(caster) >= DecoyHelpers.MaxDecoys)
+            {
+                return 0;
+            }
             // Refonte 29 mai : Frenesie (ex-Rage Insatiable) ne fait PLUS +1 PA cost (retire).
             // Passif Appel du Sang (refonte 29 mai) : -1 PA si caster Soulrender ET cible <70% HP
             //   ET c'est le 1ER SORT DU TOUR (avant ce cast, 0 sort journalise ce round). Min 1 PA.

@@ -59,7 +59,13 @@ namespace Nymora.Core.Data
         //                Un leurre adjacent a la cible la poignarde (100) ; bonus dorsal + Plaie
         //                calcules depuis la POSITION DU LEURRE (FacingHelpers.IsDorsalFromPosition,
         //                DecoyHelpers.TryFindEveilLeurre, GhostraPassif.ApplyPlaieOuverteFromPosition).
-        public const int CombatRulesVersion = 90;
+        // 91 (Ghostra brique 4/7 Nuée Spectrale, 30 mai) : slot SpellId 95 (ex-Danse des Lames,
+        //                supprimée) reutilise par GhostraNueeSpectrale. AoE Self -> CIBLE UNIQUE :
+        //                4 PA, range 2, cap 1x/tour, 100 + 40/leurre actif + 20/leurre adjacent
+        //                (max 280, DecoyHelpers.CountOwnDecoysAdjacent). Ne consomme pas ; skip dorsal/Plaie.
+        //                + Permutation : cap 2x -> 1x/tour ET gratuite (0 PA) à l'Angle 3 (3 leurres).
+        //                + fix preview Nuée (sans dorsal).
+        public const int CombatRulesVersion = 91;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

@@ -151,7 +151,7 @@ namespace Nymora.Editor.Tools
             { "icon_lame_vorace_spectrale",SpellId.GhostraLameVoraceSpectrale },
             { "icon_saigne_ame",           SpellId.GhostraSaigneAme },
             { "icon_frappe_fantome",       SpellId.GhostraFrappeFantome },
-            { "icon_danse_des_lames",      SpellId.GhostraDanseDesLames },
+            { "icon_nuee_spectrale",       SpellId.GhostraNueeSpectrale }, // ex-icon_danse_des_lames (slot 95 reutilise)
             // Tactiques (5)
             { "icon_replique_fantome",     SpellId.GhostraRepliqueFantome },
             { "icon_pas_dans_lombre",      SpellId.GhostraPasDansLOmbre },

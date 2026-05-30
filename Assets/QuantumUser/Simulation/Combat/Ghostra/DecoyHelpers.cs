@@ -239,6 +239,25 @@ namespace Quantum
         }
 
         /// <summary>
+        /// 3.7.a — Nuée Spectrale : nombre de leurres du `ghostra` ADJACENTS (Manhattan 1) à la
+        /// case (x,y) de la cible. Sert au scaling +30/leurre adjacent.
+        /// </summary>
+        public static int CountOwnDecoysAdjacent(Combatant* ghostra, int x, int y)
+        {
+            if (ghostra == null) return 0;
+            int n = 0;
+            for (int i = 0; i < MaxDecoys; i++)
+            {
+                if (ghostra->Decoys[i].Kind == DecoyKind.None) continue;
+                int lx = ghostra->Decoys[i].PosX;
+                int ly = ghostra->Decoys[i].PosY;
+                int dist = (lx >= x ? lx - x : x - lx) + (ly >= y ? ly - y : y - ly);
+                if (dist == 1) n++;
+            }
+            return n;
+        }
+
+        /// <summary>
         /// 3.7.b — Éveil Spectral : cherche un leurre du `ghostra` ADJACENT (Manhattan 1) à la
         /// cible. Priorité au leurre qui frappe en DORSAL (derrière la cible) ; sinon le premier
         /// leurre adjacent trouvé. Retourne false si aucun leurre adjacent. `outDorsal` indique si

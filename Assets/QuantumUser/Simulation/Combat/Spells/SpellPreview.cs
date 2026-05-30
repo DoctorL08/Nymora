@@ -61,8 +61,22 @@ namespace Quantum
                     return TryComputeLameVorace(f, caster, target, out preview);
                 case SpellId.GhostraSaigneAme:
                     return TryComputeSaigneAme(f, caster, target, out preview);
-                case SpellId.GhostraDanseDesLames:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.DanseDesLamesDmg, out preview);
+                case SpellId.GhostraNueeSpectrale:
+                {
+                    // Dégât scalé sur les leurres : base + 40/leurre actif + 20/leurre adjacent.
+                    //   IMPORTANT : Nuée n'a PAS de bonus dorsal (la sim le skip). On NE passe donc
+                    //   PAS par TryComputeOffensiveSimple (qui ajoute le dorsal caster). On ajoute
+                    //   uniquement le +20 Marque de l'Ombre, comme la sim, puis réductions/shield.
+                    int nActive = DecoyHelpers.CountActive(caster);
+                    int nAdj = DecoyHelpers.CountOwnDecoysAdjacent(caster, target->GridX, target->GridY);
+                    int nueeRaw = SpellRegistry.NueeSpectraleBaseDamage
+                                + SpellRegistry.NueeSpectralePerLeurre * nActive
+                                + SpellRegistry.NueeSpectralePerAdjacent * nAdj;
+                    int nueeBonus = StatusHelper.GetMagnitude(target, StatusKind.MarqueDeLOmbre, 0);
+                    preview = default;
+                    FinalizeOffensive(f, caster, target, nueeRaw, nueeBonus, ref preview);
+                    return true;
+                }
                 // Permutation (ex-Volte-Face slot 90) : aucun degat -> pas de preview offensif
                 //   (le swap n'affiche pas de nombre de degats). Falls through au default.
                 case SpellId.GhostraEveilSpectral:

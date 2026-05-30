@@ -172,7 +172,7 @@ namespace Quantum {
     GhostraFrappeFantome = 92,
     GhostraEveilSpectral = 93,
     GhostraMarqueDeLOmbre = 94,
-    GhostraDanseDesLames = 95,
+    GhostraNueeSpectrale = 95,
     GhostraLinceulDOmbres = 96,
     GhostraVoileSpectral = 97,
     GhostraRepliqueProtectrice = 98,

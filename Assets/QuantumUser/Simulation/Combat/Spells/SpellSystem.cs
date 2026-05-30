@@ -580,6 +580,18 @@ namespace Quantum
 
             // ===== Calcul damage effectif (buffs + HG variants) =====
             int effectiveDmg = spellDef.DamageAmount;
+            // 3.7.a — Nuée Spectrale (refonte 30 mai) : burst cible-unique qui SCALE avec les leurres.
+            //   base 100 + 70 par leurre ACTIF + 30 par leurre ADJACENT à la cible. Ne consomme pas.
+            //   Le scaling REMPLACE le bonus dorsal (skip dorsal + Plaie plus bas pour ce sort).
+            if (cmd.Spell == SpellId.GhostraNueeSpectrale)
+            {
+                int nueeActive = DecoyHelpers.CountActive(caster);
+                int nueeAdjacent = DecoyHelpers.CountOwnDecoysAdjacent(caster, cmd.TargetX, cmd.TargetY);
+                effectiveDmg = SpellRegistry.NueeSpectraleBaseDamage
+                             + SpellRegistry.NueeSpectralePerLeurre * nueeActive
+                             + SpellRegistry.NueeSpectralePerAdjacent * nueeAdjacent;
+                Log.Info($"[Nuée Spectrale] dmg {effectiveDmg} = {SpellRegistry.NueeSpectraleBaseDamage} + {SpellRegistry.NueeSpectralePerLeurre}x{nueeActive} leurres + {SpellRegistry.NueeSpectralePerAdjacent}x{nueeAdjacent} adjacents");
+            }
             // Ouvre-Plaie : 1 HG depense -> +120 dgts (Bible V7.1)
             if (cmd.Spell == SpellId.SoulrenderOuvrePlaie && hgSpend >= 1)
             {
@@ -939,10 +951,15 @@ namespace Quantum
                     if (caster->Class == NymoraClass.Ghostra)
                     {
                         // 3.7.b — Éveil Spectral : dorsal calculé depuis le LEURRE (eveilDorsal), pas
-                        //   depuis la Ghostra. Les autres sorts gardent le dorsal caster standard.
-                        int dorsalBonus = (cmd.Spell == SpellId.GhostraEveilSpectral)
-                            ? (eveilDorsal ? GhostraPassif.GetDorsalBonusForGhostra(caster) : 0)
-                            : GhostraPassif.GetDorsalBonusIfApplicable(caster, targetC);
+                        //   depuis la Ghostra. Nuée Spectrale : AUCUN bonus dorsal (le scaling leurres
+                        //   EST le bonus). Les autres sorts gardent le dorsal caster standard.
+                        int dorsalBonus;
+                        if (cmd.Spell == SpellId.GhostraNueeSpectrale)
+                            dorsalBonus = 0;
+                        else if (cmd.Spell == SpellId.GhostraEveilSpectral)
+                            dorsalBonus = eveilDorsal ? GhostraPassif.GetDorsalBonusForGhostra(caster) : 0;
+                        else
+                            dorsalBonus = GhostraPassif.GetDorsalBonusIfApplicable(caster, targetC);
                         if (dorsalBonus > 0)
                         {
                             dmgThisTarget += dorsalBonus;
@@ -1354,7 +1371,8 @@ namespace Quantum
                     // Vorace / Saigne-Ame / Danse des Lames). Pas aux sorts tactiques/survie.
                     if (caster->Class == NymoraClass.Ghostra
                         && targetC->HP > 0
-                        && spellDef.IsOffensive == 1)
+                        && spellDef.IsOffensive == 1
+                        && cmd.Spell != SpellId.GhostraNueeSpectrale) // Nuée : pas de Plaie (pas de mécanique dorsale)
                     {
                         // 3.7.b — Éveil Spectral : Plaie évaluée depuis le LEURRE (dorsal du leurre),
                         //   pas depuis la Ghostra. Les autres sorts gardent le dorsal caster standard.

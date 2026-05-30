@@ -62,11 +62,11 @@ namespace Nymora.Combat.View.Animation
                     return true;
                 }
 
-                case SpellId.GhostraDanseDesLames: // danse des lames : tourbillon (AoE 1 autour)
-                    for (int a = 0; a < 5; a++)
-                        ProceduralVfx.Slash(parent, cb, AngleDir(a * 72f), Spectral, layer, Order + 4);
-                    ProceduralVfx.Shockwave(parent, cg, Spectral, 1.8f, 0.4f, layer, Order - 1);
-                    ProceduralVfx.Burst(parent, cb, B(Pale, 26, 7f, 0.12f, 0.45f, 0.1f, 0.2f, layer, Order + 1));
+                case SpellId.GhostraNueeSpectrale: // nuée de lames spectrales convergeant sur la cible
+                    for (int a = 0; a < 6; a++)
+                        ProceduralVfx.Slash(parent, tb, AngleDir(a * 60f), Spectral, layer, Order + 4);
+                    ProceduralVfx.Shockwave(parent, tg, Spectral, 1.6f, 0.35f, layer, Order - 1);
+                    ProceduralVfx.Burst(parent, tb, B(Pale, 24, 7f, 0.12f, 0.45f, 0.1f, 0.2f, layer, Order + 1));
                     return true;
 
                 // ----- TACTIQUES -----
