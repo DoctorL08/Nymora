@@ -167,7 +167,7 @@ namespace Quantum {
     GhostraLameVoraceSpectrale = 87,
     GhostraRepliqueFantome = 88,
     GhostraPasDansLOmbre = 89,
-    GhostraVolteFace = 90,
+    GhostraPermutation = 90,
     GhostraSaigneAme = 91,
     GhostraFrappeFantome = 92,
     GhostraDagueLancee = 93,

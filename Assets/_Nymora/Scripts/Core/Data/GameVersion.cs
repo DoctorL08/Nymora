@@ -45,7 +45,12 @@ namespace Nymora.Core.Data
         //                Bondissant (éjection FogHelpers) qui survolait les autres pièges sans
         //                les déclencher. Aligne IA + push + catapulte sur le comportement joueur
         //                (MovementSystem.ApplyMove boucle de traversée).
-        public const int CombatRulesVersion = 87;
+        // 88 (Ghostra brique 1/7 Permutation deckable, 30 mai) : le slot SpellId 90 (ex-Volte-Face,
+        //                SUPPRIME du pool) est REUTILISE par GhostraPermutation (1 PA, cap 2x/tour,
+        //                swap Ghostra<->un de ses leurres des 1 leurre). Filtre de ciblage
+        //                TileWithLure implemente (cibler SES leurres). L'ancienne Permutation
+        //                gratuite Angle 3 (touche P) reste dormante / non reactivee.
+        public const int CombatRulesVersion = 88;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

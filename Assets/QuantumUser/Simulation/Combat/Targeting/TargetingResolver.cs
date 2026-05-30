@@ -187,11 +187,10 @@ namespace Quantum
                     // PATCH 22 mai (test designer) — case occupee par un obstacle (Pilier/Mur/Faille).
                     return ObstacleHelpers.HasObstacleAt(f, cellX, cellY);
                 case TargetingFilter.TileWithLure:
-                    // Leurres Ghostra : pas encore branche en filtre direct (les sorts Ghostra
-                    // ciblant un leurre resolvent dans leur propre handler). A implementer si un
-                    // sort utilise ce filtre.
-                    Log.Warn($"[TargetingResolver] Filter TileWithLure non implemente — a faire si un sort l'utilise.");
-                    return false;
+                    // Permutation Ghostra (refonte 30 mai) : valide UNIQUEMENT une case occupee par
+                    // un leurre appartenant AU CASTER (swap Ghostra<->leurre). Les leurres ne sont
+                    // pas dans la grid occupancy -> check dedie DecoyHelpers.HasOwnDecoyAt.
+                    return DecoyHelpers.HasOwnDecoyAt(f, casterPlayerIndex, cellX, cellY);
                 case TargetingFilter.AnyTile:
                     return true;
                 default:

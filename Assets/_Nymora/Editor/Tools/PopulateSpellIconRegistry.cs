@@ -155,7 +155,7 @@ namespace Nymora.Editor.Tools
             // Tactiques (5)
             { "icon_replique_fantome",     SpellId.GhostraRepliqueFantome },
             { "icon_pas_dans_lombre",      SpellId.GhostraPasDansLOmbre },
-            { "icon_volte_face",           SpellId.GhostraVolteFace },
+            { "icon_permutation",          SpellId.GhostraPermutation }, // ex-icon_volte_face (slot 90 reutilise)
             { "icon_dague_lancee",         SpellId.GhostraDagueLancee },
             { "icon_marque_de_lombre",     SpellId.GhostraMarqueDeLOmbre },
             // Survie (5)

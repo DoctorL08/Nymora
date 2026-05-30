@@ -239,6 +239,25 @@ namespace Quantum
         }
 
         /// <summary>
+        /// Refonte 30 mai — Permutation deckable : true si le joueur `ownerPlayerIndex` possede un
+        /// de ses leurres sur (x,y). Sert au filtre de ciblage TargetingFilter.TileWithLure
+        /// (la Ghostra ne peut permuter qu'avec SES propres leurres).
+        /// </summary>
+        public static bool HasOwnDecoyAt(Frame f, int ownerPlayerIndex, int x, int y)
+        {
+            if (ownerPlayerIndex < 0) return false;
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->Class != NymoraClass.Ghostra) continue;
+                if (c->HP <= 0) continue;
+                if (c->PlayerIndex != ownerPlayerIndex) continue;
+                if (FindSlotAtPosition(c, x, y) >= 0) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
         /// 3.7.a.i.4 — Bible-strict : un leurre Ghostra ennemi BLOQUE la LoS et les
         /// sorts ciblés (pour préserver l'illusion "indiscernable cote adversaire").
         /// Retourne true si un leurre appartenant à une Ghostra du camp OPPOSE à
@@ -467,6 +486,41 @@ namespace Quantum
             if (GridHelpers.InBounds(dx, dy))  GridHelpers.SetOccupant(f, dx, dy, ghostraEntity);
 
             Log.Info($"[Permutation] P{ghostra->PlayerIndex} swap Ghostra({gx},{gy}) <-> Decoy slot {slot} ({dx},{dy}) — invisible cote adversaire");
+            return true;
+        }
+
+        /// <summary>
+        /// Refonte 30 mai — SWAP DECKABLE Ghostra<->leurre du slot donne, SANS gate (ni Angle 3 ni
+        /// cap interne). La validation amont est faite dans SpellSystem :
+        ///   - presence d'un leurre OWN a la case : filtre TargetingFilter.TileWithLure
+        ///   - cap 2x/tour : moteur generique SpellLimitsHelper (SpellDef.MaxUsesPerTurn)
+        /// Met a jour la grid occupancy (seule la vraie Ghostra y est referencee). Retourne false
+        /// si slot invalide/vide. Coexiste avec TryPermute (ancienne voie gratuite Angle 3, dormante).
+        /// </summary>
+        public static bool PermuteToSlot(Frame f, EntityRef ghostraEntity, Combatant* ghostra, int slot)
+        {
+            if (ghostra == null || ghostra->HP <= 0) return false;
+            if (ghostra->Class != NymoraClass.Ghostra) return false;
+            if (slot < 0 || slot >= MaxDecoys || ghostra->Decoys[slot].Kind == DecoyKind.None)
+            {
+                Log.Warn($"[Permutation] (deckable) Rejet : slot {slot} invalide ou vide");
+                return false;
+            }
+
+            int gx = ghostra->GridX;
+            int gy = ghostra->GridY;
+            int dx = ghostra->Decoys[slot].PosX;
+            int dy = ghostra->Decoys[slot].PosY;
+
+            ghostra->GridX = dx;
+            ghostra->GridY = dy;
+            ghostra->Decoys[slot].PosX = gx;
+            ghostra->Decoys[slot].PosY = gy;
+
+            if (GridHelpers.InBounds(gx, gy)) GridHelpers.SetOccupant(f, gx, gy, EntityRef.None);
+            if (GridHelpers.InBounds(dx, dy)) GridHelpers.SetOccupant(f, dx, dy, ghostraEntity);
+
+            Log.Info($"[Permutation] (deckable) P{ghostra->PlayerIndex} swap Ghostra({gx},{gy}) <-> leurre slot {slot} ({dx},{dy})");
             return true;
         }
     }

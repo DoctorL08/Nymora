@@ -2789,35 +2789,19 @@ namespace Quantum
                     break;
                 }
 
-                // Volte-Face (3.7.b.iii, amendement 16 mai 2026) :
-                //   Sort OFFENSIF : 50 dmg deja applique par pipeline generique (+ bonus dorsal
-                //   Angle Mort si la cible etait dos au moment du cast). Ici on FLIP Facing 180°
-                //   instantane (FacingHelpers.Opposite).
-                //   PAS DE VERROU DirectionLocked : le target peut se reorienter normalement a son
-                //   prochain tour (walk/cast/push pivots standard). Si la cible ne trigger aucun
-                //   pivot, elle reste dos jusqu'au prochain tour Ghostra (dorsal potentiel sur
-                //   Lame Spec / Saigne-Ame suivant). Bible-original (verrou 1 round) abandonne.
-                case SpellId.GhostraVolteFace:
+                // Permutation (3.7.b refonte 30 mai, ex-Volte-Face slot 90) :
+                //   Swap instantane de position entre la Ghostra et un de ses leurres cible. Le
+                //   filtre TileWithLure (valide en amont, pre-PA) garantit qu'un leurre OWN occupe
+                //   la case ciblee. Cap 2x/tour gere par le moteur generique. Aucun degat.
+                case SpellId.GhostraPermutation:
                 {
-                    EntityRef vfTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
-                    if (vfTarget == EntityRef.None
-                        || !f.Unsafe.TryGetPointer<Combatant>(vfTarget, out Combatant* vfTargetC)
-                        || vfTargetC->PlayerIndex == caster->PlayerIndex
-                        || vfTargetC->HP <= 0)
+                    int permSlot = DecoyHelpers.FindSlotAtPosition(caster, cmd.TargetX, cmd.TargetY);
+                    if (permSlot < 0)
                     {
-                        Log.Warn($"[Spell] Volte-Face : pas de cible ennemie vivante en ({cmd.TargetX},{cmd.TargetY}), dmg+PA deja consomme");
+                        Log.Warn($"[Spell] Permutation : aucun leurre own en ({cmd.TargetX},{cmd.TargetY}) — PA deja consomme (cas rare)");
                         break;
                     }
-
-                    IsoFacing beforeFacing = vfTargetC->Facing;
-                    IsoFacing afterFacing = FacingHelpers.Opposite(beforeFacing);
-                    vfTargetC->Facing = afterFacing;
-
-                    // 3.7.a.iii — flag direction forcee ce tour (lu par Frappe Fantome pour
-                    // appliquer PlaieOuverte si combo Volte-Face -> Frappe Fantome).
-                    vfTargetC->LastFacingForcedOnTurn = currentTurn;
-
-                    Log.Info($"[Spell] Volte-Face : P{vfTargetC->PlayerIndex} flip {beforeFacing} -> {afterFacing} (50 dmg deja applique, direction forcee tour {currentTurn})");
+                    DecoyHelpers.PermuteToSlot(f, casterEntity, caster, permSlot);
                     break;
                 }
 
@@ -3781,8 +3765,9 @@ namespace Quantum
                 case SpellId.NecramInoculation:            // range 5, apply marque
                 case SpellId.NecramMarqueSacrificielle:    // range 5, apply status
                 case SpellId.NecramContagion:              // range 5, propagation marques
-                // Ghostra tactiques (3.7.b.iii / 3.7.b.v)
-                case SpellId.GhostraVolteFace:             // range 4, ENEMY, flip facing
+                // Ghostra tactiques (3.7.b)
+                //   NB : Permutation (swap avec son propre leurre, type teleport) est EXCLUE — elle
+                //   ignore les obstacles comme les autres teleports (cf Pas Furtif/Evanescence).
                 case SpellId.GhostraMarqueDeLOmbre:        // range 4, ENEMY, buff pression 2 rounds
                 // Ghostra offensifs distance (3.7.a.ii / 3.7.a.iii / 3.7.b.iv)
                 case SpellId.GhostraSaigneAme:             // range 2, ENEMY, finisher PlaieOuverte

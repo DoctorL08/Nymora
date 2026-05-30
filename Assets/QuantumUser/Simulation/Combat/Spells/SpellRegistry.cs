@@ -509,21 +509,8 @@ namespace Quantum
         public const int PasDansLOmbrePACost        = 2;
         public const int PasDansLOmbreRangeMax      = 5;
 
-        // 3.7.b.iii — Volte-Face (AMENDEMENT 16 mai 2026, Bible V7.1 originale modifiee) :
-        //   2 PA, range 4 ENEMY. Decision Lorenzo : Volte-Face devient OFFENSIF.
-        //   Effet : 80 dgts (+ bonus dorsal Angle Mort generique si applicable) + flip Facing
-        //   180° instantane (FacingHelpers.Opposite). PAS DE VERROU DirectionLocked.
-        //   Le target peut se reorienter normalement a son prochain tour (walk/cast/push pivots
-        //   standard). Le sort sert a "frapper + tourner" la cible : si elle ne rejoue pas avant
-        //   le prochain tour Ghostra (Soulrender qui passe son tour, etc.), elle reste dos.
-        //   Original Bible-strict (verrou 1 round) abandonne 16 mai car perception "bug" (cible
-        //   reste dos meme apres cast/walk de sa part).
-        //   AMENDEMENT 16 mai (suite balance) : passe de 50 -> 80 dmg pour coherence ratio PA :
-        //   Volte-Face (2 PA, 80 dmg, flip 180°) vs Dague Lancee (1 PA, 40 dmg, pivot 90°).
-        //   2 PA = 2x 1 PA -> 80 = 2x 40 OK, et flip 180° ~ 2x utile que pivot 90°.
-        public const int VolteFacePACost            = 2;
-        public const int VolteFaceRangeMax          = 4;
-        public const int VolteFaceDmg               = 80;
+        // 3.7.b — Volte-Face SUPPRIME du pool deckable (refonte 30 mai). Le slot SpellId 90 est
+        //   reutilise par PERMUTATION (constantes Permutation* declarees plus bas, bloc signature).
 
         // 3.7.b.iv — Dague Lancee (Bible V7.1 ligne 1148, amendee 16 mai sur damage + pivot + cap) :
         //   1 PA, range 5 ENEMY. 40 dgts (+ bonus dorsal Angle Mort) + pivot target 90° HORAIRE
@@ -709,6 +696,16 @@ namespace Quantum
         public const int ExecutionSpectralePlaieTurns          = 3;
         public const int ExecutionSpectraleKillHeal            = 100;
         public const int ExecutionSpectraleKillRespawnDecoys   = 2;
+
+        // 3.7.b — Permutation DECKABLE (refonte 30 mai) :
+        //   1 PA, cap 2x/tour (moteur generique MaxUsesPerTurn), swap Ghostra<->un de ses leurres
+        //   cible des 1 leurre actif. Pas de degats, pur repositionnement / mind-game.
+        //   Ciblage Filter=TileWithLure (cible une case occupee par un leurre OWN). Portee = plateau
+        //   entier (Manhattan max 15x17 = 30). Remplace l'ancienne Permutation gratuite Angle 3
+        //   (touche P) qui reste DORMANTE (non reactivee, decision Lorenzo "vrai spell uniquement").
+        public const int PermutationPACost          = 1;
+        public const int PermutationRangeMax        = 30;  // couvre tout le plateau (Manhattan max 14+16=30)
+        public const int PermutationMaxUsesPerTurn  = 2;
 
         public static bool TryGet(SpellId id, out SpellDef def)
         {
@@ -2085,20 +2082,23 @@ namespace Quantum
                     };
                     return true;
 
-                // Volte-Face (3.7.b.iii, amendement 16 mai) : 2 PA, range 4 ENEMY. 50 dmg + flip Facing 180° instantane.
-                case SpellId.GhostraVolteFace:
+                // Permutation (3.7.b refonte 30 mai, ex-Volte-Face slot 90) : 1 PA, cap 2x/tour,
+                //   swap Ghostra<->un de ses leurres cible (Filter TileWithLure = case d'un leurre
+                //   OWN). Des 1 leurre actif. Aucun degat, pur repositionnement.
+                case SpellId.GhostraPermutation:
                     def = new SpellDef
                     {
-                        PACost = VolteFacePACost,
+                        PACost = PermutationPACost,
                         Shape = TargetingShape.SingleTile,
-                        Filter = TargetingFilter.Enemy,
+                        Filter = TargetingFilter.TileWithLure,
                         RangeMin = 1,
-                        RangeMax = VolteFaceRangeMax,
-                        DamageAmount = VolteFaceDmg, // bonus dorsal Angle Mort applique en pipeline
+                        RangeMax = PermutationRangeMax,
+                        DamageAmount = 0,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
-                        IsOffensive = 1,
+                        IsOffensive = 0,
+                        MaxUsesPerTurn = PermutationMaxUsesPerTurn,
                     };
                     return true;
 

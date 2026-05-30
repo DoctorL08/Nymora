@@ -556,6 +556,7 @@ namespace Nymora.Combat.View
                 case SpellId.GhostraPasDansLOmbre:
                 case SpellId.GhostraFrappeFantome:
                 case SpellId.GhostraDernierPas:
+                case SpellId.GhostraPermutation: // refonte 30 mai : swap leurre = TP (meme anim que Frappe Fantome)
                     return true;
                 default:
                     return false;

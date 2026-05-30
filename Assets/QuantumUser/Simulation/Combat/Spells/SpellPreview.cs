@@ -63,8 +63,8 @@ namespace Quantum
                     return TryComputeSaigneAme(f, caster, target, out preview);
                 case SpellId.GhostraDanseDesLames:
                     return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.DanseDesLamesDmg, out preview);
-                case SpellId.GhostraVolteFace:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.VolteFaceDmg, out preview);
+                // Permutation (ex-Volte-Face slot 90) : aucun degat -> pas de preview offensif
+                //   (le swap n'affiche pas de nombre de degats). Falls through au default.
                 case SpellId.GhostraDagueLancee:
                     return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.DagueLanceeDmgBase, out preview);
                 case SpellId.GhostraExecutionSpectrale:

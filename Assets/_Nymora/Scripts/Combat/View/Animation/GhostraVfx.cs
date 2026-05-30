@@ -82,11 +82,10 @@ namespace Nymora.Combat.View.Animation
                     ProceduralVfx.Burst(parent, cb, B(Spectral, 16, 4f, 0.11f, 0.4f, 0.1f, -0.2f, layer, Order + 1));
                     return true;
 
-                case SpellId.GhostraVolteFace: // mindgame : tourbillon qui retourne la cible
-                    ProceduralVfx.RingHold(parent, tg, A(Spectral, 0.8f), new Vector2(1.2f, 0.7f), 0.55f, layer, Order - 1);
-                    ProceduralVfx.Slash(parent, tb, dir, Pale, layer, Order + 4);
-                    ProceduralVfx.Slash(parent, tb, Rotate(dir, 180f), Pale, layer, Order + 4); // demi-tour
-                    ProceduralVfx.Burst(parent, tb, B(Spectral, 14, 4.5f, 0.11f, 0.4f, 0.08f, 0.2f, layer, Order + 1));
+                case SpellId.GhostraPermutation: // swap avec un de ses leurres : blink spectral (invisible adversaire)
+                    ProceduralVfx.Flash(parent, cb, Spectral, 0.5f, 0.16f, layer, Order + 3);
+                    ProceduralVfx.RingHold(parent, cg, A(SpectralDark, 0.55f), new Vector2(1.0f, 0.6f), 0.4f, layer, Order - 1);
+                    ProceduralVfx.Burst(parent, cb, B(Spectral, 12, 4f, 0.10f, 0.38f, 0.09f, -0.1f, layer, Order + 1));
                     return true;
 
                 case SpellId.GhostraDagueLancee: // dague spectrale lancée
