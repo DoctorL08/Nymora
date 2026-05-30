@@ -35,7 +35,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 10
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_ouvre_plaie
     DisplayName: Ouvre-Plaie
     ClassId: 1
@@ -58,7 +58,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 11
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_charge_brutale
     DisplayName: Charge Brutale
     ClassId: 1
@@ -81,7 +81,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 12
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_detonation_sanglante
     DisplayName: "D\xE9tonation Sanglante"
     ClassId: 1
@@ -104,7 +104,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 13
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_curee
     DisplayName: "\xC9ventration"
     ClassId: 1
@@ -126,7 +126,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 14
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_pacte_de_sang
     DisplayName: Pacte de Sang
     ClassId: 1
@@ -149,7 +149,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 15
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_marque_de_carnage
     DisplayName: Marque de Carnage
     ClassId: 1
@@ -172,7 +172,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 16
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_empoignade
     DisplayName: Empoignade
     ClassId: 1
@@ -195,7 +195,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 17
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_rugissement
     DisplayName: Rugissement
     ClassId: 1
@@ -219,7 +219,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 18
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_rage_insatiable
     DisplayName: "Fr\xE9n\xE9sie"
     ClassId: 1
@@ -241,7 +241,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 19
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_riposte_carmin
     DisplayName: Riposte Carmin
     ClassId: 1
@@ -263,7 +263,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 20
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_cauterisation
     DisplayName: Sang Bouillant
     ClassId: 1
@@ -285,7 +285,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 21
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_peau_de_fer
     DisplayName: Peau de Fer
     ClassId: 1
@@ -308,7 +308,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 22
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_seve_vive
     DisplayName: "S\xE8ve Vive"
     ClassId: 1
@@ -330,7 +330,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 23
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_dernier_souffle
     DisplayName: Dernier Souffle
     ClassId: 1
@@ -352,7 +352,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 24
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: soulrender_ame_laceree
     DisplayName: "\xC2me Lac\xE9r\xE9e"
     ClassId: 1
@@ -376,7 +376,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 25
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_tir_precis
     DisplayName: "Tir Pr\xE9cis"
     ClassId: 2
@@ -397,7 +397,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 30
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_volee_epines
     DisplayName: "Vol\xE9e d'\xC9pines"
     ClassId: 2
@@ -420,7 +420,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 31
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_detonation_onirique
     DisplayName: "D\xE9tonation Onirique"
     ClassId: 2
@@ -442,7 +442,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 32
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_frappe_ombre
     DisplayName: Frappe de l'Ombre
     ClassId: 2
@@ -463,7 +463,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 33
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_salve_mortelle
     DisplayName: Salve Mortelle
     ClassId: 2
@@ -485,7 +485,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 34
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_marque_chasseur
     DisplayName: Marque du Chasseur
     ClassId: 2
@@ -507,7 +507,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 35
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_filet_ronces
     DisplayName: Filet de Ronces
     ClassId: 2
@@ -530,7 +530,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 36
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_champ_mines
     DisplayName: Champ de Mines
     ClassId: 2
@@ -552,7 +552,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 37
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_bourrasque
     DisplayName: Bourrasque
     ClassId: 2
@@ -574,7 +574,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 38
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_souffle_glacial
     DisplayName: "Pi\xE8ge Bondissant"
     ClassId: 2
@@ -598,7 +598,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 39
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_voile_ombre
     DisplayName: "Fl\xE8che Tra\xE7ante"
     ClassId: 2
@@ -620,7 +620,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 40
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_pas_furtif
     DisplayName: Pas Furtif
     ClassId: 2
@@ -641,7 +641,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 41
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_camouflage_ronces
     DisplayName: Camouflage de Ronces
     ClassId: 2
@@ -664,7 +664,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 42
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_seve_sauvage
     DisplayName: "S\xE8ve Sauvage"
     ClassId: 2
@@ -685,7 +685,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 43
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_evanescence
     DisplayName: "\xC9vanescence"
     ClassId: 2
@@ -707,7 +707,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 44
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: nightseer_traquenard
     DisplayName: Traquenard
     ClassId: 2
@@ -730,7 +730,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 45
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_frappe_lourde
     DisplayName: Frappe Lourde
     ClassId: 3
@@ -753,7 +753,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 50
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_onde_de_choc
     DisplayName: Onde de Choc
     ClassId: 3
@@ -776,7 +776,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 51
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_marteau_punisseur
     DisplayName: Marteau Punisseur
     ClassId: 3
@@ -799,7 +799,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 52
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_choc_sismique
     DisplayName: Choc Sismique
     ClassId: 3
@@ -823,7 +823,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 53
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_represailles
     DisplayName: "Repr\xE9sailles"
     ClassId: 3
@@ -846,7 +846,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 54
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_pilier
     DisplayName: Pilier
     ClassId: 3
@@ -868,7 +868,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 55
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_mur_de_pierre
     DisplayName: Mur de Pierre
     ClassId: 3
@@ -891,7 +891,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 56
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_ancrage
     DisplayName: Ancrage
     ClassId: 3
@@ -912,7 +912,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 57
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_provocation
     DisplayName: Provocation
     ClassId: 3
@@ -936,7 +936,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 58
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_brisure
     DisplayName: Brisure
     ClassId: 3
@@ -960,7 +960,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 59
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_stoicisme
     DisplayName: "Sto\xEFcisme"
     ClassId: 3
@@ -983,7 +983,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 60
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_garde_protectrice
     DisplayName: Garde Protectrice
     ClassId: 3
@@ -1006,7 +1006,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 61
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_ressac_vital
     DisplayName: Ressac Vital
     ClassId: 3
@@ -1027,7 +1027,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 62
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_renvoi_bouclier
     DisplayName: Renvoi du Bouclier
     ClassId: 3
@@ -1048,7 +1048,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 63
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_soin_lourd
     DisplayName: "\xC9boulement"
     ClassId: 3
@@ -1070,7 +1070,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 64
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: colossar_effondrement
     DisplayName: Effondrement
     ClassId: 3
@@ -1094,7 +1094,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 65
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_crachat_acide
     DisplayName: Crachat Acide
     ClassId: 4
@@ -1116,7 +1116,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 70
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_morsure_putride
     DisplayName: Morsure Putride
     ClassId: 4
@@ -1139,7 +1139,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 71
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_detonation_virulente
     DisplayName: "D\xE9tonation Virulente"
     ClassId: 4
@@ -1162,7 +1162,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 72
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_faux_decharnee
     DisplayName: "Faux D\xE9charn\xE9e"
     ClassId: 4
@@ -1185,7 +1185,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 73
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_brume_toxique
     DisplayName: Brume Toxique
     ClassId: 4
@@ -1209,7 +1209,7 @@ MonoBehaviour:
     Filter: 9
     Effects: []
     QuantumSpellIdValue: 74
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_inoculation
     DisplayName: Inoculation
     ClassId: 4
@@ -1231,7 +1231,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 75
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_marque_sacrificielle
     DisplayName: Marque Sacrificielle
     ClassId: 4
@@ -1253,7 +1253,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 76
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_symbiose_morbide
     DisplayName: Symbiose Morbide
     ClassId: 4
@@ -1274,7 +1274,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 77
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_contagion
     DisplayName: Contagion
     ClassId: 4
@@ -1297,7 +1297,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 78
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_pas_spectral
     DisplayName: "\xC9change Spectral"
     ClassId: 4
@@ -1318,7 +1318,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 79
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_voile_pestilence
     DisplayName: "Nu\xE9e de Spores"
     ClassId: 4
@@ -1339,7 +1339,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 80
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_carapace_visqueuse
     DisplayName: Carapace Visqueuse
     ClassId: 4
@@ -1362,7 +1362,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 81
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_drain_vital
     DisplayName: Drain Vital
     ClassId: 4
@@ -1384,7 +1384,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 82
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_regeneration_necrotique
     DisplayName: "R\xE9g\xE9n\xE9ration N\xE9crotique"
     ClassId: 4
@@ -1406,7 +1406,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 83
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_cocon_putride
     DisplayName: Cocon Putride
     ClassId: 4
@@ -1429,7 +1429,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 84
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: necram_virus_fatal
     DisplayName: Virus Fatal
     ClassId: 4
@@ -1453,7 +1453,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 85
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_lame_spectrale
     DisplayName: Lame Spectrale
     ClassId: 5
@@ -1475,7 +1475,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 86
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_lame_vorace_spectrale
     DisplayName: Lame Vorace Spectrale
     ClassId: 5
@@ -1497,21 +1497,21 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 87
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_replique_fantome
     DisplayName: "R\xE9plique Fant\xF4me"
     ClassId: 5
     Category: 2
     IconSprite: {fileID: 21300000, guid: ac17551545404464abf7d65dc5911c0c, type: 3}
     Description: "Pose un Leurre sur une case vide \xE0 4 cases. Le Leurre est visuellement
-      identique \xE0 la Ghostra. Dure 4 rounds (amendement 16 mai 2026) ou jusqu'\xE0
-      interaction. Si le Leurre survit la dur\xE9e compl\xE8te, la Ghostra regagne
-      80 HP. Si le Leurre est d\xE9truit par un sort adverse, la Ghostra regagne
-      40 HP."
+      identique \xE0 la Ghostra. Dure 4 rounds ou jusqu'\xE0 interaction. Si le Leurre
+      survit la dur\xE9e compl\xE8te, la Ghostra regagne 80 HP. Si le Leurre est
+      d\xE9truit par un sort adverse, la Ghostra regagne 40 HP. UTILISABLE 1 FOIS
+      PAR TOUR."
     LoreFlavor: "Le clone qui paye les frais. R\xE9plique Fant\xF4me FORCE l'adversaire
       \xE0 choisir : 'je frappe ce qui ressemble \xE0 la Ghostra ?' Toute lecture
       co\xFBte. La Ghostra gagne quoi qu'il arrive."
-    ActionPointCost: 3
+    ActionPointCost: 2
     MovementPointCost: 0
     ClassResourceCost: 0
     CooldownTurns: 0
@@ -1522,7 +1522,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 88
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_pas_dans_ombre
     DisplayName: Pas dans l'Ombre
     ClassId: 5
@@ -1531,7 +1531,7 @@ MonoBehaviour:
     Description: "T\xE9l\xE9porte la Ghostra jusqu'\xE0 5 cases. Si une case adjacente
       \xE0 l'arriv\xE9e contient une cible ennemie : la cible PIVOTE pour faire face
       \xE0 la Ghostra. Co\xFBt optionnel : laisser un leurre sur la case quitt\xE9e
-      (compte dans le cap 3)."
+      (compte dans le cap 3). UTILISABLE 1 FOIS PAR TOUR."
     LoreFlavor: "Le saut de l'absent. Pas dans l'Ombre n'est pas seulement une mobilit\xE9
       \u2014 c'est un G\xC9N\xC9RATEUR de leurre."
     ActionPointCost: 2
@@ -1545,16 +1545,16 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 89
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_permutation
     DisplayName: Permutation
     ClassId: 5
     Category: 2
     IconSprite: {fileID: 21300000, guid: 54a70bda8531bb44389a7ffaca9a9ca1, type: 3}
     Description: "\xC9change instantan\xE9ment la position de la Ghostra avec un
-      de ses leurres cibl\xE9, d\xE8s 1 leurre actif. 1 PA, jusqu'\xE0 2 fois par
-      tour. Aucun d\xE9g\xE2t. \xC9change invisible c\xF4t\xE9 adversaire (silhouettes
-      identiques)."
+      de ses leurres cibl\xE9 (jusqu'\xE0 4 cases), d\xE8s 1 leurre actif. Aucun
+      d\xE9g\xE2t. \xC9change invisible c\xF4t\xE9 adversaire (silhouettes identiques).
+      UTILISABLE 2 FOIS PAR TOUR."
     LoreFlavor: "Le pas de c\xF4t\xE9 du fant\xF4me. La Ghostra n'est jamais o\xF9
       on la frappe \u2014 elle \xE9tait d\xE9j\xE0 l'autre silhouette."
     ActionPointCost: 1
@@ -1562,13 +1562,13 @@ MonoBehaviour:
     ClassResourceCost: 0
     CooldownTurns: 0
     MinRange: 1
-    MaxRange: 30
+    MaxRange: 4
     RequiresLineOfSight: 1
     Shape: 1
     Filter: 8
     Effects: []
     QuantumSpellIdValue: 90
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_saigne_ame
     DisplayName: "Saigne-\xC2me"
     ClassId: 5
@@ -1589,18 +1589,19 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 91
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_frappe_fantome
     DisplayName: "Frappe Fant\xF4me"
     ClassId: 5
     Category: 1
     IconSprite: {fileID: 21300000, guid: 0a27cfe47350a354b9d3b5679b41db43, type: 3}
     Description: "La Ghostra se t\xE9l\xE9porte \xE0 1 case de la cible (c\xF4t\xE9
-      libre). Inflige 200 d\xE9g\xE2ts. Si dorsal : +bonus passif. Si la cible avait
-      \xE9t\xE9 VOLTE-FACE ou que sa direction a \xE9t\xE9 modifi\xE9e ce tour :
-      APPLIQUE PLAIE OUVERTE (40/tour \xD7 2t)."
+      libre). Inflige 200 d\xE9g\xE2ts. Si dorsal : +bonus passif. Si la direction
+      de la cible a \xE9t\xE9 modifi\xE9e ce tour : applique PLAIE OUVERTE (40 d\xE9g\xE2ts/tour
+      pendant 2 tours)."
     LoreFlavor: "Le finisseur. Frappe Fant\xF4me arrive de nulle part. Combin\xE9e
-      \xE0 Volte-Face, c'est un combo qui peut shred 350+ HP en un tour."
+      \xE0 un retournement de la cible, c'est un combo qui peut shred 350+ HP en
+      un tour."
     ActionPointCost: 4
     MovementPointCost: 0
     ClassResourceCost: 0
@@ -1612,16 +1613,15 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 92
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_dague_lancee
     DisplayName: "Dague Lanc\xE9e"
     ClassId: 5
     Category: 2
     IconSprite: {fileID: 21300000, guid: 615737ab34a39f6418fc831367c4a40d, type: 3}
-    Description: "Inflige 40 d\xE9g\xE2ts (amendement 16 mai 2026, nerf 80\u219240)
-      + bonus dorsal Angle Mort si applicable. Pivot 90\xB0 HORAIRE iso de la cible
-      (NE\u2192SE\u2192SW\u2192NW\u2192NE). Flag LastFacingForcedOnTurn pos\xE9 pour
-      combo Dague\u2192Frappe Fant\xF4me = PlaieOuverte. Cap 2\xD7/tour."
+    Description: "Inflige 40 d\xE9g\xE2ts + bonus dorsal Angle Mort si applicable.
+      Fait pivoter la cible de 90\xB0 (sens horaire). Pr\xE9pare le combo Dague Lanc\xE9e
+      \u2192 Frappe Fant\xF4me (Plaie Ouverte)."
     LoreFlavor: "Le caillou dans la vitre. Dague Lanc\xE9e est l'outil le plus subtile
       : 1 PA, 40 d\xE9g\xE2ts, \xE7a para\xEEt minuscule. Mais elle MANIPULE le regard
       de la cible."
@@ -1636,7 +1636,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 93
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_marque_ombre
     DisplayName: Marque de l'Ombre
     ClassId: 5
@@ -1644,7 +1644,7 @@ MonoBehaviour:
     IconSprite: {fileID: 21300000, guid: 4efa6067c8c32a84595fc4003c1a1685, type: 3}
     Description: "Pendant 2 tours, tous les sorts de la Ghostra sur la cible gagnent
       +20 d\xE9g\xE2ts. Si la cible est touch\xE9e en dorsal pendant ces 2 tours
-      : applique automatiquement PLAIE OUVERTE."
+      : applique automatiquement PLAIE OUVERTE. UTILISABLE 1 FOIS PAR TOUR."
     LoreFlavor: "Le sceau. Marque de l'Ombre pr\xE9-charge une cible. La Ghostra
       peut ensuite alterner R\xE9plique \u2192 permutation \u2192 Lame Spectrale
       dorsal et l'effet plaie est garanti. Anti-tank par contournement."
@@ -1659,7 +1659,7 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 94
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_danse_des_lames
     DisplayName: Danse des Lames
     ClassId: 5
@@ -1683,14 +1683,15 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 95
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_linceul_ombres
     DisplayName: Linceul d'Ombres
     ClassId: 5
     Category: 3
     IconSprite: {fileID: 21300000, guid: 35c8781ca685ec84a9f9241f2ec31eaa, type: 3}
     Description: "La Ghostra gagne un BOUCLIER de 130 HP pendant 2 tours. Toute attaque
-      m\xEAl\xE9e subie pendant la dur\xE9e renvoie 40 d\xE9g\xE2ts \xE0 l'attaquant."
+      m\xEAl\xE9e subie pendant la dur\xE9e renvoie 40 d\xE9g\xE2ts \xE0 l'attaquant.
+      UTILISABLE 1 FOIS PAR TOUR."
     LoreFlavor: Le suaire. Linceul d'Ombres est le bouclier qui mord. Anti-Soulrender
       qui charge.
     ActionPointCost: 3
@@ -1704,7 +1705,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 96
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_voile_spectral
     DisplayName: Voile Spectral
     ClassId: 5
@@ -1727,17 +1728,16 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 97
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_replique_protectrice
     DisplayName: "R\xE9plique Protectrice"
     ClassId: 5
     Category: 3
     IconSprite: {fileID: 21300000, guid: b861949ab5f010144b28347028eb5006, type: 3}
     Description: "Pose un Leurre PROTECTEUR (200 HP, redirige 30% des d\xE9g\xE2ts
-      subis par la Ghostra pendant 3 rounds) (amendement 16 mai 2026 : 4 PA / 30%
-      / 3 rounds). Si le Leurre est d\xE9truit, la Ghostra regagne 80 HP. Pas de
-      stack si plusieurs Protective vivants (un seul absorbe par hit). Compte dans
-      le cap 3 leurres."
+      subis par la Ghostra pendant 3 rounds). Si le Leurre est d\xE9truit, la Ghostra
+      regagne 80 HP. Pas de stack si plusieurs Protective vivants (un seul absorbe
+      par hit). Compte dans le cap 3 leurres. UTILISABLE 1 FOIS PAR TOUR."
     LoreFlavor: "Le clone-bouclier. R\xE9plique Protectrice n'est pas un leurre offensif
       \u2014 c'est un sustain cach\xE9. Elle prolonge la vie de la Ghostra de 1-2
       tours."
@@ -1752,7 +1752,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 98
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_dernier_pas
     DisplayName: Dernier Pas
     ClassId: 5
@@ -1775,7 +1775,7 @@ MonoBehaviour:
     Filter: 6
     Effects: []
     QuantumSpellIdValue: 99
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_pas_au_dela
     DisplayName: "Pas de l'Au-Del\xE0"
     ClassId: 5
@@ -1798,7 +1798,7 @@ MonoBehaviour:
     Filter: 1
     Effects: []
     QuantumSpellIdValue: 100
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89
   - SpellId: ghostra_execution_spectrale
     DisplayName: "Ex\xE9cution Spectrale"
     ClassId: 5
@@ -1823,4 +1823,4 @@ MonoBehaviour:
     Filter: 4
     Effects: []
     QuantumSpellIdValue: 101
-    CombatRulesVersion: 88
+    CombatRulesVersion: 89

@@ -50,7 +50,11 @@ namespace Nymora.Core.Data
         //                swap Ghostra<->un de ses leurres des 1 leurre). Filtre de ciblage
         //                TileWithLure implemente (cibler SES leurres). L'ancienne Permutation
         //                gratuite Angle 3 (touche P) reste dormante / non reactivee.
-        public const int CombatRulesVersion = 88;
+        // 89 (Ghostra brique 2/7 eco leurres + caps PA, 30 mai) : Replique Fantome 3->2 PA + cap
+        //                1x/tour ; caps 1x/tour sur Replique Protectrice / Marque de l'Ombre /
+        //                Pas dans l'Ombre / Linceul d'Ombres (moteur generique MaxUsesPerTurn).
+        //                + nerf portee Permutation (plateau -> 4 PO).
+        public const int CombatRulesVersion = 89;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

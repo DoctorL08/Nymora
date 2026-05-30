@@ -497,7 +497,7 @@ namespace Quantum
         //   Heal owner branche dans DecoyHelpers (cf RepliqueFantomeHealOnDestroy / OnExpire) :
         //     - Survit 2 tours      -> +80 HP (Bible)
         //     - Detruit prematurement -> +40 HP (Bible)
-        public const int RepliqueFantomePACost      = 3;
+        public const int RepliqueFantomePACost      = 2;  // refonte 30 mai (brique 2) : 3 -> 2 PA (eco leurre)
         public const int RepliqueFantomeRangeMax    = 4;
 
         // 3.7.b.ii — Pas dans l'Ombre (Bible V7.1 ligne 1134) :
@@ -700,11 +700,11 @@ namespace Quantum
         // 3.7.b — Permutation DECKABLE (refonte 30 mai) :
         //   1 PA, cap 2x/tour (moteur generique MaxUsesPerTurn), swap Ghostra<->un de ses leurres
         //   cible des 1 leurre actif. Pas de degats, pur repositionnement / mind-game.
-        //   Ciblage Filter=TileWithLure (cible une case occupee par un leurre OWN). Portee = plateau
-        //   entier (Manhattan max 15x17 = 30). Remplace l'ancienne Permutation gratuite Angle 3
+        //   Ciblage Filter=TileWithLure (cible une case occupee par un leurre OWN). Portee 4 cases
+        //   (PO, nerf 30 mai — etait plateau entier). Remplace l'ancienne Permutation gratuite Angle 3
         //   (touche P) qui reste DORMANTE (non reactivee, decision Lorenzo "vrai spell uniquement").
         public const int PermutationPACost          = 1;
-        public const int PermutationRangeMax        = 30;  // couvre tout le plateau (Manhattan max 14+16=30)
+        public const int PermutationRangeMax        = 4;   // refonte 30 mai : nerf portee (4 PO, etait plateau entier)
         public const int PermutationMaxUsesPerTurn  = 2;
 
         public static bool TryGet(SpellId id, out SpellDef def)
@@ -2061,6 +2061,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // refonte 30 mai (brique 2) : cap 1x/tour
                     };
                     return true;
 
@@ -2079,6 +2080,7 @@ namespace Quantum
                         HGCostMaxOptional = 1, // 1 = trigger pose leurre case quittee (Shift+H)
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // refonte 30 mai (brique 2) : cap 1x/tour
                     };
                     return true;
 
@@ -2117,6 +2119,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0, // pas de damage direct
+                        MaxUsesPerTurn = 1, // refonte 30 mai (brique 2) : cap 1x/tour
                     };
                     return true;
 
@@ -2211,6 +2214,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // refonte 30 mai (brique 2) : 1x actif/tour
                     };
                     return true;
 
@@ -2254,6 +2258,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // refonte 30 mai (brique 2) : cap 1x/tour
                     };
                     return true;
 
