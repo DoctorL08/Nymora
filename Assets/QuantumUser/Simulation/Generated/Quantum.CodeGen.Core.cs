@@ -177,7 +177,7 @@ namespace Quantum {
     GhostraVoileSpectral = 97,
     GhostraRepliqueProtectrice = 98,
     GhostraDernierPas = 99,
-    GhostraPasDeLAuDela = 100,
+    GhostraCommunionSpectrale = 100,
     GhostraExecutionSpectrale = 101,
   }
   public enum StatusKind : byte {

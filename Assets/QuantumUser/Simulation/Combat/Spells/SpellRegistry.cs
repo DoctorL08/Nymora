@@ -659,9 +659,19 @@ namespace Quantum
         //   Flag consume au premier Move applique (clear dans MovementSystem.ApplyMove).
         //   Si pas utilise avant fin tour Ghostra : cleanup defensif au EnterTurnStart
         //   suivant du combattant actif (le flag ne sert qu'au combattant pendant son tour).
+        // NB (refonte 30 mai) : Pas de l'Au-Dela SUPPRIME du pool (slot 100 -> Communion Spectrale).
+        //   Les constantes PasAuDela* + l'infra PasAuDelaReady (MovementSystem / preview / renderer)
+        //   sont laissees DORMANTES (plus aucun sort ne pose PasAuDelaReady). A nettoyer en passe ⑦.
         public const int PasAuDelaPACost          = 2;
         public const int PasAuDelaPMBonus         = 2;
         public const int PasAuDelaDorsalDamage    = 60;
+
+        // 3.7.c — Communion Spectrale (refonte 30 mai, ex-Pas de l'Au-Dela slot 100) :
+        //   2 PA self, cap 1x/tour. Consomme 1 leurre actif (premier slot) -> heal CommunionHeal
+        //   (cap MaxHP, bloque par AntiHealShield via HealHelper). Gate >=1 leurre (reject pre-PA).
+        public const int CommunionPACost          = 2;
+        public const int CommunionHeal            = 150;
+        public const int CommunionMaxUsesPerTurn  = 1;
 
         // 3.7.d — Execution Spectrale (Bible V7.1 ligne 1071) SIGNATURE Ghostra :
         //   3 PA, range 1 (melee dorsal requis), Filter=Enemy. Coute 3/3 LEURRES (ExecutionSpectraleRequiredDecoys).
@@ -2280,14 +2290,13 @@ namespace Quantum
                     };
                     return true;
 
-                // 3.7.c.v — Pas de l'Au-Dela : 2 PA Self. Pas de damage direct (IsOffensive=0).
-                // Effet pose dans le handler SpellSystem (CurrentPM += PasAuDelaPMBonus +
-                // NextMoveIgnoresUnits=1). Les dgts dorsaux 60 par ennemi traverse sont applies
-                // dans MovementSystem.ApplyMove (pas ici - le sort ne fait que poser le flag).
-                case SpellId.GhostraPasDeLAuDela:
+                // 3.7.c — Communion Spectrale (refonte 30 mai, ex-Pas de l'Au-Dela slot 100) : 2 PA
+                //   Self, cap 1x/tour. Consomme 1 leurre -> heal 150 (handler SpellSystem). Pas de
+                //   damage (IsOffensive=0). Gate >=1 leurre dans SpellSystem (reject pre-PA).
+                case SpellId.GhostraCommunionSpectrale:
                     def = new SpellDef
                     {
-                        PACost = PasAuDelaPACost,
+                        PACost = CommunionPACost,
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.Self,
                         RangeMin = 0,
@@ -2297,6 +2306,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = CommunionMaxUsesPerTurn,
                     };
                     return true;
 

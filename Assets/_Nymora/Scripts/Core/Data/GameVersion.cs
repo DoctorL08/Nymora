@@ -70,7 +70,11 @@ namespace Nymora.Core.Data
         //                leurres actifs autour de l'ennemi (DecoyHelpers.TeleportAllDecoysAround).
         //                + gate dorsal/Marque sur IsOffensive==1 (fix : sorts non-offensifs ne font
         //                plus de dorsal accidentel sur cible ennemie, ex Marque de l'Ombre / Voile).
-        public const int CombatRulesVersion = 92;
+        // 93 (Ghostra brique 6/7 Communion Spectrale, 30 mai) : slot SpellId 100 (ex-Pas de l'Au-Delà,
+        //                supprimé) reutilise par GhostraCommunionSpectrale. 2 PA self, cap 1x/tour,
+        //                consomme 1 leurre -> heal 150 (HealHelper). Gate >=1 leurre. Infra
+        //                PasAuDelaReady (MovementSystem/preview/renderer) laissée dormante.
+        public const int CombatRulesVersion = 93;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

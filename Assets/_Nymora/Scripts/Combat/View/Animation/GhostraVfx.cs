@@ -132,10 +132,10 @@ namespace Nymora.Combat.View.Animation
                     ProceduralVfx.Burst(parent, cb, B(Spectral, 14, 5f, 0.1f, 0.35f, 0.08f, -0.1f, layer, Order + 1));
                     return true;
 
-                case SpellId.GhostraPasDeLAuDela: // pas de l'au-delà (phase défensive)
+                case SpellId.GhostraCommunionSpectrale: // communion : absorbe un leurre -> soin
                     ProceduralVfx.CastCharge(parent, cb, Spectral, 0.2f, layer, Order + 2);
-                    ProceduralVfx.RingHold(parent, cg, A(SpectralDark, 0.7f), new Vector2(1.2f, 0.7f), 0.4f, layer, Order - 1);
-                    ProceduralVfx.Burst(parent, cb, B(Pale, 16, 4f, 0.11f, 0.4f, 0.1f, -0.2f, layer, Order + 1));
+                    ProceduralVfx.Aura(parent, null, casterPos + up * BaseY, Spectral, 0.9f, layer, Order + 1); // halo de soin
+                    ProceduralVfx.Burst(parent, cb, B(Pale, 18, 3.5f, 0.12f, 0.45f, 0.12f, -0.3f, layer, Order + 1)); // particules qui montent
                     return true;
 
                 default:

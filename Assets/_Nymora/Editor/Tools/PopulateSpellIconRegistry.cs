@@ -163,7 +163,7 @@ namespace Nymora.Editor.Tools
             { "icon_voile_spectral",       SpellId.GhostraVoileSpectral },
             { "icon_replique_protectrice", SpellId.GhostraRepliqueProtectrice },
             { "icon_dernier_pas",          SpellId.GhostraDernierPas },
-            { "icon_pas_de_lau_dela",      SpellId.GhostraPasDeLAuDela },
+            { "icon_communion_spectrale",  SpellId.GhostraCommunionSpectrale }, // ex-icon_pas_de_lau_dela (slot 100 reutilise)
             // Signature
             { "icon_execution_spectrale",  SpellId.GhostraExecutionSpectrale },
         };

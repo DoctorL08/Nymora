@@ -545,6 +545,14 @@ namespace Quantum
                 return;
             }
 
+            // 3.7.c — Communion Spectrale : requiert au moins 1 leurre actif à consommer.
+            //   Reject AVANT consommation PA (pas de heal à vide).
+            if (cmd.Spell == SpellId.GhostraCommunionSpectrale && DecoyHelpers.CountActive(caster) <= 0)
+            {
+                Log.Warn($"[Spell] rejet : Communion Spectrale requiert au moins 1 leurre actif");
+                return;
+            }
+
             // Refonte 29 mai — GATE GENERIQUE limites/relances (cap Nx/tour + relance N tours).
             //   Declare par sort dans SpellDef.MaxUsesPerTurn / CooldownTurns. Reject AVANT
             //   consommation des PA (pas de cast "perdu"). No-op si les deux valent 0 (defaut).
@@ -2443,30 +2451,26 @@ namespace Quantum
                     break;
                 }
 
-                // 3.7.c.v — Pas de l'Au-Dela (Bible V7.1 ligne 1180) : 2 PA self. Pattern identique
-                //   a NecramPasSpectral (parite Bible "mobilite traversee") :
-                //   (1) Si pas deja actif : +PasAuDelaPMBonus PM ce tour (cap anti-stack si refresh).
-                //   (2) Apply Status PasAuDelaReady turnsLeft=1 magnitude=0. Le status est consume
-                //       dans TurnSystem.EnterTurnEnd quand ActivePlayerIndex == porteur. Tant que
-                //       actif : MovementSystem passe ignoreEnemyOccupants=true a A* + pose
-                //       PasAuDelaDorsalDamage HP loss direct sur chaque ennemi traverse.
-                //   Pas de 1x/match. Cast illimite PA-only.
-                case SpellId.GhostraPasDeLAuDela:
+                // 3.7.c — Communion Spectrale (refonte 30 mai, ex-Pas de l'Au-Dela slot 100) :
+                //   Consomme 1 leurre actif (premier slot) -> heal 150 (cap MaxHP, bloque par
+                //   AntiHealShield via HealHelper). Gate >=1 leurre fait en amont (pré-PA).
+                case SpellId.GhostraCommunionSpectrale:
                 {
-                    bool padAlreadyActive = StatusHelper.Has(caster, StatusKind.PasAuDelaReady);
-                    if (!padAlreadyActive)
+                    int comSlot = -1;
+                    for (int i = 0; i < DecoyHelpers.MaxDecoys; i++)
                     {
-                        caster->PM += SpellRegistry.PasAuDelaPMBonus;
-                        Log.Info($"[Spell] Pas de l'Au-Dela : P{caster->PlayerIndex} +{SpellRegistry.PasAuDelaPMBonus} PM (-> {caster->PM}) + PasAuDelaReady applique (prochains Moves ce tour traversent unites et infligent {SpellRegistry.PasAuDelaDorsalDamage} dgts dorsal par ennemi traverse)");
+                        if (caster->Decoys[i].Kind != DecoyKind.None) { comSlot = i; break; }
+                    }
+                    if (comSlot >= 0)
+                    {
+                        DecoyHelpers.DestroyAtSlot(caster, comSlot);
+                        int healedCom = HealHelper.ApplyHeal(caster, SpellRegistry.CommunionHeal);
+                        Log.Info($"[Spell] Communion Spectrale : consomme leurre slot {comSlot} -> heal {healedCom} HP (demande {SpellRegistry.CommunionHeal}) sur P{caster->PlayerIndex}");
                     }
                     else
                     {
-                        Log.Info($"[Spell] Pas de l'Au-Dela re-cast sur P{caster->PlayerIndex} : refresh traversee (PM inchange, cap +{SpellRegistry.PasAuDelaPMBonus} deja accorde)");
+                        Log.Warn($"[Spell] Communion Spectrale : aucun leurre à consommer (PA déjà consommé) — cas rare");
                     }
-                    StatusHelper.Apply(caster, StatusKind.PasAuDelaReady,
-                        magnitude: 0,
-                        turnsLeft: 1,
-                        currentTurn);
                     break;
                 }
 

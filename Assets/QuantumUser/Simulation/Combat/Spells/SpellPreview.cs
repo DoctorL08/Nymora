@@ -83,8 +83,8 @@ namespace Quantum
                     return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.EveilSpectraleDamage, out preview);
                 case SpellId.GhostraExecutionSpectrale:
                     return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.ExecutionSpectraleDamage, out preview);
-                case SpellId.GhostraPasDeLAuDela:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.PasAuDelaDorsalDamage, out preview);
+                case SpellId.GhostraCommunionSpectrale:
+                    return TryComputeHealSelf(f, caster, SpellRegistry.CommunionHeal, out preview);
                 case SpellId.GhostraLinceulDOmbres:
                     return TryComputeShieldSelf(SpellRegistry.LinceulDOmbresShieldHP, out preview);
                 case SpellId.GhostraDernierPas:
