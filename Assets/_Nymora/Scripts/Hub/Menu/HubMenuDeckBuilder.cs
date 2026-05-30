@@ -225,6 +225,10 @@ namespace Nymora.Hub.Menu
             brt.sizeDelta = Vector2.zero; brt.anchoredPosition = Vector2.zero;
             b.gameObject.AddComponent<ContentSizeFitter>().verticalFit = ContentSizeFitter.FitMode.PreferredSize;
             sr.content = brt;
+
+            // Tooltip survol : texte COMPLET (le corps de l'encart peut être tronqué/scrollé).
+            // L'Image du panneau (raycastTarget) capte le survol ; titre/corps sont non-raycast.
+            AddTextTooltip(box.gameObject, $"<size=115%><b>{title}</b></size>\n\n{body}");
         }
 
         // Bonus / paliers / génération de ressource par classe (Bible V7.1). Repris du Class Selector.
@@ -316,7 +320,11 @@ namespace Nymora.Hub.Menu
             _tooltipGo = panel.gameObject;
         }
 
-        private void ShowTooltip(string text)
+        private void ShowTooltip(string text) => ShowTooltip(text, above: false);
+
+        // above=true : le tooltip pousse VERS LE HAUT (pivot bas) — pour les encarts en bas d'écran
+        // (passif / signature) qui seraient coupés s'ils descendaient.
+        private void ShowTooltip(string text, bool above)
         {
             if (_tooltipGo == null) return;
             _tooltipText.text = text;
@@ -326,9 +334,12 @@ namespace Nymora.Hub.Menu
             Vector3 pos = Input.mousePosition;
             // Flip à gauche si on est trop près du bord droit.
             bool flip = pos.x + 400f > Screen.width;
-            rt.pivot = flip ? new Vector2(1f, 1f) : new Vector2(0f, 1f);
+            float px = flip ? 1f : 0f;
+            float py = above ? 0f : 1f;        // pivot bas => grandit vers le haut
+            rt.pivot = new Vector2(px, py);
             float dx = flip ? -18f : 18f;
-            _tooltipGo.transform.position = new Vector3(pos.x + dx, pos.y - 12f, 0f);
+            float dy = above ? 16f : -12f;     // au-dessus du curseur si above
+            _tooltipGo.transform.position = new Vector3(pos.x + dx, pos.y + dy, 0f);
         }
 
         private void HideTooltip()
@@ -348,6 +359,14 @@ namespace Nymora.Hub.Menu
         {
             if (go == null || def == null) return;
             go.AddComponent<SpellTooltipProxy>().Init(ShowTooltip, HideTooltip, BuildSpellTooltipText(def));
+        }
+
+        /// <summary>Tooltip de survol avec un texte libre (passif / signature dans le deck builder).</summary>
+        private void AddTextTooltip(GameObject go, string text)
+        {
+            if (go == null || string.IsNullOrEmpty(text)) return;
+            // Affichage vers le HAUT (encarts en bas du deck builder → évite la coupe en bas d'écran).
+            go.AddComponent<SpellTooltipProxy>().Init(t => ShowTooltip(t, above: true), HideTooltip, text);
         }
 
         private SpellDefinition FindSignature()

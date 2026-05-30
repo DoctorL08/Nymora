@@ -46,6 +46,12 @@ namespace Nymora.Combat.View
         [Tooltip("Tint applique au sprite leurre COTE CASTER uniquement. Default cyan pale pour aider le caster a distinguer ses leurres. Cote adversaire le tint est force a blanc opaque (indiscernable du vrai Ghostra).")]
         [SerializeField] private Color _decoyTint = new Color(0.7f, 0.88f, 1.0f, 1.0f); // bleu pale spectral
 
+        // Voile Spectral (TP des leurres autour de l'ennemi) : suit LastCastSequence de chaque
+        // Ghostra pour déclencher un flash de téléportation sur ses leurres au moment du cast.
+        private readonly Dictionary<EntityRef, int> _lastVoileCastSeq = new Dictionary<EntityRef, int>(2);
+        // Couleur cyan spectral du flash de TP des leurres (aligné GhostraVfx).
+        private static readonly Color DecoyTpColor = new Color(0.40f, 0.78f, 0.94f, 1f);
+
         // Cle composite (ghostraEntity, slotIndex) -> GameObject leurre actif.
         private readonly Dictionary<(EntityRef ghostra, int slot), GameObject> _decoyVisuals
             = new Dictionary<(EntityRef, int), GameObject>(6);
@@ -160,6 +166,18 @@ namespace Nymora.Combat.View
                 // qu'ils aient la MEME apparence que la vraie Ghostra (indiscernable cote adverse).
                 var ownerSkin = ResolveOwnerSkinDef(frame, ghostra);
 
+                // Voile Spectral : si la Ghostra vient de le caster ce tick, ses leurres ont été
+                // téléportés autour de l'ennemi → on joue un flash spectral sur chacun (anim de TP).
+                bool voileThisFrame = false;
+                {
+                    int prevVoile = _lastVoileCastSeq.TryGetValue(ghostraEntity, out var vv) ? vv : ghostra.LastCastSequence;
+                    if (ghostra.LastCastSequence != prevVoile)
+                    {
+                        _lastVoileCastSeq[ghostraEntity] = ghostra.LastCastSequence;
+                        if (ghostra.LastCastSpellId == SpellId.GhostraVoileSpectral) voileThisFrame = true;
+                    }
+                }
+
                 // PATCH — materiau du SpriteRenderer de la vraie Ghostra (materiau 2D Lit) : on le
                 // donne aux leurres pour qu'ils reagissent aux lights 2D exactement comme elle
                 // (sinon leurre = Sprites-Default UNLIT -> rendu plus "plat/opaque" cote adverse).
@@ -186,8 +204,15 @@ namespace Nymora.Combat.View
                         d.PosX, d.PosY,
                         _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight) + _centerOffset + transform.position;
                     Vector3 decoyBaseWorld = world; // position "root" (avant offset visuel), pour placer le familier
-                    world.y += _decoyYOffset;
+                    // Offset Y de base + offset additionnel du skin équipé (réglable en live via F10).
+                    world.y += _decoyYOffset + (ownerSkin != null ? ownerSkin.DecoyCombatYOffset : 0f);
                     go.transform.position = world;
+
+                    // Échelle de base du leurre × multiplicateur du skin (réglable en live via F10,
+                    // persisté sur l'asset → toutes scènes). Réappliqué chaque frame (idempotent) pour
+                    // que le tuner prenne effet immédiatement et que les leurres skinnés suivent.
+                    Vector3 targetDecoyScale = _decoyScale * (ownerSkin != null ? ownerSkin.DecoyCombatScale : 1f);
+                    if (go.transform.localScale != targetDecoyScale) go.transform.localScale = targetDecoyScale;
 
                     // Tri iso : MEME formule que CombatantView (1000 - (gx+gy)*10) pour que le
                     // leurre se trie comme un vrai combattant selon sa case. Sinon le sortingOrder
@@ -200,6 +225,14 @@ namespace Nymora.Combat.View
                         // Meme materiau que la vraie Ghostra (2D Lit) -> rendu identique sous les lights.
                         if (ghostraMat != null && decoySr.sharedMaterial != ghostraMat)
                             decoySr.sharedMaterial = ghostraMat;
+                    }
+
+                    // Flash spectral de téléportation si le Voile vient d'être casté (leurre qui surgit).
+                    if (voileThisFrame)
+                    {
+                        string lname = decoySr != null ? decoySr.sortingLayerName : "Default";
+                        int lorder = (decoySr != null ? decoySr.sortingOrder : 5) + 1;
+                        Animation.ProceduralVfx.Flash(transform, world, DecoyTpColor, 0.9f, 0.18f, lname, lorder);
                     }
 
                     // Sync sprite avec la vraie Ghostra (Bible "indiscernable cote adversaire").

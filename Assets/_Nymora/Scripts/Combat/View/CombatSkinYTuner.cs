@@ -32,7 +32,7 @@ namespace Nymora.Combat.View
         private const string CatalogResourcePath = "Cosmetics/CosmeticSkinCatalog";
 
         private bool _open;
-        private Rect _window = new Rect(360f, 20f, 340f, 280f);
+        private Rect _window = new Rect(360f, 20f, 340f, 440f);
         private static readonly int WindowId = "CombatSkinYTuner".GetHashCode();
 
         private CosmeticSkinCatalog _catalog;
@@ -71,10 +71,10 @@ namespace Nymora.Combat.View
 
             if (!_open)
             {
-                GUI.Label(new Rect(20f, Screen.height - 48f, 380f, 22f), "<b>F10</b> : réglage Y skin (combat)");
+                GUI.Label(new Rect(20f, Screen.height - 48f, 480f, 22f), "<b>F10</b> : réglage skin/leurres (Y + taille)");
                 return;
             }
-            _window = GUILayout.Window(WindowId, _window, DrawWindow, "Réglage Y skin (combat)");
+            _window = GUILayout.Window(WindowId, _window, DrawWindow, "Réglage skin/leurres (combat)");
         }
 
         private void DrawWindow(int id)
@@ -99,12 +99,24 @@ namespace Nymora.Combat.View
                 anyMatch = true;
                 if (!v.SpriteOnChild) anyMonoGo = true;
                 v.SetCombatYOffsets(def.Stage0CombatYOffset, def.Stage1CombatYOffset, def.Stage2CombatYOffset);
+                v.SetCombatVisualScale(def.CombatVisualScale);
             }
 
             GUILayout.Space(4f);
+            GUILayout.Label("<b>Skin — Y par stage</b>", Rich());
             def.Stage0CombatYOffset = SliderRow("Stage 0  Y", def.Stage0CombatYOffset);
             def.Stage1CombatYOffset = SliderRow("Stage 1  Y", def.Stage1CombatYOffset);
             def.Stage2CombatYOffset = SliderRow("Stage 2  Y", def.Stage2CombatYOffset);
+
+            GUILayout.Space(4f);
+            GUILayout.Label("<b>Skin — taille</b>", Rich());
+            def.CombatVisualScale = ScaleSliderRow("Skin  scale", def.CombatVisualScale);
+
+            GUILayout.Space(4f);
+            GUILayout.Label("<b>Leurres (Ghostra)</b>", Rich());
+            // Lus chaque frame par DecoyView → effet live, pas d'appel direct nécessaire ici.
+            def.DecoyCombatYOffset = SliderRow("Leurre  Y", def.DecoyCombatYOffset);
+            def.DecoyCombatScale = ScaleSliderRow("Leurre  scale", def.DecoyCombatScale);
 
             GUILayout.Space(4f);
             if (!anyMatch)
@@ -117,7 +129,13 @@ namespace Nymora.Combat.View
             GUILayout.Space(6f);
             GUILayout.BeginHorizontal();
             if (GUILayout.Button("Sauvegarder")) Save(def);
-            if (GUILayout.Button("Remettre à 0")) { def.Stage0CombatYOffset = def.Stage1CombatYOffset = def.Stage2CombatYOffset = 0f; }
+            if (GUILayout.Button("Remettre à 0"))
+            {
+                def.Stage0CombatYOffset = def.Stage1CombatYOffset = def.Stage2CombatYOffset = 0f;
+                def.CombatVisualScale = 1f;
+                def.DecoyCombatScale = 1f;
+                def.DecoyCombatYOffset = 0f;
+            }
             if (GUILayout.Button("Fermer")) _open = false;
             GUILayout.EndHorizontal();
 
@@ -134,12 +152,24 @@ namespace Nymora.Combat.View
             return value;
         }
 
+        // Slider d'échelle (multiplicateur), borné 0.2 → 2.5.
+        private static float ScaleSliderRow(string label, float value)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(label, GUILayout.Width(78f));
+            value = GUILayout.HorizontalSlider(value, 0.2f, 2.5f);
+            GUILayout.Label(value.ToString("0.000"), GUILayout.Width(54f));
+            GUILayout.EndHorizontal();
+            return value;
+        }
+
         private static void Save(CosmeticSkinDefinition def)
         {
             EditorUtility.SetDirty(def);
             AssetDatabase.SaveAssets();
             Debug.Log($"[CombatSkinYTuner] Sauvé {def.CosmeticId} : " +
-                      $"s0={def.Stage0CombatYOffset:0.000} s1={def.Stage1CombatYOffset:0.000} s2={def.Stage2CombatYOffset:0.000}");
+                      $"s0={def.Stage0CombatYOffset:0.000} s1={def.Stage1CombatYOffset:0.000} s2={def.Stage2CombatYOffset:0.000} " +
+                      $"skinScale={def.CombatVisualScale:0.000} leurreY={def.DecoyCombatYOffset:0.000} leurreScale={def.DecoyCombatScale:0.000}");
         }
 
         private static GUIStyle Rich()

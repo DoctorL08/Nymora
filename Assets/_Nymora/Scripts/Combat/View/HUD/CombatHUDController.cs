@@ -270,6 +270,30 @@ namespace Nymora.Combat.View.HUD
             if (bootstrap != null) bootstrap.LocalPlayerSlotResolved -= ApplyLocalPlayerSlot;
         }
 
+        /// <summary>
+        /// Lobby pré-combat (B3) — Ré-applique le deck depuis DeckBridge puis re-bind les slots.
+        /// Appelé par CombatBootstrapCasual après la résolution du lobby quand le joueur a choisi
+        /// un autre deck que celui du deck builder : la barre de sorts doit afficher les 6 sorts
+        /// du deck choisi (le deck est View-only — la sim laisse les 16 sorts de la classe castables).
+        /// </summary>
+        public void ReapplyDeckFromBridge()
+        {
+            ApplyDeckBridgeIfPending();
+            BindSlots();
+        }
+
+        /// <summary>
+        /// Lobby pré-combat (B3) — Résout la définition d'une classe parmi celles câblées dans la
+        /// scène (sert au portrait idle du lobby quand le joueur n'a pas de skin équipé). Null si absente.
+        /// </summary>
+        public Nymora.Core.ScriptableObjects.NymoraClassDefinition ResolveClassDefinition(Nymora.Core.Enums.NymoraClass cls)
+        {
+            if (_classDefinitions == null) return null;
+            foreach (var d in _classDefinitions)
+                if (d != null && d.ClassId == cls) return d;
+            return null;
+        }
+
         private void BindSlots()
         {
             // Deck (1-6)
@@ -322,6 +346,14 @@ namespace Nymora.Combat.View.HUD
                 if (c.PlayerIndex == controlPlayer) { local = c; hasLocal = true; }
             }
 
+            // Ratio HP de l'ennemi (1v1) — pour le coût PA effectif (bonus Appel du Sang Soulrender
+            // = -1 PA si la cible est <70% HP). Caché aussi pour le tooltip (hors OnUpdateView).
+            Combatant enemyC = controlPlayer == 0 ? p1 : p0;
+            bool hasEnemy = controlPlayer == 0 ? hasP1 : hasP0;
+            int enemyHpRatio = (hasEnemy && enemyC.MaxHP > 0) ? enemyC.HP * 100 / enemyC.MaxHP : 100;
+            _cachedLocal = local; _hasCachedLocal = hasLocal;
+            _cachedEnemyHpRatio = enemyHpRatio; _cachedTurnNumber = state.TurnNumber;
+
             // ResourcePanel
             if (_p0Panel != null) { if (hasP0) _p0Panel.Refresh(p0, activePlayer == 0); else _p0Panel.Clear(); }
             if (_p1Panel != null) { if (hasP1) _p1Panel.Refresh(p1, activePlayer == 1); else _p1Panel.Clear(); }
@@ -366,7 +398,7 @@ namespace Nymora.Combat.View.HUD
 
             // Slots : grisage selon PA / HG dispo du combattant qu'on controle, etat armed.
             // 2.13.c : passe aussi le turnNumber pour calcul du cooldown signature.
-            RefreshSlots(hasLocal ? local : default, hasLocal, state.TurnNumber, localTurn);
+            RefreshSlots(hasLocal ? local : default, hasLocal, state.TurnNumber, localTurn, enemyHpRatio);
 
             // End Turn : seul le joueur actif peut le presser. (Si _debugAllPlayersControllable
             // est false et qu'on n'est pas le joueur actif, on grise le bouton.)
@@ -386,22 +418,24 @@ namespace Nymora.Combat.View.HUD
             }
         }
 
-        private void RefreshSlots(in Combatant c, bool valid, int turnNumber, bool localTurn)
+        private void RefreshSlots(in Combatant c, bool valid, int turnNumber, bool localTurn, int enemyHpRatio)
         {
             for (int i = 0; i < _spellSlots.Length; i++)
             {
                 var slot = _spellSlots[i];
                 if (slot == null) continue;
                 // J10 — hors du tour du joueur (ex : tour du bot en IA) la barre est grisee.
-                var st = localTurn ? ResolveSlotState(slot.Spell, c, valid, turnNumber) : SpellSlotView.SlotState.Disabled;
+                var st = localTurn ? ResolveSlotState(slot.Spell, c, valid, turnNumber, enemyHpRatio) : SpellSlotView.SlotState.Disabled;
                 slot.SetState(st);
                 slot.SetCooldownLabel(ResolveCooldownTurnsLeft(slot.Spell, c, valid, turnNumber));
+                slot.SetPaCost(ResolveBadgePaCost(slot.Spell, c, valid, turnNumber, enemyHpRatio), ResolveBadgeColor(slot.Spell));
             }
             if (_signatureSlot != null)
             {
-                var sigState = localTurn ? ResolveSlotState(_signatureSlot.Spell, c, valid, turnNumber) : SpellSlotView.SlotState.Disabled;
+                var sigState = localTurn ? ResolveSlotState(_signatureSlot.Spell, c, valid, turnNumber, enemyHpRatio) : SpellSlotView.SlotState.Disabled;
                 _signatureSlot.SetState(sigState);
                 _signatureSlot.SetCooldownLabel(ResolveCooldownTurnsLeft(_signatureSlot.Spell, c, valid, turnNumber));
+                _signatureSlot.SetPaCost(ResolveBadgePaCost(_signatureSlot.Spell, c, valid, turnNumber, enemyHpRatio), ResolveBadgeColor(_signatureSlot.Spell));
             }
             // 19 mai POLISH-6g — Signature visible UNIQUEMENT quand la ressource max est atteinte
             // (HG/PR/FD/PT pour 4 classes, ou 3 leurres actifs pour Ghostra). Cast consomme la
@@ -432,7 +466,7 @@ namespace Nymora.Combat.View.HUD
             return max > 0 && c.Resource >= max;
         }
 
-        private SpellSlotView.SlotState ResolveSlotState(SpellId spell, in Combatant c, bool valid, int turnNumber)
+        private SpellSlotView.SlotState ResolveSlotState(SpellId spell, in Combatant c, bool valid, int turnNumber, int enemyHpRatio)
         {
             if (_armedSpell.HasValue && _armedSpell.Value == spell)
             {
@@ -441,11 +475,9 @@ namespace Nymora.Combat.View.HUD
             if (!valid || spell == SpellId.None) return SpellSlotView.SlotState.Disabled;
             if (!SpellRegistry.TryGet(spell, out SpellDef def)) return SpellSlotView.SlotState.Disabled;
 
-            // Cout PA effectif approxime (base + RageInsatiable). Le bonus -1 PA du passif
-            // Soulrender depend de la cible visee donc on l'ignore pour le grisage initial.
-            int paCost = def.PACost;
-            if (HasStatus(c, StatusKind.RageInsatiableActive)) paCost += 1;
-            if (paCost < 1) paCost = 1;
+            // Coût PA EFFECTIF (mêmes bonus que la sim : Appel du Sang -1, Permutation Angle 3 = 0,
+            // Effondrement -1) → grisage cohérent avec le badge rubis affiché.
+            int paCost = ComputeEffectivePaCost(c, def, enemyHpRatio, turnNumber);
 
             if (c.PA < paCost) return SpellSlotView.SlotState.Disabled;
             if (c.Resource < def.HGCostMandatory) return SpellSlotView.SlotState.Disabled;
@@ -465,6 +497,87 @@ namespace Nymora.Combat.View.HUD
             }
 
             return SpellSlotView.SlotState.Normal;
+        }
+
+        // ---- Coût PA effectif (badge rubis + grisage + tooltip) ----
+
+        // Cache du dernier état (rempli par OnUpdateView) pour calculer le PA effectif au survol
+        // du tooltip, qui se déclenche hors OnUpdateView.
+        private Combatant _cachedLocal;
+        private bool _hasCachedLocal;
+        private int _cachedEnemyHpRatio = 100;
+        private int _cachedTurnNumber;
+
+        /// <summary>
+        /// Coût PA EFFECTIF d'un sort, réplique managée de EffectiveStats.GetPACost (sim) :
+        ///   - Ghostra : Permutation gratuite (0 PA) à l'Angle 3 (3 leurres actifs).
+        ///   - Soulrender : -1 PA sur le 1ER sort du tour si l'ennemi est sous 70% HP (Appel du Sang).
+        ///   - Effondrement actif (Colossar) : -1 PA. Min 1 (hors Permutation gratuite).
+        /// </summary>
+        private int ComputeEffectivePaCost(in Combatant c, in SpellDef def, int enemyHpRatio, int turnNumber)
+        {
+            // Permutation (Filter TileWithLure) gratuite à l'Angle 3 — court-circuite.
+            if (def.Filter == TargetingFilter.TileWithLure && c.Class == NymoraClass.Ghostra)
+            {
+                int active = 0;
+                for (int i = 0; i < 3; i++) if (c.Decoys[i].Kind != DecoyKind.None) active++;
+                if (active >= 3) return 0;
+            }
+
+            int cost = def.PACost;
+            if (c.Class == NymoraClass.Soulrender
+                && enemyHpRatio < SpellRegistry.AppelDuSangPalierMarquage
+                && SpellLimitsHelper.TotalCastsThisTurn(c, turnNumber) == 0)
+            {
+                cost -= 1; if (cost < 1) cost = 1;
+            }
+            if (HasStatus(c, StatusKind.EffondrementActive))
+            {
+                cost -= 1; if (cost < 1) cost = 1;
+            }
+            return cost;
+        }
+
+        /// <summary>PA à afficher dans le badge rubis (-1 = pas de badge : slot vide).</summary>
+        private int ResolveBadgePaCost(SpellId spell, in Combatant c, bool valid, int turnNumber, int enemyHpRatio)
+        {
+            if (spell == SpellId.None) return -1;
+            if (!SpellRegistry.TryGet(spell, out SpellDef def)) return -1;
+            if (!valid) return def.PACost; // pas de combattant résolu → coût de base
+            return ComputeEffectivePaCost(c, def, enemyHpRatio, turnNumber);
+        }
+
+        // ---- Couleur du losange selon la catégorie du sort (offensif/tactique/survie) ----
+        private static readonly Color BadgeColorOffensive = new Color(0.86f, 0.15f, 0.20f, 1f); // rouge
+        private static readonly Color BadgeColorTactical  = new Color(0.27f, 0.50f, 0.86f, 1f); // bleu
+        private static readonly Color BadgeColorSurvival  = new Color(0.27f, 0.70f, 0.40f, 1f); // vert
+        private static readonly Color BadgeColorOther     = new Color(0.80f, 0.65f, 0.25f, 1f); // signature / défaut (ambre)
+
+        // Cache SpellId -> catégorie (depuis le SpellCatalog Core, via QuantumSpellIdValue).
+        private System.Collections.Generic.Dictionary<SpellId, Nymora.Core.Enums.SpellCategory> _categoryBySpell;
+
+        private Color ResolveBadgeColor(SpellId spell)
+        {
+            if (spell == SpellId.None) return BadgeColorOther;
+            if (_categoryBySpell == null)
+            {
+                _categoryBySpell = new System.Collections.Generic.Dictionary<SpellId, Nymora.Core.Enums.SpellCategory>(128);
+                if (_spellCatalog != null)
+                {
+                    foreach (var s in _spellCatalog.Spells)
+                        if (s != null) _categoryBySpell[(SpellId)s.QuantumSpellIdValue] = s.Category;
+                }
+            }
+            if (_categoryBySpell.TryGetValue(spell, out var cat))
+            {
+                switch (cat)
+                {
+                    case Nymora.Core.Enums.SpellCategory.Offensive: return BadgeColorOffensive;
+                    case Nymora.Core.Enums.SpellCategory.Tactical:  return BadgeColorTactical;
+                    case Nymora.Core.Enums.SpellCategory.Survival:  return BadgeColorSurvival;
+                }
+            }
+            return BadgeColorOther;
         }
 
         /// <summary>
@@ -604,7 +717,11 @@ namespace Nymora.Combat.View.HUD
 
         public void ShowTooltip(SpellId spell, RectTransform anchor)
         {
-            if (_tooltip != null) _tooltip.Show(spell, anchor);
+            if (_tooltip == null) return;
+            int pa = -1;
+            if (_hasCachedLocal && SpellRegistry.TryGet(spell, out SpellDef def))
+                pa = ComputeEffectivePaCost(_cachedLocal, def, _cachedEnemyHpRatio, _cachedTurnNumber);
+            _tooltip.Show(spell, anchor, pa);
         }
 
         public void HideTooltip()

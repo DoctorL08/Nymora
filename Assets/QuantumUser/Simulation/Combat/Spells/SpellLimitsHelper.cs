@@ -129,6 +129,14 @@ namespace Quantum
             return n;
         }
 
+        /// <summary>Comme <see cref="TotalCastsThisTurn(Combatant*,int)"/> mais sur une copie (HUD).
+        /// Sert au coût PA effectif affiché par la barre de sorts (bonus -1 PA du 1er sort).</summary>
+        public static int TotalCastsThisTurn(Combatant c, int currentTurn)
+        {
+            if (c.CastsThisTurnLoggedTurn != currentTurn) return 0;
+            return c.CastsThisTurnCount;
+        }
+
         /// <summary>
         /// Tours de relance RESTANTS pour `id` (0 si dispo), sur une copie (HUD). `cooldownTurns`
         /// 0 = pas de relance. Sert au grisage + label "Nt" de la barre de sorts.

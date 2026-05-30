@@ -118,6 +118,12 @@ namespace Nymora.Combat.View
         private int _currentStage = -1; // -1 = pas encore initialise
         private IsoFacing _currentFacing = (IsoFacing)(-1); // sentinelle invalide pour forcer le premier set
 
+        // Skin combat (5.10) — échelle de base du child "Visual" de la classe, capturée au Bind, pour
+        // y appliquer le multiplicateur CombatVisualScale du skin (réglable en live via F10). Mono-GO
+        // (sprite sur le root) → non capturé, pas de scale (sinon casse hit-punch / worldPos).
+        private Vector3 _visualBaseScale = Vector3.one;
+        private bool _visualBaseCaptured;
+
         /// <summary>
         /// 2.16.c.vi — True tant qu'il reste des waypoints a consommer. Utilise par
         /// le Renderer pour ceder le controle du facing au View pendant le mouvement
@@ -152,6 +158,15 @@ namespace Nymora.Combat.View
             Class = nymoraClass;
             if (_sprite == null) _sprite = GetComponentInChildren<SpriteRenderer>();
 
+            // Capture l'échelle de base du child "Visual" (avant tout scale de skin) pour pouvoir
+            // appliquer le multiplicateur du skin sans compounding. Uniquement si le sprite est sur
+            // un child (sinon scaler le root casserait le hit-punch / worldPos).
+            if (!_visualBaseCaptured && _sprite != null && _sprite.transform != transform)
+            {
+                _visualBaseScale = _sprite.transform.localScale;
+                _visualBaseCaptured = true;
+            }
+
             // Affichage initial : stage 0 + facing SE par defaut (sera override des le 1er OnUpdateView).
             SetStageAndFacing(0, IsoFacing.SE);
         }
@@ -182,6 +197,11 @@ namespace Nymora.Combat.View
             _stage1VisualYOffset = skin.Stage1CombatYOffset;
             _stage2VisualYOffset = skin.Stage2CombatYOffset;
 
+            // Taille du skin en combat : échelle de base du Visual × multiplicateur du skin
+            // (réglable en live via F10, persisté sur l'asset → toutes scènes). Child "Visual"
+            // uniquement (jamais le root → hit-punch/worldPos préservés).
+            SetCombatVisualScale(skin.CombatVisualScale);
+
             // Force le re-set : on relit le stage/facing courant puis on invalide les sentinelles
             // pour que SetStageAndFacing ne court-circuite pas (no-op si rien n'a change).
             int stage = _currentStage < 0 ? 0 : _currentStage;
@@ -203,6 +223,16 @@ namespace Nymora.Combat.View
         /// celui du stage courant SANS reset d'animation (contrairement a ApplySkin qui re-swap le
         /// controller). No-op visuel si mono-GO (cf SpriteOnChild).
         /// </summary>
+        /// <summary>
+        /// Tuner dev (CombatSkinYTuner F10) — applique en LIVE l'échelle du skin combat sur le child
+        /// "Visual" (échelle de base × scale). No-op sur les prefabs mono-GO (sprite sur le root).
+        /// </summary>
+        public void SetCombatVisualScale(float scale)
+        {
+            if (!_visualBaseCaptured || _sprite == null || _sprite.transform == transform) return;
+            _sprite.transform.localScale = _visualBaseScale * Mathf.Max(0.01f, scale);
+        }
+
         public void SetCombatYOffsets(float s0, float s1, float s2)
         {
             _stage0VisualYOffset = s0;

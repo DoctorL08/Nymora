@@ -292,6 +292,21 @@ namespace Nymora.Hub
         }
 
         /// <summary>
+        /// Lobby pré-combat (B1) — Récupère le MMR du joueur local via /profile/me, pour
+        /// l'afficher dans le lobby et le diffuser en P2P à l'adversaire (PreCombatBridge.LocalMmr).
+        /// Réutilise le NymoraApiClient + le token déjà gérés par ce panel. Retourne 0 si échec
+        /// (le lobby affichera alors un MMR neutre, non bloquant).
+        /// </summary>
+        public async UniTask<int> FetchLocalMmrAsync()
+        {
+            string token = ResolveDevToken();
+            if (string.IsNullOrEmpty(token)) return 0;
+            _api.SetBearerToken(token);
+            var res = await _api.GetProfileMeAsync();
+            return res.IsSuccess && res.Data != null ? res.Data.mmr : 0;
+        }
+
+        /// <summary>
         /// M3b (25 mai) — Sélectionne un deck depuis le nouveau menu (HubMenuDeckBuilder).
         /// Synchronise _editingDeckId + composition + pref, pour que SelectedDeck (lu par
         /// HubArenaPanel / HubMatchTransition au lancement du combat) pointe sur le bon deck,

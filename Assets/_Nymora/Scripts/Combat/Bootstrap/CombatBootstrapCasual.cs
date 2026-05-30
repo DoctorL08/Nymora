@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Nymora.Combat.View.PreCombatLobby;
 using Nymora.Core.Data;
 using Nymora.Core.SceneFlow;
 using Nymora.Core.ScriptableObjects;
@@ -89,6 +90,10 @@ namespace Nymora.Combat.Bootstrap
 
         private CancellationTokenSource _cts;
         private bool _bootstrapInProgress;
+
+        // Lobby pré-combat (B2) — deck résolu par le lobby (sélection joueur ou défaut deck builder).
+        // Null si lobby skip (lancement direct sans hub) → les helpers retombent sur DeckBridge.
+        private PreCombatDeckInfo _resolvedDeck;
 
         // Nom de la scene legitime pour CE bootstrap. Garde stricte : si le component
         // se reveille dans une autre scene (chargement additif fantome, multi-scene editing,
@@ -251,6 +256,13 @@ namespace Nymora.Combat.Bootstrap
             Client = await MatchmakingExtensions.ConnectToRoomAsync(matchmakingArgs);
             Log($"Photon room '{matchId}' connectee. ActorNumber={Client.LocalPlayer.ActorNumber} IsMaster={Client.LocalPlayer.IsMasterClient}");
 
+            // ===== 2.b Lobby pré-combat (B2) =====
+            // Les 2 clients sont maintenant dans la room Photon. On échange pseudo/classe/MMR/ready
+            // via les player custom properties (hors-sim) et on attend que les 2 soient prêts (ou
+            // timeout 30 s). Le deck choisi sort dans _resolvedDeck. On passe `ct` (pas timeoutCts,
+            // dont le CancelAfter 30 s expirerait pendant le lobby) ; le lobby a son propre cap 35 s.
+            await RunPreCombatLobbyAsync(playerName, ct);
+
             // ===== 3. LocalPlayerSlot will be resolved AFTER AddPlayer (cf etape 6/7) =====
             // Bug 19 mai 2026 : on basait LocalPlayerSlot sur IsMasterClient (0 si master,
             // 1 si guest). Mais Quantum 3 attribue le PlayerRef GLOBAL selon l'ordre d'arrivee
@@ -290,6 +302,12 @@ namespace Nymora.Combat.Bootstrap
             }
 
             // ===== 5. Start Quantum session (Multiplayer) =====
+            // Timeout FRAIS pour la phase de start : le `timeoutCts` (CancelAfter 30 s mesuré avant
+            // le lobby) peut déjà avoir expiré pendant l'attente du lobby pré-combat (B2). On crée
+            // donc un nouveau token avec son propre délai pour ne pas faire échouer StartAsync.
+            using var startTimeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            startTimeoutCts.CancelAfter(TimeSpan.FromSeconds(ConnectTimeoutSec));
+
             Log("Demarrage SessionRunner Quantum (Multiplayer)...");
             var sessionArgs = new SessionRunner.Arguments
             {
@@ -302,7 +320,7 @@ namespace Nymora.Combat.Bootstrap
                 PlayerCount = 2,
                 GameMode = DeterministicGameMode.Multiplayer,
                 Communicator = new QuantumNetworkCommunicator(Client),
-                CancellationToken = timeoutCts.Token,
+                CancellationToken = startTimeoutCts.Token,
                 RecordingFlags = RecordingFlags.None,
                 InstantReplaySettings = InstantReplaySettings.Default,
                 DeltaTimeType = SimulationUpdateTime.EngineDeltaTime,
@@ -356,45 +374,110 @@ namespace Nymora.Combat.Bootstrap
             Debug.LogError($"[CombatBootstrapCasual] TIMEOUT {playerRefResolveMaxAttempts} yields : Quantum.GetLocalPlayers() reste vide apres AddPlayer. LocalPlayerSlot reste -1 -> les Views vont logger erreur et input PvP cassera. Verifier qu'AddPlayer a bien ete acquitte par le serveur Quantum.");
         }
 
-        // ====== 4.14.d helpers ======
+        // ====== Lobby pré-combat (B2) ======
 
         /// <summary>
-        /// Convertit DeckBridge.PendingClassId (string "Soulrender"/...) vers Quantum.NymoraClass.
-        /// Fallback Soulrender si DeckBridge vide / classe inconnue (defensive).
+        /// Crée et pilote le lobby pré-combat (échange Photon pseudo/classe/MMR/ready + timer 30 s).
+        /// Stocke le deck choisi dans <see cref="_resolvedDeck"/>. Si PreCombatBridge est vide
+        /// (lancement direct sans hub), on saute le lobby → fallback DeckBridge dans les helpers.
         /// </summary>
-        private static QuantumNymoraClass ResolveClassIdForLocalPlayer()
+        private async Task RunPreCombatLobbyAsync(string playerName, CancellationToken ct)
         {
-            if (!DeckBridge.HasPending)
+            if (!PreCombatBridge.HasData)
             {
-                Debug.LogWarning("[CombatBootstrapCasual] DeckBridge vide — fallback class Soulrender.");
+                Log("PreCombatBridge vide (lancement direct sans hub ?) — lobby pré-combat skip, deck = DeckBridge.");
+                return;
+            }
+
+            int localClassValue = (int)ResolveClassIdForLocalPlayer();
+            string localPseudo = !string.IsNullOrEmpty(MatchBridge.LocalDisplayName)
+                ? MatchBridge.LocalDisplayName
+                : playerName;
+
+            var go = new GameObject("PreCombatLobby");
+            var ctrl = go.AddComponent<PreCombatLobbyController>();
+            ctrl.Init(Client, localPseudo, localClassValue, PreCombatBridge.LocalMmr,
+                      Nymora.Core.Data.CombatCosmeticsContext.LocalSkinId,
+                      PreCombatBridge.AvailableDecks, PreCombatBridge.DefaultDeckId);
+            Log($"Lobby pré-combat démarré (pseudo='{localPseudo}' classe={localClassValue} MMR={PreCombatBridge.LocalMmr} " +
+                $"decks={PreCombatBridge.AvailableDecks.Count}, timer {PreCombatLobbyController.LobbyDurationSeconds}s).");
+
+            try
+            {
+                _resolvedDeck = await ctrl.RunAsync(ct);
+                Log($"Lobby terminé. Deck résolu='{_resolvedDeck?.Name}' (class={_resolvedDeck?.ClassId}). " +
+                    $"Adversaire: présent={ctrl.OpponentPresent} pseudo='{ctrl.OpponentPseudo}' classe={ctrl.OpponentClassValue} " +
+                    $"MMR={ctrl.OpponentMmr} prêt={ctrl.OpponentReady}.");
+
+                // B3 — Si le joueur a choisi un deck (potentiellement différent du défaut deck builder),
+                // on réaligne DeckBridge + la barre de sorts du HUD pour qu'elle affiche les 6 sorts
+                // choisis (le deck est View-only ; le sim laisse les 16 sorts de la classe castables).
+                if (_resolvedDeck != null)
+                {
+                    DeckBridge.SetPendingDeck(_resolvedDeck.ClassId, _resolvedDeck.SpellIds, _resolvedDeck.Name);
+                    View.HUD.CombatHUDController.Instance?.ReapplyDeckFromBridge();
+                }
+
+                // B4 — Voile de transition (créé AVANT la destruction du lobby → aucun flash) qui
+                // masque la grille vide jusqu'au spawn des combattants (CallbackGameStarted).
+                View.PreCombatLobby.PreCombatLoadingVeil.Show();
+            }
+            finally
+            {
+                // Le lobby n'a plus de raison d'être une fois le deck résolu (la sim va démarrer).
+                if (go != null) Destroy(go);
+                // Consomme le bridge (évite qu'un relancement direct réutilise une liste périmée).
+                PreCombatBridge.Clear();
+            }
+        }
+
+        // ====== 4.14.d helpers (étendus B2 : préfèrent le deck résolu par le lobby) ======
+
+        /// <summary>
+        /// Convertit la classe du joueur local (deck résolu par le lobby, sinon DeckBridge) vers
+        /// Quantum.NymoraClass. La classe est figée côté hub (le lobby ne la change pas).
+        /// Fallback Soulrender si tout est vide / classe inconnue (defensive).
+        /// </summary>
+        private QuantumNymoraClass ResolveClassIdForLocalPlayer()
+        {
+            string classId = _resolvedDeck != null
+                ? _resolvedDeck.ClassId
+                : (DeckBridge.HasPending ? DeckBridge.PendingClassId : null);
+
+            if (string.IsNullOrEmpty(classId))
+            {
+                Debug.LogWarning("[CombatBootstrapCasual] Classe introuvable (lobby + DeckBridge vides) — fallback class Soulrender.");
                 return QuantumNymoraClass.Soulrender;
             }
 
             // Les 2 enums (Nymora.Core.Enums.NymoraClass et Quantum.NymoraClass) ont les memes
             // valeurs verrouillees par CombatRulesVersion (None=0, Soulrender=1, etc.).
             // On parse depuis le string -> Core enum -> cast byte -> Quantum enum.
-            if (System.Enum.TryParse<NymoraClassEnum>(DeckBridge.PendingClassId, ignoreCase: true, out var coreCls))
+            if (System.Enum.TryParse<NymoraClassEnum>(classId, ignoreCase: true, out var coreCls))
             {
                 return (QuantumNymoraClass)(byte)coreCls;
             }
-            Debug.LogWarning($"[CombatBootstrapCasual] DeckBridge.PendingClassId='{DeckBridge.PendingClassId}' non parsable — fallback Soulrender.");
+            Debug.LogWarning($"[CombatBootstrapCasual] classId='{classId}' non parsable — fallback Soulrender.");
             return QuantumNymoraClass.Soulrender;
         }
 
         /// <summary>
-        /// Convertit les 6 SpellIdTech (snake_case ex "soulrender_tranche_ame") en int[]
-        /// = (int)Quantum.SpellId. Le mapping vient de SpellCatalog.QuantumSpellIdValue
-        /// (populate via Nymora > Setup > Populate Spell Catalog).
-        /// Retourne un array de 6 zeros si DeckBridge vide / catalog manquant (defensive).
+        /// Convertit les 6 SpellIdTech (snake_case ex "soulrender_tranche_ame") du deck résolu
+        /// (lobby, sinon DeckBridge) en int[] = (int)Quantum.SpellId. Le mapping vient de
+        /// SpellCatalog.QuantumSpellIdValue. Retourne 6 zéros si tout vide / catalog manquant.
         /// </summary>
         private int[] ResolveSpellIdValuesForLocalPlayer()
         {
             var result = new int[6];
-            if (!DeckBridge.HasPending || SpellCatalog == null) return result;
+            string[] spellIds = _resolvedDeck != null
+                ? _resolvedDeck.SpellIds
+                : (DeckBridge.HasPending ? DeckBridge.PendingSpellIds : null);
 
-            for (int i = 0; i < 6 && i < DeckBridge.PendingSpellIds.Length; i++)
+            if (spellIds == null || SpellCatalog == null) return result;
+
+            for (int i = 0; i < 6 && i < spellIds.Length; i++)
             {
-                var spellIdTech = DeckBridge.PendingSpellIds[i];
+                var spellIdTech = spellIds[i];
                 if (string.IsNullOrEmpty(spellIdTech)) continue;
                 var def = SpellCatalog.FindBySpellId(spellIdTech);
                 if (def == null)

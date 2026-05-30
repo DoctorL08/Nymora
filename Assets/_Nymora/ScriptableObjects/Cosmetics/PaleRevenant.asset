@@ -55,15 +55,19 @@ MonoBehaviour:
   WalkFps: 12
   HubVisualScale: 1
   HubVisualYOffset: 0
+  MenuPortraitScale: 1
   Stage0ControllerSE: {fileID: 9100000, guid: 80e9f7f991004164483f0160213d1c18, type: 2}
   Stage1ControllerSE: {fileID: 9100000, guid: cd99c834d26823e47b3695a7620f292f, type: 2}
   Stage2ControllerSE: {fileID: 9100000, guid: 82362d143524349428b6baac1e472369, type: 2}
   Stage0ControllerNE: {fileID: 9100000, guid: 1d02d7d44d4b8a7408f40794c0066a46, type: 2}
   Stage1ControllerNE: {fileID: 9100000, guid: 2e0a9767b102021448e1a4165bfada2c, type: 2}
   Stage2ControllerNE: {fileID: 9100000, guid: f0b6fc775a0a6294c979ae14c6bb7f4a, type: 2}
-  Stage0CombatYOffset: 0
-  Stage1CombatYOffset: 0
-  Stage2CombatYOffset: 0
+  Stage0CombatYOffset: -0.035714287
+  Stage1CombatYOffset: -0.035714287
+  Stage2CombatYOffset: 0.05357143
+  CombatVisualScale: 0.84940475
+  DecoyCombatScale: 0.84940475
+  DecoyCombatYOffset: 0.21428572
   CombatPreview:
   - Stage: 0
     Anim: idle

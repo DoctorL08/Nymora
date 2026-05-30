@@ -54,6 +54,12 @@ namespace Nymora.Combat.View.HUD
         private const float HoverAnimSpeed = 14f;    // vitesse de lerp (atteint 1 en ~0.07s)
         private static Sprite _glowSpriteCache;
 
+        // Badge "rubis" (coût PA) au-dessus du slot : losange coloré (par catégorie) + chiffre blanc.
+        private RectTransform _paBadge;
+        private Image _paGem;
+        private TMP_Text _paText;
+        private static readonly Color RubyColor = new Color(0.86f, 0.15f, 0.20f, 1f);
+
         // Re-skin DA hub (monochrome) : frame = surface carte / désactivée plus sombre /
         // armée = accent clair (signal "sélectionné" identique au hub). Cf CombatUiKit.
         private static readonly Color FrameNormal   = CombatUiKit.CardBg;
@@ -132,6 +138,67 @@ namespace Nymora.Combat.View.HUD
             {
                 _cooldownLabel.gameObject.SetActive(false);
             }
+        }
+
+        /// <summary>
+        /// Affiche le coût PA effectif du sort dans un badge rubis au-dessus du slot.
+        /// pa &lt; 0 → cache le badge (slot vide). Le coût (avec bonus -1 PA Soulrender/Ghostra,
+        /// Effondrement, Permutation gratuite) est calculé par CombatHUDController.
+        /// </summary>
+        public void SetPaCost(int pa, Color gemColor)
+        {
+            if (pa < 0)
+            {
+                if (_paBadge != null) _paBadge.gameObject.SetActive(false);
+                return;
+            }
+            EnsurePaBadge();
+            if (_paBadge != null) _paBadge.gameObject.SetActive(true);
+            if (_paGem != null) _paGem.color = gemColor;
+            if (_paText != null) _paText.text = pa.ToString();
+        }
+
+        // Crée (une fois) le badge rubis : losange rouge (carré arrondi tourné 45°) + chiffre blanc upright.
+        private void EnsurePaBadge()
+        {
+            if (_paBadge != null || _rt == null) return;
+
+            var go = new GameObject("PaBadge", typeof(RectTransform));
+            go.transform.SetParent(_rt, false);
+            _paBadge = (RectTransform)go.transform;
+            _paBadge.anchorMin = _paBadge.anchorMax = new Vector2(0.5f, 1f); // haut-centre du slot
+            _paBadge.pivot = new Vector2(0.5f, 0.5f);
+            _paBadge.anchoredPosition = new Vector2(0f, 2f);                 // chevauche le bord haut
+            _paBadge.sizeDelta = new Vector2(26f, 26f);
+
+            // Gemme = carré arrondi rouge tourné 45° (losange), réduit pour tenir dans le badge.
+            var gemGo = new GameObject("Gem", typeof(RectTransform));
+            gemGo.transform.SetParent(_paBadge, false);
+            var grt = (RectTransform)gemGo.transform;
+            grt.anchorMin = Vector2.zero; grt.anchorMax = Vector2.one;
+            grt.offsetMin = Vector2.zero; grt.offsetMax = Vector2.zero;
+            grt.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            grt.localScale = Vector3.one * 0.72f;
+            _paGem = gemGo.AddComponent<Image>();
+            CombatUiKit.ApplyRounded(_paGem, 6f);
+            _paGem.color = RubyColor;
+            _paGem.raycastTarget = false;
+
+            // Chiffre blanc (non tourné).
+            var txtGo = new GameObject("Pa", typeof(RectTransform));
+            txtGo.transform.SetParent(_paBadge, false);
+            var trt = (RectTransform)txtGo.transform;
+            trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+            trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
+            _paText = txtGo.AddComponent<TextMeshProUGUI>();
+            _paText.alignment = TextAlignmentOptions.Center;
+            _paText.fontSize = 15f;
+            _paText.fontStyle = FontStyles.Bold;
+            _paText.color = Color.white;
+            _paText.raycastTarget = false;
+            _paText.enableWordWrapping = false;
+
+            _paBadge.SetAsLastSibling(); // au-dessus de l'icône / cadre
         }
 
         public void SetState(SlotState state)

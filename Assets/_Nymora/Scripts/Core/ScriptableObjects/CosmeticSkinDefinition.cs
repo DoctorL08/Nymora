@@ -80,6 +80,16 @@ namespace Nymora.Core.ScriptableObjects
         public float Stage1CombatYOffset = 0f;
         public float Stage2CombatYOffset = 0f;
 
+        [Tooltip("Échelle du skin en COMBAT (multiplie l'échelle de base du child Visual de la classe). " +
+                 "1 = taille de base de la classe ; <1 réduit, >1 agrandit. Réglable en live via F10.")]
+        public float CombatVisualScale = 1f;
+
+        [Header("Combat — Leurres (Ghostra) : calibration quand ce skin est porté")]
+        [Tooltip("Échelle des leurres portant ce skin (multiplie l'échelle de base du leurre). 1 = base.")]
+        public float DecoyCombatScale = 1f;
+        [Tooltip("Décalage Y ADDITIONNEL appliqué aux leurres portant ce skin (en plus de l'offset de base du DecoyView).")]
+        public float DecoyCombatYOffset = 0f;
+
         /// <summary>True si le skin embarque au moins le controller stage 0 SE (variante combat dispo).</summary>
         public bool HasCombatControllers => Stage0ControllerSE != null;
 

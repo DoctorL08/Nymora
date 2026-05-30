@@ -113,6 +113,18 @@ namespace Nymora.Hub
             }
             DeckBridge.SetPendingDeck(deck.classId, deck.spellIds, deck.name);
 
+            // Lobby pré-combat (B1) — Pousse au lobby de combat la LISTE des decks de la classe
+            // jouée + le MMR local + l'id du deck par défaut (deck builder). Le picker du lobby
+            // permettra de changer de deck parmi ceux-là ; sans choix lobby on retombe sur le
+            // deck par défaut (DeckBridge). VIEW/NETWORK only → aucun impact sim.
+            var lobbyDecks = new System.Collections.Generic.List<PreCombatDeckInfo>(dbp.MyDecks.Count);
+            foreach (var d in dbp.MyDecks)
+                lobbyDecks.Add(new PreCombatDeckInfo(d.id, d.classId, d.name, d.spellIds));
+            int localMmr = 0;
+            try { localMmr = await dbp.FetchLocalMmrAsync(); }
+            catch (System.Exception ex) { Debug.LogWarning($"[HubMatchTransition] FetchLocalMmrAsync échec (MMR=0) : {ex.Message}"); }
+            PreCombatBridge.Set(lobbyDecks, deck.id, localMmr);
+
             // 4.14.e — Set MatchBridge avec LOCAL identity (pour CombatBootstrapCasual)
             // + opponent (deja transmis par MATCH_READY backend, sert au retour hub).
             // POLISH-7 (20 mai) : on push aussi les displayName local + opponent pour les
@@ -138,7 +150,9 @@ namespace Nymora.Hub
             PlayerProfileBridge.SetOpponent(opponentDisplayName, "");
 
             if (_logVerbose) Debug.Log($"[HubMatchTransition] MatchBridge set matchId={matchId} ranked={ranked} opponent='{opponentDisplayName}' " +
-                                       $"local='{localDisplayName}' deck={deck.classId}/'{deck.name}'. Transition vers '{sceneName}' dans {_transitionDelaySeconds}s.");
+                                       $"local='{localDisplayName}' deck={deck.classId}/'{deck.name}'. " +
+                                       $"PreCombatBridge: {lobbyDecks.Count} deck(s) {deck.classId}, MMR local={localMmr}, défaut='{deck.id}'. " +
+                                       $"Transition vers '{sceneName}' dans {_transitionDelaySeconds}s.");
 
             await TransitionAsync(sceneName);
         }

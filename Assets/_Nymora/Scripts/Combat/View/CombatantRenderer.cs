@@ -54,6 +54,11 @@ namespace Nymora.Combat.View
         private readonly Dictionary<EntityRef, int> _lastChargeCastSeq = new Dictionary<EntityRef, int>(2);
         // Refonte 29 mai — Piège Bondissant : suit LastEjectedSequence pour rendre l'éjection en snap (lancement).
         private readonly Dictionary<EntityRef, int> _lastEjectedSeq = new Dictionary<EntityRef, int>(2);
+        // Sorts d'ÉCHANGE (Échange Spectral Necram / Effondrement Colossar) : suit LastCastSequence
+        // pour détecter un swap et forcer le TP-snap sur l'ADVERSAIRE déplacé (pas que le caster).
+        private readonly Dictionary<EntityRef, int> _lastSwapCastSeq = new Dictionary<EntityRef, int>(2);
+        // Entités à téléporter ce tick parce qu'elles ont été échangées par un swap adverse.
+        private readonly HashSet<EntityRef> _swapSnapTargets = new HashSet<EntityRef>();
 
         // 3.7.a.i — Track Permutation Ghostra pour snap instantané au lieu de walk lerp.
         // Si combatant.LastPermutationOnTurn > cache -> une Permutation vient d'avoir lieu
@@ -180,6 +185,27 @@ namespace Nymora.Combat.View
             while (filter.Next(out EntityRef entity, out Combatant combatant))
             {
                 _frameCombatants.Add(new CombatantSnapshot(entity, combatant));
+            }
+
+            // Pré-passage SWAP : si un combattant vient de caster un sort d'échange (Échange Spectral
+            // Necram / Effondrement Colossar), l'AUTRE combattant a été déplacé sur sa case → il doit
+            // jouer l'anim de TP lui aussi (sinon il "marche"). On marque l'adversaire ici, avant le
+            // calcul de isTeleportSnap dans la passe principale.
+            _swapSnapTargets.Clear();
+            for (int i = 0; i < _frameCombatants.Count; i++)
+            {
+                var c = _frameCombatants[i].Data;
+                var e = _frameCombatants[i].Entity;
+                int prevSwapSeq = _lastSwapCastSeq.TryGetValue(e, out var sv) ? sv : c.LastCastSequence;
+                bool swapAdvanced = c.LastCastSequence != prevSwapSeq;
+                _lastSwapCastSeq[e] = c.LastCastSequence;
+                if (!swapAdvanced || !IsSwapSpell(c.LastCastSpellId)) continue;
+                for (int j = 0; j < _frameCombatants.Count; j++)
+                {
+                    var other = _frameCombatants[j];
+                    if (other.Entity != e && other.Data.PlayerIndex != c.PlayerIndex && other.Data.HP > 0)
+                        _swapSnapTargets.Add(other.Entity);
+                }
             }
 
             // Pass 2 : sync position + stage + facing (auto-aim vers le 1er autre combatant).
@@ -349,6 +375,11 @@ namespace Nymora.Combat.View
                     if (!isTeleportSnap && castAdvanced && IsTeleportSpell(combatant.LastCastSpellId))
                         isTeleportSnap = true;
                 }
+
+                // Adversaire déplacé par un swap (Échange Spectral / Effondrement) → TP-snap lui aussi
+                // (marqué dans le pré-passage). Doit primer sur l'éjection-dash ci-dessous.
+                if (!isTeleportSnap && _swapSnapTargets.Contains(entity))
+                    isTeleportSnap = true;
 
                 // Refonte 29 mai — Piège Bondissant : si LastEjectedSequence a avancé, ce combattant
                 // vient d'être ÉJECTÉ -> LANCEMENT (DASH rapide + traînée), pas un snap/TP. Lit
@@ -557,6 +588,26 @@ namespace Nymora.Combat.View
                 case SpellId.GhostraFrappeFantome:
                 case SpellId.GhostraDernierPas:
                 case SpellId.GhostraPermutation: // refonte 30 mai : swap leurre = TP (meme anim que Frappe Fantome)
+                case SpellId.NecramPasSpectral:    // Échange Spectral (refonte) : swap caster <-> ennemi
+                case SpellId.ColossarEffondrement: // signature : swap caster <-> ennemi (anim TP)
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Sorts d'ÉCHANGE de position (caster ↔ ennemi) : Échange Spectral (Necram) + Effondrement
+        /// (signature Colossar). Le caster téléporte via IsTeleportSpell ; l'ENNEMI déplacé par le
+        /// swap doit AUSSI jouer l'anim de TP (sinon il "marche" jusqu'à la case échangée). Le
+        /// pré-passage marque l'adversaire pour forcer son teleport-snap ce tick.
+        /// </summary>
+        private static bool IsSwapSpell(SpellId id)
+        {
+            switch (id)
+            {
+                case SpellId.NecramPasSpectral:
+                case SpellId.ColossarEffondrement:
                     return true;
                 default:
                     return false;

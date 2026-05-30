@@ -71,6 +71,10 @@ namespace Nymora.Combat.View.HUD
         [SerializeField] private float _signatureShakeAmplitudePx = 16f;
         [SerializeField] private float _signatureCameraShakeAmplitude = 0.20f;
         [SerializeField] private float _signatureCameraShakeDuration = 0.32f;
+        [Tooltip("Échelle globale du flottant signature (0.5 = 2× plus petit).")]
+        [SerializeField] private float _signatureScale = 0.5f;
+        [Tooltip("Décalage vertical (px écran) pour afficher le flottant AU-DESSUS de la cible (pas dessus).")]
+        [SerializeField] private float _signatureAboveTargetPx = 120f;
 
         private void Awake()
         {
@@ -180,7 +184,9 @@ namespace Nymora.Combat.View.HUD
             var crt = container.GetComponent<RectTransform>();
             crt.anchorMin = crt.anchorMax = new Vector2(0.5f, 0.5f);
             crt.pivot = new Vector2(0.5f, 0.5f);
-            crt.position = screenPos;
+            // Au-dessus de la cible (pas dessus) + 2× plus petit (échelle du conteneur, tout suit).
+            crt.position = screenPos + new Vector3(0f, _signatureAboveTargetPx, 0f);
+            crt.localScale = Vector3.one * _signatureScale;
             crt.localRotation = Quaternion.Euler(0f, 0f, Random.Range(-_signatureTiltMaxDeg, _signatureTiltMaxDeg));
             var cg = container.GetComponent<CanvasGroup>();
 

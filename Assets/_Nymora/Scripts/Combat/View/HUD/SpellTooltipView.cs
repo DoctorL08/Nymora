@@ -92,13 +92,17 @@ namespace Nymora.Combat.View.HUD
             if (_descriptionText != null) _descriptionText.enableWordWrapping = true;
         }
 
-        public void Show(SpellId spell, RectTransform anchor)
+        public void Show(SpellId spell, RectTransform anchor) => Show(spell, anchor, -1);
+
+        // effectivePaCost >= 0 : coût PA réel (avec bonus -1 Soulrender/Ghostra/Effondrement,
+        // Permutation gratuite) calculé par le HUD. -1 = afficher le coût de base du sort.
+        public void Show(SpellId spell, RectTransform anchor, int effectivePaCost)
         {
             if (_panel == null || spell == SpellId.None || anchor == null) return;
 
             if (_titleText != null) _titleText.text = SpellDisplayInfo.GetDisplayName(spell);
 
-            if (_costText != null) _costText.text = BuildCostLine(spell);
+            if (_costText != null) _costText.text = BuildCostLine(spell, effectivePaCost);
             if (_descriptionText != null) _descriptionText.text = SpellDescriptions.Get(spell);
 
             // Re-lock la largeur a chaque Show (au cas ou un layout pass tier l'aurait modifiee).
@@ -147,7 +151,7 @@ namespace Nymora.Combat.View.HUD
             if (_panel != null) _panel.gameObject.SetActive(false);
         }
 
-        private static string BuildCostLine(SpellId spell)
+        private static string BuildCostLine(SpellId spell, int effectivePaCost)
         {
             if (!SpellRegistry.TryGet(spell, out SpellDef def)) return string.Empty;
 
@@ -168,7 +172,11 @@ namespace Nymora.Combat.View.HUD
                 if (def.HGCostMaxOptional > 0) hgBlock += $" (+{def.HGCostMaxOptional} max)";
             }
 
-            return $"{def.PACost} PA{hgBlock}\n{filterTag} | {rangeBlock}";
+            // Coût PA effectif (bonus inclus) : en vert s'il est réduit par rapport au coût de base.
+            int pa = effectivePaCost >= 0 ? effectivePaCost : def.PACost;
+            string paStr = pa < def.PACost ? $"<color=#7CFC8A>{pa}</color>" : pa.ToString();
+
+            return $"{paStr} PA{hgBlock}\n{filterTag} | {rangeBlock}";
         }
     }
 }
