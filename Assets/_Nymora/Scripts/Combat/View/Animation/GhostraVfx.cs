@@ -109,10 +109,10 @@ namespace Nymora.Combat.View.Animation
                 }
 
                 // ----- SURVIE -----
-                case SpellId.GhostraVoileSpectral: // voile spectral : purge (reset DoT)
-                    ProceduralVfx.Flash(parent, cb, Pale, 0.7f, 0.22f, layer, Order + 4);
-                    ProceduralVfx.Shockwave(parent, cb, Spectral, 1.6f, 0.4f, layer, Order + 1); // vague qui lave
-                    ProceduralVfx.Aura(parent, null, casterPos + up * BaseY, Spectral, 0.8f, layer, Order + 1);
+                case SpellId.GhostraVoileSpectral: // voile spectral (rework) : leurres convergent autour de l'ennemi
+                    ProceduralVfx.RingHold(parent, tg, A(SpectralDark, 0.75f), new Vector2(1.8f, 1.1f), 0.55f, layer, Order - 1);
+                    ProceduralVfx.Shockwave(parent, tb, Spectral, 1.8f, 0.4f, layer, Order + 1); // onde spectrale autour de la cible
+                    ProceduralVfx.Burst(parent, tb, B(Spectral, 18, 5f, 0.11f, 0.42f, 0.08f, 0.2f, layer, Order + 1));
                     return true;
 
                 case SpellId.GhostraLinceulDOmbres: // linceul d'ombres (bouclier épineux)

@@ -584,20 +584,15 @@ namespace Quantum
         public const int LinceulDOmbresTurns            = 2;
         public const int LinceulDOmbresRipostMeleeDmg   = 40;
 
-        // 3.7.c.ii — Voile Spectral (Bible V7.1 ligne 1166) :
-        //   2 PA self, 1x/match (OncePerMatchBitGhostraVoileSpectral=4). Effet en 2 temps :
-        //   (1) RETRAIT instantane de tous les DoT actifs sur la Ghostra :
-        //       - Consume StatusKind.BleedDoT
-        //       - Consume StatusKind.PlaieOuverte
-        //       - VeninHelpers.RemoveAllMarks (caster.VeninStacks = 0)
-        //   (2) APPLY StatusKind.DotImmune duree VoileSpectralImmuneTurns rounds. Hooks
-        //       d'interception (VeninHelpers.ApplyMark / GhostraPassif.ApplyPlaieOuverteIfAngle2Plus
-        //       / SpellSystem case Frappe Fantome) skip si target Has(DotImmune).
-        //   Bible-strict perimetre : status DoT explicites uniquement. Le tick fin de round
-        //   terrain (Sang Coagule, etc.) N'EST PAS bloque (continue d'agir normalement).
-        //   Bible "Seul anti-DoT du kit Ghostra. Anti-Soulrender + Necram."
+        // 3.7.c.ii — Voile Spectral (REWORK refonte 30 mai) :
+        //   2 PA, range 4 ENEMY, cap 1x/tour. SETUP : téléporte TOUS les leurres actifs de la
+        //   Ghostra sur des cases libres AUTOUR de l'ennemi ciblé (cardinales en priorité — Manhattan
+        //   1 pour enchaîner Éveil/dorsal — puis diagonales en secours). Gate : rejet si 0 leurre.
+        //   PERD son ancien cleanse anti-DoT + DotImmune (décision Lorenzo : la Ghostra n'a PLUS
+        //   d'anti-DoT, matchups durs Necram/Soulrender voulus).
         public const int VoileSpectralPACost            = 2;
-        public const int VoileSpectralImmuneTurns       = 1;
+        public const int VoileSpectralRangeMax          = 4;
+        public const int VoileSpectraleMaxUsesPerTurn   = 1;
 
         // 3.7.c.iii — Réplique Protectrice (Bible V7.1 ligne 1187, AMENDEMENT 16 mai 2026) :
         //   Bible orig : 3 PA, 40% redirection, +60 HP heal destroy, 2 rounds.
@@ -2222,24 +2217,23 @@ namespace Quantum
                     };
                     return true;
 
-                // 3.7.c.ii — Voile Spectral : reset DoT 2 PA self, 1x/match. Pas de damage direct
-                // (IsOffensive=0). Effet pose dans le handler SpellSystem (consume BleedDoT +
-                // PlaieOuverte + VeninStacks=0, puis Apply DotImmune 1 round). Hooks d'interception
-                // dans VeninHelpers.ApplyMark + GhostraPassif.ApplyPlaieOuverteIfAngle2Plus + case
-                // Frappe Fantome (skip si Has(DotImmune)).
+                // 3.7.c.ii — Voile Spectral (REWORK 30 mai) : setup, 2 PA range 4 ENEMY, cap 1x/tour.
+                //   TP tous les leurres actifs autour de l'ennemi ciblé (handler SpellSystem). Pas de
+                //   damage (IsOffensive=0). Plus de cleanse/DotImmune. Gate >=1 leurre dans SpellSystem.
                 case SpellId.GhostraVoileSpectral:
                     def = new SpellDef
                     {
                         PACost = VoileSpectralPACost,
                         Shape = TargetingShape.SingleTile,
-                        Filter = TargetingFilter.Self,
-                        RangeMin = 0,
-                        RangeMax = 0,
+                        Filter = TargetingFilter.Enemy,
+                        RangeMin = 1,
+                        RangeMax = VoileSpectralRangeMax,
                         DamageAmount = 0,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
-                        OncePerMatchBit = OncePerMatchBitGhostraVoileSpectral,
+                        OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = VoileSpectraleMaxUsesPerTurn,
                     };
                     return true;
 

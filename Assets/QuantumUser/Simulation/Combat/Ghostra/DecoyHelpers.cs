@@ -258,6 +258,40 @@ namespace Quantum
         }
 
         /// <summary>
+        /// 3.7.c.ii — Voile Spectral (rework) : téléporte TOUS les leurres actifs du `ghostra` sur
+        /// des cases libres AUTOUR de (cx,cy) (l'ennemi ciblé). Ordre déterministe : cardinales
+        /// d'abord (Manhattan 1 -> enchaîne Éveil/dorsal), puis diagonales en secours. Une case est
+        /// valide si en grille, walkable, sans obstacle, sans combattant, et pas déjà prise par un
+        /// autre leurre. Retourne le nombre de leurres effectivement déplacés.
+        /// </summary>
+        public static int TeleportAllDecoysAround(Frame f, Combatant* ghostra, int cx, int cy)
+        {
+            if (ghostra == null) return 0;
+            // Cardinales (E,O,N,S) puis diagonales (NE,NO,SE,SO). Déterministe.
+            int* candX = stackalloc int[8] { cx + 1, cx - 1, cx,     cx,     cx + 1, cx - 1, cx + 1, cx - 1 };
+            int* candY = stackalloc int[8] { cy,     cy,     cy + 1, cy - 1, cy + 1, cy + 1, cy - 1, cy - 1 };
+            int moved = 0;
+            for (int s = 0; s < MaxDecoys; s++)
+            {
+                if (ghostra->Decoys[s].Kind == DecoyKind.None) continue;
+                for (int c = 0; c < 8; c++)
+                {
+                    int nx = candX[c], ny = candY[c];
+                    if (!GridHelpers.InBounds(nx, ny)) continue;
+                    if (!GridHelpers.IsWalkable(f, nx, ny)) continue;
+                    if (ObstacleHelpers.HasObstacleAt(f, nx, ny)) continue;
+                    if (GridHelpers.GetOccupant(f, nx, ny) != EntityRef.None) continue;
+                    if (FindSlotAtPosition(ghostra, nx, ny) >= 0) continue; // case déjà prise par un leurre
+                    ghostra->Decoys[s].PosX = nx;
+                    ghostra->Decoys[s].PosY = ny;
+                    moved++;
+                    break;
+                }
+            }
+            return moved;
+        }
+
+        /// <summary>
         /// 3.7.b — Éveil Spectral : cherche un leurre du `ghostra` ADJACENT (Manhattan 1) à la
         /// cible. Priorité au leurre qui frappe en DORSAL (derrière la cible) ; sinon le premier
         /// leurre adjacent trouvé. Retourne false si aucun leurre adjacent. `outDorsal` indique si

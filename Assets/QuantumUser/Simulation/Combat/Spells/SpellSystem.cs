@@ -537,6 +537,14 @@ namespace Quantum
                 Log.Info($"[Éveil Spectral] leurre choisi ({eveilLeurreX},{eveilLeurreY}) dorsal={eveilDorsal} sur cible ({cmd.TargetX},{cmd.TargetY})");
             }
 
+            // 3.7.c.ii — Voile Spectral (rework) : requiert au moins 1 leurre actif à téléporter.
+            //   Reject AVANT consommation PA (la cible ennemie est déjà validée par MatchesFilter).
+            if (cmd.Spell == SpellId.GhostraVoileSpectral && DecoyHelpers.CountActive(caster) <= 0)
+            {
+                Log.Warn($"[Spell] rejet : Voile Spectral requiert au moins 1 leurre actif");
+                return;
+            }
+
             // Refonte 29 mai — GATE GENERIQUE limites/relances (cap Nx/tour + relance N tours).
             //   Declare par sort dans SpellDef.MaxUsesPerTurn / CooldownTurns. Reject AVANT
             //   consommation des PA (pas de cast "perdu"). No-op si les deux valent 0 (defaut).
@@ -944,11 +952,12 @@ namespace Quantum
                         }
                     }
 
-                    // 3.7.a — Bonus dorsal Ghostra (Bible Angle Mort) : applique a TOUS les sorts
-                    // offensifs Ghostra. +0 si Angle 1 (0 leurre) ou hit non dorsal, +50 si Angle 2
-                    // (1-2 leurres) dorsal, +80 si Angle 3 (3 leurres) dorsal. Helper no-op si
-                    // caster != Ghostra, donc safe pour tous les sorts.
-                    if (caster->Class == NymoraClass.Ghostra)
+                    // 3.7.a — Bonus dorsal Ghostra (Bible Angle Mort) : applique aux sorts OFFENSIFS
+                    // Ghostra uniquement (IsOffensive==1). +0 si Angle 1 (0 leurre) ou hit non dorsal,
+                    // +50 si Angle 2 (1-2 leurres) dorsal, +80 si Angle 3 (3 leurres) dorsal.
+                    //   Le gate IsOffensive évite tout dorsal/Marque accidentel sur les sorts non
+                    //   offensifs ciblant un ennemi (Marque de l'Ombre, Voile Spectral rework).
+                    if (caster->Class == NymoraClass.Ghostra && spellDef.IsOffensive == 1)
                     {
                         // 3.7.b — Éveil Spectral : dorsal calculé depuis le LEURRE (eveilDorsal), pas
                         //   depuis la Ghostra. Nuée Spectrale : AUCUN bonus dorsal (le scaling leurres
@@ -2339,27 +2348,14 @@ namespace Quantum
                     break;
                 }
 
-                // 3.7.c.ii — Voile Spectral (Bible V7.1 ligne 1166) : 2 PA self, 1x/match.
-                // Effet en 2 temps : (1) RETRAIT des DoT actifs sur la Ghostra (BleedDoT +
-                // PlaieOuverte + VeninStacks=0), (2) APPLY DotImmune 1 round (hooks ApplyMark
-                // venin / ApplyPlaieOuverteIfAngle2Plus / Frappe Fantome conditional skip).
-                // 1x/match enforce par OncePerMatchBitGhostraVoileSpectral (consume bit avant
-                // PA dans le pipeline standard, cf flow OncePerMatch).
+                // 3.7.c.ii — Voile Spectral (REWORK 30 mai) : SETUP. Téléporte tous les leurres
+                //   actifs de la Ghostra autour de l'ennemi ciblé (cmd.TargetX/Y). Cardinales en
+                //   priorité (Manhattan 1 -> enchaîne Éveil/Nuée dorsal), diagonales en secours.
+                //   Plus de cleanse anti-DoT. Gate >=1 leurre fait en amont (pré-PA).
                 case SpellId.GhostraVoileSpectral:
                 {
-                    int veninCleared = caster->VeninStacks;
-                    caster->VeninStacks = 0;
-                    bool plaieCleared = StatusHelper.Has(caster, StatusKind.PlaieOuverte);
-                    if (plaieCleared) StatusHelper.Consume(caster, StatusKind.PlaieOuverte);
-                    bool bleedCleared = StatusHelper.Has(caster, StatusKind.BleedDoT);
-                    if (bleedCleared) StatusHelper.Consume(caster, StatusKind.BleedDoT);
-
-                    StatusHelper.Apply(caster, StatusKind.DotImmune,
-                        magnitude: 0,
-                        turnsLeft: SpellRegistry.VoileSpectralImmuneTurns,
-                        currentTurn);
-
-                    Log.Info($"[Spell] Voile Spectral active sur P{caster->PlayerIndex} : retire venin={veninCleared}, plaie={plaieCleared}, bleed={bleedCleared} + DotImmune {SpellRegistry.VoileSpectralImmuneTurns} round (1x/match)");
+                    int movedV = DecoyHelpers.TeleportAllDecoysAround(f, caster, cmd.TargetX, cmd.TargetY);
+                    Log.Info($"[Spell] Voile Spectral : {movedV} leurre(s) téléporté(s) autour de l'ennemi ({cmd.TargetX},{cmd.TargetY})");
                     break;
                 }
 

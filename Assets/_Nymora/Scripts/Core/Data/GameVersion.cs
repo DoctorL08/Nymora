@@ -65,7 +65,12 @@ namespace Nymora.Core.Data
         //                (max 280, DecoyHelpers.CountOwnDecoysAdjacent). Ne consomme pas ; skip dorsal/Plaie.
         //                + Permutation : cap 2x -> 1x/tour ET gratuite (0 PA) à l'Angle 3 (3 leurres).
         //                + fix preview Nuée (sans dorsal).
-        public const int CombatRulesVersion = 91;
+        // 92 (Ghostra brique 5/7 Voile Spectral rework, 30 mai) : slot 97 conserve. Cleanse anti-DoT
+        //                + DotImmune RETIRES -> SETUP : 2 PA, range 4 ENEMY, cap 1x/tour, TP tous les
+        //                leurres actifs autour de l'ennemi (DecoyHelpers.TeleportAllDecoysAround).
+        //                + gate dorsal/Marque sur IsOffensive==1 (fix : sorts non-offensifs ne font
+        //                plus de dorsal accidentel sur cible ennemie, ex Marque de l'Ombre / Voile).
+        public const int CombatRulesVersion = 92;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";
