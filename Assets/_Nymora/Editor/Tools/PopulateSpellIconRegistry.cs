@@ -145,8 +145,9 @@ namespace Nymora.Editor.Tools
             // Signature
             { "icon_virus_fatal",          SpellId.NecramVirusFatal },
 
-            // === GHOSTRA ===
-            // Offensifs (5 Bible — Volte-Face classe Tactique amendement 16 mai mais asset reste icon_volte_face)
+            // === GHOSTRA === (refonte 30 mai : Permutation/Éveil/Nuée/Communion remplacent
+            //   Volte-Face/Dague/Danse/Pas de l'Au-Délà sur les mêmes slots 90/93/95/100)
+            // Offensifs
             { "icon_lame_spectrale",       SpellId.GhostraLameSpectrale },
             { "icon_lame_vorace_spectrale",SpellId.GhostraLameVoraceSpectrale },
             { "icon_saigne_ame",           SpellId.GhostraSaigneAme },

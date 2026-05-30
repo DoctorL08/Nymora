@@ -355,7 +355,7 @@ namespace Nymora.Hub
                            "<color=#a080ff><b>Stage 1</b></color> — <b>Angle 2 (1-2 leurres)</b> : aura spectrale\n" +
                            "  <i><color=#d0b0ff>Bonus : <b>+50 dégâts dorsaux</b> + applique <b>Plaie Ouverte</b> auto sur dorsal (40/tour × 2t)</color></i>\n\n" +
                            "<color=#8060ff><b>Stage 2</b></color> — <b>Angle 3 (3 leurres)</b> : forme finale\n" +
-                           "  <i><color=#d0b0ff>Bonus : <b>+80 dégâts dorsaux</b> + Plaie Ouverte auto + signature Exécution Spectrale prête</color></i>";
+                           "  <i><color=#d0b0ff>Bonus : <b>+80 dégâts dorsaux</b> + Plaie Ouverte auto + <b>Permutation gratuite (0 PA)</b> + signature Exécution Spectrale prête</color></i>";
                     break;
                 case NymoraClass.Necram:
                     generation = $"<color=#b0e090><b>Génération PT :</b></color>  <b>+1 PT par marque de venin/peste appliquée</b> (cap +2/tour via marques).  <b>+1 PT par tick global</b> de marques sur la map.  Cap {def.ResourceCap}.";

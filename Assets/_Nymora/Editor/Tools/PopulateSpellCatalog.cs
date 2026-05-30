@@ -171,7 +171,8 @@ namespace Nymora.Editor.Tools
             { "ghostra_pas_dans_ombre",        "icon_pas_dans_lombre" },
             { "ghostra_marque_ombre",          "icon_marque_de_lombre" },
             { "ghostra_linceul_ombres",        "icon_linceul_dombres" },
-            { "ghostra_pas_au_dela",           "icon_pas_de_lau_dela" },
+            // Refonte 30 mai : les 4 sorts Ghostra reworkés (Permutation/Éveil/Nuée/Communion) suivent
+            //   la convention de nommage par défaut (icon_<suffixe>), pas besoin d'override.
         };
 
         /// <summary>

@@ -109,7 +109,7 @@ namespace Nymora.Combat.View.HUD
                            "<color=#a080ff><b>Stage 1</b></color> — Angle 2 (1-2 leurres)\n" +
                            "  <i><color=#d0b0ff>Bonus : +50 dgts dorsaux + Plaie Ouverte auto (40/t × 2t)</color></i>\n\n" +
                            "<color=#8060ff><b>Stage 2</b></color> — Angle 3 (3 leurres)\n" +
-                           "  <i><color=#d0b0ff>Bonus : +80 dgts dorsaux + signature Exécution Spectrale</color></i>";
+                           "  <i><color=#d0b0ff>Bonus : +80 dgts dorsaux + Permutation gratuite (0 PA) + signature Exécution Spectrale</color></i>";
                 case NymoraClass.Necram:
                     return "<color=#a0e090><b>Densité 1-2</b></color> — tick venin 40/marque\n\n" +
                            "<color=#80c070><b>Densité 3-6</b></color> — tick 50/marque + 10 HP/marque (régen) + halo rayon 3 (20 dgts)\n\n" +
