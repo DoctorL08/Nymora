@@ -409,6 +409,10 @@ namespace Nymora.Combat.Bootstrap
                     $"Adversaire: présent={ctrl.OpponentPresent} pseudo='{ctrl.OpponentPseudo}' classe={ctrl.OpponentClassValue} " +
                     $"MMR={ctrl.OpponentMmr} prêt={ctrl.OpponentReady}.");
 
+                // 31 mai — capture le MMR adverse (échange P2P du lobby) dans MatchBridge (survit au
+                // PreCombatBridge.Clear ci-dessous) pour le preview ELO du menu de fin (ranked only).
+                Nymora.Core.Data.MatchBridge.SetRankedOpponentMmr(ctrl.OpponentMmr);
+
                 // B3 — Si le joueur a choisi un deck (potentiellement différent du défaut deck builder),
                 // on réaligne DeckBridge + la barre de sorts du HUD pour qu'elle affiche les 6 sorts
                 // choisis (le deck est View-only ; le sim laisse les 16 sorts de la classe castables).

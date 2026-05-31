@@ -13,8 +13,13 @@ namespace Nymora.Hub
     /// démarrage et les ré-applique à chaque chargement de scène (les caméras changent par scène).
     ///
     /// - Résolution : liste dédupliquée des modes du moniteur ; recommandé = résolution système native.
-    /// - Luminosité : overlay plein écran (canvas dédié, sortingOrder max, non bloquant). 0.5 = neutre,
-    ///   en dessous assombrit (voile noir), au-dessus éclaircit (voile blanc).
+    /// - Calibration image (Luminosité / Contraste / Gamma) : Volume URP GLOBAL dédié, persistant
+    ///   (DontDestroyOnLoad), priorité haute -> s'empile PAR-DESSUS le Volume artistique de la scène
+    ///   sans le toucher. Sliders 0..1 où 0.5 = NEUTRE (aucune altération -> rendu identique à l'éditeur
+    ///   par défaut). Luminosité = ColorAdjustments.postExposure (assombrit ET éclaircit, vrai EV),
+    ///   Contraste = ColorAdjustments.contrast, Gamma = LiftGammaGain.gamma (master). Repli : si le
+    ///   profil graphique coupe le post-process ("Sans effets"), la luminosité retombe sur un voile noir
+    ///   (assombrissement seul) ; contraste/gamma sont alors sans effet.
     /// - Effets visuels : toggle UniversalAdditionalCameraData.renderPostProcessing sur toutes les
     ///   caméras (coupe tout le pack post-process URP).
     ///
@@ -22,7 +27,9 @@ namespace Nymora.Hub
     /// </summary>
     public sealed class DisplaySettingsController : MonoBehaviour
     {
-        private const string KeyBrightness = "nymora.display.brightness"; // 0..1, defaut 1 (natif)
+        private const string KeyBrightness = "nymora.display.exposure"; // 0..1, 0.5 = neutre (post-exposure)
+        private const string KeyContrast = "nymora.display.contrast";   // 0..1, 0.5 = neutre
+        private const string KeyGamma = "nymora.display.gamma";         // 0..1, 0.5 = neutre
         private const string KeyPostFx = "nymora.display.postfx";          // 1 on / 0 off
         private const string KeyResW = "nymora.display.resw";
         private const string KeyResH = "nymora.display.resh";
@@ -106,7 +113,12 @@ namespace Nymora.Hub
         public static DisplaySettingsController Instance { get; private set; }
 
         private readonly List<Vector2Int> _resolutions = new List<Vector2Int>();
-        private Image _overlay;
+        private Image _overlay; // repli luminosité quand le post-process est coupé
+
+        // Volume de calibration dédié (post-exposure / contraste / gamma), créé en code et persistant.
+        private Volume _calibVolume;
+        private ColorAdjustments _calibColor;
+        private LiftGammaGain _calibGamma;
 
         // GFX-1 — lumiere globale 2D de la scene + son intensite/couleur de BASE (valeurs serialisees
         // de la scene, capturees une fois par scene). Le profil applique un multiplicateur/teinte
@@ -132,9 +144,10 @@ namespace Nymora.Hub
 
             BuildResolutionList();
             BuildBrightnessOverlay();
+            BuildCalibrationVolume();
 
             // Applique les préférences sauvegardées au démarrage.
-            ApplyBrightness();
+            ApplyCalibration();
             ApplySavedScreenMode();
             ApplySavedResolution();
             ApplyFrameSettings();
@@ -233,7 +246,13 @@ namespace Nymora.Hub
             if (Screen.fullScreenMode != mode) Screen.fullScreenMode = mode;
         }
 
-        // ===== Luminosité =====
+        // ===== Calibration image (Luminosité / Contraste / Gamma) =====
+
+        // Amplitudes de la calibration (0.5 = neutre). Volontairement modérées : un réglage moniteur,
+        // pas un grading artistique (ça reste celui du profil graphique).
+        private const float ExposureRange = 1.25f; // ± EV (postExposure)
+        private const float ContrastRange = 40f;   // ± (ColorAdjustments.contrast, plage -100..100)
+        private const float GammaRange = 0.5f;     // ± (master de LiftGammaGain.gamma)
 
         private void BuildBrightnessOverlay()
         {
@@ -250,26 +269,95 @@ namespace Nymora.Hub
             _overlay.color = new Color(0f, 0f, 0f, 0f);
         }
 
-        /// <summary>Luminosité 0..1 : 1 = natif (aucun voile), plus bas = assombrit doucement.
-        /// Assombrissement uniquement (un voile blanc qui "éclaircit" crame les yeux et lave
-        /// l'image — on ne le fait pas). Plancher à 0.4 côté UI pour ne jamais tout noircir.</summary>
+        // Volume global dédié + son profil runtime (jamais sérialisé sur disque -> non destructif).
+        private void BuildCalibrationVolume()
+        {
+            var go = new GameObject("DisplayCalibrationVolume");
+            go.transform.SetParent(transform, false);
+            _calibVolume = go.AddComponent<Volume>();
+            _calibVolume.isGlobal = true;
+            _calibVolume.priority = 100f; // au-dessus du Volume artistique de la scène (priorité ~0)
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+            profile.name = "DisplayCalibration (runtime)";
+            _calibVolume.profile = profile;
+            // Add() SANS forcer les overrides : tous les params démarrent overrideState=false (donc
+            // transparents). On n'active QUE postExposure/contrast/gamma, et seulement quand réglés.
+            _calibColor = profile.Add<ColorAdjustments>();
+            _calibGamma = profile.Add<LiftGammaGain>();
+        }
+
+        /// <summary>Luminosité 0..1, 0.5 = neutre. Au-dessus éclaircit, en dessous assombrit
+        /// (post-exposure quand le post-process est actif, sinon voile noir d'assombrissement).</summary>
         public float Brightness
         {
-            get => Mathf.Clamp01(PlayerPrefs.GetFloat(KeyBrightness, 1f));
-            set
+            get => Mathf.Clamp01(PlayerPrefs.GetFloat(KeyBrightness, 0.5f));
+            set => SetCalib(KeyBrightness, value);
+        }
+
+        /// <summary>Contraste 0..1, 0.5 = neutre. Sans effet si le post-process est coupé.</summary>
+        public float Contrast
+        {
+            get => Mathf.Clamp01(PlayerPrefs.GetFloat(KeyContrast, 0.5f));
+            set => SetCalib(KeyContrast, value);
+        }
+
+        /// <summary>Gamma 0..1, 0.5 = neutre. Sans effet si le post-process est coupé.</summary>
+        public float Gamma
+        {
+            get => Mathf.Clamp01(PlayerPrefs.GetFloat(KeyGamma, 0.5f));
+            set => SetCalib(KeyGamma, value);
+        }
+
+        private void SetCalib(string key, float value01)
+        {
+            PlayerPrefs.SetFloat(key, Mathf.Clamp01(value01));
+            PlayerPrefs.Save();
+            ApplyCalibration();
+        }
+
+        /// <summary>Remet luminosité / contraste / gamma au neutre (0.5).</summary>
+        public void ResetCalibration()
+        {
+            PlayerPrefs.SetFloat(KeyBrightness, 0.5f);
+            PlayerPrefs.SetFloat(KeyContrast, 0.5f);
+            PlayerPrefs.SetFloat(KeyGamma, 0.5f);
+            PlayerPrefs.Save();
+            ApplyCalibration();
+        }
+
+        private void ApplyCalibration()
+        {
+            bool postOn = CurrentProfile.PostProcess;
+
+            // CHAQUE paramètre n'est OVERRIDÉ que si l'utilisateur l'a vraiment réglé (≠ neutre) ET que
+            // le post-process est actif. Au neutre, overrideState=false -> le Volume de calibration est
+            // transparent et laisse passer la colorimétrie artistique de la scène (WYSIWYG préservé).
+            if (_calibColor != null)
             {
-                PlayerPrefs.SetFloat(KeyBrightness, Mathf.Clamp01(value));
-                PlayerPrefs.Save();
-                ApplyBrightness();
+                SetParam(_calibColor.postExposure, postOn && Brightness != 0.5f,
+                    (Brightness - 0.5f) * 2f * ExposureRange);
+                SetParam(_calibColor.contrast, postOn && Contrast != 0.5f,
+                    (Contrast - 0.5f) * 2f * ContrastRange);
+            }
+            if (_calibGamma != null)
+            {
+                bool on = postOn && Gamma != 0.5f;
+                _calibGamma.gamma.overrideState = on;
+                if (on) _calibGamma.gamma.value = new Vector4(1f, 1f, 1f, (Gamma - 0.5f) * 2f * GammaRange);
+            }
+
+            // Repli "Sans effets" : pas de post-process -> seul un voile noir peut assombrir.
+            if (_overlay != null)
+            {
+                float alpha = (!postOn && Brightness < 0.5f) ? (0.5f - Brightness) * 2f * 0.55f : 0f;
+                _overlay.color = new Color(0f, 0f, 0f, alpha);
             }
         }
 
-        private void ApplyBrightness()
+        private static void SetParam(VolumeParameter<float> p, bool on, float value)
         {
-            if (_overlay == null) return;
-            // v=1 -> alpha 0 (rien) ; v=0 -> alpha 0.55 (assez sombre, jamais total).
-            float alpha = (1f - Brightness) * 0.55f;
-            _overlay.color = new Color(0f, 0f, 0f, alpha);
+            p.overrideState = on;
+            if (on) p.value = value;
         }
 
         // ===== VSync + limite FPS =====
@@ -343,6 +431,8 @@ namespace Nymora.Hub
             SetCamerasPostProcess(p.PostProcess);
             if (p.PostProcess && p.OverridePostProcess) ApplyProfileToVolume(p);
             ApplyProfileToGlobalLight(p);
+            // Le profil peut couper/rallumer le post-process -> ré-évalue la calibration (Volume vs voile).
+            ApplyCalibration();
         }
 
         private static void SetCamerasPostProcess(bool on)

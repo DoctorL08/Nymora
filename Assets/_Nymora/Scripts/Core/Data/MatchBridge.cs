@@ -40,6 +40,21 @@ namespace Nymora.Core.Data
         /// <summary>Marque le match pending comme classe (ranked) ou non. Phase 6.1.</summary>
         public static void SetRanked(bool ranked) => IsRanked = ranked;
 
+        // 31 mai — Snapshot MMR pour le preview ELO du menu de fin de combat. Vit toute la durée du
+        // match (≠ PreCombatBridge, vidé après le lobby par CombatBootstrapCasual). LocalMmr/RankedGames
+        // posés par le hub (HubMatchTransition) ; OpponentMmr capturé dans le lobby (échange P2P).
+        public static int RankedLocalMmr { get; private set; }
+        public static int RankedOpponentMmr { get; private set; }
+        public static int RankedLocalGames { get; private set; }
+
+        public static void SetRankedSnapshot(int localMmr, int localRankedGames)
+        {
+            RankedLocalMmr = localMmr;
+            RankedLocalGames = localRankedGames;
+        }
+
+        public static void SetRankedOpponentMmr(int opponentMmr) => RankedOpponentMmr = opponentMmr;
+
         // 4.8.d.iii stub / 4.9 — résultat du dernier match, lu une fois côté hub puis reset.
         public static MatchResult LastMatchResult { get; private set; } = MatchResult.None;
         public static string LastOpponentEmail { get; private set; }
@@ -148,6 +163,9 @@ namespace Nymora.Core.Data
             LocalEmail = null;
             LocalDisplayName = null;
             IsRanked = false;
+            RankedLocalMmr = 0;
+            RankedOpponentMmr = 0;
+            RankedLocalGames = 0;
             LastMatchResult = MatchResult.None;
             LastMatchId = null;
             LastOpponentEmail = null;

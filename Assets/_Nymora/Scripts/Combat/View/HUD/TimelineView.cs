@@ -13,6 +13,10 @@ namespace Nymora.Combat.View.HUD
     /// cote (refacto 19 mai — anciennement portraits 128px statiques). Le combatant actif
     /// est mis en evidence (cadre jaune + alpha plein), l'inactif est grise.
     ///
+    /// Skins (31 mai) : si un joueur a equipe un skin combat, la timeline joue les IdleFrames
+    /// du SKIN (resolu depuis CosmeticSkinCatalog via le SkinId du RuntimePlayer, comme le
+    /// CombatantRenderer / le lobby pre-combat) ; fallback sur les frames de la classe sinon.
+    ///
     /// Auto-init complet : si _slot0Root/_slot1Root sont null, le TimelineView spawn sa
     /// propre structure Container + 2 Slots + Image portraits a l'Awake. Lorenzo n'a qu'a
     /// poser le component sur un GameObject UI dans la zone bas-droite du HUD.
@@ -40,6 +44,13 @@ namespace Nymora.Combat.View.HUD
         private CombatUISpriteAnimator _animator0;
         private CombatUISpriteAnimator _animator1;
         private Dictionary<NymoraClass, NymoraClassDefinition> _classByEnum;
+
+        // Skins combat : catalogue charge a la demande (meme chemin Resources que CombatantRenderer).
+        private const string SkinCatalogResourcePath = "Cosmetics/CosmeticSkinCatalog";
+        private CosmeticSkinCatalog _skinCatalog;
+        private bool _skinCatalogLoaded;
+        private string _p0SkinId = "";
+        private string _p1SkinId = "";
 
         // Combatants courants caches pour le tooltip (cf Refresh).
         private Combatant _currentP0;
@@ -97,19 +108,22 @@ namespace Nymora.Combat.View.HUD
         public void Refresh(int activePlayerIndex, NymoraClass p0Class, NymoraClass p1Class)
         {
             EnsureSlots();
-            ApplySlot(_slot0Frame, _portrait0, _animator0, p0Class, activePlayerIndex == 0);
-            ApplySlot(_slot1Frame, _portrait1, _animator1, p1Class, activePlayerIndex == 1);
+            ApplySlot(_slot0Frame, _portrait0, _animator0, p0Class, _p0SkinId, activePlayerIndex == 0);
+            ApplySlot(_slot1Frame, _portrait1, _animator1, p1Class, _p1SkinId, activePlayerIndex == 1);
         }
 
         /// <summary>
         /// Surcharge avec les Combatant structs complets — necessaire pour le tooltip hover
         /// qui affiche HP/Ressource/Statuses/Marque. Appelee par CombatHUDController.OnUpdateView.
+        /// Les SkinId (RuntimePlayer, sync Quantum) pilotent le visuel : skin equipe > classe.
         /// </summary>
-        public void RefreshWithCombatants(int activePlayerIndex, Combatant p0, bool hasP0, Combatant p1, bool hasP1, int turnNumber)
+        public void RefreshWithCombatants(int activePlayerIndex, Combatant p0, bool hasP0, Combatant p1, bool hasP1, int turnNumber, string p0SkinId, string p1SkinId)
         {
             _currentP0 = p0; _hasP0 = hasP0;
             _currentP1 = p1; _hasP1 = hasP1;
             _currentTurnNumber = turnNumber;
+            _p0SkinId = p0SkinId ?? "";
+            _p1SkinId = p1SkinId ?? "";
             NymoraClass p0Cls = hasP0 ? p0.Class : NymoraClass.None;
             NymoraClass p1Cls = hasP1 ? p1.Class : NymoraClass.None;
             Refresh(activePlayerIndex, p0Cls, p1Cls);
@@ -139,7 +153,7 @@ namespace Nymora.Combat.View.HUD
             PassiveTooltipView.Instance.Hide();
         }
 
-        private void ApplySlot(Image frame, Image portrait, CombatUISpriteAnimator anim, NymoraClass cls, bool isActive)
+        private void ApplySlot(Image frame, Image portrait, CombatUISpriteAnimator anim, NymoraClass cls, string skinId, bool isActive)
         {
             if (frame != null) frame.color = isActive ? _frameActive : _frameInactive;
             if (portrait == null) return;
@@ -147,11 +161,20 @@ namespace Nymora.Combat.View.HUD
             NymoraClassDefinition def = null;
             _classByEnum?.TryGetValue(cls, out def);
 
-            if (def != null && def.IdleFrames != null && def.IdleFrames.Length > 0)
+            // Skin equipe pour CETTE classe : ses IdleFrames priment sur celles de la classe.
+            var skin = ResolveSkin(skinId, cls);
+            Sprite[] idleFrames = (skin != null && skin.IdleFrames != null && skin.IdleFrames.Length > 0)
+                ? skin.IdleFrames
+                : (def != null ? def.IdleFrames : null);
+            float idleFps = skin != null && skin.IdleFrames != null && skin.IdleFrames.Length > 0
+                ? skin.IdleFps
+                : (def != null ? def.IdleFps : 8f);
+
+            if (idleFrames != null && idleFrames.Length > 0)
             {
                 portrait.enabled = true;
                 portrait.color = isActive ? _portraitActive : _portraitInactive;
-                if (anim != null) anim.Play(portrait, def.IdleFrames, def.IdleFps);
+                if (anim != null) anim.Play(portrait, idleFrames, idleFps);
             }
             else
             {
@@ -160,6 +183,32 @@ namespace Nymora.Combat.View.HUD
                 portrait.enabled = portrait.sprite != null;
                 portrait.color = isActive ? _portraitActive : _portraitInactive;
             }
+        }
+
+        /// <summary>
+        /// Resout le skin combat equipe (CosmeticId == skinId) avec le meme garde-fou class-lock
+        /// que CombatantRenderer.ResolveSkinFor : un skin ne s'applique qu'a sa classe. Retourne
+        /// null si pas de skin, catalogue absent, ou classe non concordante.
+        /// </summary>
+        private CosmeticSkinDefinition ResolveSkin(string skinId, NymoraClass cls)
+        {
+            if (string.IsNullOrEmpty(skinId)) return null;
+            if (!_skinCatalogLoaded)
+            {
+                _skinCatalog = Resources.Load<CosmeticSkinCatalog>(SkinCatalogResourcePath);
+                _skinCatalogLoaded = true;
+            }
+            if (_skinCatalog == null) return null;
+
+            var skin = _skinCatalog.Resolve(skinId);
+            if (skin == null) return null;
+
+            // ClassId (Core.Enums) vs cls (Quantum) : comparaison par nom (memes libelles).
+            if (skin.ClassId != Nymora.Core.Enums.NymoraClass.None
+                && skin.ClassId.ToString() != cls.ToString())
+                return null;
+
+            return skin;
         }
 
         private void EnsureSlots()

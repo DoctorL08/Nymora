@@ -57,6 +57,11 @@ namespace Nymora.Network.Backend
         public string email;
         public string displayName;
         public int mmr;
+        // 31 mai — stats ranked (K-factor variable cote serveur). rankedGames pilote le K du
+        // preview ELO affiche dans le menu de fin de combat (cf RankedEloPreview).
+        public int rankedGames;
+        public int rankedWins;
+        public int rankedLosses;
         public string createdAt;   // ISO string
         public string lastLoginAt; // ISO string, peut etre null (avant 1er login)
     }

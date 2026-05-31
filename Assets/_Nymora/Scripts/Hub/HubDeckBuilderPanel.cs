@@ -307,6 +307,19 @@ namespace Nymora.Hub
         }
 
         /// <summary>
+        /// 31 mai — Comme FetchLocalMmrAsync mais retourne aussi rankedGames (pour le K-factor du
+        /// preview ELO du menu de fin de combat). Un seul appel /profile/me. (0,0) si échec.
+        /// </summary>
+        public async UniTask<(int mmr, int rankedGames)> FetchLocalProfileAsync()
+        {
+            string token = ResolveDevToken();
+            if (string.IsNullOrEmpty(token)) return (0, 0);
+            _api.SetBearerToken(token);
+            var res = await _api.GetProfileMeAsync();
+            return res.IsSuccess && res.Data != null ? (res.Data.mmr, res.Data.rankedGames) : (0, 0);
+        }
+
+        /// <summary>
         /// M3b (25 mai) — Sélectionne un deck depuis le nouveau menu (HubMenuDeckBuilder).
         /// Synchronise _editingDeckId + composition + pref, pour que SelectedDeck (lu par
         /// HubArenaPanel / HubMatchTransition au lancement du combat) pointe sur le bon deck,

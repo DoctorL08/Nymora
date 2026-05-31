@@ -121,9 +121,15 @@ namespace Nymora.Hub
             foreach (var d in dbp.MyDecks)
                 lobbyDecks.Add(new PreCombatDeckInfo(d.id, d.classId, d.name, d.spellIds));
             int localMmr = 0;
-            try { localMmr = await dbp.FetchLocalMmrAsync(); }
-            catch (System.Exception ex) { Debug.LogWarning($"[HubMatchTransition] FetchLocalMmrAsync échec (MMR=0) : {ex.Message}"); }
-            PreCombatBridge.Set(lobbyDecks, deck.id, localMmr);
+            int localRankedGames = 0;
+            // 31 mai — fetch MMR + rankedGames en un appel (rankedGames pilote le K-factor du
+            // preview ELO affiché dans le menu de fin de combat).
+            try { (localMmr, localRankedGames) = await dbp.FetchLocalProfileAsync(); }
+            catch (System.Exception ex) { Debug.LogWarning($"[HubMatchTransition] FetchLocalProfileAsync échec (MMR=0) : {ex.Message}"); }
+            PreCombatBridge.Set(lobbyDecks, deck.id, localMmr); // pour le lobby (affichage + diffusion P2P)
+            // Snapshot MMR pour le menu de fin de combat — vit toute la durée du match (PreCombatBridge
+            // est vidé après le lobby), cf MatchBridge.SetRankedSnapshot.
+            MatchBridge.SetRankedSnapshot(localMmr, localRankedGames);
 
             // 4.14.e — Set MatchBridge avec LOCAL identity (pour CombatBootstrapCasual)
             // + opponent (deja transmis par MATCH_READY backend, sert au retour hub).

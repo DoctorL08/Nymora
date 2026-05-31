@@ -100,12 +100,12 @@ TextureImporter:
       name: torch0
       rect:
         serializedVersion: 2
-        x: 953
-        y: 748
-        width: 13
-        height: 49
+        x: 952
+        y: 747
+        width: 15
+        height: 51
       alignment: 9
-      pivot: {x: 0.42307693, y: 0}
+      pivot: {x: 0.43333333, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
@@ -121,12 +121,12 @@ TextureImporter:
       name: torch1
       rect:
         serializedVersion: 2
-        x: 1154
-        y: 659
-        width: 20
-        height: 55
+        x: 1153
+        y: 658
+        width: 22
+        height: 59
       alignment: 9
-      pivot: {x: 0.625, y: 0}
+      pivot: {x: 0.61363636, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
@@ -142,12 +142,12 @@ TextureImporter:
       name: torch2
       rect:
         serializedVersion: 2
-        x: 742
-        y: 657
-        width: 20
-        height: 55
+        x: 741
+        y: 656
+        width: 22
+        height: 59
       alignment: 9
-      pivot: {x: 0.625, y: 0}
+      pivot: {x: 0.61363636, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
@@ -163,12 +163,12 @@ TextureImporter:
       name: torch3
       rect:
         serializedVersion: 2
-        x: 662
-        y: 611
-        width: 20
-        height: 55
+        x: 661
+        y: 610
+        width: 22
+        height: 59
       alignment: 9
-      pivot: {x: 0.625, y: 0}
+      pivot: {x: 0.61363636, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
@@ -184,12 +184,12 @@ TextureImporter:
       name: torch4
       rect:
         serializedVersion: 2
-        x: 1236
-        y: 611
-        width: 20
-        height: 55
+        x: 1235
+        y: 610
+        width: 22
+        height: 59
       alignment: 9
-      pivot: {x: 0.625, y: 0}
+      pivot: {x: 0.61363636, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
@@ -205,12 +205,12 @@ TextureImporter:
       name: torch5
       rect:
         serializedVersion: 2
-        x: 493
-        y: 496
-        width: 13
-        height: 49
+        x: 492
+        y: 495
+        width: 15
+        height: 51
       alignment: 9
-      pivot: {x: 0.42307693, y: 0}
+      pivot: {x: 0.43333333, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
@@ -226,12 +226,12 @@ TextureImporter:
       name: torch6
       rect:
         serializedVersion: 2
-        x: 1413
-        y: 496
-        width: 13
-        height: 49
+        x: 1412
+        y: 495
+        width: 15
+        height: 51
       alignment: 9
-      pivot: {x: 0.42307693, y: 0}
+      pivot: {x: 0.43333333, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
@@ -247,12 +247,12 @@ TextureImporter:
       name: torch7
       rect:
         serializedVersion: 2
-        x: 640
-        y: 389
-        width: 20
-        height: 55
+        x: 639
+        y: 388
+        width: 22
+        height: 59
       alignment: 9
-      pivot: {x: 0.625, y: 0}
+      pivot: {x: 0.61363636, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
@@ -268,12 +268,12 @@ TextureImporter:
       name: torch8
       rect:
         serializedVersion: 2
-        x: 1258
-        y: 387
-        width: 20
-        height: 55
+        x: 1257
+        y: 386
+        width: 22
+        height: 59
       alignment: 9
-      pivot: {x: 0.625, y: 0}
+      pivot: {x: 0.61363636, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
@@ -289,12 +289,12 @@ TextureImporter:
       name: torch9
       rect:
         serializedVersion: 2
-        x: 722
-        y: 345
-        width: 20
-        height: 55
+        x: 721
+        y: 344
+        width: 22
+        height: 59
       alignment: 9
-      pivot: {x: 0.625, y: 0}
+      pivot: {x: 0.61363636, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
@@ -310,12 +310,12 @@ TextureImporter:
       name: torch10
       rect:
         serializedVersion: 2
-        x: 1178
-        y: 343
-        width: 20
-        height: 55
+        x: 1177
+        y: 342
+        width: 22
+        height: 59
       alignment: 9
-      pivot: {x: 0.625, y: 0}
+      pivot: {x: 0.61363636, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
@@ -331,12 +331,12 @@ TextureImporter:
       name: torch11
       rect:
         serializedVersion: 2
-        x: 953
-        y: 238
-        width: 13
-        height: 49
+        x: 952
+        y: 237
+        width: 15
+        height: 51
       alignment: 9
-      pivot: {x: 0.42307693, y: 0}
+      pivot: {x: 0.43333333, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
       outline: []
       physicsShape: []
@@ -357,7 +357,9 @@ TextureImporter:
     indices: 
     edges: []
     weights: []
-    secondaryTextures: []
+    secondaryTextures:
+    - texture: {fileID: 2800000, guid: 682b2e2c15a4416e9d790a36760f1fb5, type: 3}
+      name: _NormalMap
     nameFileIdTable:
       torch0: -8577475654868295218
       torch1: 5737786823899352781

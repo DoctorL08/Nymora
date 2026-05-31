@@ -371,9 +371,12 @@ namespace Nymora.Combat.View.HUD
 
             // Timeline (sprites idle animes P0/P1 + highlight actif — refacto 19 mai)
             // + cache des combatants pour le tooltip hover (phase + statuses + marques).
+            // Skin equipe par joueur (RuntimePlayer.SkinId, sync Quantum) -> visuel skinné dans la timeline.
             if (_timeline != null)
             {
-                _timeline.RefreshWithCombatants(activePlayer, p0, hasP0, p1, hasP1, state.TurnNumber);
+                string p0Skin = hasP0 ? frame.GetPlayerData((PlayerRef)p0.PlayerIndex)?.SkinId : null;
+                string p1Skin = hasP1 ? frame.GetPlayerData((PlayerRef)p1.PlayerIndex)?.SkinId : null;
+                _timeline.RefreshWithCombatants(activePlayer, p0, hasP0, p1, hasP1, state.TurnNumber, p0Skin, p1Skin);
             }
 
             // B5 (22 mai) — Bandeau de tour TRANSITOIRE anime au changement de tour. Trigger

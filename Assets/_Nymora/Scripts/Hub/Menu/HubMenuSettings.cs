@@ -121,8 +121,12 @@ namespace Nymora.Hub.Menu
                 },
                 i => disp.SetResolution(disp.Resolutions[i]));
 
-            // Luminosité (assombrissement uniquement)
-            SpawnSliderRow("Luminosité", disp.Brightness, v => disp.Brightness = v);
+            // Calibration image : 0.5 = neutre (affiché 0). Luminosité = post-exposure (assombrit ET
+            // éclaircit) ; Contraste + Gamma passent par le post-process (sans effet en "Sans effets").
+            SpawnSliderRow("Luminosité", disp.Brightness, v => disp.Brightness = v, Signed);
+            SpawnSliderRow("Contraste", disp.Contrast, v => disp.Contrast = v, Signed);
+            SpawnSliderRow("Gamma", disp.Gamma, v => disp.Gamma = v, Signed);
+            SpawnButtonRow("Réinitialiser l'image", () => { disp.ResetCalibration(); ShowTab(_tab); });
 
             // VSync
             SpawnToggleRow("VSync", disp.VSync, v => disp.VSync = v);
@@ -205,6 +209,11 @@ namespace Nymora.Hub.Menu
         // ===== Lignes =====
 
         private void SpawnSliderRow(string label, float value01, System.Action<float> onChange)
+            => SpawnSliderRow(label, value01, onChange, Pct);
+
+        /// <summary>Ligne slider avec formateur de valeur personnalisé (% par défaut, signé pour la
+        /// calibration image).</summary>
+        private void SpawnSliderRow(string label, float value01, System.Action<float> onChange, System.Func<float, string> fmt)
         {
             var row = MakeListRow(54f);
 
@@ -214,7 +223,7 @@ namespace Nymora.Hub.Menu
             lrt.anchorMin = new Vector2(0f, 0f); lrt.anchorMax = new Vector2(0f, 1f); lrt.pivot = new Vector2(0f, 0.5f);
             lrt.sizeDelta = new Vector2(220f, 0f); lrt.anchoredPosition = new Vector2(16f, 0f);
 
-            var val = _f.MakeText("Val", row, Pct(value01), _t.FontSizeBody, _t.TextSecondary, _t.FontBold, TextAlignmentOptions.MidlineRight);
+            var val = _f.MakeText("Val", row, fmt(value01), _t.FontSizeBody, _t.TextSecondary, _t.FontBold, TextAlignmentOptions.MidlineRight);
             val.raycastTarget = false; val.enableWordWrapping = false;
             var vrt = val.rectTransform;
             vrt.anchorMin = new Vector2(1f, 0.5f); vrt.anchorMax = new Vector2(1f, 0.5f); vrt.pivot = new Vector2(1f, 0.5f);
@@ -229,8 +238,19 @@ namespace Nymora.Hub.Menu
             slider.onValueChanged.AddListener(v =>
             {
                 onChange(v);
-                val.text = Pct(v);
+                val.text = fmt(v);
             });
+        }
+
+        /// <summary>Ligne avec un seul bouton aligné à droite (ex. réinitialiser la calibration).</summary>
+        private void SpawnButtonRow(string label, System.Action onClick)
+        {
+            var row = MakeListRow(54f);
+            var btn = _f.MakeButton(row, label, false, out _);
+            var brt = (RectTransform)btn.transform;
+            brt.anchorMin = new Vector2(1f, 0.5f); brt.anchorMax = new Vector2(1f, 0.5f); brt.pivot = new Vector2(1f, 0.5f);
+            brt.sizeDelta = new Vector2(260f, 40f); brt.anchoredPosition = new Vector2(-12f, 0f);
+            btn.onClick.AddListener(() => onClick());
         }
 
         private void SpawnToggleRow(string label, bool value, System.Action<bool> onChange)
@@ -344,5 +364,12 @@ namespace Nymora.Hub.Menu
         }
 
         private static string Pct(float v01) => $"{Mathf.RoundToInt(v01 * 100f)}%";
+
+        // Calibration image : 0.5 -> "0" (neutre), sinon offset signé -100..+100.
+        private static string Signed(float v01)
+        {
+            int n = Mathf.RoundToInt((v01 - 0.5f) * 200f);
+            return n > 0 ? "+" + n : n.ToString();
+        }
     }
 }

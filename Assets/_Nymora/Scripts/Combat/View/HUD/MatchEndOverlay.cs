@@ -1,117 +1,219 @@
+using System.Text;
 using Nymora.Combat.Replay;
 using Nymora.Core.Data;
 using Nymora.Core.SceneFlow;
 using Quantum;
 using TMPro;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using Button = UnityEngine.UI.Button;
 
 namespace Nymora.Combat.View.HUD
 {
     /// <summary>
-    /// Overlay UI de fin de match (2.16.c.ii). Affiche VICTOIRE / DEFAITE / MATCH NUL
-    /// + bouton Rejouer. Polled par CombatHUDController via Refresh() chaque frame.
+    /// Overlay UI de fin de match. Affiche VICTOIRE / DÉFAITE / MATCH NUL + infos (adversaire,
+    /// MMR ranked avec delta exact, récompenses, stats de combat) + boutons (Retour hub, Replay).
     ///
-    /// Le root GameObject reste actif en permanence (sinon les bindings sont perdus
-    /// au domain reload) ; on toggle juste le panel enfant qui contient les visuels.
+    /// Refonte 31 mai : l'UI est ENTIÈREMENT auto-construite en code (fond plein écran + carte
+    /// centrale dans un VerticalLayoutGroup → titre/infos/boutons empilés, zéro chevauchement),
+    /// au design du hub (palette CombatUiKit monochrome + coins arrondis). Les visuels legacy
+    /// de la scène (titre/sous-titre/boutons sérialisés) sont masqués ; seules les RÉFÉRENCES
+    /// logiques (ReplayRecorder, handlers) sont réutilisées.
     ///
-    /// Restart = reload de la scene courante. Quantum reinit OnInit propre. Pas de
-    /// state preserve entre les matchs (volontaire en 2.16.c : chaque test est un
-    /// match independant).
+    /// Polled par CombatHUDController via Refresh() chaque frame (idempotent via _shown).
     /// </summary>
     public class MatchEndOverlay : MonoBehaviour
     {
-        [Header("Visuels")]
-        [Tooltip("Panel root qui contient le background sombre + textes + bouton.")]
+        [Header("Refs logiques (les visuels legacy sont masqués au profit de l'UI auto-construite)")]
+        [Tooltip("Ancien panel scène — forcé masqué (l'overlay construit son propre root plein écran).")]
         [SerializeField] private GameObject _panel;
-
-        [Tooltip("Titre central : VICTOIRE / DEFAITE / MATCH NUL.")]
-        [SerializeField] private TMP_Text _titleText;
-
-        [Tooltip("Sous-titre : info contextuelle (round, difficulte, etc.).")]
-        [SerializeField] private TMP_Text _subtitleText;
-
-        [Header("Boutons Rejouer (2.16.c.iv)")]
-        [Tooltip("Click = AIConstants.CurrentDifficulty=Easy + reload scene.")]
-        [SerializeField] private Button _restartEasyButton;
-        [Tooltip("Click = AIConstants.CurrentDifficulty=Medium + reload scene.")]
-        [SerializeField] private Button _restartMediumButton;
-
-        [Header("Retour Hub (4.14.g — PvP casual + Polish 18 mai — IA)")]
-        [Tooltip("Click = LoadScene 10_CommunityHub (+ SetMatchResult uniquement en PvP). " +
-                 "Visible en PvP ET en IA depuis polish 18 mai (avant : PvP only). " +
-                 "En IA, pas de SetMatchResult — XP MVP differable a Phase 6 ranked.")]
-        [SerializeField] private Button _returnToHubButton;
+        [SerializeField] private TMP_Text _titleText;     // legacy : sert juste de source de police titre
+        [SerializeField] private TMP_Text _subtitleText;  // legacy : masqué
+        [SerializeField] private Button _restartEasyButton;   // déprécié
+        [SerializeField] private Button _restartMediumButton; // déprécié
+        [SerializeField] private Button _returnToHubButton;   // legacy : masqué (bouton reconstruit)
+        [SerializeField] private Button _saveReplayButton;    // legacy : masqué (bouton reconstruit)
+        [SerializeField] private TMP_Text _saveReplayLabel;   // legacy
 
         [Header("Replay (Brique 3.E.1)")]
         [Tooltip("ReplayRecorder de la scene. Si laisse vide, le bouton 'Sauvegarder le replay' est masque.")]
         [SerializeField] private ReplayRecorder _replayRecorder;
-        [Tooltip("Bouton qui ecrit le replay courant sur disque (Application.persistentDataPath/Replays/).")]
-        [SerializeField] private Button _saveReplayButton;
-        [Tooltip("Label TMP du bouton — change en 'Replay sauvegarde !' apres click.")]
-        [SerializeField] private TMP_Text _saveReplayLabel;
         [SerializeField] private string _saveReplayDefaultText = "Sauvegarder le replay";
-        [SerializeField] private string _saveReplaySavedText = "Replay sauvegarde !";
+        [SerializeField] private string _saveReplaySavedText = "Replay sauvegardé ✓";
 
         [Header("Couleurs titre")]
         [SerializeField] private Color _victoryColor = new Color(1.00f, 0.83f, 0.30f, 1f); // or
         [SerializeField] private Color _defeatColor = new Color(0.90f, 0.25f, 0.25f, 1f); // rouge
         [SerializeField] private Color _drawColor = new Color(0.75f, 0.75f, 0.75f, 1f); // gris
 
+        [Header("Carte (auto-construite)")]
+        [SerializeField] private float _cardWidth = 560f;
+
+        // UI construite en code.
+        private GameObject _root;       // plein écran (dimmer), enfant du Canvas racine
+        private TMP_Text _builtTitle;
+        private TMP_Text _builtInfo;
+        private Button _builtReturnBtn;
+        private Button _builtSaveBtn;
+        private TMP_Text _builtSaveLabel;
+
+        private bool _built;
         private bool _shown;
         private bool _replaySavedThisMatch;
-        // 4.14.g — Snapshot des params Refresh pour les recuperer dans OnReturnToHubClicked
-        // (le bouton n'a pas acces a la frame Quantum a la callback).
+        // Snapshot des params Refresh pour OnReturnToHubClicked.
         private int _localPlayerIndex;
         private int _winnerPlayerIndex;
         private bool _isPvpMatch;
 
         private void Awake()
         {
-            if (_restartEasyButton != null)
-            {
-                _restartEasyButton.onClick.RemoveAllListeners();
-                _restartEasyButton.onClick.AddListener(() => OnRestartClicked(AIDifficulty.Easy));
-            }
-            if (_restartMediumButton != null)
-            {
-                _restartMediumButton.onClick.RemoveAllListeners();
-                _restartMediumButton.onClick.AddListener(() => OnRestartClicked(AIDifficulty.Medium));
-            }
-            if (_saveReplayButton != null)
-            {
-                _saveReplayButton.onClick.RemoveAllListeners();
-                _saveReplayButton.onClick.AddListener(OnSaveReplayClicked);
-            }
-            if (_returnToHubButton != null)
-            {
-                _returnToHubButton.onClick.RemoveAllListeners();
-                _returnToHubButton.onClick.AddListener(OnReturnToHubClicked);
-            }
+            BuildOverlayUI();
             Hide();
-            HideDeprecatedRestartButtons();
         }
 
-        // Les boutons « Rejouer Easy / Medium » sont dépréciés (restartVisible toujours false :
-        // on relance un combat IA via Hub > Arène). Dans les scènes PvP (casual / ranked 1v1) leurs
-        // références ne sont PAS câblées sur l'overlay -> ils restaient visibles au match-end. On les
-        // masque par NOM dans la hiérarchie du panel, quelle que soit la scène / le câblage.
-        private void HideDeprecatedRestartButtons()
+        // ============================ Construction UI ============================
+
+        private void BuildOverlayUI()
         {
-            var root = _panel != null ? _panel.transform : transform;
-            foreach (var t in root.GetComponentsInChildren<Transform>(true))
-            {
-                if (t == null) continue;
-                if (t.name == "RestartEasyButton" || t.name == "RestartMediumButton")
-                    t.gameObject.SetActive(false);
-            }
+            if (_built) return;
+            _built = true;
+
+            // Police : titre = police du titre legacy (display) ; corps/boutons = police du sous-titre.
+            TMP_FontAsset titleFont = _titleText != null ? _titleText.font : null;
+            TMP_FontAsset bodyFont = _subtitleText != null && _subtitleText.font != null
+                ? _subtitleText.font : titleFont;
+
+            // Masque tous les visuels legacy (on reconstruit tout).
+            if (_panel != null) _panel.SetActive(false);
+            HideLegacy(_titleText); HideLegacy(_subtitleText);
+            HideLegacy(_restartEasyButton); HideLegacy(_restartMediumButton);
+            HideLegacy(_returnToHubButton); HideLegacy(_saveReplayButton);
+
+            // Root plein écran sous le Canvas racine (dimmer qui assombrit le combat + bloque les clics).
+            var canvas = GetComponentInParent<Canvas>();
+            Transform rootParent = canvas != null ? canvas.rootCanvas.transform : transform;
+            _root = new GameObject("MatchEndRoot", typeof(RectTransform), typeof(Image));
+            _root.transform.SetParent(rootParent, false);
+            var rootRt = (RectTransform)_root.transform;
+            rootRt.anchorMin = Vector2.zero; rootRt.anchorMax = Vector2.one;
+            rootRt.offsetMin = Vector2.zero; rootRt.offsetMax = Vector2.zero;
+            var dimmer = _root.GetComponent<Image>();
+            dimmer.color = new Color(0.02f, 0.02f, 0.035f, 0.88f);
+            dimmer.raycastTarget = true; // bloque les interactions avec le HUD derrière
+
+            // Carte centrale (colonne).
+            float innerW = _cardWidth - 72f; // padding L/R 36
+            var cardGo = new GameObject("Card",
+                typeof(RectTransform), typeof(Image), typeof(VerticalLayoutGroup), typeof(ContentSizeFitter));
+            cardGo.transform.SetParent(_root.transform, false);
+            var cardRt = (RectTransform)cardGo.transform;
+            cardRt.anchorMin = cardRt.anchorMax = new Vector2(0.5f, 0.5f);
+            cardRt.pivot = new Vector2(0.5f, 0.5f);
+            cardRt.anchoredPosition = Vector2.zero;
+            cardRt.sizeDelta = new Vector2(_cardWidth, 0f);
+            var cardBg = cardGo.GetComponent<Image>();
+            cardBg.color = CombatUiKit.PanelBg;
+            cardBg.raycastTarget = true;
+            CombatUiKit.ApplyRounded(cardBg, 18f);
+            var vlg = cardGo.GetComponent<VerticalLayoutGroup>();
+            vlg.padding = new RectOffset(36, 36, 30, 30);
+            vlg.spacing = 16f;
+            vlg.childAlignment = TextAnchor.MiddleCenter;
+            vlg.childControlWidth = true; vlg.childControlHeight = true;
+            vlg.childForceExpandWidth = false; vlg.childForceExpandHeight = false;
+            var csf = cardGo.GetComponent<ContentSizeFitter>();
+            csf.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            csf.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+            // Titre (auto-size pour ne jamais déborder de la carte).
+            _builtTitle = MakeText(cardGo.transform, "Title", titleFont, 58f, FontStyles.Bold,
+                TextAlignmentOptions.Center, innerW, false);
+            _builtTitle.enableAutoSizing = true;
+            _builtTitle.fontSizeMax = 58f;
+            _builtTitle.fontSizeMin = 30f;
+
+            // Séparateur fin.
+            var sep = new GameObject("Sep", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
+            sep.transform.SetParent(cardGo.transform, false);
+            sep.GetComponent<Image>().color = new Color(CombatUiKit.Accent.r, CombatUiKit.Accent.g, CombatUiKit.Accent.b, 0.25f);
+            var sepLe = sep.GetComponent<LayoutElement>();
+            sepLe.preferredWidth = innerW * 0.5f; sepLe.preferredHeight = 2f;
+
+            // Bloc d'infos.
+            _builtInfo = MakeText(cardGo.transform, "Info", bodyFont, 24f, FontStyles.Normal,
+                TextAlignmentOptions.Center, innerW, true);
+            _builtInfo.lineSpacing = 6f;
+
+            // Boutons (empilés sous les infos).
+            _builtReturnBtn = MakeButton(cardGo.transform, "ReturnBtn", "Retour au hub", true, bodyFont,
+                OnReturnToHubClicked, out _);
+            _builtSaveBtn = MakeButton(cardGo.transform, "SaveBtn", _saveReplayDefaultText, false, bodyFont,
+                OnSaveReplayClicked, out _builtSaveLabel);
+
+            _root.SetActive(false);
         }
+
+        private static void HideLegacy(Component c)
+        {
+            if (c != null) c.gameObject.SetActive(false);
+        }
+
+        private TMP_Text MakeText(Transform parent, string name, TMP_FontAsset font, float size,
+            FontStyles style, TextAlignmentOptions align, float width, bool wrap)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI), typeof(LayoutElement));
+            go.transform.SetParent(parent, false);
+            var t = go.GetComponent<TextMeshProUGUI>();
+            if (font != null) t.font = font;
+            t.fontSize = size;
+            t.fontStyle = style;
+            t.alignment = align;
+            t.richText = true;
+            t.enableWordWrapping = wrap;
+            t.color = CombatUiKit.TextPrimary;
+            t.raycastTarget = false;
+            go.GetComponent<LayoutElement>().preferredWidth = width;
+            return t;
+        }
+
+        private Button MakeButton(Transform parent, string name, string label, bool primary,
+            TMP_FontAsset font, UnityEngine.Events.UnityAction onClick, out TMP_Text labelTmp)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(Button), typeof(LayoutElement));
+            go.transform.SetParent(parent, false);
+            var img = go.GetComponent<Image>();
+            // Primaire (Retour hub) = bouton NOIR + texte blanc ; secondaire = carte gris foncé.
+            img.color = primary ? new Color(0.05f, 0.05f, 0.06f, 1f) : CombatUiKit.CardBg;
+            CombatUiKit.ApplyRounded(img, 10f);
+            var le = go.GetComponent<LayoutElement>();
+            le.preferredWidth = 340f; le.preferredHeight = 52f;
+
+            var btn = go.GetComponent<Button>();
+            btn.targetGraphic = img;
+            // ColorBlock multiplie la couleur de base de l'Image -> léger éclaircissement au survol.
+            var cb = btn.colors;
+            cb.normalColor = Color.white;
+            cb.highlightedColor = new Color(1.12f, 1.12f, 1.12f, 1f);
+            cb.pressedColor = new Color(0.88f, 0.88f, 0.90f, 1f);
+            cb.selectedColor = Color.white;
+            cb.disabledColor = new Color(0.6f, 0.6f, 0.6f, 0.6f);
+            cb.fadeDuration = 0.08f;
+            btn.colors = cb;
+            btn.onClick.AddListener(onClick);
+
+            labelTmp = MakeText(go.transform, "Label", font, 22f, FontStyles.Bold,
+                TextAlignmentOptions.Center, 300f, false);
+            labelTmp.color = primary ? Color.white : CombatUiKit.TextPrimary;
+            var lrt = labelTmp.rectTransform;
+            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
+            lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
+            return btn;
+        }
+
+        // ============================ Affichage ============================
 
         /// <summary>
-        /// Appele par CombatHUDController chaque tick de view update. Si la sim est en
-        /// MatchEnd, on affiche l'overlay avec le verdict. Sinon on le cache.
+        /// Appele par CombatHUDController chaque tick. Affiche l'overlay en phase MatchEnd, sinon cache.
         /// </summary>
         public void Refresh(Quantum.CombatPhase phase, int winnerPlayerIndex, int localPlayerIndex, int turnNumber, bool isPvpMatch = false)
         {
@@ -120,49 +222,29 @@ namespace Nymora.Combat.View.HUD
                 if (_shown) Hide();
                 return;
             }
+            if (_shown) return; // déjà affiché, idempotent
 
-            if (_shown) return; // deja affiche, no-op pour eviter de re-rafraichir chaque frame
-
-            // 4.14.g — Snapshot pour OnReturnToHubClicked.
             _localPlayerIndex = localPlayerIndex;
             _winnerPlayerIndex = winnerPlayerIndex;
             _isPvpMatch = isPvpMatch;
 
             string title;
             Color titleColor;
-            if (winnerPlayerIndex < 0)
-            {
-                title = "MATCH NUL";
-                titleColor = _drawColor;
-            }
-            else if (winnerPlayerIndex == localPlayerIndex)
-            {
-                title = "VICTOIRE";
-                titleColor = _victoryColor;
-            }
-            else
-            {
-                title = "DÉFAITE";
-                titleColor = _defeatColor;
-            }
+            if (winnerPlayerIndex < 0) { title = "MATCH NUL"; titleColor = _drawColor; }
+            else if (winnerPlayerIndex == localPlayerIndex) { title = "VICTOIRE"; titleColor = _victoryColor; }
+            else { title = "DÉFAITE"; titleColor = _defeatColor; }
 
-            if (_titleText != null)
-            {
-                _titleText.text = title;
-                _titleText.color = titleColor;
-            }
-            if (_subtitleText != null)
-            {
-                _subtitleText.text = $"Round {turnNumber}";
-            }
+            if (_builtTitle != null) { _builtTitle.text = title; _builtTitle.color = titleColor; }
 
-            // A2/A4 — SFX + musique de fin de match (une seule fois, _shown garde l'idempotence
-            // au-dessus). La musique victoire/défaite prime sur MusicCombat ; le retour au hub
-            // repassera sur MusicHub via SceneMusicDirector.
+            MatchResult result = winnerPlayerIndex < 0 ? MatchResult.Draw
+                : winnerPlayerIndex == localPlayerIndex ? MatchResult.Victory : MatchResult.Defeat;
+            if (_builtInfo != null) _builtInfo.text = BuildInfoText(result, turnNumber);
+
+            // SFX + musique de fin (une fois, garanti par _shown).
             var audio = Nymora.Core.Audio.NymoraAudioManager.Instance;
             if (audio != null)
             {
-                if (winnerPlayerIndex < 0) { /* match nul : pas de stinger dédié pour l'instant */ }
+                if (winnerPlayerIndex < 0) { /* nul : pas de stinger dédié */ }
                 else if (winnerPlayerIndex == localPlayerIndex)
                 {
                     audio.PlaySfx(Nymora.Core.Audio.SoundId.Victory);
@@ -180,25 +262,24 @@ namespace Nymora.Combat.View.HUD
 
         private void Show()
         {
-            if (_panel != null) _panel.SetActive(true);
+            if (_root == null) return;
+            _root.SetActive(true);
+            _root.transform.SetAsLastSibling(); // au-dessus du reste du HUD
             _shown = true;
-            // 3.E.polish : si on est en mode replay (rejeu d'un .nymrep), on cache les
-            // boutons "Rejouer" (qui relanceraient un match normal en quittant le replay)
-            // et "Sauvegarder le replay" (replay deja existant, recorder force-disabled).
-            // Le user reste libre de quitter via le bouton du ReplayControlsPanel.
-            // 4.14.g : en mode PvP, cache les boutons Restart IA (pas pertinent online)
-            // et affiche le bouton Retour Hub a la place.
-            // Polish 18 mai (decision user) : en mode IA aussi, on remplace Restart par
-            // Retour Hub. Pour relancer un combat IA, Lorenzo repasse par hub > Arena
-            // (laisse le choix de classe + difficulte au lieu de subir le choix actuel).
-            // Les fields Restart Easy/Medium restent en place pour eventual rollback.
+
+            // En mode replay (.nymrep) : pas de Retour hub (sortie via ReplayControlsPanel) ni de Save
+            // (recorder force-disabled). Sinon : Retour hub toujours, Save si un recorder est présent.
             bool replayMode = IsInReplayMode();
-            bool restartVisible = false;
-            bool returnHubVisible = !replayMode;
-            if (_restartEasyButton != null) _restartEasyButton.gameObject.SetActive(restartVisible);
-            if (_restartMediumButton != null) _restartMediumButton.gameObject.SetActive(restartVisible);
-            if (_returnToHubButton != null) _returnToHubButton.gameObject.SetActive(returnHubVisible);
+            if (_builtReturnBtn != null) _builtReturnBtn.gameObject.SetActive(!replayMode);
+            if (_builtSaveBtn != null) _builtSaveBtn.gameObject.SetActive(!replayMode && _replayRecorder != null);
             RefreshSaveReplayButton();
+        }
+
+        private void Hide()
+        {
+            if (_root != null) _root.SetActive(false);
+            _shown = false;
+            _replaySavedThisMatch = false;
         }
 
         private static bool IsInReplayMode()
@@ -207,36 +288,57 @@ namespace Nymora.Combat.View.HUD
             return c != null && c.enabled;
         }
 
-        private void Hide()
+        // ============================ Contenu infos ============================
+
+        // MMR + récompenses uniquement en ranked. Le delta MMR est le PREVIEW exact (réplique de la
+        // formule ELO serveur, cf RankedEloPreview) ; le hub affiche la valeur autoritative au settle.
+        private static string BuildInfoText(MatchResult result, int turnNumber)
         {
-            if (_panel != null) _panel.SetActive(false);
-            _shown = false;
-            _replaySavedThisMatch = false;
+            const string muted = "#9A9BA2";
+            var sb = new StringBuilder();
+
+            string opp = !string.IsNullOrEmpty(MatchBridge.OpponentDisplayName)
+                ? MatchBridge.OpponentDisplayName : "Adversaire";
+            sb.Append($"<color={muted}>vs</color> {opp}   <size=80%><color={muted}>· Round {turnNumber}</color></size>");
+
+            if (MatchBridge.IsRanked)
+            {
+                int myMmr = MatchBridge.RankedLocalMmr;
+                int oppMmr = MatchBridge.RankedOpponentMmr;
+                float score = RankedEloPreview.ScoreFor(result);
+                int delta = RankedEloPreview.ComputeDelta(myMmr, oppMmr, MatchBridge.RankedLocalGames, score);
+                int newMmr = RankedEloPreview.NewMmr(myMmr, delta);
+                string deltaStr = delta > 0 ? $"<color=#5FD06A>+{delta}</color>"
+                                : delta < 0 ? $"<color=#E06565>{delta}</color>"
+                                : $"<color={muted}>±0</color>";
+                sb.Append($"\n\n<size=150%>MMR {newMmr}  {deltaStr}</size>");
+                sb.Append($"\n<size=90%>{RankLadder.ColoredName(newMmr)}</size>");
+                var rw = RankedRewards.For(result);
+                sb.Append($"\n<size=90%><color={muted}>+{rw.Nymos} Nymos · +{rw.ClassXp} XP</color></size>");
+            }
+
+            if (MatchBridge.HasCombatStats)
+            {
+                sb.Append($"\n\n<size=85%><color={muted}>" +
+                          $"{MatchBridge.StatDamageDealt} dégâts infligés · {MatchBridge.StatDamageTaken} subis\n" +
+                          $"{MatchBridge.StatSpellsCast} sorts lancés · {MatchBridge.StatTurns} tours</color></size>");
+            }
+
+            return sb.ToString();
         }
+
+        // ============================ Boutons / actions ============================
 
         private void RefreshSaveReplayButton()
         {
-            if (_saveReplayButton == null) return;
-
-            // 3.E.polish : en mode replay, le ReplayRecorder est force-disabled donc
-            // HasPendingReplay sera false. On hide le bouton entierement pour clarte.
-            bool replayMode = IsInReplayMode();
-            _saveReplayButton.gameObject.SetActive(!replayMode && _replayRecorder != null);
-            // Bouton toujours interactable (sauf si deja sauvegarde) : si la capture a
-            // echoue, OnSaveReplayClicked log un warning explicite plutot que de griser
-            // silencieusement (debug-friendly).
-            _saveReplayButton.interactable = !_replaySavedThisMatch;
-
-            if (_saveReplayLabel != null)
-            {
-                _saveReplayLabel.text = _replaySavedThisMatch ? _saveReplaySavedText : _saveReplayDefaultText;
-            }
+            if (_builtSaveBtn == null) return;
+            _builtSaveBtn.interactable = !_replaySavedThisMatch;
+            if (_builtSaveLabel != null)
+                _builtSaveLabel.text = _replaySavedThisMatch ? _saveReplaySavedText : _saveReplayDefaultText;
         }
 
         private void OnSaveReplayClicked()
         {
-            Debug.Log("[Nymora.HUD] Click Save Replay — recorder=" + (_replayRecorder != null) +
-                      " pending=" + (_replayRecorder != null && _replayRecorder.HasPendingReplay));
             if (_replayRecorder == null)
             {
                 Debug.LogWarning("[Nymora.HUD] ReplayRecorder ref non assignee dans le MatchEndOverlay Inspector.");
@@ -256,30 +358,10 @@ namespace Nymora.Combat.View.HUD
             }
         }
 
-        private void OnRestartClicked(AIDifficulty difficulty)
-        {
-            // 2.16.c.iv — set la difficulte avant le reload. Le static field
-            // AIConstants.CurrentDifficulty survit aux scene loads (meme domain Unity),
-            // donc la nouvelle sim sera init avec la bonne valeur.
-            AIConstants.CurrentDifficulty = difficulty;
-
-            // Quantum installe DontDestroyOnLoad sur ses Singletons (QuantumMapLoader,
-            // etc.) et garde le QuantumRunner actif a travers les scene loads. Sans
-            // ShutdownAll() avant le reload, le nouveau scene ressort un runner mort
-            // et la sim ne s'init pas. C'est le pattern officiel Photon (cf QuantumUnityEditor).
-            Debug.Log($"[Nymora.HUD] MatchEnd Rejouer ({difficulty}) cliquee — fondu + ShutdownAll sous le voile + reload scene");
-            var scene = SceneManager.GetActiveScene();
-            SceneTransition.Load(scene.name, () => QuantumRunner.ShutdownAll(), waitForReady: true);
-        }
-
         /// <summary>
-        /// 4.14.g — Bouton Retour Hub. En PvP : set le resultat dans MatchBridge.LastMatchResult
-        /// (consume cote hub par HubMatchResultDisplay au Start = ligne chat + award XP MVP).
-        /// En IA (polish 18 mai) : pas de SetMatchResult — XP MVP IA differable a Phase 6 ranked
-        /// (cf project-xp-source-ranked-only). Toujours : shutdown Quantum + LoadScene hub.
-        ///
-        /// Win/Loss/Draw deduit du snapshot Refresh : winner == local -> VICTOIRE,
-        /// winner != local && winner >= 0 -> DEFAITE, winner < 0 -> DRAW (double KO).
+        /// 4.14.g — Retour Hub. En PvP : set le resultat dans MatchBridge (consume cote hub par
+        /// HubMatchResultDisplay = ligne chat + report ranked). En IA : pas de SetMatchResult.
+        /// Toujours : shutdown Quantum + LoadScene hub.
         /// </summary>
         private void OnReturnToHubClicked()
         {
@@ -290,13 +372,11 @@ namespace Nymora.Combat.View.HUD
                 else if (_winnerPlayerIndex == _localPlayerIndex) result = MatchResult.Victory;
                 else result = MatchResult.Defeat;
 
-                // Capture matchId + opponent identite AVANT que SetMatchResult clear pending.
-                // POLISH-7 (20 mai) : on capture aussi le displayName pour l'affichage hub.
                 string matchId = MatchBridge.PendingMatchId;
                 string opponentEmail = MatchBridge.OpponentEmail;
                 string opponentDisplayName = MatchBridge.OpponentDisplayName;
                 MatchBridge.SetMatchResult(result, matchId, opponentEmail, opponentDisplayName);
-                Debug.Log($"[Nymora.HUD] Retour Hub clique (PvP) — result={result} matchId={matchId} opponent='{opponentDisplayName}' (email={opponentEmail})");
+                Debug.Log($"[Nymora.HUD] Retour Hub clique (PvP) — result={result} matchId={matchId} opponent='{opponentDisplayName}'");
             }
             else
             {
