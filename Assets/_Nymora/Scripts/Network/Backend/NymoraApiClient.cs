@@ -71,6 +71,11 @@ namespace Nymora.Network.Backend
         public UniTask<ApiResult<ProfileMeResponse>> GetProfileMeAsync(CancellationToken ct = default)
             => GetJsonAsync<ProfileMeResponse>("/profile/me", requireAuth: true, ct);
 
+        /// <summary>Tutoriel T6 — POST /profile/tutorial-complete : marque l'onboarding résolu
+        /// (tuto fini OU décliné à la pop-up). Idempotent côté serveur. Body vide ({}).</summary>
+        public UniTask<ApiResult<EmptyResponse>> MarkTutorialCompleteAsync(CancellationToken ct = default)
+            => PostJsonAsync<EmptyResponse>("/profile/tutorial-complete", new EmptyResponse(), requireAuth: true, ct);
+
         // ====== Brique 4.10 — Amis ======
 
         public UniTask<ApiResult<FriendsListResponse>> GetFriendsAsync(CancellationToken ct = default)

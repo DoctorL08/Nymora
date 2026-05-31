@@ -62,6 +62,8 @@ namespace Nymora.Network.Backend
         public int rankedGames;
         public int rankedWins;
         public int rankedLosses;
+        // Tutoriel T6 — false => le client propose le tuto au login (pop-up onboarding).
+        public bool tutorialCompleted;
         public string createdAt;   // ISO string
         public string lastLoginAt; // ISO string, peut etre null (avant 1er login)
     }

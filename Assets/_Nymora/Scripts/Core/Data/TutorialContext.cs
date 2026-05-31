@@ -22,6 +22,13 @@ namespace Nymora.Core.Data
         /// par le routing post-login (T4) ; en éditeur, par l'override DEV ci-dessous.</summary>
         public static bool Active;
 
+        /// <summary>T6 — Posé à true par <c>TutorialDirector.Finish()</c> quand le tutoriel est terminé.
+        /// Lu par le hub (<c>HubTutorialOnboarding</c>) au retour combat→hub pour appeler
+        /// POST /profile/tutorial-complete. Survit au changement de scène (statique) ; <see cref="Reset"/>
+        /// ne le touche PAS (Reset est appelé par CombatBootstrapIA.OnDestroy AVANT que le hub le lise).
+        /// Le hub le remet à false une fois consommé.</summary>
+        public static bool CompletedThisSession;
+
         /// <summary>Clé PlayerPrefs de l'override DEV (posée par TutorialDevLauncher). PlayerPrefs
         /// (et non EditorPrefs) pour être lisible au RUNTIME, donc robuste au domain-reload Unity.</summary>
         public const string DevForcePrefKey = "Nymora.Tutorial.DevForce";

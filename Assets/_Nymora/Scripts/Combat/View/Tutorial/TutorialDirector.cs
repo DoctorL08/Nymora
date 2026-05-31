@@ -246,7 +246,9 @@ namespace Nymora.Combat.View.Tutorial
             if (_finished) return;
             _finished = true;
             // T4 : masque le panneau d'instructions et affiche l'écran de fin (centre) + retour hub.
-            // Le set du flag backend "tutorialCompleted" (anti-rejeu nouveau compte) arrive en T6.
+            // T6 : marque l'onboarding résolu. Combat (asmdef) ne peut pas appeler le réseau → on pose
+            // un flag Core, consommé par le hub (HubTutorialOnboarding) qui fait le POST au retour.
+            TutorialContext.CompletedThisSession = true;
             if (_panelGo != null) _panelGo.SetActive(false);
             _currentCoach = Coach.None;
             if (_coachImage != null) _coachImage.gameObject.SetActive(false);

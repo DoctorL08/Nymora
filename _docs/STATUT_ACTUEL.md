@@ -17,6 +17,21 @@
 
 ---
 
+**SESSION 1er juin 2026 (ter) — 🎓 TUTORIEL T6+T7 (ONBOARDING NOUVEAU JOUEUR) + 🚀 PUBLISH LAUNCHER 0.1.8 — COMMIT LOCAL (push différé) ; BACKEND DÉPLOYÉ OVH :** session **client (View/Network) + backend + prod**. **`CombatRulesVersion` INCHANGÉ (93)**, aucune régén prefab/scène.
+
+- **🎓 T6 — routing onboarding** : un nouveau joueur se voit proposer le tuto au login (le contenu T1→T5 existait mais n'était lançable qu'en DEV).
+  - **Backend** (déployé prod, commit `86df62f`) : `Profile.tutorialCompleted` (migration `20260601000000`, appliquée) ; `/profile/me` l'expose ; **`POST /profile/tutorial-complete`** (idempotent) marque l'onboarding résolu.
+  - **Client** : nouveau **`HubTutorialOnboarding`** (asmdef Hub→Network) auto au chargement du hub → si `!tutorialCompleted`, **pop-up** code-only « Bienvenue sur Nymora ! Veux-tu suivre le tutoriel ? **[Oui]** / **[Plus tard]** ». Oui → `TutorialContext.Active=true` + transition `30_CombatIA` (shutdown Fusion, pattern `HubMatchTransition`). Plus tard → POST (plus de relance).
+  - **Archi (Combat ↛ Network)** : `TutorialDirector.Finish()` ne peut pas appeler le réseau → il pose le flag Core **`TutorialContext.CompletedThisSession`** ; le hub le consomme au retour combat→hub et fait le POST (même principe que `CombatLogRelay`). `TutorialContext.Reset()` ne touche PAS ce flag (Reset tourne dans `CombatBootstrapIA.OnDestroy` AVANT que le hub lise).
+- **🔁 T7** : bouton **« Rejouer le tutoriel »** dans Paramètres (`HubMenuSettings`, onglet Affichage) → `HubTutorialOnboarding.LaunchTutorial()` (statique, partagée avec la pop-up).
+- **Sémantique flag** : pop-up tant que `false` ; **Oui** → `true` en fin de tuto ; **Plus tard** → `true` direct ; rejouable via Paramètres. ⚠️ Quitter le tuto **en cours** (sans le finir) → re-proposé au retour hub (voulu ; révisable).
+- **MANIP UNITY faite** : `HubTutorialOnboarding` ajouté à `10_CommunityHub` + `NymoraBackendSettings` assigné (scène commitée). Pop-up testable en éditeur (tuto offline) ; Nocturn/Kyami/**Ytron** (nouveau joueur réel inscrit depuis le reset pré-alpha) tous à `false`.
+- **🚀 Publish launcher 0.1.8** : zip `nymora-0.1.8.zip` uploadé sur le VPS (sha256 `78a5f33e…00a7`, revérifié local+distant), `version.service.ts` bumpé (commit `740dde6`), **déployé**. Validé : `/version` expose 0.1.8 + downloadUrl, zip **200 OK** (122 983 347 octets). Kyami aura tuto + icône à sa MaJ auto.
+- **À RETENIR** : (1) **2 commits backend déployés OVH** (`86df62f` T6 flag/route, `740dde6` version 0.1.8). (2) `ProjectSettings.asset` committé (bundleVersion 0.1.8, icône conservée). (3) Hors-commit maintenu : `QuantumMap.asset` + 2 fonts TMP. (4) **Push Unity DIFFÉRÉ** (« on push plus tard ») — commit local uniquement.
+- **PROCHAINE ÉTAPE** : push GitHub du repo client (tuto T6/T7 + statut) ; valider la MaJ launcher 0.1.8 côté Kyami (icône exe + proposition de tuto) ; reprendre la roadmap V1.
+
+---
+
 **SESSION 1er juin 2026 (bis) — 🧹 NETTOYAGE PRÉ-ALPHA + 🎨 ICÔNE NYMORA + 🛒 TITRE BOUTIQUE + 🚀 PUBLISH LAUNCHER 0.1.7 — COMMIT + PUSH ; BACKEND DÉPLOYÉ OVH :** session **client (View) + backend + prod**. **`CombatRulesVersion` INCHANGÉ (93)**, aucune régén prefab/scène.
 
 - **🎹 Binds dev retirés** (4 fichiers) : `B` (ban cases hub, `HubBanEditMode`) enrobé `#if UNITY_EDITOR` → mort en build (évitait qu'un joueur coupe son propre input) ; `F8`/`F9`/`F10` (tuners placement familier hub/combat + Y skin) = écoute clavier + label en bas d'écran retirés, **outils gardés en éditeur** (commentaire de réactivation laissé dans chaque). Debug Quantum F9/F10 déjà mort (sender retiré au clean-up Phase 3).

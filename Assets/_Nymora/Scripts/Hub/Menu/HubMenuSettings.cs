@@ -144,6 +144,8 @@ namespace Nymora.Hub.Menu
                 i => gfxLabels[i],
                 i => disp.GraphicsProfileIndex = i);
 
+            // T7 — relancer le tutoriel (Soulrender scripté) à la demande.
+            SpawnButtonRow("Rejouer le tutoriel", HubTutorialOnboarding.LaunchTutorial);
         }
 
         /// <summary>Ligne avec sélecteur ‹ valeur › à droite (cycle index 0..count-1, clampé).</summary>
