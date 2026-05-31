@@ -1,5 +1,6 @@
-// Outil dev : Éditeur uniquement (F10). Re-régler le Y des skins de combat en Play Mode ;
-// les valeurs persistent dans la CosmeticSkinDefinition (Stage0/1/2CombatYOffset).
+// Outil dev : Éditeur uniquement (bind F10 retiré le 1 juin, voir plus bas pour réactiver).
+// Re-régler le Y des skins de combat en Play Mode ; les valeurs persistent dans la
+// CosmeticSkinDefinition (Stage0/1/2CombatYOffset).
 #if UNITY_EDITOR
 using Nymora.Core.Data;
 using Nymora.Core.ScriptableObjects;
@@ -23,11 +24,10 @@ namespace Nymora.Combat.View
     /// le besoin de re-régler par skin. Tune le stage où se trouve actuellement ton perso (les autres
     /// stages s'appliqueront quand il y montera).
     ///
-    /// Outil dev uniquement (Éditeur). Touche bascule : F10. Scène de combat uniquement.
+    /// Outil dev uniquement (Éditeur). Plus de raccourci clavier (bind F10 retiré). Scène de combat uniquement.
     /// </summary>
     public sealed class CombatSkinYTuner : MonoBehaviour
     {
-        private const KeyCode ToggleKey = KeyCode.F10;
         private const float Range = 1.5f;
         private const string CatalogResourcePath = "Cosmetics/CosmeticSkinCatalog";
 
@@ -52,10 +52,8 @@ namespace Nymora.Combat.View
             return !string.IsNullOrEmpty(name) && name.Contains("Combat");
         }
 
-        private void Update()
-        {
-            if (Input.GetKeyDown(ToggleKey)) _open = !_open;
-        }
+        // Bind F10 retiré (1 juin) : plus d'ouverture par raccourci. Pour rouvrir l'outil,
+        // remettre un Update() avec `if (Input.GetKeyDown(KeyCode.F10)) _open = !_open;`.
 
         private CosmeticSkinDefinition LocalSkinDef()
         {
@@ -69,11 +67,7 @@ namespace Nymora.Combat.View
         {
             if (!InCombatScene()) return;
 
-            if (!_open)
-            {
-                GUI.Label(new Rect(20f, Screen.height - 48f, 480f, 22f), "<b>F10</b> : réglage skin/leurres (Y + taille)");
-                return;
-            }
+            if (!_open) return;
             _window = GUILayout.Window(WindowId, _window, DrawWindow, "Réglage skin/leurres (combat)");
         }
 

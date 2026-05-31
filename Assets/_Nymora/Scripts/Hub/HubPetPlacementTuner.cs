@@ -1,5 +1,5 @@
-// Outil dev : Éditeur uniquement (F8 retiré des builds). Re-régler le placement via Play Mode
-// dans l'éditeur ; les valeurs persistent dans PetPlacementConfig.asset.
+// Outil dev : Éditeur uniquement (bind F8 retiré le 1 juin, voir plus bas pour réactiver).
+// Re-régler le placement via Play Mode dans l'éditeur ; les valeurs persistent dans PetPlacementConfig.asset.
 #if UNITY_EDITOR
 using Nymora.Core.ScriptableObjects;
 using UnityEngine;
@@ -19,13 +19,12 @@ namespace Nymora.Hub
     /// Un offset séparé par direction iso (SE/SW/NE/NW). Marche dans le hub pour changer
     /// d'orientation et régler chaque cas. Le bloc de la direction courante est mis en évidence.
     ///
-    /// Outil dev uniquement (compilé seulement en Éditeur / Development Build, jamais en release).
-    /// Touche bascule : F8. Auto-instancié au lancement, ne s'affiche que dans le hub (= quand un
-    /// HubAvatar.Local existe avec un familier équipé).
+    /// Outil dev uniquement (compilé seulement en Éditeur, jamais en release). Plus de raccourci
+    /// clavier (bind F8 retiré). Auto-instancié au lancement, ne s'affiche que dans le hub (= quand
+    /// un HubAvatar.Local existe avec un familier équipé).
     /// </summary>
     public sealed class HubPetPlacementTuner : MonoBehaviour
     {
-        private const KeyCode ToggleKey = KeyCode.F8;
         private const float OffsetRange = 2f;
 
         private bool _open;
@@ -40,22 +39,15 @@ namespace Nymora.Hub
             DontDestroyOnLoad(go);
         }
 
-        private void Update()
-        {
-            if (Input.GetKeyDown(ToggleKey)) _open = !_open;
-        }
+        // Bind F8 retiré (1 juin) : plus d'ouverture par raccourci. Pour rouvrir l'outil de réglage,
+        // remettre un Update() avec `if (Input.GetKeyDown(KeyCode.F8)) _open = !_open;`.
 
         private void OnGUI()
         {
             // Rien à régler hors du hub (pas d'avatar local).
             if (HubAvatar.Local == null) return;
 
-            if (!_open)
-            {
-                GUI.Label(new Rect(20f, Screen.height - 28f, 360f, 22f),
-                          "<b>F8</b> : réglage familier");
-                return;
-            }
+            if (!_open) return;
             _window = GUILayout.Window(WindowId, _window, DrawWindow, "Réglage familier (hub)");
         }
 

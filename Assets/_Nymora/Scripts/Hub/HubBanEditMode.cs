@@ -50,10 +50,14 @@ namespace Nymora.Hub
 
         private void Update()
         {
+#if UNITY_EDITOR
+            // Bind 'B' actif uniquement en Éditeur : en build alpha un joueur ne doit
+            // jamais pouvoir basculer ce mode dev (qui couperait son propre input).
             if (Input.GetKeyDown(_toggleKey))
             {
                 SetEditMode(!_editMode);
             }
+#endif
 
             if (!_editMode) return;
 

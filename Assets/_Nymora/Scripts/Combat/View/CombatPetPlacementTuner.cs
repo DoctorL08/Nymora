@@ -1,5 +1,5 @@
-// Outil dev : Éditeur uniquement (F9 retiré des builds). Re-régler le placement via Play Mode
-// dans l'éditeur ; les valeurs persistent dans PetPlacementConfig.asset.
+// Outil dev : Éditeur uniquement (bind F9 retiré le 1 juin, voir plus bas pour réactiver).
+// Re-régler le placement via Play Mode dans l'éditeur ; les valeurs persistent dans PetPlacementConfig.asset.
 #if UNITY_EDITOR
 using Nymora.Core.ScriptableObjects;
 using UnityEngine;
@@ -17,12 +17,11 @@ namespace Nymora.Combat.View
     /// direction + taille). Tu bouges les curseurs, le familier se replace en direct (les valeurs
     /// mutent PetPlacementConfig.Instance, relu chaque frame par CombatPetView).
     ///
-    /// Outil dev uniquement (Éditeur / Development Build). Touche bascule : F9. Ne s'affiche que
+    /// Outil dev uniquement (Éditeur). Plus de raccourci clavier (bind F9 retiré). Ne s'affiche que
     /// dans une scène de combat. Le bloc de la direction courante du familier LOCAL est surligné.
     /// </summary>
     public sealed class CombatPetPlacementTuner : MonoBehaviour
     {
-        private const KeyCode ToggleKey = KeyCode.F9;
         private const float OffsetRange = 2f;
 
         private bool _open;
@@ -43,21 +42,14 @@ namespace Nymora.Combat.View
             return !string.IsNullOrEmpty(name) && name.Contains("Combat");
         }
 
-        private void Update()
-        {
-            if (Input.GetKeyDown(ToggleKey)) _open = !_open;
-        }
+        // Bind F9 retiré (1 juin) : plus d'ouverture par raccourci. Pour rouvrir l'outil de réglage,
+        // remettre un Update() avec `if (Input.GetKeyDown(KeyCode.F9)) _open = !_open;`.
 
         private void OnGUI()
         {
             if (!InCombatScene()) return;
 
-            if (!_open)
-            {
-                GUI.Label(new Rect(20f, Screen.height - 28f, 360f, 22f),
-                          "<b>F9</b> : réglage familier (combat)");
-                return;
-            }
+            if (!_open) return;
             _window = GUILayout.Window(WindowId, _window, DrawWindow, "Réglage familier (combat)");
         }
 
