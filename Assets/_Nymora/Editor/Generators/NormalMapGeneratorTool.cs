@@ -83,18 +83,34 @@ namespace Nymora.Editor.Generators
             string srcPath = AssetDatabase.GetAssetPath(_source);
             if (string.IsNullOrEmpty(srcPath)) { Debug.LogError("[NormalMap] Source sans chemin asset."); return; }
 
+            if (GenerateAndAssign(srcPath, _strength, _blur, _invertHeight, _flipY, out string outRel))
+            {
+                AssetDatabase.Refresh();
+                Debug.Log($"[NormalMap] OK : '{outRel}' généré et assigné en _NormalMap sur '{Path.GetFileName(srcPath)}'.");
+                EditorUtility.DisplayDialog("Normal Map",
+                    "Normal map générée et assignée.\n\n" +
+                    "Pour voir l'effet : les Light2D doivent avoir 'Normal Maps > Quality' sur Accurate/Fast.", "OK");
+            }
+        }
+
+        /// <summary>
+        /// Génère une normal map approximative (luminance -> Sobel) depuis le diffuse de
+        /// <paramref name="srcPath"/> et l'assigne en secondary texture "_NormalMap" sur ce sprite.
+        /// Réutilisable en batch. NE FAIT PAS de Refresh global (à l'appelant de batcher).
+        /// </summary>
+        public static bool GenerateAndAssign(string srcPath, float strength, int blur, bool invertHeight, bool flipY, out string outRel)
+        {
+            outRel = null;
             var srcImporter = AssetImporter.GetAtPath(srcPath) as TextureImporter;
-            if (srcImporter == null) { Debug.LogError("[NormalMap] La source n'est pas une texture importée."); return; }
-            if (srcImporter.textureType != TextureImporterType.Sprite)
-                Debug.LogWarning("[NormalMap] La source n'est pas un Sprite : la secondary texture _NormalMap " +
-                                 "ne sera prise en compte que sur un sprite lit. Continue quand même.");
+            if (srcImporter == null) { Debug.LogError($"[NormalMap] Pas une texture importée : {srcPath}"); return false; }
+            float _strength = strength; int _blur = blur; bool _invertHeight = invertHeight; bool _flipY = flipY;
 
             // Lecture des pixels SANS toucher l'import (on charge les octets du PNG du disque).
             string absSrc = ToAbsolute(srcPath);
-            if (!File.Exists(absSrc)) { Debug.LogError($"[NormalMap] Fichier introuvable : {absSrc}"); return; }
+            if (!File.Exists(absSrc)) { Debug.LogError($"[NormalMap] Fichier introuvable : {absSrc}"); return false; }
 
             var tmp = new Texture2D(2, 2, TextureFormat.RGBA32, false);
-            if (!tmp.LoadImage(File.ReadAllBytes(absSrc))) { Debug.LogError("[NormalMap] Échec lecture image."); Object.DestroyImmediate(tmp); return; }
+            if (!tmp.LoadImage(File.ReadAllBytes(absSrc))) { Debug.LogError("[NormalMap] Échec lecture image."); Object.DestroyImmediate(tmp); return false; }
 
             int w = tmp.width, h = tmp.height;
             Color32[] src = tmp.GetPixels32();
@@ -142,7 +158,7 @@ namespace Nymora.Editor.Generators
             byte[] png = outTex.EncodeToPNG();
             Object.DestroyImmediate(outTex);
 
-            string outRel = NormalPathFor(srcPath);
+            outRel = NormalPathFor(srcPath);
             File.WriteAllBytes(ToAbsolute(outRel), png);
             AssetDatabase.ImportAsset(outRel, ImportAssetOptions.ForceUpdate);
 
@@ -166,14 +182,7 @@ namespace Nymora.Editor.Generators
             list.Add(new SecondarySpriteTexture { name = "_NormalMap", texture = normalAsset });
             srcImporter.secondarySpriteTextures = list.ToArray();
             srcImporter.SaveAndReimport();
-
-            AssetDatabase.Refresh();
-            Debug.Log($"[NormalMap] OK : '{outRel}' généré ({w}x{h}) et assigné en _NormalMap sur '{Path.GetFileName(srcPath)}'. " +
-                      "Pense à activer Normal Maps > Quality sur les Light2D de la scène.");
-            EditorUtility.DisplayDialog("Normal Map",
-                "Normal map générée et assignée.\n\n" +
-                "Pour voir l'effet : sélectionne les Light2D de la scène (torches + lumière globale) et " +
-                "mets 'Normal Maps > Quality' sur Accurate (ou Fast).", "OK");
+            return true;
         }
 
         private static float[] BoxBlur(float[] s, int w, int h)

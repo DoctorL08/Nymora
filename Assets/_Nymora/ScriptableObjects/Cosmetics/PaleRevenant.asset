@@ -16,42 +16,38 @@ MonoBehaviour:
   ClassId: 5
   DisplayName: Pale Revenant
   IdleFrames:
-  - {fileID: -6587939598326571227, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: 5463501494099421334, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: 2132776576830819832, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: 2949274236843848475, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: 7153902576683147673, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: -8919885221772324986, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: -8919885221772324986, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
+  - {fileID: 1328252117106992369, guid: 1160810d5e6f7b944908683776995c89, type: 3}
+  - {fileID: 3802929461049852948, guid: 1160810d5e6f7b944908683776995c89, type: 3}
+  - {fileID: 8812907753666278022, guid: 1160810d5e6f7b944908683776995c89, type: 3}
+  - {fileID: -6381475113262316848, guid: 1160810d5e6f7b944908683776995c89, type: 3}
+  - {fileID: -8479992858749583252, guid: 1160810d5e6f7b944908683776995c89, type: 3}
+  - {fileID: -7049290700756271418, guid: 1160810d5e6f7b944908683776995c89, type: 3}
   IdleFramesNE:
-  - {fileID: -5420640758764576847, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: 5669255543599234706, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: 5052073988644261594, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: 6663718478544267375, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: 3466927111519646649, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: -6882192808094788963, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: -6882192808094788963, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
+  - {fileID: 3338925575780881399, guid: b3a9107913a293c4f96b2ead9a715ae2, type: 3}
+  - {fileID: 9018954817673033888, guid: b3a9107913a293c4f96b2ead9a715ae2, type: 3}
+  - {fileID: 1961909689044897137, guid: b3a9107913a293c4f96b2ead9a715ae2, type: 3}
+  - {fileID: 8338817440262188308, guid: b3a9107913a293c4f96b2ead9a715ae2, type: 3}
+  - {fileID: -7771897145821278185, guid: b3a9107913a293c4f96b2ead9a715ae2, type: 3}
+  - {fileID: -6613670367933225961, guid: b3a9107913a293c4f96b2ead9a715ae2, type: 3}
   IdleFps: 8
   WalkFrames:
-  - {fileID: 6781979241669221876, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: 1034204098156873122, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: 2157781882843760060, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: 4177190901811624681, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: -4069058725368436894, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: -9098025069482562725, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: -3552636805008128201, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: -5918169471134657681, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-  - {fileID: -5918169471134657681, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
+  - {fileID: -1684263906718242810, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+  - {fileID: 5561657291245834074, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+  - {fileID: -6205359557107362429, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+  - {fileID: 2575369598545582745, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+  - {fileID: 8299183924132334293, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+  - {fileID: 2394948930253182914, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+  - {fileID: 3168065129604074460, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+  - {fileID: -6503324440993320002, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
   WalkFramesNE:
-  - {fileID: -5873602071677458550, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: -1467747613026314956, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: -1763306088409802553, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: -7124175033240414919, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: 5037661828463627317, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: 1262073620751283342, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: -3647181938080423460, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: -762030702658583051, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
-  - {fileID: -762030702658583051, guid: 6eb490f9f7a44200b48e6338836ee845, type: 3}
+  - {fileID: -5907984957340748575, guid: 3ee1aa014a9a4f44a8fdb045826000fe, type: 3}
+  - {fileID: 6738723069756049342, guid: 3ee1aa014a9a4f44a8fdb045826000fe, type: 3}
+  - {fileID: 7532091298772099672, guid: 3ee1aa014a9a4f44a8fdb045826000fe, type: 3}
+  - {fileID: 864527091014207377, guid: 3ee1aa014a9a4f44a8fdb045826000fe, type: 3}
+  - {fileID: -2540506287818819611, guid: 3ee1aa014a9a4f44a8fdb045826000fe, type: 3}
+  - {fileID: 4600567609520448530, guid: 3ee1aa014a9a4f44a8fdb045826000fe, type: 3}
+  - {fileID: -5744509438806935156, guid: 3ee1aa014a9a4f44a8fdb045826000fe, type: 3}
+  - {fileID: -8650473863939413478, guid: 3ee1aa014a9a4f44a8fdb045826000fe, type: 3}
   WalkFps: 12
   HubVisualScale: 1
   HubVisualYOffset: 0
@@ -72,198 +68,180 @@ MonoBehaviour:
   - Stage: 0
     Anim: idle
     Frames:
-    - {fileID: -6587939598326571227, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 5463501494099421334, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 2132776576830819832, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 2949274236843848475, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 7153902576683147673, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -8919885221772324986, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -8919885221772324986, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
+    - {fileID: 1328252117106992369, guid: 1160810d5e6f7b944908683776995c89, type: 3}
+    - {fileID: 3802929461049852948, guid: 1160810d5e6f7b944908683776995c89, type: 3}
+    - {fileID: 8812907753666278022, guid: 1160810d5e6f7b944908683776995c89, type: 3}
+    - {fileID: -6381475113262316848, guid: 1160810d5e6f7b944908683776995c89, type: 3}
+    - {fileID: -8479992858749583252, guid: 1160810d5e6f7b944908683776995c89, type: 3}
+    - {fileID: -7049290700756271418, guid: 1160810d5e6f7b944908683776995c89, type: 3}
     Fps: 10
   - Stage: 0
     Anim: walk
     Frames:
-    - {fileID: 6781979241669221876, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 1034204098156873122, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 2157781882843760060, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 4177190901811624681, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -4069058725368436894, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -9098025069482562725, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -3552636805008128201, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -5918169471134657681, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -5918169471134657681, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
+    - {fileID: -1684263906718242810, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+    - {fileID: 5561657291245834074, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+    - {fileID: -6205359557107362429, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+    - {fileID: 2575369598545582745, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+    - {fileID: 8299183924132334293, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+    - {fileID: 2394948930253182914, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+    - {fileID: 3168065129604074460, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
+    - {fileID: -6503324440993320002, guid: d06abbb2f5bbc034c995274b21818c48, type: 3}
     Fps: 10.000004
   - Stage: 0
     Anim: cast
     Frames:
-    - {fileID: 8139639962722248519, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -58643852743165849, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 3266733948696732007, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -5489120710434187332, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 6576381955677475392, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 3457240960137798526, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 3457240960137798526, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
+    - {fileID: 5656260386009829249, guid: 1373e01f4faa9d745b1e9802c5a0cea8, type: 3}
+    - {fileID: -8273206519253469404, guid: 1373e01f4faa9d745b1e9802c5a0cea8, type: 3}
+    - {fileID: 4823472338017038432, guid: 1373e01f4faa9d745b1e9802c5a0cea8, type: 3}
+    - {fileID: -4841611110017033844, guid: 1373e01f4faa9d745b1e9802c5a0cea8, type: 3}
+    - {fileID: -772765025173895199, guid: 1373e01f4faa9d745b1e9802c5a0cea8, type: 3}
+    - {fileID: -1612166988167224518, guid: 1373e01f4faa9d745b1e9802c5a0cea8, type: 3}
     Fps: 10.00001
   - Stage: 0
     Anim: attack
     Frames:
-    - {fileID: 7582988308583052938, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 1177326900048415766, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -5855054090195578887, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -6181460585713214538, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -4324664626557202286, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -1494415900507051822, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -1494415900507051822, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
+    - {fileID: 3979038767358359600, guid: 199c9cf77bba5d94badbb3ad2931e4ad, type: 3}
+    - {fileID: 5806770449159727091, guid: 199c9cf77bba5d94badbb3ad2931e4ad, type: 3}
+    - {fileID: 5295712464516219909, guid: 199c9cf77bba5d94badbb3ad2931e4ad, type: 3}
+    - {fileID: 3894475647870159735, guid: 199c9cf77bba5d94badbb3ad2931e4ad, type: 3}
+    - {fileID: -4037027244900522844, guid: 199c9cf77bba5d94badbb3ad2931e4ad, type: 3}
+    - {fileID: 6068368774351963936, guid: 199c9cf77bba5d94badbb3ad2931e4ad, type: 3}
     Fps: 9.999998
   - Stage: 0
     Anim: hurt
     Frames:
-    - {fileID: -2318077980467680853, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -1456946002694770546, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -3660661014926002530, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -3964292998111248822, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -3964292998111248822, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
+    - {fileID: -10215239328376047, guid: 62e497e61a8ce244c91426a88de8a222, type: 3}
+    - {fileID: -2913482226774309387, guid: 62e497e61a8ce244c91426a88de8a222, type: 3}
+    - {fileID: 801315769877741305, guid: 62e497e61a8ce244c91426a88de8a222, type: 3}
+    - {fileID: 6101974686978220859, guid: 62e497e61a8ce244c91426a88de8a222, type: 3}
     Fps: 9.999986
   - Stage: 0
     Anim: death
     Frames:
-    - {fileID: 8483790729722564271, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: -9082419404026484997, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 1590347099353544395, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 6922679390134849828, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 6176165009740904663, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 7435616095048102144, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
-    - {fileID: 7435616095048102144, guid: b4a1c40ce2314833bf341fd7f5e9ccfd, type: 3}
+    - {fileID: -9076183224849760325, guid: bfd2841e3eace7743bd54b75668ca59f, type: 3}
+    - {fileID: -4784881147299092015, guid: bfd2841e3eace7743bd54b75668ca59f, type: 3}
+    - {fileID: 8714495526123399556, guid: bfd2841e3eace7743bd54b75668ca59f, type: 3}
+    - {fileID: 5015734414536856778, guid: bfd2841e3eace7743bd54b75668ca59f, type: 3}
+    - {fileID: 3349040144450225042, guid: bfd2841e3eace7743bd54b75668ca59f, type: 3}
+    - {fileID: 5734621478821968940, guid: bfd2841e3eace7743bd54b75668ca59f, type: 3}
     Fps: 10.00001
   - Stage: 1
     Anim: idle
     Frames:
-    - {fileID: 8291181492113712388, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 4914082927580514162, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 3755766962200877567, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 9100967797963625664, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 8800412649700954758, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 3432482182756979662, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 3432482182756979662, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
+    - {fileID: 8802622536533838325, guid: ff3054253054a0f4a97e06c26248f8ae, type: 3}
+    - {fileID: 5082123984520643558, guid: ff3054253054a0f4a97e06c26248f8ae, type: 3}
+    - {fileID: 7853134151106786380, guid: ff3054253054a0f4a97e06c26248f8ae, type: 3}
+    - {fileID: -6657713916585824099, guid: ff3054253054a0f4a97e06c26248f8ae, type: 3}
+    - {fileID: 8828563294059698129, guid: ff3054253054a0f4a97e06c26248f8ae, type: 3}
+    - {fileID: -6718001741351244640, guid: ff3054253054a0f4a97e06c26248f8ae, type: 3}
     Fps: 10
   - Stage: 1
     Anim: walk
     Frames:
-    - {fileID: 8626808541153716181, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 708034599464469823, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -6683873071368600564, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -7519812240691608575, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -7165893010851654615, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 6051960422763063243, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -167916965093522258, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 7324718255220891503, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 7324718255220891503, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
+    - {fileID: 4843194669001286582, guid: 6a843414992182e479508807de23ac3e, type: 3}
+    - {fileID: 8796199797642938116, guid: 6a843414992182e479508807de23ac3e, type: 3}
+    - {fileID: -1027328545948994425, guid: 6a843414992182e479508807de23ac3e, type: 3}
+    - {fileID: -8223424840130404458, guid: 6a843414992182e479508807de23ac3e, type: 3}
+    - {fileID: -3040554779185021627, guid: 6a843414992182e479508807de23ac3e, type: 3}
+    - {fileID: -9087806617831345304, guid: 6a843414992182e479508807de23ac3e, type: 3}
+    - {fileID: -4267211093636800901, guid: 6a843414992182e479508807de23ac3e, type: 3}
+    - {fileID: 4516201889856403590, guid: 6a843414992182e479508807de23ac3e, type: 3}
     Fps: 10.000004
   - Stage: 1
     Anim: cast
     Frames:
-    - {fileID: 1588375788915370207, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -5754214713444994150, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 8991684162801330297, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 3259387683774366664, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -7624609118958941329, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 2707089574919845176, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 2707089574919845176, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
+    - {fileID: 6879988860907385625, guid: 9c02b7a31ca4ce04c8c98842b3e488a0, type: 3}
+    - {fileID: -2811115520018337386, guid: 9c02b7a31ca4ce04c8c98842b3e488a0, type: 3}
+    - {fileID: 1244108906485643808, guid: 9c02b7a31ca4ce04c8c98842b3e488a0, type: 3}
+    - {fileID: -2179825694294323301, guid: 9c02b7a31ca4ce04c8c98842b3e488a0, type: 3}
+    - {fileID: -4243693672214319245, guid: 9c02b7a31ca4ce04c8c98842b3e488a0, type: 3}
+    - {fileID: -5730687745805504857, guid: 9c02b7a31ca4ce04c8c98842b3e488a0, type: 3}
     Fps: 10.00001
   - Stage: 1
     Anim: attack
     Frames:
-    - {fileID: 4118350255159629215, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -7506847344546503160, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -4475380361081744177, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 3932248066931473878, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -4789048185840195738, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -834094731390107637, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -834094731390107637, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
+    - {fileID: -4599475488652476943, guid: edab9cf085d6a914b83eb2912b1bc6e7, type: 3}
+    - {fileID: -7193321502538148306, guid: edab9cf085d6a914b83eb2912b1bc6e7, type: 3}
+    - {fileID: -1538214949817777703, guid: edab9cf085d6a914b83eb2912b1bc6e7, type: 3}
+    - {fileID: 2056294494386317683, guid: edab9cf085d6a914b83eb2912b1bc6e7, type: 3}
+    - {fileID: 7519044018859110848, guid: edab9cf085d6a914b83eb2912b1bc6e7, type: 3}
+    - {fileID: 8503792091132834733, guid: edab9cf085d6a914b83eb2912b1bc6e7, type: 3}
     Fps: 9.999998
   - Stage: 1
     Anim: hurt
     Frames:
-    - {fileID: -6083698260049059122, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -2974335279421445304, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -3879697344994362870, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -4468867913135807825, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -4468867913135807825, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
+    - {fileID: -6127662460473221435, guid: 0c139644c232b4740b1cd40ec783edad, type: 3}
+    - {fileID: -4534513457229572962, guid: 0c139644c232b4740b1cd40ec783edad, type: 3}
+    - {fileID: -7476028361801809086, guid: 0c139644c232b4740b1cd40ec783edad, type: 3}
+    - {fileID: -6275128006921185996, guid: 0c139644c232b4740b1cd40ec783edad, type: 3}
     Fps: 9.999986
   - Stage: 1
     Anim: death
     Frames:
-    - {fileID: -8837138620254497149, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -4538606679614764202, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 6079689930076724056, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -422319693683923769, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: 602390702644702933, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -8018795427845867241, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
-    - {fileID: -8018795427845867241, guid: 42b4bf0ff39646aea9da4f7df51f460d, type: 3}
+    - {fileID: 8434011933449560961, guid: 3dfec6fd7b0deb640a7c5449c55b4063, type: 3}
+    - {fileID: 3055296297971413934, guid: 3dfec6fd7b0deb640a7c5449c55b4063, type: 3}
+    - {fileID: 2744465935828641229, guid: 3dfec6fd7b0deb640a7c5449c55b4063, type: 3}
+    - {fileID: -7074236880198025730, guid: 3dfec6fd7b0deb640a7c5449c55b4063, type: 3}
+    - {fileID: 1990382491315215954, guid: 3dfec6fd7b0deb640a7c5449c55b4063, type: 3}
+    - {fileID: 7516225260420338209, guid: 3dfec6fd7b0deb640a7c5449c55b4063, type: 3}
     Fps: 10.00001
   - Stage: 2
     Anim: idle
     Frames:
-    - {fileID: 8375413768253094538, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 3505802407378687687, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 1433148755273740818, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -6343232200964424359, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -6887760812220900557, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -8397813862602054408, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -8397813862602054408, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
+    - {fileID: 128635018634536367, guid: 5452f1be7a5ddb34084d3b834430ef0a, type: 3}
+    - {fileID: 5170733670169804074, guid: 5452f1be7a5ddb34084d3b834430ef0a, type: 3}
+    - {fileID: -8900774010043985178, guid: 5452f1be7a5ddb34084d3b834430ef0a, type: 3}
+    - {fileID: 3183727002018170756, guid: 5452f1be7a5ddb34084d3b834430ef0a, type: 3}
+    - {fileID: 4186005600599677306, guid: 5452f1be7a5ddb34084d3b834430ef0a, type: 3}
+    - {fileID: 3333124032969906803, guid: 5452f1be7a5ddb34084d3b834430ef0a, type: 3}
     Fps: 10
   - Stage: 2
     Anim: walk
     Frames:
-    - {fileID: -3286433893844049858, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 4723400464019985105, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 8162385631452957135, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 6513230364396890295, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 4906554490094511517, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 4252137594809960889, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 7524249188891669578, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 7558578958226098969, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 7558578958226098969, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
+    - {fileID: -4521094556760964169, guid: 2a0593600c4dee642a6cb2e5da2b7102, type: 3}
+    - {fileID: 1764136843698940018, guid: 2a0593600c4dee642a6cb2e5da2b7102, type: 3}
+    - {fileID: 1676643552911697036, guid: 2a0593600c4dee642a6cb2e5da2b7102, type: 3}
+    - {fileID: -1370490083255686561, guid: 2a0593600c4dee642a6cb2e5da2b7102, type: 3}
+    - {fileID: -5968097907114815211, guid: 2a0593600c4dee642a6cb2e5da2b7102, type: 3}
+    - {fileID: -6873533778741499562, guid: 2a0593600c4dee642a6cb2e5da2b7102, type: 3}
+    - {fileID: 2367765520179812509, guid: 2a0593600c4dee642a6cb2e5da2b7102, type: 3}
+    - {fileID: -331813240932556698, guid: 2a0593600c4dee642a6cb2e5da2b7102, type: 3}
     Fps: 10.000004
   - Stage: 2
     Anim: cast
     Frames:
-    - {fileID: 885802568661342963, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -6378927841961903023, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 2581048158083618585, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -8241966612546328510, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -5438476179161904922, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -4765561470130761841, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -4765561470130761841, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
+    - {fileID: -796915569473454482, guid: f412030199928e0408c9eeee26542269, type: 3}
+    - {fileID: -5465413127051028802, guid: f412030199928e0408c9eeee26542269, type: 3}
+    - {fileID: 1504122674939305266, guid: f412030199928e0408c9eeee26542269, type: 3}
+    - {fileID: 8233670856178032486, guid: f412030199928e0408c9eeee26542269, type: 3}
+    - {fileID: -7111514714309686791, guid: f412030199928e0408c9eeee26542269, type: 3}
+    - {fileID: -5932419129963744647, guid: f412030199928e0408c9eeee26542269, type: 3}
     Fps: 10.00001
   - Stage: 2
     Anim: attack
     Frames:
-    - {fileID: -966612302133151934, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 6781980429233274087, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 1244897040746629563, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 7589976166236586289, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -3428798021937642997, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -1258581966165568967, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -1258581966165568967, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
+    - {fileID: -228834572831677367, guid: f5e04cb8dfaa4104fba0335dc1317036, type: 3}
+    - {fileID: -5291091080933902967, guid: f5e04cb8dfaa4104fba0335dc1317036, type: 3}
+    - {fileID: 8757945253973410168, guid: f5e04cb8dfaa4104fba0335dc1317036, type: 3}
+    - {fileID: 1021023257627854888, guid: f5e04cb8dfaa4104fba0335dc1317036, type: 3}
+    - {fileID: -613199554000209068, guid: f5e04cb8dfaa4104fba0335dc1317036, type: 3}
+    - {fileID: -5055772970126945267, guid: f5e04cb8dfaa4104fba0335dc1317036, type: 3}
     Fps: 9.999998
   - Stage: 2
     Anim: hurt
     Frames:
-    - {fileID: -9042873598015163684, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -3396834491483708330, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -5499963403635206350, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -7977033609444936212, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -7977033609444936212, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
+    - {fileID: 4512961955951788195, guid: 72e31c6cb833542448faabea1269e744, type: 3}
+    - {fileID: -4096292030481424278, guid: 72e31c6cb833542448faabea1269e744, type: 3}
+    - {fileID: 7115546589845694471, guid: 72e31c6cb833542448faabea1269e744, type: 3}
+    - {fileID: -5930249813951536051, guid: 72e31c6cb833542448faabea1269e744, type: 3}
     Fps: 9.999986
   - Stage: 2
     Anim: death
     Frames:
-    - {fileID: -5702298059822057836, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -8554641769046648102, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -6621127686451832430, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -5781369417165407594, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: 4539554751478794944, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -3310022063998354781, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
-    - {fileID: -3310022063998354781, guid: f1a8b147fa744b5c8587ec45aad0aeba, type: 3}
+    - {fileID: -2487542325741153579, guid: 2d48098bf4cb1034185b4e89d48ff961, type: 3}
+    - {fileID: 3422865680709184521, guid: 2d48098bf4cb1034185b4e89d48ff961, type: 3}
+    - {fileID: 9205210074961087361, guid: 2d48098bf4cb1034185b4e89d48ff961, type: 3}
+    - {fileID: 315095941473184045, guid: 2d48098bf4cb1034185b4e89d48ff961, type: 3}
+    - {fileID: 2907816555078624693, guid: 2d48098bf4cb1034185b4e89d48ff961, type: 3}
+    - {fileID: 6044341941924634816, guid: 2d48098bf4cb1034185b4e89d48ff961, type: 3}
     Fps: 10.00001

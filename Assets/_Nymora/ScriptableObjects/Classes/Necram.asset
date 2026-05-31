@@ -29,7 +29,11 @@ MonoBehaviour:
   ResourceDescription: "PUTREFACTION \u2014 densite toxique. Generee par les ticks
     venin sur les ennemis et les marques actives. Cap 6."
   PassiveName: La Floraison
-  PassiveDescription: 'Indexee sur la DENSITE globale de marques de venin actives (toutes cibles confondues). Les ticks de venin frappent a chaque debut de sub-turn. A partir de 4 marques actives : tu regeneres +10 HP par marque et un halo toxique (rayon 3 cases) inflige 20 degats a chaque ennemi qui commence son tour pres de toi. Plus la map est infectee, plus tu domines.'
+  PassiveDescription: 'Indexee sur la DENSITE globale de marques de venin actives
+    (toutes cibles confondues). Les ticks de venin frappent a chaque debut de sub-turn.
+    A partir de 4 marques actives : tu regeneres +10 HP par marque et un halo toxique
+    (rayon 3 cases) inflige 20 degats a chaque ennemi qui commence son tour pres
+    de toi. Plus la map est infectee, plus tu domines.'
   SignatureName: Virus Fatal
   SignatureCooldownTurns: 4
   SignatureDescription: Sort signature debloque a 6 PT. Detone tous les ticks. Cooldown
@@ -38,43 +42,39 @@ MonoBehaviour:
   PortraitSprite: {fileID: 0}
   IdleAnimator: {fileID: 9100000, guid: b0cddcb7385628140a4a658f15db5fb3, type: 2}
   IdleFrames:
-  - {fileID: 8688105048043780050, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: 8391964987629237935, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: 5102011120509953714, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: -9053530777446340445, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: 3535089121496939410, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: 4432242761166045653, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: 4432242761166045653, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: 1328252117106992369, guid: 972d72f89eaacdc41840c55529afad5a, type: 3}
+  - {fileID: 3802929461049852948, guid: 972d72f89eaacdc41840c55529afad5a, type: 3}
+  - {fileID: 8812907753666278022, guid: 972d72f89eaacdc41840c55529afad5a, type: 3}
+  - {fileID: -6381475113262316848, guid: 972d72f89eaacdc41840c55529afad5a, type: 3}
+  - {fileID: -8479992858749583252, guid: 972d72f89eaacdc41840c55529afad5a, type: 3}
+  - {fileID: -7049290700756271418, guid: 972d72f89eaacdc41840c55529afad5a, type: 3}
   IdleAnimatorNE: {fileID: 9100000, guid: b06704a6ec7b8b34f8db643a755a3825, type: 2}
   IdleFramesNE:
-  - {fileID: 1771592541285126016, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: 7827430032643956568, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: -2260456592277317936, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: -3584162232821448684, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: -2346372951287989206, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: -8159171006317550492, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: -8159171006317550492, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: 3338925575780881399, guid: 1be8e8c713ff15b429c72025427d37ea, type: 3}
+  - {fileID: 9018954817673033888, guid: 1be8e8c713ff15b429c72025427d37ea, type: 3}
+  - {fileID: 1961909689044897137, guid: 1be8e8c713ff15b429c72025427d37ea, type: 3}
+  - {fileID: 8338817440262188308, guid: 1be8e8c713ff15b429c72025427d37ea, type: 3}
+  - {fileID: -7771897145821278185, guid: 1be8e8c713ff15b429c72025427d37ea, type: 3}
+  - {fileID: -6613670367933225961, guid: 1be8e8c713ff15b429c72025427d37ea, type: 3}
   IdleFps: 8
   WalkFrames:
-  - {fileID: 4341301761379391181, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: -6172382196488765976, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: 4886649683867216303, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: 8082645681799092258, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: 4462960183482987115, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: 2559730859916465198, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: -4223781363098678711, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: -2143355893913268051, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
-  - {fileID: -2143355893913268051, guid: 65cdd2b79c0818a45bc9f58ce4f36be9, type: 3}
+  - {fileID: -1684263906718242810, guid: ab368a53a7046e346b14da8109539e5d, type: 3}
+  - {fileID: 5561657291245834074, guid: ab368a53a7046e346b14da8109539e5d, type: 3}
+  - {fileID: -6205359557107362429, guid: ab368a53a7046e346b14da8109539e5d, type: 3}
+  - {fileID: 2575369598545582745, guid: ab368a53a7046e346b14da8109539e5d, type: 3}
+  - {fileID: 8299183924132334293, guid: ab368a53a7046e346b14da8109539e5d, type: 3}
+  - {fileID: 2394948930253182914, guid: ab368a53a7046e346b14da8109539e5d, type: 3}
+  - {fileID: 3168065129604074460, guid: ab368a53a7046e346b14da8109539e5d, type: 3}
+  - {fileID: -6503324440993320002, guid: ab368a53a7046e346b14da8109539e5d, type: 3}
   WalkFramesNE:
-  - {fileID: -6709055566896135284, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: 6718924021487578119, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: -6783327652619774365, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: -6587438602471893325, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: 3375556923155300082, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: 3222055176055669548, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: -6886271857918159362, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: 7472088192781586260, guid: f035761b654fd37419a5b16f552d7611, type: 3}
-  - {fileID: 7472088192781586260, guid: f035761b654fd37419a5b16f552d7611, type: 3}
+  - {fileID: -5907984957340748575, guid: 2791a69fbd6137d4299d1d79648e9b4b, type: 3}
+  - {fileID: 6738723069756049342, guid: 2791a69fbd6137d4299d1d79648e9b4b, type: 3}
+  - {fileID: 7532091298772099672, guid: 2791a69fbd6137d4299d1d79648e9b4b, type: 3}
+  - {fileID: 864527091014207377, guid: 2791a69fbd6137d4299d1d79648e9b4b, type: 3}
+  - {fileID: -2540506287818819611, guid: 2791a69fbd6137d4299d1d79648e9b4b, type: 3}
+  - {fileID: 4600567609520448530, guid: 2791a69fbd6137d4299d1d79648e9b4b, type: 3}
+  - {fileID: -5744509438806935156, guid: 2791a69fbd6137d4299d1d79648e9b4b, type: 3}
+  - {fileID: -8650473863939413478, guid: 2791a69fbd6137d4299d1d79648e9b4b, type: 3}
   WalkFps: 12
   HubVisualScale: 1
   HubVisualYOffset: -0.2

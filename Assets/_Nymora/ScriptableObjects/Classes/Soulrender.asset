@@ -29,7 +29,12 @@ MonoBehaviour:
     ET en infliger en melee genere de la ressource. Aura rouge progressive, fissures
     ecarlates a 5/5."
   PassiveName: L'Appel du Sang
-  PassiveDescription: 'Montee non-lineaire indexee sur les PV de la CIBLE (pas de palier de jauge) : cible >70% PV, aucun bonus. Cible <70% PV (Marquage) : tous tes sorts coutent -1 PA (min 1). Cible <40% PV (Rage Ouverte) : tes sorts de melee ignorent 50% du bouclier de la cible. Cible <20% PV (Le Cri) : du Sang Coagule nait en croix de 5 cases autour de toi (30 degats par debut de tour, pendant 2 tours).'
+  PassiveDescription: 'Montee non-lineaire indexee sur les PV de la CIBLE (pas de
+    palier de jauge) : cible >70% PV, aucun bonus. Cible <70% PV (Marquage) : tous
+    tes sorts coutent -1 PA (min 1). Cible <40% PV (Rage Ouverte) : tes sorts de
+    melee ignorent 50% du bouclier de la cible. Cible <20% PV (Le Cri) : du Sang
+    Coagule nait en croix de 5 cases autour de toi (30 degats par debut de tour,
+    pendant 2 tours).'
   SignatureName: "Ame Lac\xE9r\xE9ee"
   SignatureCooldownTurns: 4
   SignatureDescription: Sort signature debloque a 5 HG. Cooldown 4 tours apres usage.
@@ -37,41 +42,39 @@ MonoBehaviour:
   PortraitSprite: {fileID: 0}
   IdleAnimator: {fileID: 9100000, guid: d13a403b88b93914582d12afd7a827d7, type: 2}
   IdleFrames:
-  - {fileID: -1836617762641228016, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: 4950185013067284215, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: -5503897814630568135, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: -1668925371913241222, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: 1983950279599904838, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: -2151200829823093638, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: -2151200829823093638, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: 1328252117106992369, guid: ab127c2778a5ddc4eb80051660f08a5f, type: 3}
+  - {fileID: 3802929461049852948, guid: ab127c2778a5ddc4eb80051660f08a5f, type: 3}
+  - {fileID: 8812907753666278022, guid: ab127c2778a5ddc4eb80051660f08a5f, type: 3}
+  - {fileID: -6381475113262316848, guid: ab127c2778a5ddc4eb80051660f08a5f, type: 3}
+  - {fileID: -8479992858749583252, guid: ab127c2778a5ddc4eb80051660f08a5f, type: 3}
+  - {fileID: -7049290700756271418, guid: ab127c2778a5ddc4eb80051660f08a5f, type: 3}
   IdleAnimatorNE: {fileID: 9100000, guid: 3ef06f216e43c3c48b9e7b407099ef19, type: 2}
   IdleFramesNE:
-  - {fileID: 2951489015826447441, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: -8314261729028714520, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: -5136492992612832560, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: 7749788942978969236, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: 7363768535229500085, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: 8818303328780586550, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: 8818303328780586550, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: 3338925575780881399, guid: d5357a66b89552e4d98b9315d3cc3385, type: 3}
+  - {fileID: 9018954817673033888, guid: d5357a66b89552e4d98b9315d3cc3385, type: 3}
+  - {fileID: 1961909689044897137, guid: d5357a66b89552e4d98b9315d3cc3385, type: 3}
+  - {fileID: 8338817440262188308, guid: d5357a66b89552e4d98b9315d3cc3385, type: 3}
+  - {fileID: -7771897145821278185, guid: d5357a66b89552e4d98b9315d3cc3385, type: 3}
+  - {fileID: -6613670367933225961, guid: d5357a66b89552e4d98b9315d3cc3385, type: 3}
   IdleFps: 8
   WalkFrames:
-  - {fileID: -5459114769792008005, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: -8222626774790121932, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: 8292690189185122050, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: 2547020682927661195, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: -316837753679656009, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: -1281968532950062179, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: 5255071752627350974, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: -4440972989502367379, guid: 99282b85cd17c514396edddb88668d33, type: 3}
-  - {fileID: -4440972989502367379, guid: 99282b85cd17c514396edddb88668d33, type: 3}
+  - {fileID: -1684263906718242810, guid: bdfb31a3f70577440b98139680dbec45, type: 3}
+  - {fileID: 5561657291245834074, guid: bdfb31a3f70577440b98139680dbec45, type: 3}
+  - {fileID: -6205359557107362429, guid: bdfb31a3f70577440b98139680dbec45, type: 3}
+  - {fileID: 2575369598545582745, guid: bdfb31a3f70577440b98139680dbec45, type: 3}
+  - {fileID: 8299183924132334293, guid: bdfb31a3f70577440b98139680dbec45, type: 3}
+  - {fileID: 2394948930253182914, guid: bdfb31a3f70577440b98139680dbec45, type: 3}
+  - {fileID: 3168065129604074460, guid: bdfb31a3f70577440b98139680dbec45, type: 3}
+  - {fileID: -6503324440993320002, guid: bdfb31a3f70577440b98139680dbec45, type: 3}
   WalkFramesNE:
-  - {fileID: -5637981500498266662, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: -5076385693533558349, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: 7790823846323372168, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: -757929190570929572, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: -844642248774021940, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: 1968300200330333153, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: 8277269445064771619, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: -1146898620260036135, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
-  - {fileID: -1146898620260036135, guid: 2b52339f21391a34ebeaf79d4428bd57, type: 3}
+  - {fileID: -5907984957340748575, guid: 4a10611cda496d749bb74e94a182b70d, type: 3}
+  - {fileID: 6738723069756049342, guid: 4a10611cda496d749bb74e94a182b70d, type: 3}
+  - {fileID: 7532091298772099672, guid: 4a10611cda496d749bb74e94a182b70d, type: 3}
+  - {fileID: 864527091014207377, guid: 4a10611cda496d749bb74e94a182b70d, type: 3}
+  - {fileID: -2540506287818819611, guid: 4a10611cda496d749bb74e94a182b70d, type: 3}
+  - {fileID: 4600567609520448530, guid: 4a10611cda496d749bb74e94a182b70d, type: 3}
+  - {fileID: -5744509438806935156, guid: 4a10611cda496d749bb74e94a182b70d, type: 3}
+  - {fileID: -8650473863939413478, guid: 4a10611cda496d749bb74e94a182b70d, type: 3}
   WalkFps: 12
+  HubVisualScale: 1
+  HubVisualYOffset: 0

@@ -29,7 +29,12 @@ MonoBehaviour:
   ResourceDescription: "PRESCIENCE \u2014 generee par la pose et la consommation
     de marques (Traque, Voile, Empreinte). Cap 4."
   PassiveName: L'Oeil qui n'est pas
-  PassiveDescription: 'Pas de palier de jauge : ta force vient des MARQUES posees (1 seule marque active par cible). TRAQUE (sur une unite) : tes sorts sur cette cible ignorent 30% de ses boucliers et tu la lis mieux. VOILE (sur une case) : la case devient du brouillard pour l''adversaire jusqu''a ce qu''une unite y entre (toi, tu la vois). EMPREINTE (sur une unite) : tu vois son sillage pendant 1 tour. L''avantage est informationnel : vous ne voyez pas la meme grille.'
+  PassiveDescription: 'Pas de palier de jauge : ta force vient des MARQUES posees
+    (1 seule marque active par cible). TRAQUE (sur une unite) : tes sorts sur cette
+    cible ignorent 30% de ses boucliers et tu la lis mieux. VOILE (sur une case)
+    : la case devient du brouillard pour l''adversaire jusqu''a ce qu''une unite
+    y entre (toi, tu la vois). EMPREINTE (sur une unite) : tu vois son sillage pendant
+    1 tour. L''avantage est informationnel : vous ne voyez pas la meme grille.'
   SignatureName: Traquenard
   SignatureCooldownTurns: 4
   SignatureDescription: Sort signature debloque a 4 PR. Cooldown 4 tours apres usage.
@@ -37,41 +42,39 @@ MonoBehaviour:
   PortraitSprite: {fileID: 21300000, guid: 2dbbd3972343fde4b81be760fc498e48, type: 3}
   IdleAnimator: {fileID: 9100000, guid: c2d62dc7c3e820a4ea3961a373c865f1, type: 2}
   IdleFrames:
-  - {fileID: -270124879904399860, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: -5162803960744921974, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: 5852929979676693351, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: -8346069125417458380, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: -6399674374516398150, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: -7852678982740560581, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: -7852678982740560581, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
+  - {fileID: 1328252117106992369, guid: cf6d6fb761e577d499155f8533fbf0c6, type: 3}
+  - {fileID: 3802929461049852948, guid: cf6d6fb761e577d499155f8533fbf0c6, type: 3}
+  - {fileID: 8812907753666278022, guid: cf6d6fb761e577d499155f8533fbf0c6, type: 3}
+  - {fileID: -6381475113262316848, guid: cf6d6fb761e577d499155f8533fbf0c6, type: 3}
+  - {fileID: -8479992858749583252, guid: cf6d6fb761e577d499155f8533fbf0c6, type: 3}
+  - {fileID: -7049290700756271418, guid: cf6d6fb761e577d499155f8533fbf0c6, type: 3}
   IdleAnimatorNE: {fileID: 9100000, guid: 405010bb58d12274595173c63426b9fb, type: 2}
   IdleFramesNE:
-  - {fileID: -8848003822099424667, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: 5280463383537521050, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: 2892093956509833357, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: -309557327785684205, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: -7871539133943688554, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: 8514900279859124933, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: 8514900279859124933, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
+  - {fileID: 3338925575780881399, guid: 01acda657dc3b364786606e38bcebb0e, type: 3}
+  - {fileID: 9018954817673033888, guid: 01acda657dc3b364786606e38bcebb0e, type: 3}
+  - {fileID: 1961909689044897137, guid: 01acda657dc3b364786606e38bcebb0e, type: 3}
+  - {fileID: 8338817440262188308, guid: 01acda657dc3b364786606e38bcebb0e, type: 3}
+  - {fileID: -7771897145821278185, guid: 01acda657dc3b364786606e38bcebb0e, type: 3}
+  - {fileID: -6613670367933225961, guid: 01acda657dc3b364786606e38bcebb0e, type: 3}
   IdleFps: 8
   WalkFrames:
-  - {fileID: 7388140166280358039, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: 6693093342438054058, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: 6661289405766224613, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: 2061624024599957936, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: 4865211739126051871, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: 1326417757129824443, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: -525278349695677911, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: 4190405072533313168, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
-  - {fileID: 4190405072533313168, guid: 9f6bd8f83d19b0e4bb8e675ee1699904, type: 3}
+  - {fileID: -1684263906718242810, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
+  - {fileID: 5561657291245834074, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
+  - {fileID: -6205359557107362429, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
+  - {fileID: 2575369598545582745, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
+  - {fileID: 8299183924132334293, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
+  - {fileID: 2394948930253182914, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
+  - {fileID: 3168065129604074460, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
+  - {fileID: -6503324440993320002, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
   WalkFramesNE:
-  - {fileID: 5562421791641771954, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: 7007583325553518808, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: -4589726922509312682, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: -3486786213025115938, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: -1886501446605210403, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: -8085729599844166207, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: -7264289406702756587, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: 7444973004054514245, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
-  - {fileID: 7444973004054514245, guid: 98eb4711a19ffdc448ee6e3cd7b78265, type: 3}
+  - {fileID: -5907984957340748575, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
+  - {fileID: 6738723069756049342, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
+  - {fileID: 7532091298772099672, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
+  - {fileID: 864527091014207377, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
+  - {fileID: -2540506287818819611, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
+  - {fileID: 4600567609520448530, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
+  - {fileID: -5744509438806935156, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
+  - {fileID: -8650473863939413478, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
   WalkFps: 12
+  HubVisualScale: 1
+  HubVisualYOffset: 0

@@ -521,7 +521,14 @@ namespace Nymora.Combat.View
                 var spellId = combatant.LastCastSpellId;
                 if (SpellRegistry.TryGet(spellId, out var def))
                 {
-                    if (def.RangeMax <= 1)
+                    // POLISH KYAMI : l'anim se choisit sur « inflige des dégâts directs à une cible »
+                    // (def.IsOffensive), plus sur la portée. Dégâts directs -> Attack ; self / marque /
+                    // piège / heal / déplacement / utilitaire -> Cast.
+                    // Exception : Choc Sismique inflige des dégâts mais porte IsOffensive=0 (bypass de la
+                    // damage loop standard, dmg appliqué en handler custom) -> forcé en Attack ici.
+                    bool dealsDirectDamage = def.IsOffensive == 1
+                                             || spellId == SpellId.ColossarChocSismique;
+                    if (dealsDirectDamage)
                     {
                         view.TriggerAttack();
                     }
