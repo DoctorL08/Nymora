@@ -15,6 +15,11 @@ namespace Nymora.Hub
     {
         public const int MaxLines = 120;
 
+        // Journal de combat (31 mai) : les lignes poussees pendant un match sont prefixees d'un
+        // espace de largeur nulle (invisible en TMP) pour pouvoir les PURGER au retour hub sans
+        // toucher au chat social. Cf AppendCombat / PurgeCombat.
+        public const char CombatMarker = '​';
+
         public static readonly List<string> Global = new List<string>();
         public static readonly List<string> Private = new List<string>();
         public static readonly List<string> Clan = new List<string>();
@@ -34,6 +39,18 @@ namespace Nymora.Hub
             var l = For(tab);
             l.Add(line);
             if (l.Count > MaxLines) l.RemoveRange(0, l.Count - MaxLines);
+        }
+
+        /// <summary>Ajoute une ligne de JOURNAL DE COMBAT dans l'onglet Global (taguee pour purge).</summary>
+        public static void AppendCombat(string line)
+        {
+            Append(HubChatUI.ChatTab.Global, CombatMarker + line);
+        }
+
+        /// <summary>Retire toutes les lignes de combat de l'onglet Global (appele au retour hub).</summary>
+        public static void PurgeCombat()
+        {
+            Global.RemoveAll(l => l.Length > 0 && l[0] == CombatMarker);
         }
     }
 }

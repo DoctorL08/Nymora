@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Nymora.Core.Data;
 using Nymora.Hub.Menu;
 using TMPro;
 using UnityEngine;
@@ -27,6 +28,11 @@ namespace Nymora.Hub
 
         [Header("Config")]
         [SerializeField] private string _channel = "global";
+
+        [Tooltip("Interligne du fil de chat (lineSpacing TMP). Negatif = plus serre. " +
+                 "Resserre l'affichage du journal de combat dense. 0 = defaut TMP ; en dessous " +
+                 "de ~-12 les lignes commencent a se chevaucher selon la taille de police.")]
+        [SerializeField] private float _historyLineSpacing = 8f;
 
         [Header("Tab style")]
         [SerializeField] private Color _tabActiveColor = new Color(0.25f, 0.4f, 0.65f, 1f);
@@ -84,9 +90,17 @@ namespace Nymora.Hub
             // sinon elle se duplique à chaque retour dans le hub.
             if (ChatFeed.Global.Count == 0)
                 AppendSystemLine(ChatTab.Global, "--- Chat connecting ---");
+            // Journal de combat (31 mai) : au retour dans le hub (toute scene hors combat), purge
+            // les lignes de combat de la session precedente (poussees dans l'onglet Global pendant
+            // le match). On compare le nom de la scene de CE panel (combat = 30/33/40_Combat...).
+            if (!gameObject.scene.name.Contains("Combat"))
+                ChatFeed.PurgeCombat();
+            // Abonnement au journal de combat (relais Core, alimente par CombatChatLogView).
+            CombatLogRelay.OnLine += HandleCombatLine;
             EnsureTabSprites();
             UpdateTabStyles();
             EnsureInputBarStyle();
+            if (_historyText != null) _historyText.lineSpacing = _historyLineSpacing;
             RefreshHistoryText();
             EnsureHistoryClickHandler();
             EnsureBadges();
@@ -126,6 +140,14 @@ namespace Nymora.Hub
                 HubChatClient.Instance.OnModerationNotice -= HandleModerationNotice;
             }
             if (HubClanPanel.Instance != null) HubClanPanel.Instance.OnClanStateChanged -= TryJoinClanChannel;
+            CombatLogRelay.OnLine -= HandleCombatLine;
+        }
+
+        // Journal de combat -> onglet Global (lignes taguees pour purge au retour hub).
+        private void HandleCombatLine(string richLine)
+        {
+            ChatFeed.AppendCombat(richLine);
+            if (_activeTab == ChatTab.Global) RefreshHistoryText();
         }
 
         // Rejoint le canal de chat du clan courant (clan:<clanId>) si on est dans un clan.
