@@ -203,6 +203,7 @@ namespace Nymora.Combat.View.HUD
 
             labelTmp = MakeText(go.transform, "Label", font, 22f, FontStyles.Bold,
                 TextAlignmentOptions.Center, 300f, false);
+            labelTmp.text = label;
             labelTmp.color = primary ? Color.white : CombatUiKit.TextPrimary;
             var lrt = labelTmp.rectTransform;
             lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
