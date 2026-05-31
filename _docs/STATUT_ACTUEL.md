@@ -13,6 +13,10 @@
 
 ---
 
+**✅ CHANTIER « POLISH KYAMI » CLÔTURÉ (31 mai 2026).** La liste `Downloads/Polish_Kyami/POLISH DE KYAMI.txt` (11 tâches) est **entièrement traitée** : classement, spritesheets (5 classes + skins), normal maps (maps Kyami + stopgap auto-gen persos), torches hub, shaders maps (= normals), mapping attack/cast, preview skin Colossar stage 1, + pack LUT x10. **On ne reprend plus ce chantier comme tel.** Reliquats passés en **backlog** (à piocher quand on veut, hors phase Kyami) : figer un grade LUT · **ré-export normals propres par Kyami** (persos/skins/familiers) · normals familiers · tuning fin des lights (`LightTuner`). **VFX de sorts en spritesheets = toujours différé** (rework procédural). Prochain gros chantier = à décider avec Lorenzo (cf roadmap V1 : tutoriel T6/T7, replay, accessibilité, i18n, ou implémentation des refontes de classes).
+
+---
+
 **SESSION 31 mai 2026 (bis) — 🎨 PIPELINE VISUEL KYAMI (bloc 7→11 de la note) + LUT PACK — COMMIT + PUSH GitHub :** session 100% **View** → **`CombatRulesVersion` INCHANGÉ (93)**, aucune régén prefab/scène. ⚠️ **rebuild standalone requis avant test multi/ranked** (4 scènes combat + le mapping anim touchés, mais **zéro logique sim**).
 
 - **🖼️ Spritesheets (tâche 7)** : les **5 classes + 5 skins** convertis de l'ancien import `.aseprite` vers les **spritesheets** de Kyami (idle/walk/attack/cast/hurt/death × stage 0/1/2 × SE/NE). Slice **128px / PPU 96 / pivot 0.5,0.1**, clips reconstruits à la **cadence des clips actuels** (idle/walk en loop), **60 controllers repointés EN PLACE** (mêmes `.controller`, mêmes GUID → **zéro recâblage** prefab/skin). Tool **`ImportColossarSpritesheetsTool`** (menus *Import Colossar…* + *Import ALL Classes…*). Sheets copiés dans `Art/Sprites/<Class>/Base/sheets` + `Art/Cosmetics/<Skin>/sheets`, clips dans `Animations/.../Clips`. Validé combat 5 classes (mono-GO Soulrender/Nightseer OK, binding path "").
