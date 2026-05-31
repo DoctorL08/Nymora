@@ -17,6 +17,20 @@
 
 ---
 
+**SESSION 1er juin 2026 — 💬 JOURNAL DE COMBAT DANS LE CHAT + 🐛 FIX BOUTON « RETOUR AU HUB » — COMMITS LOCAUX (pas de push) :** session 100% **View** → **`CombatRulesVersion` INCHANGÉ (93)**, aucune régén prefab/scène. Rebuild standalone avant test multi (scripts combat touchés, zéro logique sim).
+
+- **🐛 Fix `MatchEndOverlay` (résout le reliquat « priorité prochaine session » du 31 mai ter)** : le bouton « Retour au hub » s'affichait **vide**. Cause réelle = `MakeButton` recevait le label en paramètre mais ne l'assignait **jamais** au TMP (le bouton « Sauvegarder le replay » masquait le bug car son texte est reposé par `RefreshSaveReplayButton`). Fix 1 ligne : `labelTmp.text = label`. La carte reconstruite s'affichait donc bien, c'était juste ce label oublié. Commit `161b314`.
+- **💬 Journal de combat dans le chat** (commit `586445d`) : feed d'événements poussé dans l'**onglet Global** du chat combat, **purgé au retour hub**. Détection 100% **pollée** sur `Frame.Verified` (pas d'event bus Quantum custom dans ce projet — même approche que `CombatantHPWatcher`/`CombatVFXView`).
+  - **Archi (respect asmdef Combat↛Hub)** : `CombatLogRelay` (Core, relais statique Combat→Core→Hub) ; `CombatChatLogView` (View, **singleton `DontDestroyOnLoad`** auto-créé via `RuntimeInitializeOnLoadMethod` → **aucune manip Unity**, aucune ref Inspector) ; `ChatFeed.AppendCombat`/`PurgeCombat` (lignes taguées par un espace de largeur nulle `​`) ; `HubChatUI` abonné au relais + purge si la scène du panel ne contient pas « Combat ».
+  - **Contenu** : séparateurs de tour · **casts** (nom du sort, **MES sorts uniquement** = anti-leak brouillard via `LocalPlayerResolver.LocalOwns`) · **dégâts attribués au sort** (corrélation fenêtre 1 s cast→dmg, pattern `SignatureCastBridge`) · soins · KO · **boucliers** (`ShieldActive`) · **débuffs PM/PA** (`MovementMalus`/`ActionMalus`, front montant) · **progression de ressource** de classe (HG/PR/FD/PT + leurres Ghostra **local-only**) + « Signature débloquée ! » au cap · résultat.
+  - **Pseudos** : `MatchBridge.LocalDisplayName`/`OpponentDisplayName` (fallback Toi/Adversaire). **Interligne réglable** : `HubChatUI._historyLineSpacing` (sérialisé, actuel **+8** ; négatif = plus serré, < ~-12 ça chevauche).
+  - **Décisions Lorenzo** : journal *détaillé* · onglet Global *purgé au hub* · brouillard = « *effets visibles seulement* » (sorts adverses jamais nommés, dégâts/soins restent publics car texte flottant sur les 2 clients) · paliers = *progression de ressource* (pas de 4e copie des seuils Bible — cf triple-copie passifs déjà fragile). Label ressource Ghostra mis à **« Leurres »** (proposé « Rémanence » en alternative, non tranché).
+  - **Différé** : logging des **statuts appliqués** (autres que PM/PA) — demande un diff des 8 slots `Statuses` + filtrage brouillard fin ; à faire en brique séparée si voulu.
+- **À RETENIR** : (1) 100% View → pas de bump version. (2) **`core.fileMode` passé à `false`** dans le repo : l'outil d'édition Claude mettait le bit exécutable (755) sur les `.cs` → bruit `git status` permanent ; commits finaux bien en 100644. Réversible (`git config core.fileMode true`). (3) Hors-commit volontaire (convention) inchangé : `ProjectSettings.asset`, `QuantumMap.asset`, 2 fonts TMP.
+- **PROCHAINE ÉTAPE** : valider en jeu (pseudos, interligne, lisibilité du journal, non-leak Ghostra/Nightseer) ; trancher « Leurres » vs « Rémanence » ; option « statuts appliqués » si voulu ; **push GitHub en fin de session**.
+
+---
+
 **SESSION 31 mai 2026 (ter) — 🖼️ NOUVEL ART KYAMI (map hub + torches + pilier) · ⚙️ CALIBRATION AFFICHAGE · 🖼️ SKINS TIMELINE · 🏆 MENU FIN DE COMBAT + MMR RANKED — COMMIT + PUSH ; BACKEND DÉPLOYÉ OVH :** session 100% **View/UI + backend** → **`CombatRulesVersion` INCHANGÉ (93)**, aucune régén prefab/scène. Rebuild standalone avant test multi/ranked (scripts combat touchés, zéro logique sim).
 
 - **🖼️ Nouvel art Kyami** (`Downloads/map_hub (2)` + `Polish/character/colossar`) :
