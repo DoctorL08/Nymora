@@ -9,6 +9,9 @@ EditorBuildSettings:
     path: Assets/_Nymora/Scenes/00_Login.unity
     guid: 28204c78a236fe241b0471cde20fb383
   - enabled: 1
+    path: Assets/_Nymora/Scenes/05_DisplayCalibration.unity
+    guid: afc4fc7ec365d5b4db9710dba597e8f3
+  - enabled: 1
     path: Assets/_Nymora/Scenes/10_CommunityHub.unity
     guid: 459ccf1d803a3dc4ab812b6b18783bea
   - enabled: 1

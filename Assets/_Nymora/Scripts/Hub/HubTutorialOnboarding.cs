@@ -3,6 +3,7 @@ using Cysharp.Threading.Tasks;
 using Fusion;
 using Nymora.Core.Data;
 using Nymora.Core.SceneFlow;
+using Nymora.Hub.Menu;
 using Nymora.Network.Backend;
 using TMPro;
 using UnityEngine;
@@ -33,6 +34,11 @@ namespace Nymora.Hub
     public sealed class HubTutorialOnboarding : MonoBehaviour
     {
         [SerializeField] private NymoraBackendSettings _backendSettings;
+        [Tooltip("Thème menu hub pour styler la pop-up. Si vide, fallback sur HubMenuShell.MenuTheme.")]
+        [SerializeField] private HubMenuTheme _theme;
+
+        /// <summary>Thème actif : champ sérialisé prioritaire, sinon celui posé par le menu hub.</summary>
+        private HubMenuTheme Theme => _theme != null ? _theme : HubMenuShell.MenuTheme;
 
         private const string TutorialIaScene = "30_CombatIA";
 
@@ -99,7 +105,9 @@ namespace Nymora.Hub
         private void OnAccept()
         {
             ClosePopup();
-            LaunchTutorial();
+            // Nouveau joueur : on passe d'abord par l'écran de CALIBRATION D'AFFICHAGE (Brique C),
+            // qui enchaînera sur le tutoriel via son bouton « Entrer en jeu ».
+            LaunchCalibration();
         }
 
         private void OnDecline()
@@ -117,8 +125,30 @@ namespace Nymora.Hub
             _api.MarkTutorialCompleteAsync().Forget();
         }
 
+        private const string CalibrationScene = "05_DisplayCalibration";
+
+        /// <summary>Brique C — Charge l'écran de calibration d'affichage (clone hub sans Photon).
+        /// Le bouton « Entrer en jeu » de cet écran lancera ensuite le tutoriel de combat.
+        /// Shutdown du runner Fusion sous le voile (comme LaunchTutorial).</summary>
+        public static void LaunchCalibration()
+        {
+            SceneTransition.LoadAsync(CalibrationScene, async () =>
+            {
+                var runner = FindFirstObjectByType<NetworkRunner>();
+                if (runner != null && runner.IsRunning)
+                {
+                    try { await runner.Shutdown(); }
+                    catch (System.Exception ex)
+                    {
+                        Debug.LogWarning($"[TutorialOnboarding] Shutdown Fusion (calibration) a throw : {ex.Message} — on continue le load.");
+                    }
+                }
+            }, waitForReady: false); // scène statique sans Fusion -> aucun HubReadyBeacon à attendre
+        }
+
         /// <summary>Charge 30_CombatIA en mode tutoriel (Soulrender scripté). Statique : utilisable
-        /// par la pop-up (« Oui ») ET par le bouton « Rejouer le tutoriel » des Paramètres (T7).</summary>
+        /// par l'écran de calibration, ET par le bouton « Rejouer le tutoriel » des Paramètres (T7,
+        /// qui saute la calibration).</summary>
         public static void LaunchTutorial()
         {
             TutorialContext.Active = true;
@@ -161,11 +191,58 @@ namespace Nymora.Hub
             Stretch(dim.rectTransform);
             dim.raycastTarget = true;
 
-            // Carte centrale.
-            var card = NewImage(_popup.transform, "Card", new Color(0.10f, 0.10f, 0.13f, 0.99f));
+            // Carte : design hub si le thème est dispo, sinon repli brut.
+            if (Theme != null) BuildStyledCard(_popup.transform);
+            else BuildRawCard(_popup.transform);
+        }
+
+        private const string ProposalBody =
+            "Veux-tu suivre le tutoriel pour apprendre les bases (déplacement, sorts, fin de tour) ?\n\n" +
+            "On commencera par régler l'affichage selon ton écran.";
+
+        // Carte au design du menu hub (HubMenuUIFactory + thème).
+        private void BuildStyledCard(Transform parent)
+        {
+            var f = new HubMenuUIFactory(Theme);
+
+            var card = f.MakeImage("Card", parent, Theme.PanelBg);
             var crt = card.rectTransform;
             crt.anchorMin = crt.anchorMax = crt.pivot = new Vector2(0.5f, 0.5f);
-            crt.sizeDelta = new Vector2(600f, 300f);
+            crt.sizeDelta = new Vector2(700f, 380f);
+            crt.anchoredPosition = Vector2.zero;
+
+            var title = f.MakeText("Title", crt, "Bienvenue sur Nymora !", Theme.FontSizeTitle, Theme.TextPrimary, Theme.FontBold, TextAlignmentOptions.Center);
+            title.raycastTarget = false;
+            var trt = title.rectTransform;
+            trt.anchorMin = new Vector2(0f, 1f); trt.anchorMax = new Vector2(1f, 1f); trt.pivot = new Vector2(0.5f, 1f);
+            trt.sizeDelta = new Vector2(-48f, 56f); trt.anchoredPosition = new Vector2(0f, -30f);
+
+            var body = f.MakeText("Body", crt, ProposalBody, Theme.FontSizeBody, Theme.TextSecondary, Theme.Font, TextAlignmentOptions.Center);
+            body.raycastTarget = false;
+            var brt = body.rectTransform;
+            brt.anchorMin = new Vector2(0f, 0.5f); brt.anchorMax = new Vector2(1f, 0.5f); brt.pivot = new Vector2(0.5f, 0.5f);
+            brt.sizeDelta = new Vector2(-72f, 160f); brt.anchoredPosition = new Vector2(0f, 16f);
+
+            var yes = f.MakeButton(crt, "Oui", true, out _);
+            var yrt = (RectTransform)yes.transform;
+            yrt.anchorMin = yrt.anchorMax = yrt.pivot = new Vector2(0.5f, 0f);
+            yrt.sizeDelta = new Vector2(250f, 58f); yrt.anchoredPosition = new Vector2(-135f, 34f);
+            yes.onClick.AddListener(OnAccept);
+
+            var later = f.MakeButton(crt, "Plus tard", false, out _);
+            var lrt = (RectTransform)later.transform;
+            lrt.anchorMin = lrt.anchorMax = lrt.pivot = new Vector2(0.5f, 0f);
+            lrt.sizeDelta = new Vector2(250f, 58f); lrt.anchoredPosition = new Vector2(135f, 34f);
+            later.onClick.AddListener(OnDecline);
+        }
+
+        // Repli sans thème (mêmes infos, style brut).
+        private void BuildRawCard(Transform parent)
+        {
+            var card = NewImage(parent, "Card", new Color(0.10f, 0.10f, 0.13f, 0.99f));
+            var crt = card.rectTransform;
+            crt.anchorMin = crt.anchorMax = crt.pivot = new Vector2(0.5f, 0.5f);
+            crt.sizeDelta = new Vector2(700f, 380f);
             crt.anchoredPosition = Vector2.zero;
 
             var title = MakeText(card.transform, "Title", "Bienvenue sur Nymora !", 38f,
@@ -175,14 +252,12 @@ namespace Nymora.Hub
             trt.anchorMin = new Vector2(0f, 1f); trt.anchorMax = new Vector2(1f, 1f); trt.pivot = new Vector2(0.5f, 1f);
             trt.sizeDelta = new Vector2(-48f, 60f); trt.anchoredPosition = new Vector2(0f, -30f);
 
-            var body = MakeText(card.transform, "Body",
-                "Veux-tu suivre le tutoriel pour apprendre les bases\n(déplacement, sorts, fin de tour) ?",
+            var body = MakeText(card.transform, "Body", ProposalBody,
                 24f, new Color(0.80f, 0.82f, 0.88f), TextAlignmentOptions.Center);
             var brt = body.rectTransform;
             brt.anchorMin = new Vector2(0f, 0.5f); brt.anchorMax = new Vector2(1f, 0.5f); brt.pivot = new Vector2(0.5f, 0.5f);
-            brt.sizeDelta = new Vector2(-64f, 120f); brt.anchoredPosition = new Vector2(0f, 14f);
+            brt.sizeDelta = new Vector2(-64f, 160f); brt.anchoredPosition = new Vector2(0f, 14f);
 
-            // Boutons : « Oui » (accent) à gauche, « Plus tard » (neutre) à droite.
             var yes = MakeButton(card.transform, "Oui", new Color(0.42f, 0.34f, 0.66f),
                 new Color(0.98f, 0.98f, 1f), OnAccept);
             var yrt = yes.GetComponent<RectTransform>();
