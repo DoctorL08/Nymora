@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
+using Nymora.Core.View;
 using Nymora.Network.Backend;
 using TMPro;
 using UnityEngine;
@@ -534,9 +535,10 @@ namespace Nymora.Hub
                 if (a == null || !a.isActiveAndEnabled) continue;
                 var sr = a.GetComponentInChildren<SpriteRenderer>();
                 if (sr == null || !sr.enabled || sr.sprite == null) continue;
-                Bounds b = sr.bounds;
-                if (mouseWorld.x < b.min.x || mouseWorld.x > b.max.x) continue;
-                if (mouseWorld.y < b.min.y || mouseWorld.y > b.max.y) continue;
+                // Pixel-parfait : la souris doit etre sur un pixel OPAQUE de l'avatar, pas
+                // seulement dans son AABB rectangulaire (qui inclut tout le transparent autour
+                // du dessin -> sinon tooltip declenche "loin du sprite", cf fix juin 2026).
+                if (!SpritePixelHitTester.OverlapsOpaque(sr, mouseWorld)) continue;
                 if (sr.sortingOrder > bestSortingOrder)
                 {
                     bestSortingOrder = sr.sortingOrder;

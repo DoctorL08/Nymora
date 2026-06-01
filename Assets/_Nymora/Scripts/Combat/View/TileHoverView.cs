@@ -1,6 +1,7 @@
 using Nymora.Combat.Grid;
 using Nymora.Combat.View.Obstacles;
 using Nymora.Combat.View.HUD;
+using Nymora.Core.View;
 using Quantum;
 using UnityEngine;
 
@@ -127,23 +128,55 @@ namespace Nymora.Combat.View
             // tooltip (mindgame Bible V7.1 : adversaire indiscernable cote caster vs vrai).
             EntityRef tooltipEntity = hoveredCombatant != null ? hoveredCombatant.Entity : default;
             Transform tooltipAnchor = hoveredCombatant != null ? hoveredCombatant.transform : null;
+            DecoyHoverProxy hoveredDecoy = null;
             if (hoveredCombatant == null && _enableCombatantHover)
             {
-                var proxy = FindDecoyHoverProxyByMouse(mouseWorld);
-                if (proxy != null)
+                hoveredDecoy = FindDecoyHoverProxyByMouse(mouseWorld);
+                if (hoveredDecoy != null)
                 {
-                    tooltipEntity = proxy.GhostraParentEntity;
+                    tooltipEntity = hoveredDecoy.GhostraParentEntity;
                     // Ancre sur le GameObject du leurre survole PRECISEMENT (pas le 1er leurre
                     // trouve par entite) : 2 leurres du meme Ghostra partagent l'EntityRef parent
                     // mais sont des GameObjects distincts -> chacun a donc son propre tooltip.
-                    tooltipAnchor = proxy.transform;
+                    tooltipAnchor = hoveredDecoy.transform;
                 }
             }
             UpdateCombatantHover(hoveredCombatant, tooltipEntity, tooltipAnchor);
 
-            // Pas de changement de cellule (tile/obstacle) : rien a faire pour ces 2.
-            if (!outOfGrid && gx == _prevHoverX && gy == _prevHoverY) return;
-            if (outOfGrid && _prevHoverX == int.MinValue) return;
+            // Cellule a highlighter. Quand on survole un perso (ou un leurre), on cible SA case
+            // et pas la case sous la souris : le sprite deborde largement sa tuile (scale 1.16x +
+            // Visual Y -0.22), donc la case logique sous le curseur tombe derriere/au-dessus de
+            // lui. Lorenzo veut que le glow de tile suive le perso survole. Sinon, case souris.
+            int targetX, targetY;
+            bool hasTargetCell;
+            if (hoveredCombatant != null)
+            {
+                targetX = hoveredCombatant.GridX;
+                targetY = hoveredCombatant.GridY;
+                hasTargetCell = true;
+            }
+            else if (hoveredDecoy != null)
+            {
+                // Le proxy leurre ne stocke pas sa case : on la derive de sa position monde.
+                var (dx, dy) = IsoProjection.WorldToGrid(
+                    hoveredDecoy.transform.position,
+                    _gridSettings.TileWorldWidth,
+                    _gridSettings.TileWorldHeight,
+                    _centerOffset);
+                targetX = dx;
+                targetY = dy;
+                hasTargetCell = dx >= 0 && dx < gridWidth && dy >= 0 && dy < gridHeight;
+            }
+            else
+            {
+                targetX = gx;
+                targetY = gy;
+                hasTargetCell = !outOfGrid;
+            }
+
+            // Pas de changement de cellule cible : rien a faire pour tile/obstacle.
+            if (hasTargetCell && targetX == _prevHoverX && targetY == _prevHoverY) return;
+            if (!hasTargetCell && _prevHoverX == int.MinValue) return;
 
             // Restore l'ancien hover.
             if (_prevTile != null)
@@ -156,25 +189,25 @@ namespace Nymora.Combat.View
                 _prevObstacle.SetHpVisible(false);
                 _prevObstacle = null;
             }
-            if (outOfGrid)
+            if (!hasTargetCell)
             {
                 _prevHoverX = int.MinValue;
                 _prevHoverY = int.MinValue;
                 return;
             }
 
-            _prevHoverX = gx;
-            _prevHoverY = gy;
+            _prevHoverX = targetX;
+            _prevHoverY = targetY;
 
-            // Apply nouveau hover tile/obstacle.
+            // Apply nouveau hover tile/obstacle sur la case cible.
             if (_enableTileGlow && _gridRenderer != null)
             {
-                _prevTile = _gridRenderer.GetTileView(gx, gy);
+                _prevTile = _gridRenderer.GetTileView(targetX, targetY);
                 if (_prevTile != null) _prevTile.ApplyHighlight(_hoverColor);
             }
             if (_enableObstacleHpReveal && _obstacleRenderer != null)
             {
-                _prevObstacle = _obstacleRenderer.GetObstacleViewAt(gx, gy);
+                _prevObstacle = _obstacleRenderer.GetObstacleViewAt(targetX, targetY);
                 if (_prevObstacle != null) _prevObstacle.SetHpVisible(true);
             }
         }
@@ -229,8 +262,9 @@ namespace Nymora.Combat.View
         private Transform _prevTooltipAnchor;
 
         /// <summary>
-        /// 18 mai — Detecte un DecoyHoverProxy survole (= leurre Ghostra). Retourne le
-        /// proxy au meilleur sortingOrder si plusieurs leurres se chevauchent.
+        /// 18 mai — Detecte un DecoyHoverProxy survole (= leurre Ghostra). Test pixel-parfait
+        /// (cf SpritePixelHitTester) ; retourne le proxy au meilleur sortingOrder si plusieurs
+        /// leurres se chevauchent.
         /// </summary>
         private static DecoyHoverProxy FindDecoyHoverProxyByMouse(Vector3 mouseWorld)
         {
@@ -243,9 +277,9 @@ namespace Nymora.Combat.View
                 if (p == null || !p.isActiveAndEnabled) continue;
                 var sr = p.GetComponent<SpriteRenderer>();
                 if (sr == null || !sr.enabled || sr.sprite == null) continue;
-                Bounds b = sr.bounds;
-                if (mouseWorld.x < b.min.x || mouseWorld.x > b.max.x) continue;
-                if (mouseWorld.y < b.min.y || mouseWorld.y > b.max.y) continue;
+                // Pixel-parfait : on ne retient le leurre que si la souris est sur un pixel
+                // opaque, pas dans le vide transparent de l'AABB.
+                if (!SpritePixelHitTester.OverlapsOpaque(sr, mouseWorld)) continue;
                 if (sr.sortingOrder > bestSortingOrder)
                 {
                     bestSortingOrder = sr.sortingOrder;
@@ -257,7 +291,8 @@ namespace Nymora.Combat.View
 
         /// <summary>
         /// POLISH-5d — Detection sprite-based : iterate tous les CombatantView, check si la
-        /// position monde de la souris est dans les bounds du SpriteRenderer du combatant.
+        /// souris tombe sur un PIXEL OPAQUE du sprite du combatant (cf SpritePixelHitTester,
+        /// fix hover juin 2026 — l'ancien test AABB declenchait dans tout le transparent).
         /// Plus precis que la detection grille quand le sprite deborde de sa tile (sprite
         /// scale 1.16x + child Visual Y -0.22 chez plusieurs classes). Si plusieurs sprites
         /// se chevauchent visuellement, le plus haut sortingOrder gagne.
@@ -273,10 +308,10 @@ namespace Nymora.Combat.View
                 if (v == null || !v.isActiveAndEnabled) continue;
                 var sr = v.GetComponentInChildren<SpriteRenderer>();
                 if (sr == null || !sr.enabled || sr.sprite == null) continue;
-                Bounds b = sr.bounds;
-                // Aplatit le check sur (x, y) — z ignore car notre monde combat est 2D.
-                if (mouseWorld.x < b.min.x || mouseWorld.x > b.max.x) continue;
-                if (mouseWorld.y < b.min.y || mouseWorld.y > b.max.y) continue;
+                // Pixel-parfait : la souris doit etre sur un pixel OPAQUE du sprite, pas
+                // seulement dans son AABB rectangulaire (qui inclut tout le transparent
+                // autour/entre le dessin -> sinon tooltip declenche "loin du sprite").
+                if (!SpritePixelHitTester.OverlapsOpaque(sr, mouseWorld)) continue;
                 if (sr.sortingOrder > bestSortingOrder)
                 {
                     bestSortingOrder = sr.sortingOrder;
