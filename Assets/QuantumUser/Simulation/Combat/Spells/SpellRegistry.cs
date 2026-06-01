@@ -158,6 +158,10 @@ namespace Quantum
         public const int PiegeBondissantPACost        = 2;
         public const int PiegeBondissantRangeMax      = 4;    // portée de pose
         public const int PiegeBondissantEjectDist     = 3;    // cases d'éjection (catapulte)
+        // Garde anti-boucle (fix 2 juin) : profondeur max de chaînage de pièges déclenchés au passage
+        //   d'une catapulte. Deux Pièges Bondissants qui s'éjectent l'un vers l'autre se renvoyaient la
+        //   cible à l'infini -> StackOverflow + halt de la sim. Cap dur en ceinture+bretelles.
+        public const int PiegeBondissantMaxChainDepth = 8;
         // Refonte 29 mai : pierce bouclier Nightseer déplacé en palier P3 (50%) -> NightseerPassif.ShieldIgnorePct.
 
         // 2.15.c — Nightseer Survie.

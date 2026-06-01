@@ -174,9 +174,18 @@ namespace Quantum
         //   - Gain +1 PR au owner du trap (passif L'Œil qui n'est pas : declenchement de marque)
         // ====================================================================
 
+        // `depth` (fix 2 juin) : profondeur de récursion du chaînage de catapultes (Piège Bondissant).
+        //   Les appels externes (MovementSystem/SpellSystem/AISystem) passent 0 ; seule la ré-entrance
+        //   interne incrémente. Au-delà du cap on stoppe net pour interdire toute boucle infinie
+        //   (ex. deux Bondissants qui se renvoient la cible) -> plus de StackOverflow / desync.
         public static bool TryTriggerTrapOnEnter(Frame f, EntityRef enterer, Combatant* entererC,
-            int x, int y, int currentTurn)
+            int x, int y, int currentTurn, int depth = 0)
         {
+            if (depth > Quantum.SpellRegistry.PiegeBondissantMaxChainDepth)
+            {
+                Log.Warn($"[Trap] Chaîne de catapultes coupée à la profondeur {depth} (cap {Quantum.SpellRegistry.PiegeBondissantMaxChainDepth}) -> anti-boucle.");
+                return false;
+            }
             TrapKind trap = GetTrapKind(f, x, y);
             if (trap == TrapKind.None) return false;
             int trapOwner = GetTrapOwner(f, x, y);
@@ -240,24 +249,30 @@ namespace Quantum
                     entererC->LastEjectedSequence += 1;
                     Log.Info($"[Trap] Piège Bondissant ({x},{y}) éjecte P{entererC->PlayerIndex} de {landed} cases (dir {dir}) -> ({curX},{curY})");
 
+                    // FIX 2 juin — consommer CE piège AVANT de rejouer la trajectoire. Sans ça, deux
+                    //   Pièges Bondissants face à face se renvoyaient la cible à l'infini (la récursion
+                    //   ci-dessous re-rentrait sur ce piège encore présent) -> StackOverflow + halt sim.
+                    //   Un piège consommé ne peut plus se re-déclencher pendant la même résolution.
+                    ClearTrap(f, x, y);
+                    ClearVeil(f, x, y);
+
                     // FIX 30 mai — pièges déclenchés AU PASSAGE sur la trajectoire de CATAPULTE.
                     //   La projection ci-dessus survole jusqu'à `landed` cases sans rien déclencher :
                     //   un autre piège (Filet/Mine/Bondissant) sur la trajectoire d'éjection était
                     //   ignoré (« la poussée passe dessus et rien ne se passe »). On rejoue les cases
                     //   survolées depuis le piège (x,y exclu, déjà en cours de traitement) jusqu'à
                     //   l'atterrissage inclus, et on déclenche chaque piège rencontré.
+                    //   `depth + 1` : cap anti-boucle (cf garde en tête de méthode).
                     int fxc = x, fyc = y;
                     for (int s = 1; s <= landed; s++)
                     {
                         if (entererC->HP <= 0) break;
                         fxc += edx; fyc += edy;
-                        TryTriggerTrapOnEnter(f, enterer, entererC, fxc, fyc, currentTurn);
+                        TryTriggerTrapOnEnter(f, enterer, entererC, fxc, fyc, currentTurn, depth + 1);
                     }
                 }
                 MarkHelpers.ApplyMark(entererC, MarkKind.Traque,
                     Quantum.SpellRegistry.ChampDeMinesEmpreinteTurns, trapOwner, currentTurn);
-                ClearTrap(f, x, y);
-                ClearVeil(f, x, y);
                 var bondFilter = f.Filter<Combatant>();
                 while (bondFilter.NextUnsafe(out EntityRef _, out Combatant* bc))
                 {

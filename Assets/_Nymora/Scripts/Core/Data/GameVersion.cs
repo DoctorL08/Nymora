@@ -81,7 +81,17 @@ namespace Nymora.Core.Data
         // 95 (Tuto spawn rapproche, 1 juin) : en mode tuto (RuntimeConfig.TutorialPassiveBot), le
         //                mannequin (slot 1) spawn a (3,4) au lieu de (7,2) -> centre-avant, devant le joueur (tuto direct).
         //                Gate tuto only -> aucun impact ranked. Suit le pattern TutorialPassiveBot/FreezeTimer.
-        public const int CombatRulesVersion = 95;
+        // 96 (Volee d'Epines : Filet derriere la cible, 1 juin) : le Filet de Ronces se pose desormais
+        //                UNE CASE plus loin dans le sens du tir (derriere la derniere cible touchee, en
+        //                s'eloignant du caster) au lieu de sur la case de la cible. Fallback sur la case
+        //                de la cible si la case derriere est hors grille / non walkable.
+        // 97 (Fix crash recursion Piege Bondissant, 2 juin) : deux Pieges Bondissants qui s'ejectaient
+        //                mutuellement la cible la renvoyaient en boucle infinie (StackOverflow -> halt sim
+        //                + ecran de desync Quantum). Fix dans FogHelpers.TryTriggerTrapOnEnter : (1) le
+        //                piege est consomme AVANT de rejouer la trajectoire de catapulte, (2) garde de
+        //                profondeur de recursion (PiegeBondissantMaxChainDepth). Pure logique, aucun champ
+        //                [Networked] touche.
+        public const int CombatRulesVersion = 97;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";
