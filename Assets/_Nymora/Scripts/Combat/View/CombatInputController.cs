@@ -310,12 +310,30 @@ namespace Nymora.Combat.View
                 {
                     int tx = gx;
                     int ty = gy;
-                    if (Quantum.SpellRegistry.TryGet(armedSpell, out Quantum.SpellDef def)
-                        && def.Filter == TargetingFilter.Self
-                        && TryGetCasterCell(game, senderPlayer, out int cx, out int cy))
+                    bool gotDef = Quantum.SpellRegistry.TryGet(armedSpell, out Quantum.SpellDef def);
+                    bool isSelfSpell = gotDef && def.Filter == TargetingFilter.Self;
+
+                    // Fix ciblage juin 2026 — si la souris est sur le SPRITE d'un combattant/leurre,
+                    // cibler SA case (le sprite déborde sa tuile en hauteur), pas la case sol projetée
+                    // derrière lui. Gate par le filtre (unité/leurre/self) OU les sorts en ligne droite.
+                    if (gotDef
+                        && TileHoverView.TryPickSpriteTargetCell(mouseWorld, def.Filter,
+                               Quantum.SpellSystem.SpellIsStraightLine(armedSpell), _gridSettings, _centerOffset, out int sx, out int sy))
                     {
-                        tx = cx;
-                        ty = cy;
+                        tx = sx;
+                        ty = sy;
+                    }
+
+                    // Self : on ne caste QUE si le clic vise bien le caster (son sprite ou sa case).
+                    // Cliquer ailleurs n'envoie rien (sort consommé, comme un clic hors-portée) — sinon
+                    // un clic n'importe où lançait le self.
+                    if (isSelfSpell)
+                    {
+                        if (!(TryGetCasterCell(game, senderPlayer, out int cx, out int cy) && tx == cx && ty == cy))
+                        {
+                            Debug.Log($"[Nymora.CombatInput] {armedSpell} (self) : clic hors du caster ({tx},{ty}) — cast annule.");
+                            return;
+                        }
                     }
 
                     // Refonte 29 mai — sort directionnel : 1er clic = cible, on attend un 2e clic

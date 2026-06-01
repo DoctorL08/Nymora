@@ -203,13 +203,26 @@ namespace Nymora.Combat.View
             // Réécrit la calibration éditée dans l'asset cible.
             if (isBase) WriteClass(classDef, c); else WriteSkin(skinDef, c);
 
-            // Leurres (Ghostra) : calibration portée par le SKIN uniquement.
-            if (!isBase)
+            // Leurres (Ghostra) : X / Y / scale. Portés par le SKIN équipé si présent, sinon par la
+            // classe de BASE (NymoraClassDefinition). N'a de sens que pour Ghostra → masqué sinon.
+            bool isGhostra = isBase ? classDef.ClassId == NymoraClass.Ghostra
+                                    : skinDef.ClassId == NymoraClass.Ghostra;
+            if (isGhostra)
             {
                 GUILayout.Space(4f);
                 GUILayout.Label("<b>Leurres (Ghostra)</b>", Rich());
-                skinDef.DecoyCombatYOffset = SliderRow("Leurre  Y", skinDef.DecoyCombatYOffset);
-                skinDef.DecoyCombatScale = ScaleSliderRow("Leurre  scale", skinDef.DecoyCombatScale);
+                if (isBase)
+                {
+                    classDef.DecoyCombatXOffset = SliderRow("Leurre  X", classDef.DecoyCombatXOffset);
+                    classDef.DecoyCombatYOffset = SliderRow("Leurre  Y", classDef.DecoyCombatYOffset);
+                    classDef.DecoyCombatScale   = ScaleSliderRow("Leurre  scale", classDef.DecoyCombatScale);
+                }
+                else
+                {
+                    skinDef.DecoyCombatXOffset = SliderRow("Leurre  X", skinDef.DecoyCombatXOffset);
+                    skinDef.DecoyCombatYOffset = SliderRow("Leurre  Y", skinDef.DecoyCombatYOffset);
+                    skinDef.DecoyCombatScale   = ScaleSliderRow("Leurre  scale", skinDef.DecoyCombatScale);
+                }
             }
 
             GUILayout.Space(4f);
@@ -226,7 +239,16 @@ namespace Nymora.Combat.View
             if (GUILayout.Button("Remettre à 0"))
             {
                 var z = new Calib { Scale = 1f };
-                if (isBase) WriteClass(classDef, z); else { WriteSkin(skinDef, z); skinDef.DecoyCombatScale = 1f; skinDef.DecoyCombatYOffset = 0f; }
+                if (isBase)
+                {
+                    WriteClass(classDef, z);
+                    classDef.DecoyCombatScale = 1f; classDef.DecoyCombatXOffset = 0f; classDef.DecoyCombatYOffset = 0f;
+                }
+                else
+                {
+                    WriteSkin(skinDef, z);
+                    skinDef.DecoyCombatScale = 1f; skinDef.DecoyCombatXOffset = 0f; skinDef.DecoyCombatYOffset = 0f;
+                }
             }
             if (GUILayout.Button("Fermer")) _open = false;
             GUILayout.EndHorizontal();

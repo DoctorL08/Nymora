@@ -70,6 +70,11 @@ namespace Nymora.Combat.View.HUD
                 ? _spellSlots[0].transform.parent as RectTransform : null;
         public RectTransform LocalResourcePanelRect => _p0Panel != null ? (RectTransform)_p0Panel.transform : null;
         public RectTransform SignatureSlotRect => _signatureSlot != null ? (RectTransform)_signatureSlot.transform : null;
+        /// <summary>Tuto : rect du badge rubis (coût PA) du 1er sort de la barre, pour le coach mark
+        /// de l'étape « rubis de PA ». Null si le badge n'est pas encore créé (SetPaCost pas appelé).</summary>
+        public RectTransform FirstSpellPaGemRect =>
+            (_spellSlots != null && _spellSlots.Length > 0 && _spellSlots[0] != null)
+                ? _spellSlots[0].PaBadgeRect : null;
 
         // J10 — true uniquement quand c'est le tour du joueur que CE HUD controle. Sert a bloquer
         // l'armement de sort et a griser la barre pendant le tour adverse (notamment le bot en IA).

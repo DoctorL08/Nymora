@@ -65,13 +65,12 @@ namespace Nymora.Hub
             if (string.IsNullOrEmpty(token)) return;
             _api.SetBearerToken(token);
 
-            // Cas 1 — on revient de finir le tuto : marque l'onboarding résolu côté backend.
+            // Cas 1 — on revient de finir le tuto de COMBAT : on enchaîne sur le petit tuto HUB
+            // (Brique B), puis on marque l'onboarding résolu côté backend à la fin de CELUI-CI.
             if (TutorialContext.CompletedThisSession)
             {
                 TutorialContext.CompletedThisSession = false;
-                var done = await _api.MarkTutorialCompleteAsync(ct);
-                if (!done.IsSuccess)
-                    Debug.LogWarning($"[TutorialOnboarding] POST tutorial-complete (retour tuto) échec : {done.StatusCode} {done.ErrorMessage}");
+                HubTutorialDirector.EnsureSpawned(MarkCompleteFireAndForget);
                 return;
             }
 

@@ -123,6 +123,15 @@ namespace Nymora.Combat.View
                 ? FindCombatantViewByMouse(mouseWorld)
                 : null;
 
+            // Fix juin 2026 — fallback : si aucun sprite sous le curseur, mais que la souris est sur
+            // la CASE LOGIQUE d'un combattant, on affiche quand même son tooltip (HP + prévisu dégâts).
+            // Permet de survoler la case où il se tient (sol devant les pieds, pixel transparent) et
+            // pas seulement son sprite.
+            if (hoveredCombatant == null && _enableCombatantHover && !outOfGrid)
+            {
+                hoveredCombatant = FindCombatantViewAtCell(gx, gy);
+            }
+
             // Si pas de vrai CombatantView hovered, check les leurres Ghostra : leur proxy
             // pointe vers l'Entity du vrai Ghostra parent, ce qui permet d'afficher le MEME
             // tooltip (mindgame Bible V7.1 : adversaire indiscernable cote caster vs vrai).
@@ -262,6 +271,88 @@ namespace Nymora.Combat.View
         private Transform _prevTooltipAnchor;
 
         /// <summary>
+        /// Fix ciblage juin 2026 — Résout la case CIBLE sous la souris en priorisant le SPRITE
+        /// (pixel-parfait) d'un combattant, sinon d'un leurre Ghostra, plutôt que la case sol
+        /// projetée. Le sprite pixel-art déborde largement sa tuile en hauteur (scale 1.16x +
+        /// Visual Y -0.22) : survoler le buste/la tête d'un ennemi doit cibler SA case, pas la
+        /// case sol derrière lui. Retourne false si aucun sprite opaque sous la souris (l'appelant
+        /// retombe alors sur la case sol WorldToGrid classique).
+        ///
+        /// Statique + sans état : partagé par CombatInputController (clic de cast) et
+        /// TargetingPreviewView (zone d'effet au survol) pour rester cohérent avec le hover tooltip.
+        ///
+        /// <paramref name="filter"/> gate le snap : on ne snappe que pour les sorts qui visent une
+        /// UNITÉ (Enemy/Ally/AnyUnit) ou un LEURRE (TileWithLure). Les sorts qui visent une case sol
+        /// (EmptyTile / obstacle : téléport, pose de mur/pilier/leurre) gardent la case sol sous le
+        /// curseur — sinon survoler un ennemi snapperait sur sa case occupée (cast rejeté).
+        ///
+        /// <paramref name="isStraightLineSpell"/> force le snap même si le filtre est AnyTile : les
+        /// sorts en ligne droite (Choc Sismique / Charge Brutale / Volée d'Épines) utilisent AnyTile
+        /// mais visent en pratique un ennemi le long de la ligne -> survoler son sprite doit aligner
+        /// la ligne sur SA case.
+        /// </summary>
+        public static bool TryPickSpriteTargetCell(Vector3 mouseWorld, TargetingFilter filter, bool isStraightLineSpell, GridSettings gridSettings, Vector3 centerOffset, out int gx, out int gy)
+        {
+            gx = -1;
+            gy = -1;
+
+            if (!FilterTargetsUnitSprite(filter) && !isStraightLineSpell) return false;
+
+            // 1) Vrai combattant : il porte sa case logique (GridX/GridY).
+            var combatant = FindCombatantViewByMouse(mouseWorld);
+            if (combatant != null)
+            {
+                gx = combatant.GridX;
+                gy = combatant.GridY;
+                return true;
+            }
+
+            // 2) Leurre Ghostra : pas de case stockée -> dérivée de sa position monde.
+            if (gridSettings != null)
+            {
+                var decoy = FindDecoyHoverProxyByMouse(mouseWorld);
+                if (decoy != null)
+                {
+                    var (dx, dy) = IsoProjection.WorldToGrid(
+                        decoy.transform.position,
+                        gridSettings.TileWorldWidth,
+                        gridSettings.TileWorldHeight,
+                        centerOffset);
+                    if (dx >= 0 && dx < Quantum.GridConstants.Width && dy >= 0 && dy < Quantum.GridConstants.Height)
+                    {
+                        gx = dx;
+                        gy = dy;
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// True si le filtre du sort vise une UNITÉ (ou un leurre) -> le snap sprite a du sens.
+        /// Les filtres de case sol (EmptyTile / TileWithObstacle / AnyTile) sont exclus.
+        /// Self est inclus : le caster doit pouvoir cliquer SON propre sprite pour se cibler
+        /// (l'appelant vérifie ensuite que la case résolue est bien la sienne).
+        /// </summary>
+        private static bool FilterTargetsUnitSprite(TargetingFilter filter)
+        {
+            switch (filter)
+            {
+                case TargetingFilter.Self:
+                case TargetingFilter.Enemy:
+                case TargetingFilter.Ally:
+                case TargetingFilter.AllyIncludingSelf:
+                case TargetingFilter.AnyUnit:
+                case TargetingFilter.TileWithLure: // Permutation Ghostra : on vise le sprite du leurre
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
         /// 18 mai — Detecte un DecoyHoverProxy survole (= leurre Ghostra). Test pixel-parfait
         /// (cf SpritePixelHitTester) ; retourne le proxy au meilleur sortingOrder si plusieurs
         /// leurres se chevauchent.
@@ -319,6 +410,23 @@ namespace Nymora.Combat.View
                 }
             }
             return best;
+        }
+
+        /// <summary>
+        /// Fix juin 2026 — Combatant dont la CASE LOGIQUE == (gx,gy). Fallback du hover sprite :
+        /// survoler la case où un combattant se tient affiche son tooltip même si le pixel sous le
+        /// curseur est transparent. (Un combattant mort n'a plus de CombatantView actif.)
+        /// </summary>
+        private static CombatantView FindCombatantViewAtCell(int gx, int gy)
+        {
+            var views = Object.FindObjectsByType<CombatantView>(FindObjectsSortMode.None);
+            for (int i = 0; i < views.Length; i++)
+            {
+                var v = views[i];
+                if (v == null || !v.isActiveAndEnabled) continue;
+                if (v.GridX == gx && v.GridY == gy) return v;
+            }
+            return null;
         }
 
         /// <summary>

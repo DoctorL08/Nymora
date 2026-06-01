@@ -29,10 +29,15 @@ namespace Nymora.Hub
         [Header("Config")]
         [SerializeField] private string _channel = "global";
 
-        [Tooltip("Interligne du fil de chat (lineSpacing TMP). Negatif = plus serre. " +
+        [Tooltip("Interligne du fil de chat EN COMBAT (lineSpacing TMP). Negatif = plus serre. " +
                  "Resserre l'affichage du journal de combat dense. 0 = defaut TMP ; en dessous " +
                  "de ~-12 les lignes commencent a se chevaucher selon la taille de police.")]
         [SerializeField] private float _historyLineSpacing = 8f;
+
+        [Tooltip("Interligne du fil de chat dans le HUB (et toute scene hors combat). Plus large " +
+                 "que l'interligne combat : le chat social respire (les lignes ne s'empilent plus " +
+                 "apres la purge des logs de combat au retour hub).")]
+        [SerializeField] private float _historyLineSpacingHub = 28f;
 
         [Header("Tab style")]
         [SerializeField] private Color _tabActiveColor = new Color(0.25f, 0.4f, 0.65f, 1f);
@@ -93,14 +98,17 @@ namespace Nymora.Hub
             // Journal de combat (31 mai) : au retour dans le hub (toute scene hors combat), purge
             // les lignes de combat de la session precedente (poussees dans l'onglet Global pendant
             // le match). On compare le nom de la scene de CE panel (combat = 30/33/40_Combat...).
-            if (!gameObject.scene.name.Contains("Combat"))
+            bool inCombatScene = gameObject.scene.name.Contains("Combat");
+            if (!inCombatScene)
                 ChatFeed.PurgeCombat();
             // Abonnement au journal de combat (relais Core, alimente par CombatChatLogView).
             CombatLogRelay.OnLine += HandleCombatLine;
             EnsureTabSprites();
             UpdateTabStyles();
             EnsureInputBarStyle();
-            if (_historyText != null) _historyText.lineSpacing = _historyLineSpacing;
+            // Interligne : serre en combat (journal dense), plus aere dans le hub (chat social).
+            if (_historyText != null)
+                _historyText.lineSpacing = inCombatScene ? _historyLineSpacing : _historyLineSpacingHub;
             RefreshHistoryText();
             EnsureHistoryClickHandler();
             EnsureBadges();

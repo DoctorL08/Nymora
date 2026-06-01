@@ -131,5 +131,19 @@ namespace Nymora.Core.ScriptableObjects
         public float Stage0CombatYOffset = 0f;
         public float Stage1CombatYOffset = 0f;
         public float Stage2CombatYOffset = 0f;
+
+        // ==================================================================
+        // Calibration VISUELLE des LEURRES Ghostra pour la classe de BASE (sans skin).
+        // VIEW-only (pas de CombatRulesVersion). Pendant des champs DecoyCombat* de
+        // CosmeticSkinDefinition : quand aucun skin n'est equipe, DecoyView lit CES valeurs.
+        // N'a de sens que pour la classe Ghostra (ignore pour les autres). Reglable via F10.
+        // ==================================================================
+        [Header("Combat Visual Calibration — leurres Ghostra base (VIEW-only)")]
+        [Tooltip("Echelle des leurres de la Ghostra de base (multiplie l'echelle de base du leurre). 1 = base.")]
+        public float DecoyCombatScale = 1f;
+        [Tooltip("Decalage X ADDITIONNEL des leurres de la Ghostra de base (recalage horizontal). Reglable via F10.")]
+        public float DecoyCombatXOffset = 0f;
+        [Tooltip("Decalage Y ADDITIONNEL des leurres de la Ghostra de base (en plus de l'offset de base du DecoyView). Reglable via F10.")]
+        public float DecoyCombatYOffset = 0f;
     }
 }

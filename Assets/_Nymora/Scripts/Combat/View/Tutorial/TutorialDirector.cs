@@ -45,7 +45,7 @@ namespace Nymora.Combat.View.Tutorial
         private enum Gate { Continue, Move, Cast, EndTurn, Charge, Signature }
 
         /// <summary>Élément du HUD que le coach mark (cadre animé) doit pointer pendant l'étape.</summary>
-        private enum Coach { None, Resources, SpellBar, EndTurn, Signature }
+        private enum Coach { None, Resources, SpellBar, EndTurn, Signature, PaGem }
 
         private sealed class Step
         {
@@ -80,6 +80,10 @@ namespace Nymora.Combat.View.Tutorial
         private Image _coachImage;
         private RectTransform _coachRt;
         private Coach _currentCoach = Coach.None;
+
+        // Surbrillance du perso du joueur (étape 1) : on cache la CombatantView locale + son état.
+        private CombatantView _playerView;
+        private bool _playerHighlightOn;
 
         private void Awake()
         {
@@ -123,6 +127,14 @@ namespace Nymora.Combat.View.Tutorial
                 Gate.Continue, Coach.Resources));
 
             _steps.Add(new Step(
+                "LE RUBIS DE PA. Au-dessus de CHAQUE sort, un RUBIS affiche son cout en PA (le CHIFFRE). " +
+                "Sa COULEUR indique la CATEGORIE du sort : ROUGE = offensif, BLEU = tactique, VERT = survie. " +
+                "Si tu n'as pas assez de PA, le sort est grise (injouable). Quand un cout est REDUIT (passif " +
+                "Appel du Sang -1 PA), le chiffre baisse et le tooltip du sort l'ecrit en vert. " +
+                "Regarde les rubis de ta barre. Clique sur Continuer.",
+                Gate.Continue, Coach.PaGem));
+
+            _steps.Add(new Step(
                 "LANCER UN SORT. Dans la barre du bas, clique un sort pour l'ARMER, puis clique le " +
                 "mannequin pour le frapper. Observe : tes PA baissent du cout du sort, le mannequin perd des PV. " +
                 "Lance ton premier sort maintenant.",
@@ -130,9 +142,9 @@ namespace Nymora.Combat.View.Tutorial
 
             _steps.Add(new Step(
                 "LE PASSIF DE CLASSE : l'Appel du Sang. Chaque classe a un passif unique, gratuit et permanent. " +
-                "Celui du Soulrender se declenche selon les PV du mannequin : sous 70% il est MARQUE et TOUS tes " +
-                "sorts coutent -1 PA ; sous 20%, le sol autour de toi devient du Sang Coagule qui le blesse. " +
-                "Plus tu le blesses, plus tu deviens fort. Clique sur Continuer.",
+                "Celui du Soulrender se declenche selon les PV du mannequin : sous 70% il est MARQUE et ton " +
+                "PREMIER sort lance dans le tour coute -1 PA (uniquement le 1er) ; sous 20%, le sol autour de toi " +
+                "devient du Sang Coagule qui le blesse. Plus tu le blesses, plus tu deviens fort. Clique sur Continuer.",
                 Gate.Continue, Coach.None));
 
             _steps.Add(new Step(
@@ -142,7 +154,9 @@ namespace Nymora.Combat.View.Tutorial
                 Gate.EndTurn, Coach.EndTurn));
 
             _steps.Add(new Step(
-                "TA RESSOURCE DE CLASSE : l'HEMOGLYPHE (HG), de 0 a 5. Tu gagnes +1 HG chaque fois que tu " +
+                "TA RESSOURCE DE CLASSE. Chaque classe possede SA propre ressource, qui se charge " +
+                "DIFFEREMMENT selon la classe (au combat, en infligeant des degats, en posant des pieges...). " +
+                "Pour le SOULRENDER, c'est l'HEMOGLYPHE (HG), de 0 a 5 : tu gagnes +1 HG chaque fois que tu " +
                 "INFLIGES des degats (et +1 si tu en subis). Les HG chargent ta SIGNATURE, ton sort ultime. " +
                 "Regarde ta jauge d'HG sur ton panneau. Clique sur Continuer.",
                 Gate.Continue, Coach.Resources));
@@ -189,12 +203,17 @@ namespace Nymora.Combat.View.Tutorial
 
             Combatant local = default;
             bool hasLocal = false;
+            EntityRef localEntity = default;
             var filter = frame.Filter<Combatant>();
-            while (filter.Next(out EntityRef _, out Combatant c))
+            while (filter.Next(out EntityRef e, out Combatant c))
             {
-                if (c.PlayerIndex == LocalIndex) { local = c; hasLocal = true; }
+                if (c.PlayerIndex == LocalIndex) { local = c; hasLocal = true; localEntity = e; }
             }
             if (!hasLocal) return;
+
+            // Étape 1 (bienvenue) : on met le PERSO DU JOUEUR en surbrillance pour qu'il l'identifie
+            // tout de suite. Retiré dès qu'on quitte l'étape 0.
+            UpdatePlayerHighlight(localEntity, _index == 0 && !_finished);
 
             if (state.ActivePlayerIndex == DummyIndex) _sawBotTurn = true;
 
@@ -250,6 +269,7 @@ namespace Nymora.Combat.View.Tutorial
             // un flag Core, consommé par le hub (HubTutorialOnboarding) qui fait le POST au retour.
             TutorialContext.CompletedThisSession = true;
             if (_panelGo != null) _panelGo.SetActive(false);
+            if (_playerView != null && _playerView && _playerHighlightOn) { _playerView.ClearHighlight(); _playerHighlightOn = false; }
             _currentCoach = Coach.None;
             if (_coachImage != null) _coachImage.gameObject.SetActive(false);
             BuildEndScreen();
@@ -320,7 +340,7 @@ namespace Nymora.Combat.View.Tutorial
             prt.anchorMin = new Vector2(0.5f, 1f);
             prt.anchorMax = new Vector2(0.5f, 1f);
             prt.pivot = new Vector2(0.5f, 1f);
-            prt.sizeDelta = new Vector2(1180f, 220f);
+            prt.sizeDelta = new Vector2(1180f, 214f); // compact mais assez haut pour ne pas chevaucher le bouton
             prt.anchoredPosition = new Vector2(0f, -24f);
 
             // Compteur d'étape / feedback (haut-gauche du panneau).
@@ -332,14 +352,15 @@ namespace Nymora.Combat.View.Tutorial
             _statusText.rectTransform.sizeDelta = new Vector2(-48f, 30f);
             _statusText.rectTransform.anchoredPosition = new Vector2(0f, -10f);
 
-            // Instruction principale (centre du panneau).
-            _instructionText = NewText("Instruction", panel.transform, 26, CombatUiKit.TextPrimary, TextAlignmentOptions.TopLeft);
+            // Instruction principale (centre du panneau). Marge basse (78) au-dessus du bouton
+            // Continuer (haut à ~68) pour qu'ils ne se chevauchent pas.
+            _instructionText = NewText("Instruction", panel.transform, 22, CombatUiKit.TextPrimary, TextAlignmentOptions.TopLeft);
             var irt = _instructionText.rectTransform;
             irt.anchorMin = new Vector2(0f, 0f);
             irt.anchorMax = new Vector2(1f, 1f);
             irt.pivot = new Vector2(0.5f, 0.5f);
-            irt.offsetMin = new Vector2(28f, 82f);
-            irt.offsetMax = new Vector2(-32f, -52f);
+            irt.offsetMin = new Vector2(30f, 70f);
+            irt.offsetMax = new Vector2(-34f, -42f);
 
             // Bouton Continuer (bas-droite, visible seulement sur les étapes info).
             var btnImg = NewImage("ContinueButton", panel.transform, CombatUiKit.GhostBg, 10f);
@@ -348,8 +369,8 @@ namespace Nymora.Combat.View.Tutorial
             brt.anchorMin = new Vector2(1f, 0f);
             brt.anchorMax = new Vector2(1f, 0f);
             brt.pivot = new Vector2(1f, 0f);
-            brt.sizeDelta = new Vector2(180f, 56f);
-            brt.anchoredPosition = new Vector2(-20f, 18f);
+            brt.sizeDelta = new Vector2(180f, 50f);
+            brt.anchoredPosition = new Vector2(-20f, 12f);
             var btn = _continueGo.AddComponent<Button>();
             btn.targetGraphic = btnImg;
             btn.onClick.AddListener(OnContinueClicked);
@@ -391,6 +412,26 @@ namespace Nymora.Combat.View.Tutorial
             _coachRt.localScale = Vector3.one * Mathf.Lerp(1.0f, 1.06f, t);
         }
 
+        // Applique/retire la surbrillance sur la CombatantView du joueur local. La vue est résolue
+        // paresseusement par EntityRef (elle peut naître après le 1er OnUpdateView).
+        private void UpdatePlayerHighlight(EntityRef playerEntity, bool wantOn)
+        {
+            if (_playerView == null || !_playerView)
+            {
+                foreach (var v in Object.FindObjectsByType<CombatantView>(FindObjectsSortMode.None))
+                {
+                    if (v != null && v.Entity == playerEntity) { _playerView = v; break; }
+                }
+            }
+            if (_playerView == null) return;
+
+            // Re-applique CHAQUE frame tant que wantOn : ApplyHighlight ne fait que poser _sprite.color,
+            // et TileHoverView (hover) peut l'écraser. Réappliquer garantit que la surbrillance tient
+            // toute l'étape 1. On ne nettoie qu'une fois, à la sortie.
+            if (wantOn) { _playerView.ApplyHighlight(); _playerHighlightOn = true; }
+            else if (_playerHighlightOn) { _playerView.ClearHighlight(); _playerHighlightOn = false; }
+        }
+
         private RectTransform ResolveCoachTarget()
         {
             if (_currentCoach == Coach.None) return null;
@@ -402,6 +443,9 @@ namespace Nymora.Combat.View.Tutorial
                 case Coach.SpellBar: return hud.SpellBarRect;
                 case Coach.EndTurn: return hud.EndTurnButtonRect;
                 case Coach.Signature: return hud.SignatureSlotRect;
+                // Rubis de PA du 1er sort ; repli sur la barre entière si le badge n'est pas
+                // encore créé (SetPaCost pas appelé sur une frame très précoce).
+                case Coach.PaGem: return hud.FirstSpellPaGemRect ?? hud.SpellBarRect;
                 default: return null;
             }
         }

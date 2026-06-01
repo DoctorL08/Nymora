@@ -74,7 +74,14 @@ namespace Nymora.Core.Data
         //                supprimé) reutilise par GhostraCommunionSpectrale. 2 PA self, cap 1x/tour,
         //                consomme 1 leurre -> heal 150 (HealHelper). Gate >=1 leurre. Infra
         //                PasAuDelaReady (MovementSystem/preview/renderer) laissée dormante.
-        public const int CombatRulesVersion = 93;
+        // 94 (Fix ciblage ligne droite, 1 juin) : Volée d'Épines (Nightseer, Shape Line) rejette
+        //                desormais les cibles diagonales comme Choc Sismique / Charge Brutale
+        //                (alignement cardinal requis). Garde sim unifie via SpellSystem.SpellIsStraightLine
+        //                (+ preview View + skip IA alignes sur la meme liste). Mur de Pierre exclu (pose libre).
+        // 95 (Tuto spawn rapproche, 1 juin) : en mode tuto (RuntimeConfig.TutorialPassiveBot), le
+        //                mannequin (slot 1) spawn a (3,4) au lieu de (7,2) -> centre-avant, devant le joueur (tuto direct).
+        //                Gate tuto only -> aucun impact ranked. Suit le pattern TutorialPassiveBot/FreezeTimer.
+        public const int CombatRulesVersion = 95;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

@@ -70,6 +70,9 @@ namespace Nymora.Combat.View.HUD
 
         public SpellId Spell => _spell;
         public RectTransform RectTransform => transform as RectTransform;
+        /// <summary>Tuto : rect du badge rubis (coût PA) au-dessus du slot, pour le coach mark.
+        /// Null tant que SetPaCost n'a pas été appelé (slot vide / HUD pas encore rafraîchi).</summary>
+        public RectTransform PaBadgeRect => _paBadge;
 
         private void Awake()
         {

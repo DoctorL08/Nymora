@@ -82,6 +82,12 @@ namespace Nymora.Hub.Menu
         // restaurer le rect quand on repasse sur le chemin legacy du skin.
         private Vector2 _pgPortraitAnchor;
         private Vector2 _pgPortraitSize;
+        // Box de CALCUL D'ÉCHELLE du portrait, identique à la prévisu boutique
+        // (CosmeticPreviewTooltip : PanelSizeSkin 420×540 − largeur 32 − TopReserve 54 − BottomReserve 136).
+        // Le perso/skin du deck builder s'affiche ainsi à la MÊME taille que dans la boutique (extraScale 1,
+        // comme le shop, sans le boost MenuPortraitScale). Le placement vertical reste piloté par
+        // _pgPortraitSize (centrage dans le rect visuel), seule la taille rendue est calée sur le shop.
+        private static readonly Vector2 PortraitFitBox = new Vector2(388f, 350f);
         // Familier équipé affiché en idle à côté du perso (prévisu menu personnage). Pas de
         // class-lock : un seul familier, montré quelle que soit la classe sélectionnée.
         private Image _pgPetPortrait;
@@ -1054,9 +1060,9 @@ namespace Nymora.Hub.Menu
             _pgPetPortrait.preserveAspect = true;
             var petrt = _pgPetPortrait.rectTransform;
             petrt.anchorMin = new Vector2(0f, 0f); petrt.anchorMax = new Vector2(0f, 0f); petrt.pivot = new Vector2(0.5f, 0f);
-            _pgPetBoxSize = new Vector2(160f, 160f);
+            _pgPetBoxSize = new Vector2(108f, 108f);          // plus petit (était 160)
             petrt.sizeDelta = _pgPetBoxSize;
-            _pgPetBoxCenter = new Vector2(cx - 140f, 215f); // à gauche, au niveau des pieds
+            _pgPetBoxCenter = new Vector2(cx - 95f, 235f);    // rapproché du perso + remonté près des pieds (était cx-140, 215)
             petrt.anchoredPosition = _pgPetBoxCenter;
             _pgPetPortrait.enabled = false; // affiché seulement si un familier est équipé
             _pgPetPortraitAnim = _pgPetPortrait.gameObject.AddComponent<UISpriteAnimator>();
@@ -1201,8 +1207,9 @@ namespace Nymora.Hub.Menu
                 {
                     // Centre visé = centre de la box portrait (ancre basse + demi-hauteur) ->
                     // toutes les classes centrées au même endroit, quelle que soit leur taille.
+                    // Échelle calée sur la box boutique (PortraitFitBox) -> même taille qu'en boutique.
                     Vector2 boxCenter = _pgPortraitAnchor + new Vector2(0f, _pgPortraitSize.y * 0.5f);
-                    _pgPortraitAnim.PlayAligned(_pgPortrait, def.IdleFrames, def.IdleFps, boxCenter, _pgPortraitSize);
+                    _pgPortraitAnim.PlayAligned(_pgPortrait, def.IdleFrames, def.IdleFps, boxCenter, PortraitFitBox);
                 }
                 else _pgPortrait.sprite = def.IdleFrames[0];
             }
@@ -1313,9 +1320,10 @@ namespace Nymora.Hub.Menu
                 // (SkinPortraitBoost) calé sur Ashen -> les nouveaux skins ressortaient plus GRANDS
                 // que les classes. PlayAligned normalise chaque skin à la box -> taille homogène.
                 _pgPortrait.rectTransform.localScale = Vector3.one;
+                // Échelle calée sur la box boutique (PortraitFitBox) + extraScale 1 (comme le shop) ->
+                // le skin s'affiche à la MÊME taille que dans la boutique (plus de boost MenuPortraitScale).
                 Vector2 boxCenter = _pgPortraitAnchor + new Vector2(0f, _pgPortraitSize.y * 0.5f);
-                float ps = skin.MenuPortraitScale > 0f ? skin.MenuPortraitScale : 1f;
-                _pgPortraitAnim.PlayAligned(_pgPortrait, skin.IdleFrames, skin.IdleFps, boxCenter, _pgPortraitSize, ps);
+                _pgPortraitAnim.PlayAligned(_pgPortrait, skin.IdleFrames, skin.IdleFps, boxCenter, PortraitFitBox);
                 _pgPortraitSkinId = skinId; // skin desormais affiche (anti-flash au prochain refresh)
             }
         }
@@ -1558,10 +1566,25 @@ namespace Nymora.Hub.Menu
             _currentScreen = row.gameObject;
         }
 
+        // Tuto hub (Brique B) : rects des cartes d'accueil, pour que HubTutorialDirector y pose ses
+        // coach marks. Repeuplé à chaque BuildHome (les anciens GameObjects sont détruits au changement
+        // d'écran ; on garde donc toujours les rects de l'écran home courant).
+        private readonly System.Collections.Generic.Dictionary<string, RectTransform> _homeCards
+            = new System.Collections.Generic.Dictionary<string, RectTransform>();
+
+        /// <summary>Tuto : rect de la carte d'accueil <paramref name="id"/> (arena/character/shop...),
+        /// ou null si l'écran home n'est pas affiché.</summary>
+        public RectTransform GetHomeCardRect(string id)
+            => _homeCards.TryGetValue(id, out var rt) && rt != null ? rt : null;
+
+        /// <summary>Tuto : true si le menu Échap est ouvert.</summary>
+        public bool IsMenuOpen => _isOpen;
+
         private void MakeHomeCard(RectTransform parent, string id, string title, string sub)
         {
             var btn = _f.MakeCard(parent, title, sub, out _, CardSprite(id));
             btn.onClick.AddListener(() => ShowScreen(id));
+            _homeCards[id] = (RectTransform)btn.transform;
         }
 
         private Sprite CardSprite(string id)

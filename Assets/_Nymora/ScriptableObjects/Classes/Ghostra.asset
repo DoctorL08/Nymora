@@ -87,3 +87,6 @@ MonoBehaviour:
   Stage0CombatYOffset: -0.071428575
   Stage1CombatYOffset: -0.05357143
   Stage2CombatYOffset: 0
+  DecoyCombatScale: 1
+  DecoyCombatXOffset: 0
+  DecoyCombatYOffset: 0.14285715

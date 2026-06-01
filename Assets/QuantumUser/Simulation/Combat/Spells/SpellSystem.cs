@@ -452,34 +452,15 @@ namespace Quantum
                 }
             }
 
-            // PATCH 22 mai (test designer) — Choc Sismique : frappe en LIGNE DROITE (Bible
-            // "PORTÉE 4 ligne"). On rejette toute cible non alignee cardinalement avec le caster
-            // (meme ligne OU meme colonne). Sans ca, une cible diagonale faisait tirer le handler
-            // dans l'axe dominant -> "range pas en ligne droite". Le handler tire ensuite les 4
-            // cases dans cet axe cardinal garanti.
-            if (cmd.Spell == SpellId.ColossarChocSismique)
+            // Sorts en LIGNE DROITE cardinale : la cible doit etre alignee avec le caster (meme
+            // ligne OU meme colonne). Couvre Choc Sismique, Charge Brutale ET Volée d'Épines
+            // (cf SpellIsStraightLine). Sans ce garde, une cible diagonale est acceptee a portee
+            // Manhattan puis snappee sur l'axe dominant -> "range diagonale" incoherente.
+            // (dx/dy deja calcules plus haut = cmd.Target - caster->Grid.)
+            if (SpellIsStraightLine(cmd.Spell) && dx != 0 && dy != 0)
             {
-                int csdx = cmd.TargetX - caster->GridX;
-                int csdy = cmd.TargetY - caster->GridY;
-                if (csdx != 0 && csdy != 0)
-                {
-                    Log.Warn($"[Spell] rejet : Choc Sismique cible non alignee (ligne droite cardinale requise) dx={csdx} dy={csdy}");
-                    return;
-                }
-            }
-
-            // Refonte 29 mai — Charge Brutale : ligne DROITE de 4 uniquement. La cible doit etre
-            //   alignee cardinalement (meme ligne OU meme colonne) avec le caster. Sans ce garde,
-            //   l'axe dominant snappait une cible diagonale (Manhattan 4) sur un axe -> "pas en ligne".
-            if (cmd.Spell == SpellId.SoulrenderChargeBrutale)
-            {
-                int cbdx = cmd.TargetX - caster->GridX;
-                int cbdy = cmd.TargetY - caster->GridY;
-                if (cbdx != 0 && cbdy != 0)
-                {
-                    Log.Warn($"[Spell] rejet : Charge Brutale cible non alignee (ligne droite cardinale requise) dx={cbdx} dy={cbdy}");
-                    return;
-                }
+                Log.Warn($"[Spell] rejet : {cmd.Spell} cible non alignee (ligne droite cardinale requise) dx={dx} dy={dy}");
+                return;
             }
 
             // Refonte 29 mai — Éboulement (ex-Soin Lourd) : requiert un de TES Piliers sur la case
@@ -3773,6 +3754,29 @@ namespace Quantum
                 case SpellId.GhostraFrappeFantome:         // range 4, ENEMY, teleport + 200 dmg
                 // Ghostra survie pose-leurre (3.7.c.iii)
                 case SpellId.GhostraRepliqueProtectrice:   // range 3, EmptyTile, pose decoy Protective
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// True si le sort tire/agit en LIGNE DROITE cardinale depuis le caster : la cible doit
+        /// etre alignee (meme ligne OU meme colonne). Couvre la shape Line (resolution generique
+        /// TargetingResolver) ET les sorts a resolution de ligne CUSTOM (Shape SingleTile mais
+        /// handler en ligne : Choc Sismique, Charge Brutale). Sans ce garde, une cible diagonale
+        /// est acceptee a portee Manhattan puis snappee sur l'axe dominant -> ciblage incoherent.
+        /// Utilise par la validation du cast (sim) ET le preview de portee (View) pour rester en phase.
+        /// NB : Mur de Pierre est EXCLU (pose libre dans le diamant, mur oriente perpendiculairement,
+        /// pas un tir en ligne depuis le caster).
+        /// </summary>
+        public static bool SpellIsStraightLine(SpellId id)
+        {
+            switch (id)
+            {
+                case SpellId.ColossarChocSismique:     // ligne 4 (Shape SingleTile, handler custom)
+                case SpellId.SoulrenderChargeBrutale:  // ligne 4 (refonte 29 mai, Shape SingleTile, handler custom)
+                case SpellId.NightseerVoleeDEpines:    // ligne 5 (Shape Line, resolution generique)
                     return true;
                 default:
                     return false;

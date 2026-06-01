@@ -28,6 +28,14 @@ namespace Quantum
         private const int P2SpawnX = 7;
         private const int P2SpawnY = 2;
 
+        // Tuto (1 juin) : mannequin placé vers le CENTRE-AVANT de l'arène, devant le joueur, pour un
+        // tuto DIRECT et lisible. P0 reste (2,7) ; P1 = (3,4) -> Manhattan |3-2|+|4-7| = 4, écran =
+        // droite + bas de P0 (vers le centre du losange iso), facing SE/NW conservé (axe -gy dominant).
+        // Position calée sur le repère de Lorenzo (point rouge centre-avant).
+        // Gate sur RuntimeConfig.TutorialPassiveBot (posé par CombatBootstrapIA en mode tuto).
+        private const int TutorialP2SpawnX = 3;
+        private const int TutorialP2SpawnY = 4;
+
         // 5.4 — Plus de spawn en OnInit. Les 2 modes (IA + PvP) attendent OnPlayerAdded.
         // Le bootstrap respectif (CombatBootstrapIA / CombatBootstrapCasual) gere l'AddPlayer.
 
@@ -63,8 +71,10 @@ namespace Quantum
                 ? runtimePlayer.ClassId
                 : NymoraClass.Soulrender; // fallback safe si bootstrap n'a pas set ClassId
 
-            int x = slot == 0 ? P1SpawnX : P2SpawnX;
-            int y = slot == 0 ? P1SpawnY : P2SpawnY;
+            // Tuto : mannequin (slot 1) rapproché à 3 cases du joueur (slot 0 inchangé).
+            bool tutorialClose = f.RuntimeConfig.TutorialPassiveBot && slot == 1;
+            int x = slot == 0 ? P1SpawnX : (tutorialClose ? TutorialP2SpawnX : P2SpawnX);
+            int y = slot == 0 ? P1SpawnY : (tutorialClose ? TutorialP2SpawnY : P2SpawnY);
 
             SpawnCombatant(f, playerIndex: slot, nymoraClass: nymoraClass, x: x, y: y);
             string modeTag = f.RuntimeConfig.IsBotMatch ? "IA" : "PvP";

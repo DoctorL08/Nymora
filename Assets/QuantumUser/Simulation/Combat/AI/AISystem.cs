@@ -301,9 +301,10 @@ namespace Quantum
                 int dist = AIEvaluator.Manhattan(bot->GridX, bot->GridY, enemyX, enemyY);
                 if (dist < def.RangeMin || dist > def.RangeMax) continue;
 
-                // Refonte 29 mai — Charge Brutale = ligne droite cardinale : skip si l'ennemi
-                //   n'est pas aligne (meme ligne ou colonne), sinon le cast est rejete (tour gaspille).
-                if (spellId == SpellId.SoulrenderChargeBrutale
+                // Sorts en ligne droite cardinale (Charge Brutale, Choc Sismique, Volée d'Épines :
+                //   cf SpellSystem.SpellIsStraightLine) : skip si l'ennemi n'est pas aligne (meme
+                //   ligne ou colonne), sinon le cast est rejete par la sim (tour gaspille).
+                if (SpellSystem.SpellIsStraightLine(spellId)
                     && bot->GridX != enemyX && bot->GridY != enemyY) continue;
 
                 affordable[affordableCount] = spellId;

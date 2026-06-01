@@ -100,10 +100,11 @@ namespace Nymora.Combat.View
             // Note 2.13.b : on n'utilise plus le Filter cote View pour le highlight bleu.
             // La portee Manhattan complete est affichee ; Quantum filtre au cast.
             TargetingShape shape;
+            TargetingFilter spellFilter;
             int rangeMin, rangeMax;
-            // PATCH 22 mai (test designer) — sorts en LIGNE DROITE cardinale : la portee castable
-            // est restreinte aux 4 rayons (pas tout le diamant Manhattan) et le survol montre la
-            // ligne complete. Pour l'instant : Choc Sismique (Bible "portee 4 ligne").
+            // Sorts en LIGNE DROITE cardinale : la portee castable est restreinte aux 4 rayons (pas
+            // tout le diamant Manhattan) et le survol montre la ligne complete. Liste centralisee
+            // cote sim (SpellSystem.SpellIsStraightLine) : Choc Sismique, Charge Brutale, Volée d'Épines.
             bool isStraightLineSpell = false;
             // PATCH 22 mai — grisage des cases hors ligne de vue (derriere un obstacle). Activé
             // uniquement pour les sorts qui requierent une LoS claire cote sim (meme liste).
@@ -112,18 +113,18 @@ namespace Nymora.Combat.View
                 && SpellRegistry.TryGet(_hudController.ArmedSpell.Value, out SpellDef def))
             {
                 shape = def.Shape;
+                spellFilter = def.Filter;
                 rangeMin = def.RangeMin;
                 rangeMax = def.RangeMax;
-                // Sorts en LIGNE DROITE cardinale : Choc Sismique (Colossar) + Charge Brutale
-                //   (Soulrender, refonte 29 mai : "ligne de 4" — la portee castable se limite aux
-                //   cases cardinalement alignees, coherent avec le garde sim).
-                isStraightLineSpell = _hudController.ArmedSpell.Value == SpellId.ColossarChocSismique
-                                   || _hudController.ArmedSpell.Value == SpellId.SoulrenderChargeBrutale;
+                // Coherent avec le garde sim (SpellSystem.SpellIsStraightLine) : la portee castable
+                // se limite aux cases cardinalement alignees avec le caster.
+                isStraightLineSpell = SpellSystem.SpellIsStraightLine(_hudController.ArmedSpell.Value);
                 needsLineOfSight = SpellSystem.SpellNeedsLineOfSight(_hudController.ArmedSpell.Value);
             }
             else if (_inputController != null && _inputController.DebugShowTargeting)
             {
                 shape = _inputController.DebugShape;
+                spellFilter = _inputController.DebugFilter;
                 rangeMin = _inputController.DebugRangeMin;
                 rangeMax = _inputController.DebugRangeMax;
             }
@@ -202,12 +203,29 @@ namespace Nymora.Combat.View
                 _gridSettings.TileWorldHeight,
                 _centerOffset);
 
+            // Fix ciblage juin 2026 — si la souris est sur le SPRITE d'un combattant/leurre, la case
+            // survolee = SA case (cohérent avec le clic de cast), pas la case sol projetée derrière.
+            // Gate par le filtre (unité/leurre) OU les sorts en ligne droite (AnyTile mais visent un
+            // ennemi le long de la ligne) cote TryPickSpriteTargetCell.
+            if (TileHoverView.TryPickSpriteTargetCell(mouseWorld, spellFilter, isStraightLineSpell, _gridSettings, _centerOffset, out int spriteGx, out int spriteGy))
+            {
+                hoverGx = spriteGx;
+                hoverGy = spriteGy;
+            }
+
             int hoverIdx = (hoverGx >= 0 && hoverGx < GridConstants.Width && hoverGy >= 0 && hoverGy < GridConstants.Height)
                 ? hoverGy * GridConstants.Width + hoverGx
                 : -1;
 
-            // Effect zone affichee uniquement si on survole une case dans la range castable.
-            if (hoverIdx >= 0 && visibleCastable.Contains(hoverIdx))
+            // Self : la cible est le caster. La prévisu d'effet (rouge) ne s'affiche que quand la
+            // souris est SUR le caster (sprite snappé via le gate, ou sa case sol) — pas en continu,
+            // pour rester cohérent avec le clic (cast uniquement si on clique sur soi).
+            bool isSelfSpell = spellFilter == TargetingFilter.Self;
+            bool hoveringCaster = hoverGx == casterX && hoverGy == casterY;
+
+            // Effect zone affichee si on survole une case castable, OU pour un self quand on survole
+            // le caster (sa case n'est pas forcément dans la range castable selon RangeMin).
+            if (hoverIdx >= 0 && (visibleCastable.Contains(hoverIdx) || (isSelfSpell && hoveringCaster)))
             {
                 if (isStraightLineSpell)
                 {

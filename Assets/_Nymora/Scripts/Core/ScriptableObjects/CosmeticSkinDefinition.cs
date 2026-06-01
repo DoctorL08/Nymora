@@ -96,6 +96,8 @@ namespace Nymora.Core.ScriptableObjects
         public float DecoyCombatScale = 1f;
         [Tooltip("Décalage Y ADDITIONNEL appliqué aux leurres portant ce skin (en plus de l'offset de base du DecoyView).")]
         public float DecoyCombatYOffset = 0f;
+        [Tooltip("Décalage X ADDITIONNEL appliqué aux leurres portant ce skin (recalage horizontal, réglable via F10).")]
+        public float DecoyCombatXOffset = 0f;
 
         /// <summary>True si le skin embarque au moins le controller stage 0 SE (variante combat dispo).</summary>
         public bool HasCombatControllers => Stage0ControllerSE != null;

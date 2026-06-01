@@ -166,6 +166,26 @@ namespace Nymora.Combat.View
                 // qu'ils aient la MEME apparence que la vraie Ghostra (indiscernable cote adverse).
                 var ownerSkin = ResolveOwnerSkinDef(frame, ghostra);
 
+                // Calibration X/Y/scale des leurres (recalage live via F10) : portee par le SKIN
+                // equipe si present, sinon par la NymoraClassDefinition Ghostra de BASE. Resolue une
+                // fois par Ghostra et appliquee a chacun de ses leurres ci-dessous.
+                float decoyExtraX, decoyExtraY, decoyScaleMul;
+                if (ownerSkin != null)
+                {
+                    decoyExtraX = ownerSkin.DecoyCombatXOffset;
+                    decoyExtraY = ownerSkin.DecoyCombatYOffset;
+                    decoyScaleMul = ownerSkin.DecoyCombatScale;
+                }
+                else
+                {
+                    var ghostraDef = _combatantRenderer != null
+                        ? _combatantRenderer.FindClassDef(Nymora.Core.Enums.NymoraClass.Ghostra)
+                        : null;
+                    decoyExtraX = ghostraDef != null ? ghostraDef.DecoyCombatXOffset : 0f;
+                    decoyExtraY = ghostraDef != null ? ghostraDef.DecoyCombatYOffset : 0f;
+                    decoyScaleMul = ghostraDef != null ? ghostraDef.DecoyCombatScale : 1f;
+                }
+
                 // Voile Spectral : si la Ghostra vient de le caster ce tick, ses leurres ont été
                 // téléportés autour de l'ennemi → on joue un flash spectral sur chacun (anim de TP).
                 bool voileThisFrame = false;
@@ -203,15 +223,18 @@ namespace Nymora.Combat.View
                     Vector3 world = IsoProjection.GridToWorld(
                         d.PosX, d.PosY,
                         _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight) + _centerOffset + transform.position;
-                    Vector3 decoyBaseWorld = world; // position "root" (avant offset visuel), pour placer le familier
-                    // Offset Y de base + offset additionnel du skin équipé (réglable en live via F10).
-                    world.y += _decoyYOffset + (ownerSkin != null ? ownerSkin.DecoyCombatYOffset : 0f);
+                    // Recalage horizontal (skin ou base, réglable en live via F10) appliqué AVANT la
+                    // capture du root pour que le familier du leurre suive le décalage X.
+                    world.x += decoyExtraX;
+                    Vector3 decoyBaseWorld = world; // position "root" (avant offset Y visuel), pour placer le familier
+                    // Offset Y de base + offset additionnel (skin équipé OU classe Ghostra de base, réglable F10).
+                    world.y += _decoyYOffset + decoyExtraY;
                     go.transform.position = world;
 
-                    // Échelle de base du leurre × multiplicateur du skin (réglable en live via F10,
-                    // persisté sur l'asset → toutes scènes). Réappliqué chaque frame (idempotent) pour
-                    // que le tuner prenne effet immédiatement et que les leurres skinnés suivent.
-                    Vector3 targetDecoyScale = _decoyScale * (ownerSkin != null ? ownerSkin.DecoyCombatScale : 1f);
+                    // Échelle de base du leurre × multiplicateur (skin OU classe de base, réglable en live
+                    // via F10, persisté sur l'asset → toutes scènes). Réappliqué chaque frame (idempotent)
+                    // pour que le tuner prenne effet immédiatement et que les leurres skinnés suivent.
+                    Vector3 targetDecoyScale = _decoyScale * decoyScaleMul;
                     if (go.transform.localScale != targetDecoyScale) go.transform.localScale = targetDecoyScale;
 
                     // Tri iso : MEME formule que CombatantView (1000 - (gx+gy)*10) pour que le
