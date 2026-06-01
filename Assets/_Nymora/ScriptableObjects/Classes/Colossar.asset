@@ -76,3 +76,11 @@ MonoBehaviour:
   WalkFps: 12
   HubVisualScale: 1
   HubVisualYOffset: 0
+  HubVisualXOffset: 0
+  CombatVisualScale: 1
+  Stage0CombatXOffset: 0
+  Stage1CombatXOffset: 0
+  Stage2CombatXOffset: 0
+  Stage0CombatYOffset: 0
+  Stage1CombatYOffset: -0.017857144
+  Stage2CombatYOffset: 0

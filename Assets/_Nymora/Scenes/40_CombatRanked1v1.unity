@@ -6727,14 +6727,15 @@ MonoBehaviour:
   _restartEasyButton: {fileID: 0}
   _restartMediumButton: {fileID: 0}
   _returnToHubButton: {fileID: 1848089424}
-  _replayRecorder: {fileID: 1662786575}
   _saveReplayButton: {fileID: 1075760010}
   _saveReplayLabel: {fileID: 1664194053}
+  _replayRecorder: {fileID: 1662786575}
   _saveReplayDefaultText: Sauvegarder le replay
   _saveReplaySavedText: Replay sauvegarde !
   _victoryColor: {r: 1, g: 0.83, b: 0.3, a: 1}
   _defeatColor: {r: 0.9, g: 0.25, b: 0.25, a: 1}
   _drawColor: {r: 0.75, g: 0.75, b: 0.75, a: 1}
+  _cardWidth: 560
 --- !u!1 &307443114
 GameObject:
   m_ObjectHideFlags: 0
@@ -37567,6 +37568,12 @@ MonoBehaviour:
   _colossarPrefab: {fileID: 4001644256250217770, guid: d2aaf90540d72dc4b8ddc1dd6f422067, type: 3}
   _necramPrefab: {fileID: 2644071964246177066, guid: a5b19877918d92e4a88e78847ab570d0, type: 3}
   _ghostraPrefab: {fileID: 7130866591408297228, guid: 754afc4d0638dcd4bb108c94fae242fe, type: 3}
+  _classDefinitions:
+  - {fileID: 11400000, guid: 0e8842fc0c60d1b4a9ed3f0a32b496af, type: 2}
+  - {fileID: 11400000, guid: 91674f8f09b77f34f983be2a5cdfb8e9, type: 2}
+  - {fileID: 11400000, guid: f3d55ecd043366643ae2397dd9d8f63b, type: 2}
+  - {fileID: 11400000, guid: 5e2df6cd8c8eb354c98ca170295b4c53, type: 2}
+  - {fileID: 11400000, guid: 9363d65973614ae4aa5cd9560f9fa059, type: 2}
 --- !u!4 &1246937101
 Transform:
   m_ObjectHideFlags: 0

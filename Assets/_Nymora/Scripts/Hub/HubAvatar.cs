@@ -359,14 +359,40 @@ namespace Nymora.Hub
             {
                 float rawScale = _currentSkinDef != null ? _currentSkinDef.HubVisualScale : def.HubVisualScale;
                 float yOff = _currentSkinDef != null ? _currentSkinDef.HubVisualYOffset : def.HubVisualYOffset;
+                // X offset : skin équipé -> celui du skin ; sinon celui de la classe de base.
+                float xOff = _currentSkinDef != null ? _currentSkinDef.HubVisualXOffset : def.HubVisualXOffset;
                 float scale = rawScale > 0f ? rawScale : 1f;
                 Vector3 lp = _visualTransform.localPosition;
-                _visualTransform.localPosition = new Vector3(lp.x, yOff, lp.z);
+                _visualTransform.localPosition = new Vector3(xOff, yOff, lp.z);
                 _visualTransform.localScale = new Vector3(scale, scale, 1f);
             }
 
             ApplyFacingVisual();
         }
+
+        /// <summary>
+        /// Tuner dev (HubSkinTuner F10) — applique en LIVE X / Y / scale sur le child "Visual" de
+        /// l'avatar hub (recalage du skin, stage unique en hub). No-op si prefab mono-GO (Visual ==
+        /// root, sinon on bougerait l'ancre tile). Les valeurs sont persistées dans le skin par le tuner.
+        /// </summary>
+        public void SetHubVisualCalibration(float xOffset, float yOffset, float scale)
+        {
+            if (_visualTransform == null || _visualTransform == transform) return;
+            Vector3 lp = _visualTransform.localPosition;
+            _visualTransform.localPosition = new Vector3(xOffset, yOffset, lp.z);
+            float s = scale > 0f ? scale : 1f;
+            _visualTransform.localScale = new Vector3(s, s, 1f);
+        }
+
+        /// <summary>True si le sprite est sur un child "Visual" (≠ root) → le recalage X/Y/scale
+        /// du tuner a un effet. False = prefab mono-GO (offset ignoré).</summary>
+        public bool VisualOnChild => _visualTransform != null && _visualTransform != transform;
+
+        /// <summary>Tuner dev (HubSkinTuner) — classe de base courante (pour régler la calibration
+        /// hub de la classe quand aucun skin n'est équipé).</summary>
+        public CosmeticSkinDefinition CurrentSkinDefinition => _currentSkinDef;
+        /// <summary>Tuner dev (HubSkinTuner) — définition de classe courante (cible base).</summary>
+        public NymoraClassDefinition CurrentClassDefinition => _currentClassDef;
 
         /// <summary>
         /// 5.3.g.bis — Lance l'anim selon _currentFacing : frames SE (face) ou NE (dos),

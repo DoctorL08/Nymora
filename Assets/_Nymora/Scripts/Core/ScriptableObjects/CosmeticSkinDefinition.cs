@@ -49,6 +49,8 @@ namespace Nymora.Core.ScriptableObjects
         [Header("Hub Visual Calibration")]
         public float HubVisualScale = 1f;
         public float HubVisualYOffset = 0f;
+        [Tooltip("Décalage X du sprite dans le HUB (recalage horizontal, réglable via F10 en hub).")]
+        public float HubVisualXOffset = 0f;
 
         [Tooltip("5.12 — Échelle de la prévisu dans le MENU perso uniquement (indépendant du hub). " +
                  "1 = ajusté à la box comme les classes ; >1 agrandit, <1 réduit. Réglable PAR skin " +
@@ -79,6 +81,11 @@ namespace Nymora.Core.ScriptableObjects
         public float Stage0CombatYOffset = 0f;
         public float Stage1CombatYOffset = 0f;
         public float Stage2CombatYOffset = 0f;
+
+        [Header("Combat — X offset visuel par stage (recalage horizontal du sprite, réglable via F10)")]
+        public float Stage0CombatXOffset = 0f;
+        public float Stage1CombatXOffset = 0f;
+        public float Stage2CombatXOffset = 0f;
 
         [Tooltip("Échelle du skin en COMBAT (multiplie l'échelle de base du child Visual de la classe). " +
                  "1 = taille de base de la classe ; <1 réduit, >1 agrandit. Réglable en live via F10.")]

@@ -77,5 +77,13 @@ MonoBehaviour:
   - {fileID: -5744509438806935156, guid: 9ec1fecc6761e78468b1d906c38ee526, type: 3}
   - {fileID: -8650473863939413478, guid: 9ec1fecc6761e78468b1d906c38ee526, type: 3}
   WalkFps: 12
-  HubVisualScale: 1.2075
-  HubVisualYOffset: -0.207
+  HubVisualScale: 1.0705953
+  HubVisualYOffset: -0.06414286
+  HubVisualXOffset: 0
+  CombatVisualScale: 1
+  Stage0CombatXOffset: 0
+  Stage1CombatXOffset: 0
+  Stage2CombatXOffset: 0
+  Stage0CombatYOffset: -0.071428575
+  Stage1CombatYOffset: -0.05357143
+  Stage2CombatYOffset: 0

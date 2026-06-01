@@ -27,6 +27,12 @@ namespace Nymora.Combat.View
         [SerializeField] private GameObject _necramPrefab;
         [SerializeField] private GameObject _ghostraPrefab;
 
+        [Header("Definitions de classe (calibration visuelle de BASE — drag les 5 NymoraClassDefinition)")]
+        [Tooltip("Sert a appliquer la calibration combat de la classe de BASE (X/Y par phase + scale) " +
+                 "quand aucun skin cosmetique n'est equipe. Reglable en live via F10 (CombatSkinYTuner). " +
+                 "Optionnel : si vide, la base garde les offsets du prefab CombatantView.")]
+        [SerializeField] private NymoraClassDefinition[] _classDefinitions;
+
         private readonly Dictionary<EntityRef, CombatantView> _views = new Dictionary<EntityRef, CombatantView>();
         // Reuse buffer pour eviter les allocations dans OnUpdateView (appele a chaque frame view).
         // Capacite 2 suffit pour le 1v1 actuel ; sera grow auto si on passe en 2v2/3v3 plus tard.
@@ -849,6 +855,19 @@ namespace Nymora.Combat.View
                 view.ApplySkin(skin);
                 Debug.Log($"[Nymora.CombatantRenderer] Skin combat '{skin.CosmeticId}' appliqué à P{combatant.PlayerIndex} {combatant.Class}.");
             }
+            else
+            {
+                // Pas de skin -> applique la calibration combat de la classe de BASE (X/Y par phase
+                // + scale) si la NymoraClassDefinition est wirée. Permet au tuner F10 de régler la
+                // base et que ça persiste (sinon la base garde les offsets du prefab).
+                var cdef = FindClassDef((Nymora.Core.Enums.NymoraClass)(byte)combatant.Class);
+                if (cdef != null)
+                {
+                    view.SetCombatXOffsets(cdef.Stage0CombatXOffset, cdef.Stage1CombatXOffset, cdef.Stage2CombatXOffset);
+                    view.SetCombatYOffsets(cdef.Stage0CombatYOffset, cdef.Stage1CombatYOffset, cdef.Stage2CombatYOffset);
+                    view.SetCombatVisualScale(cdef.CombatVisualScale);
+                }
+            }
 
             view.UpdateGridPosition(combatant.GridX, combatant.GridY, world);
             _views[entity] = view;
@@ -937,6 +956,18 @@ namespace Nymora.Combat.View
                 case NymoraClass.Ghostra: return _ghostraPrefab;
                 default: return null;
             }
+        }
+
+        /// <summary>Résout la NymoraClassDefinition wirée pour une classe (null si absente).
+        /// Sert à la calibration de base + exposé au tuner F10 (CombatSkinYTuner).
+        /// Prend le NymoraClass de Core.Enums (= type de ClassId) ; l'appelant combat caste
+        /// depuis Quantum.NymoraClass via (byte) (mêmes valeurs, cf TimelineView).</summary>
+        public NymoraClassDefinition FindClassDef(Nymora.Core.Enums.NymoraClass classId)
+        {
+            if (_classDefinitions == null) return null;
+            foreach (var d in _classDefinitions)
+                if (d != null && d.ClassId == classId) return d;
+            return null;
         }
 
         private void ClearAll()

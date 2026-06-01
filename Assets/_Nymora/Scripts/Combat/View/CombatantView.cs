@@ -99,6 +99,14 @@ namespace Nymora.Combat.View
         [Tooltip("Y offset applique au sprite (child Visual) en stage 2. Default 0.")]
         [SerializeField] private float _stage2VisualYOffset = 0f;
 
+        [Header("X offset visuel par stage (recalage horizontal — meme workaround pivot que Y)")]
+        [Tooltip("X offset applique au sprite (child Visual) en stage 0. Default 0.")]
+        [SerializeField] private float _stage0VisualXOffset = 0f;
+        [Tooltip("X offset applique au sprite (child Visual) en stage 1. Default 0.")]
+        [SerializeField] private float _stage1VisualXOffset = 0f;
+        [Tooltip("X offset applique au sprite (child Visual) en stage 2. Default 0.")]
+        [SerializeField] private float _stage2VisualXOffset = 0f;
+
         public EntityRef Entity { get; private set; }
         public int GridX { get; private set; }
         public int GridY { get; private set; }
@@ -117,6 +125,11 @@ namespace Nymora.Combat.View
         private bool _hasTarget;
         private int _currentStage = -1; // -1 = pas encore initialise
         private IsoFacing _currentFacing = (IsoFacing)(-1); // sentinelle invalide pour forcer le premier set
+
+        // Tuner dev (CombatSkinYTuner / F10) — force le stage AFFICHE pour recaler une phase
+        // precise sans devoir amener le perso a la bonne ressource. -1 = pas d'override (le stage
+        // pousse par le renderer selon la ressource s'applique normalement). Toujours -1 en prod.
+        private int _previewStageOverride = -1;
 
         // Skin combat (5.10) — échelle de base du child "Visual" de la classe, capturée au Bind, pour
         // y appliquer le multiplicateur CombatVisualScale du skin (réglable en live via F10). Mono-GO
@@ -196,6 +209,9 @@ namespace Nymora.Combat.View
             _stage0VisualYOffset = skin.Stage0CombatYOffset;
             _stage1VisualYOffset = skin.Stage1CombatYOffset;
             _stage2VisualYOffset = skin.Stage2CombatYOffset;
+            _stage0VisualXOffset = skin.Stage0CombatXOffset;
+            _stage1VisualXOffset = skin.Stage1CombatXOffset;
+            _stage2VisualXOffset = skin.Stage2CombatXOffset;
 
             // Taille du skin en combat : échelle de base du Visual × multiplicateur du skin
             // (réglable en live via F10, persisté sur l'asset → toutes scènes). Child "Visual"
@@ -249,6 +265,46 @@ namespace Nymora.Combat.View
                 pos.y = off;
                 _sprite.transform.localPosition = pos;
             }
+        }
+
+        /// <summary>
+        /// Tuner dev (CombatSkinYTuner F10) — pendant horizontal de SetCombatYOffsets : pousse les
+        /// 3 X offsets de stage en LIVE et re-applique celui du stage courant. No-op visuel si
+        /// mono-GO (sprite sur le root, cf SpriteOnChild).
+        /// </summary>
+        public void SetCombatXOffsets(float s0, float s1, float s2)
+        {
+            _stage0VisualXOffset = s0;
+            _stage1VisualXOffset = s1;
+            _stage2VisualXOffset = s2;
+            if (_sprite == null || _sprite.transform == transform) return;
+            int stage = _currentStage < 0 ? 0 : _currentStage;
+            float off = stage == 0 ? _stage0VisualXOffset
+                      : stage == 1 ? _stage1VisualXOffset
+                      : _stage2VisualXOffset;
+            Vector3 pos = _sprite.transform.localPosition;
+            if (!Mathf.Approximately(pos.x, off))
+            {
+                pos.x = off;
+                _sprite.transform.localPosition = pos;
+            }
+        }
+
+        /// <summary>
+        /// Tuner dev (CombatSkinYTuner F10) — force le stage AFFICHE (preview de phase) ou le
+        /// libere. <paramref name="stage"/> dans [0..2] force ; -1 (ou hors borne) rend la main
+        /// au renderer (stage selon ressource). Applique immediatement le stage de preview.
+        /// </summary>
+        public void SetPreviewStageOverride(int stage)
+        {
+            _previewStageOverride = (stage < 0 || stage > 2) ? -1 : stage;
+            // Re-applique le stage courant en respectant (ou non) le nouvel override. On invalide
+            // la sentinelle pour forcer SetStageAndFacing a ne pas court-circuiter.
+            int target = _previewStageOverride >= 0 ? _previewStageOverride
+                       : (_currentStage < 0 ? 0 : _currentStage);
+            IsoFacing facing = _currentFacing == (IsoFacing)(-1) ? IsoFacing.SE : _currentFacing;
+            _currentStage = -1;
+            SetStageAndFacing(target, facing);
         }
 
         // ======================================================================
@@ -555,6 +611,10 @@ namespace Nymora.Combat.View
         /// </summary>
         public void SetStageAndFacing(int stage, IsoFacing facing)
         {
+            // Tuner dev : si un stage de preview est force, il prend le pas sur le stage pousse
+            // par le renderer (clamp a chaque appel) -> pas de thrash d'animation, le renderer
+            // n'arrive plus a ramener le perso a son stage de ressource tant que l'override tient.
+            if (_previewStageOverride >= 0) stage = _previewStageOverride;
             if (stage < 0) stage = 0;
             if (stage > 2) stage = 2;
             if (stage == _currentStage && facing == _currentFacing) return;
@@ -580,13 +640,17 @@ namespace Nymora.Combat.View
             // sans restructure), garder les 3 offsets a 0 = pas de modif transform.
             if (_sprite != null && _sprite.transform != transform)
             {
-                float off = stage == 0 ? _stage0VisualYOffset
-                          : stage == 1 ? _stage1VisualYOffset
-                          : _stage2VisualYOffset;
+                float offY = stage == 0 ? _stage0VisualYOffset
+                           : stage == 1 ? _stage1VisualYOffset
+                           : _stage2VisualYOffset;
+                float offX = stage == 0 ? _stage0VisualXOffset
+                           : stage == 1 ? _stage1VisualXOffset
+                           : _stage2VisualXOffset;
                 Vector3 pos = _sprite.transform.localPosition;
-                if (!Mathf.Approximately(pos.y, off))
+                if (!Mathf.Approximately(pos.y, offY) || !Mathf.Approximately(pos.x, offX))
                 {
-                    pos.y = off;
+                    pos.y = offY;
+                    pos.x = offX;
                     _sprite.transform.localPosition = pos;
                 }
             }

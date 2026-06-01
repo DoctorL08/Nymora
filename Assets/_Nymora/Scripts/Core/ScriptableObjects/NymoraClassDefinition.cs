@@ -108,5 +108,28 @@ namespace Nymora.Core.ScriptableObjects
         [Tooltip("Y offset local applique au child 'Visual' du HubAvatar pour cette classe " +
                  "(monde = root.y + scale.y * yOffset si root scale != 1). Negatif = sprite descend vis-a-vis du centre de tile.")]
         public float HubVisualYOffset = 0f;
+
+        [Tooltip("X offset local applique au child 'Visual' du HubAvatar pour cette classe (recalage horizontal, reglable via F10 en hub).")]
+        public float HubVisualXOffset = 0f;
+
+        // ==================================================================
+        // Calibration VISUELLE en COMBAT pour la classe de BASE (sans skin cosmetique).
+        // VIEW-ONLY : ces champs ne touchent PAS la simulation Quantum -> aucun impact
+        // deterministe, donc PAS de CombatRulesVersion a incrementer (meme categorie que
+        // la calibration hub ci-dessus). Le CombatantRenderer les pousse au spawn quand
+        // aucun skin n'est equipe ; reglables en LIVE via le tuner F10 (CombatSkinYTuner).
+        // Un skin cosmetique equipe override ces valeurs avec les siennes (CosmeticSkinDefinition).
+        // ==================================================================
+        [Header("Combat Visual Calibration — base (VIEW-only, pas de CombatRulesVersion)")]
+        [Tooltip("Echelle du sprite en COMBAT (multiplie l'echelle de base du child Visual). 1 = taille native du prefab.")]
+        public float CombatVisualScale = 1f;
+        [Tooltip("X offset combat par phase (child Visual). Reglable via F10.")]
+        public float Stage0CombatXOffset = 0f;
+        public float Stage1CombatXOffset = 0f;
+        public float Stage2CombatXOffset = 0f;
+        [Tooltip("Y offset combat par phase (child Visual). Reglable via F10.")]
+        public float Stage0CombatYOffset = 0f;
+        public float Stage1CombatYOffset = 0f;
+        public float Stage2CombatYOffset = 0f;
     }
 }
