@@ -40,7 +40,7 @@ namespace Nymora.Hub.Menu
         public struct CardArt { public string Id; public Sprite Sprite; }
 
         // M8 — Lien Discord Nymora (section report de bug), ouvert dans le navigateur.
-        private const string BugReportUrl = "https://discord.gg/haRtXKCERx";
+        private const string BugReportUrl = "https://discord.gg/3Nm3q2DX";
 
         // Scène de connexion (retour sur Déconnexion).
         private const string LoginSceneName = "00_Login";
