@@ -269,6 +269,18 @@ namespace Nymora.UI.Login
             {
                 SetStatus("Pseudo ou mot de passe incorrect.");
             }
+            else if (res.StatusCode == 403)
+            {
+                // Ban ou serveurs fermés (maintenance) : pop-up centrée stylée avec le
+                // message complet renvoyé par le serveur (raison + temps restant pour un ban).
+                string msg = string.IsNullOrEmpty(res.ErrorMessage) ? "Connexion refusée." : res.ErrorMessage;
+                string lower = msg.ToLowerInvariant();
+                string title = lower.Contains("banni") ? "Compte banni"
+                    : (lower.Contains("ferm") || lower.Contains("maintenance")) ? "Serveurs fermés"
+                    : "Connexion impossible";
+                SimpleNotice.Show(title, msg);
+                SetStatus(string.Empty);
+            }
             else
             {
                 SetStatus($"Echec connexion ({res.StatusCode}) : {res.ErrorMessage}");
