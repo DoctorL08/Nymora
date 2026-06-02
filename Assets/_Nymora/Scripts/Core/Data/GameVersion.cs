@@ -121,7 +121,17 @@ namespace Nymora.Core.Data
         //                Soulrender Tranche-Ame portee 1->2 (anti-kite) · Necram Brume Toxique relance 2 tours ·
         //                Nightseer Tir Precis portee 6->4 + 200/280->150/210 dmg + 1x/tour · Nightseer Pas
         //                Furtif 2->4 PA + portee 4->3. Pure logique, aucun champ [Networked] touche.
-        public const int CombatRulesVersion = 102;
+        // 103 (Colossar tape ses propres obstacles, juin) : un sort offensif endommage desormais
+        //                AUSSI les obstacles OWN du caster sur ses cases d'effet (avant : seuls les
+        //                obstacles adverses). Le Colossar peut donc casser ses propres Piliers / Murs /
+        //                Failles (degager une Faille, abattre un Mur, detruire un Pilier -> Densite
+        //                Inerte +30 HP). Deux gardes ouvertes dans SpellSystem : (1) validation de cible
+        //                (offensiveObstacleTarget) accepte desormais TOUT obstacle, plus seulement
+        //                l'adverse -> un sort Filter=Enemy/AnyUnit peut viser un obstacle own ; (2) boucle
+        //                damage : owner-check retire -> l'obstacle own prend les degats. Helper
+        //                IsAdverseObstacleAt supprime (remplace par ObstacleHelpers.HasObstacleAt). Pure
+        //                logique, aucun champ [Networked] touche.
+        public const int CombatRulesVersion = 103;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

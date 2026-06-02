@@ -337,16 +337,18 @@ namespace Quantum
             // les vraies cibles dans le damage loop via le check enemy/distance).
             if (!TargetingResolver.MatchesFilter(f, cmd.TargetX, cmd.TargetY, spellDef.Filter, casterEntity, playerIndex))
             {
-                // PATCH 22 mai (test designer) — Murs/Piliers ciblables par les sorts de degats
-                // (toutes classes). Le filtre Enemy/AnyUnit rejette une case sans unite, mais on
-                // veut pouvoir viser un OBSTACLE ADVERSE pour le detruire (Bible : Pilier/Mur
-                // destructibles). La boucle damage offensive (plus bas) applique deja les degats a
-                // l'obstacle adverse present sur une case d'effet. On laisse donc passer la
-                // validation pour un sort offensif visant une case a obstacle adverse.
+                // PATCH 22 mai (test designer) + brique juin 2026 — Murs/Piliers/Failles ciblables
+                // par les sorts de degats (toutes classes). Le filtre Enemy/AnyUnit rejette une case
+                // sans unite, mais on veut pouvoir viser un OBSTACLE pour le detruire (Bible : Pilier/
+                // Mur destructibles). Vaut pour l'obstacle ADVERSE (le detruire) ET — depuis brique juin
+                // 2026 — pour l'obstacle OWN : le Colossar peut TAPER SES PROPRES Piliers/Murs/Failles
+                // (degager une Faille genante, abattre un Mur, casser un Pilier -> Densite Inerte +30 HP).
+                // La boucle damage offensive (plus bas) applique les degats a l'obstacle present (own
+                // ou adverse) sur la case d'effet.
                 bool offensiveObstacleTarget =
                     spellDef.IsOffensive != 0
                     && (spellDef.Filter == TargetingFilter.Enemy || spellDef.Filter == TargetingFilter.AnyUnit)
-                    && IsAdverseObstacleAt(f, cmd.TargetX, cmd.TargetY, playerIndex);
+                    && ObstacleHelpers.HasObstacleAt(f, cmd.TargetX, cmd.TargetY);
 
                 // PATCH #6 — un sort cible-ennemi peut viser une case occupee par un LEURRE Ghostra
                 // ennemi (Bible : leurres indiscernables -> ciblables comme la vraie Ghostra). La
@@ -362,7 +364,7 @@ namespace Quantum
                     return;
                 }
                 if (offensiveObstacleTarget)
-                    Log.Info($"[Spell] cible obstacle adverse autorisee sur ({cmd.TargetX},{cmd.TargetY}) (sort offensif {cmd.Spell})");
+                    Log.Info($"[Spell] cible obstacle (own ou adverse) autorisee sur ({cmd.TargetX},{cmd.TargetY}) (sort offensif {cmd.Spell})");
                 else
                     Log.Info($"[Spell] cible leurre ennemi autorisee sur ({cmd.TargetX},{cmd.TargetY}) ({cmd.Spell})");
             }
@@ -824,19 +826,19 @@ namespace Quantum
                             continue;
                         }
 
-                        // 3.3.d — Sort AoE damage : si la case a un obstacle ADVERSE (Faille, Pilier
-                        // ennemi, Mur ennemi), on lui inflige aussi le damage de base (effectiveDmg).
-                        // Bible-balance : permet a l'ennemi piégé par Effondrement de casser des
-                        // Failles avec ses sorts AoE pour se créer un passage.
-                        if (effectiveDmg > 0)
+                        // 3.3.d — Sort AoE/offensif sur une case-obstacle : on lui inflige le damage
+                        // de base (effectiveDmg). Couvre deux cas :
+                        //   - obstacle ADVERSE : l'ennemi piégé par Effondrement casse des Failles
+                        //     (ou un Pilier/Mur ennemi) avec ses sorts pour se créer un passage.
+                        //   - obstacle OWN (brique juin 2026) : le Colossar peut désormais TAPER SES
+                        //     PROPRES Piliers / Murs / Failles (dégager une Faille gênante, abattre un
+                        //     Mur, ou détruire un Pilier pour Densité Inerte +30 HP). Avant, l'owner-
+                        //     check excluait ses propres obstacles -> cast à vide (PA perdu, rien cassé).
+                        // DamageAt est kind/owner-agnostique : il décrémente l'obstacle présent et le
+                        // détruit à 0 HP (Densité Inerte se branche dans DestroyObstacle si Pilier own).
+                        if (effectiveDmg > 0 && ObstacleHelpers.HasObstacleAt(f, cx, cy))
                         {
-                            EntityRef obsHere = ObstacleHelpers.GetObstacleAt(f, cx, cy);
-                            if (obsHere != EntityRef.None
-                                && f.Unsafe.TryGetPointer<Obstacle>(obsHere, out Obstacle* obsData)
-                                && obsData->OwnerPlayerIndex != caster->PlayerIndex)
-                            {
-                                ObstacleHelpers.DamageAt(f, cx, cy, effectiveDmg);
-                            }
+                            ObstacleHelpers.DamageAt(f, cx, cy, effectiveDmg);
                         }
                         continue;
                     }
@@ -4064,20 +4066,6 @@ namespace Quantum
                     outBuffer[count++] = GridHelpers.Index(x, y);
                 }
             }
-        }
-
-        /// <summary>
-        /// PATCH 22 mai (test designer) — True si la case (x,y) contient un obstacle
-        /// (Pilier/Mur/Faille) appartenant a un AUTRE joueur que le caster. Utilise pour
-        /// autoriser les sorts de degats a viser un mur adverse afin de le detruire. On reste
-        /// coherent avec la boucle damage offensive qui n'endommage que les obstacles adverses.
-        /// </summary>
-        private static bool IsAdverseObstacleAt(Frame f, int x, int y, int casterPlayerIndex)
-        {
-            EntityRef obs = ObstacleHelpers.GetObstacleAt(f, x, y);
-            if (obs == EntityRef.None) return false;
-            if (!f.Unsafe.TryGetPointer<Obstacle>(obs, out Obstacle* obsData)) return false;
-            return obsData->OwnerPlayerIndex != casterPlayerIndex;
         }
 
         /// <summary>

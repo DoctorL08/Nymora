@@ -404,8 +404,10 @@ namespace Nymora.Combat.View
         ///                        SpellSystem.TryCastSpell). Les obstacles n'étant PAS dans l'occupancy
         ///                        combattant (ObstacleSingleton à part), le snap unité ne les trouvait
         ///                        pas et l'anti-misfire annulait le cast -> piliers/murs « inciblables ».
-        ///                        Snapper vers l'obstacle rend snapped=true, donc plus d'annulation ;
-        ///                        la sim filtre l'appartenance (own obstacle -> rejet propre, 0 PA).
+        ///                        Snapper vers l'obstacle rend snapped=true, donc plus d'annulation.
+        ///                        Depuis brique juin 2026, la sim endommage AUSSI les obstacles OWN
+        ///                        (le Colossar peut casser ses propres Piliers/Murs/Failles), pas que
+        ///                        les adverses.
         /// EmptyTile est EXCLU : les sorts de pose (Pilier, Mur, leurre) doivent garder la case sol
         /// libre sous le curseur, jamais snapper sur un obstacle déjà présent. Self/Ally aussi exclus
         /// (on ne cible pas un obstacle en allié).
