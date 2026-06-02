@@ -187,6 +187,11 @@ namespace Nymora.Hub
             AppendSystemLine(ChatTab.Global, $"--- Disconnected: {reason} ---");
         }
 
+        // Analytics E2 — expéditeur système des annonces officielles (broadcast admin).
+        // Le backend poste avec ce displayName ; le pseudo est réservé côté serveur
+        // (anti-usurpation). Rendu en rouge gras, sans lien cliquable.
+        private const string SystemSenderName = "Nymora";
+
         private void HandleMessage(string channel, string from, string text)
         {
             // Routage par canal : global -> onglet Global, canal clan rejoint -> onglet Clan.
@@ -195,9 +200,17 @@ namespace Nymora.Hub
             else if (!string.IsNullOrEmpty(_joinedClanChannel) && channel == _joinedClanChannel) tab = ChatTab.Clan;
             else return; // canal non suivi
             // Pas de son ici : la notification est réservée aux MP REÇUS (cf HandleWhisper).
-            // POLISH-7 polish (20 mai) : pseudo wrappe dans link cliquable pour ouvrir
-            // le menu contextuel chat (MP / Ami / Inviter clan / Signaler).
-            AppendLine(tab, $"{WrapPseudoLink(from)}: {text}");
+            if (from == SystemSenderName)
+            {
+                // Annonce officielle "Nymora" : nom + texte en rouge gras, pas de pseudo-link.
+                AppendLine(tab, $"<color=#ff3030><b>{from} : {text}</b></color>");
+            }
+            else
+            {
+                // POLISH-7 polish (20 mai) : pseudo wrappe dans link cliquable pour ouvrir
+                // le menu contextuel chat (MP / Ami / Inviter clan / Signaler).
+                AppendLine(tab, $"{WrapPseudoLink(from)}: {text}");
+            }
             // #9 — message clan recu hors onglet Clan -> incremente le compteur non-lu (badge rouge).
             // (mes propres messages clan reviennent par le relai mais j'envoie depuis l'onglet Clan
             // actif, donc ils ne sont pas comptes.)
