@@ -150,8 +150,8 @@ namespace Quantum
         public const int ChampDeMinesChainRadius      = 2;
         public const int ChampDeMinesChainMax         = 2;
         // Refonte 29 mai : push directionnel nerfé à 2 cases (était 3).
-        public const int BourrasquePushBase           = 2;    // push 2 cases (direction choisie)
-        public const int BourrasquePushBonus1PR       = 4;    // push 4 cases avec 1 PR (était 5)
+        // Equilibrage juin : option "1 PR -> 4 cases" retiree -> push fixe 2 (BonusBourrasquePushBonus1PR supprime).
+        public const int BourrasquePushBase           = 2;    // push 2 cases (direction choisie), fixe
         // Refonte 29 mai — PIÈGE BONDISSANT (ex-Souffle Glacial, ID NightseerSouffleGlacial réutilisé) :
         //   2 PA, pose un piège-catapulte VISIBLE (invisible en phase 3) ; au déclenchement, éjecte
         //   l'ennemi de 3 cases dans la direction choisie à la pose (2e clic) + Traqué. Pas de dégâts.
@@ -958,7 +958,7 @@ namespace Quantum
                 case SpellId.SoulrenderChargeBrutale:
                     def = new SpellDef
                     {
-                        PACost = 4,
+                        PACost = 3,                          // equilibrage juin : 4 -> 3 PA
                         Shape = TargetingShape.SingleTile, // on gere la ligne nous-memes
                         Filter = TargetingFilter.AnyTile,  // peut viser une case vide ou ennemi
                         RangeMin = 1,
@@ -1221,8 +1221,9 @@ namespace Quantum
                     };
                     return true;
 
-                // Bourrasque (2.15.b) : 3 PA, range 5, push cible 3 cases loin du caster.
-                // Option : 1 PR depense -> push 5 cases au lieu de 3.
+                // Bourrasque (2.15.b) : 3 PA, range 5, push cible 2 cases (direction au 2e clic).
+                // Equilibrage juin : option "1 PR -> push 4 cases" RETIREE (HGCostMaxOptional 1 -> 0).
+                // Push fixe BourrasquePushBase (2), aucune depense de PR.
                 case SpellId.NightseerBourrasque:
                     def = new SpellDef
                     {
@@ -1233,7 +1234,7 @@ namespace Quantum
                         RangeMax = 5,
                         DamageAmount = 0,
                         HGCostMandatory = 0,
-                        HGCostMaxOptional = 1,
+                        HGCostMaxOptional = 0,               // equilibrage juin : plus d'option PR (push fixe 2)
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
                         MaxUsesPerTurn = 2, // Refonte 29 mai : cap 2x/tour

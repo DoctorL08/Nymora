@@ -3079,9 +3079,9 @@ namespace Quantum
                     // Refonte 29 mai — push DIRECTIONNEL : la cible est poussée dans le sens
                     //   (TargetX,TargetY) -> (DirX,DirY) du 2e clic (réduit à une cardinale).
                     //   Fallback "loin du caster" si pas de direction fournie (DirX/DirY absent).
-                    int pushDist = hgSpend >= 1
-                        ? SpellRegistry.BourrasquePushBonus1PR
-                        : SpellRegistry.BourrasquePushBase;
+                    // Equilibrage juin : push FIXE 2 cases, l'option "1 PR -> 4 cases" a ete retiree
+                    //   (HGCostMaxOptional=0 -> hgSpend toujours 0, plus aucune depense de PR).
+                    int pushDist = SpellRegistry.BourrasquePushBase;
                     EntityRef target = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
                     if (target != EntityRef.None
                         && f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC))

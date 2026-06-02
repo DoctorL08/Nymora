@@ -125,7 +125,7 @@ namespace Nymora.Core.Data
                 Description = "Pose 3 embûches VISIBLES dans une zone 3x3 (invisibles seulement en phase 3). Chaque embûche : 70 dégâts + applique TRAQUÉ. Cap : 1 fois par tour.",
                 LoreFlavor  = "Le terrain miné. Champ de Mines transforme une zone en no-go. L'adversaire doit faire un détour OU absorber 3 mines pour passer." },
             new Entry { SpellIdValue = 38, SpellIdTech = "nightseer_bourrasque",            ClassId = NymoraClass.Nightseer, Category = SpellCategory.Tactical,  DisplayName = "Bourrasque",
-                Description = "Pousse la cible 2 cases dans la direction choisie (2e clic), ou 4 si tu as au moins 1 PR (dépensée automatiquement). Si la cible finit sa course sur un Filet, une mine, ou du Sang Coagulé : effets déclenchés. Cap : 2 fois par tour.",
+                Description = "Pousse la cible 2 cases dans la direction choisie (2e clic). Si la cible finit sa course sur un Filet, une mine, ou du Sang Coagulé : effets déclenchés. Cap : 2 fois par tour.",
                 LoreFlavor  = "L'arme du conducteur. Bourrasque n'est pas une frappe — c'est un volant. Le Nightseer décide où l'adversaire VA, pas où il EST." },
             new Entry { SpellIdValue = 39, SpellIdTech = "nightseer_souffle_glacial",       ClassId = NymoraClass.Nightseer, Category = SpellCategory.Tactical,  DisplayName = "Piège Bondissant",
                 Description = "Pose un piège-catapulte sur une case (portée 4). Au déclenchement, l'ennemi est ÉJECTÉ de 3 cases dans la direction choisie à la pose (2e clic) et devient Traqué. Pas de dégâts directs. Cap : 1 fois par tour.",

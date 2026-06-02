@@ -146,7 +146,11 @@ namespace Nymora.Core.Data
         //                Furtif, Mur de Pierre, Regeneration Necrotique, Pas dans l'Ombre, Detonation
         //                Onirique. Descriptions deck builder synchronisees. Pure logique, aucun champ
         //                [Networked] touche.
-        public const int CombatRulesVersion = 105;
+        // 106 (Passe equilibrage juin) : Nightseer Bourrasque — option "1 PR -> push 4 cases" RETIREE
+        //                (HGCostMaxOptional 1 -> 0, push fixe 2 cases, const BonusBourrasquePushBonus1PR
+        //                supprimee). Soulrender Charge Brutale 4 -> 3 PA. Descriptions deck builder
+        //                synchronisees. Pure logique, aucun champ [Networked] touche.
+        public const int CombatRulesVersion = 106;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";
