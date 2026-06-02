@@ -85,6 +85,14 @@ namespace Nymora.UI.Login
 
         private void Awake()
         {
+            // Déconnexion forcée (kick / ban / maintenance) : affiche la pop-up explicative
+            // posée par HubChatClient avant le retour ici.
+            if (ForcedLogoutNotice.HasPending)
+            {
+                SimpleNotice.Show(ForcedLogoutNotice.Title, ForcedLogoutNotice.Message);
+                ForcedLogoutNotice.Clear();
+            }
+
             if (_backendSettings == null)
             {
                 NymoraLog.Critical("Login", "NymoraBackendSettings non assigne dans l'Inspector.");

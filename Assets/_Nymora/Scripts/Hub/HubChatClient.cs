@@ -4,6 +4,8 @@ using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Fusion;
+using Nymora.Core.SceneFlow;
 using UnityEngine;
 
 namespace Nymora.Hub
@@ -147,7 +149,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, ClanBannerUpdated, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, ClanBannerUpdated, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate, ForceDisconnect }
 
         private struct IncomingEvent
         {
@@ -308,6 +310,44 @@ namespace Nymora.Hub
             }
         }
 
+        private bool _forcedLogoutTriggered;
+
+        /// <summary>
+        /// Déconnexion forcée par le serveur (kick / ban / maintenance) : mémorise le
+        /// message, ferme proprement le réseau et renvoie à l'écran de login où une
+        /// pop-up s'affiche. Tourne sur le thread principal (appelé depuis Update).
+        /// </summary>
+        private void HandleForceDisconnect(string reason, string message)
+        {
+            if (_forcedLogoutTriggered) return; // une seule fois
+            _forcedLogoutTriggered = true;
+
+            string title =
+                reason == "banned" ? "Compte banni" :
+                reason == "maintenance" ? "Serveurs fermés" :
+                "Déconnecté";
+            if (string.IsNullOrEmpty(message))
+                message = "Tu as été déconnecté du serveur.";
+            ForcedLogoutNotice.Set(title, message);
+
+            // Efface la session pour ne pas se reconnecter en boucle (re-kick immédiat).
+            PlayerPrefs.DeleteKey(AuthTokenPlayerPrefsKey);
+            PlayerPrefs.Save();
+
+            // Ferme le runner Fusion (hub) AVANT la transition, puis se détruit (mirror
+            // du flow logout). En combat (pas de runner Fusion), l'unload de scène suffit.
+            var runner = FindFirstObjectByType<NetworkRunner>();
+            SceneTransition.LoadAsync("00_Login", async () =>
+            {
+                if (runner != null)
+                {
+                    try { await runner.Shutdown(); }
+                    catch (Exception ex) { Debug.LogWarning($"[ChatClient] Shutdown runner échoué : {ex.Message}"); }
+                }
+                if (Instance != null) Destroy(Instance.gameObject);
+            });
+        }
+
         private void ParseAndEnqueue(string json)
         {
             try
@@ -316,6 +356,15 @@ namespace Nymora.Hub
                 if (msg == null || string.IsNullOrEmpty(msg.type)) return;
                 switch (msg.type)
                 {
+                    case "FORCE_DISCONNECT":
+                        // Kick / ban / maintenance : reason = type, message = texte lisible.
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.ForceDisconnect,
+                            Reason = msg.payload?.reason ?? "",
+                            Text = msg.payload?.message ?? "",
+                        });
+                        break;
                     case "WELCOME":
                         _queue.Enqueue(new IncomingEvent
                         {
@@ -770,6 +819,9 @@ namespace Nymora.Hub
                         break;
                     case EventKind.Disconnected:
                         OnDisconnected?.Invoke(ev.Reason);
+                        break;
+                    case EventKind.ForceDisconnect:
+                        HandleForceDisconnect(ev.Reason, ev.Text);
                         break;
                     case EventKind.Welcome:
                         MyUserId = ev.Sub;
