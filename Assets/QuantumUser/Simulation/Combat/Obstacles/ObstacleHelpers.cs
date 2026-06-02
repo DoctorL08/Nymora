@@ -77,6 +77,20 @@ namespace Quantum
                 Log.Warn($"[Obstacle] Spawn rejete : case ({x},{y}) deja un obstacle");
                 return EntityRef.None;
             }
+            // Fix 2 juin — on ne pose pas d'obstacle (Pilier / Mur / Faille) sur une case qui porte
+            // une EMBUCHE (piege Nightseer) ou un LEURRE Ghostra. Garde par-case : le Mur saute juste
+            // le segment concerne, les Failles d'Effondrement sautent la case, le Pilier echoue (un
+            // pre-check pre-PA evite de gaspiller le tour cote SpellSystem).
+            if (FogHelpers.GetTrapOwner(f, x, y) != -1)
+            {
+                Log.Warn($"[Obstacle] Spawn rejete : case ({x},{y}) porte une embuche");
+                return EntityRef.None;
+            }
+            if (DecoyHelpers.HasAnyDecoyAt(f, x, y))
+            {
+                Log.Warn($"[Obstacle] Spawn rejete : case ({x},{y}) porte un leurre");
+                return EntityRef.None;
+            }
             if (kind == ObstacleKind.None || hp <= 0)
             {
                 Log.Warn($"[Obstacle] Spawn rejete : kind={kind} hp={hp} invalides");

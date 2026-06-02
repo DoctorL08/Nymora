@@ -116,8 +116,8 @@ namespace Quantum
         public const int AppelDuSangLifestealPct      = 20;   // vol de vie 20% sur cible <40% HP
 
         // 2.15.a — Nightseer (constantes Bible V7.1).
-        public const int TirPrecisDmg                 = 200;  // dgts base
-        public const int TirPrecisDmgIfTraque         = 280;  // dgts si target porte MarkKind.Traque (Bible : 280)
+        public const int TirPrecisDmg                 = 150;  // dgts base (équilibrage 2 juin : 200->150, + portée 6->4 + 1x/tour)
+        public const int TirPrecisDmgIfTraque         = 210;  // dgts si target Traqué (équilibrage 2 juin : 280->210)
         public const int VoleeDEpinesDmg              = 130;  // dgts par cible touchee dans la ligne
         // Bible V7.1 (amendee) : Volee d'Epines pose le MEME Filet que le sort Filet de Ronces
         // (TrapKind.FiletRonces : 100 dgts / -2 PM / Empreinte 2 tours). Pas de constantes light dediees.
@@ -169,7 +169,7 @@ namespace Quantum
         //   tour (max 180 = 3 PM), uniquement si la cible est Traqué.
         public const int FlecheTracanteDmgPerPM       = 60;
         public const int FlecheTracanteMaxDmg         = 180;
-        public const int PasFurtifRangeMax            = 4;    // teleport jusqu'a 4 cases (Manhattan)
+        public const int PasFurtifRangeMax            = 3;    // teleport jusqu'a 3 cases (équilibrage 2 juin : 4->3, + PA 2->4)
         public const int PasFurtifVeilTurns           = 2;    // duree Voile bonus si 1 PR
         public const int CamouflageRoncesShieldHP     = 130;  // shield 130 HP
         public const int CamouflageRoncesShieldTurns  = 2;    // 2 rounds actifs
@@ -489,9 +489,9 @@ namespace Quantum
         // 3.7.a.i.2 — Lame Vorace Spectrale (Bible V7.1) :
         //   3 PA, melee 1, 130 dgts base + 60 si PlaieOuverte (NON consommee) + bonus dorsal.
         //   Coeur du combo Plaie Ouverte -> Lame Vorace x2 -> Saigne-Ame.
-        public const int LameVoracePACost           = 3;
+        public const int LameVoracePACost           = 2;    // équilibrage 2 juin : 3->2 PA (outil de spam du combo, distinct de Lame Spectrale 3 PA)
         public const int LameVoraceRangeMax         = 1;
-        public const int LameVoraceDmgBase          = 130;
+        public const int LameVoraceDmgBase          = 110;  // équilibrage 2 juin : 130->110 (compense le passage à 2 PA + cap 2x/tour)
         public const int LameVoracePlaieBonus       = 60;
 
         // 3.7.b.i — Réplique Fantôme (Bible V7.1 ligne 1127) :
@@ -630,7 +630,7 @@ namespace Quantum
         //     - Rebranche dans path custom Charge Brutale (avant le shield absorb CB).
         //   Fenetre de redirection : tant que un decoy Protective vivant existe (max 3 rounds
         //   amendement Protective override). Si decoy detruit -> redirection se ferme automatiquement.
-        public const int RepliqueProtectricePACost            = 4;
+        public const int RepliqueProtectricePACost            = 3;    // équilibrage 2 juin : 4->3 PA
         public const int RepliqueProtectriceRangeMax          = 3;
         public const int RepliqueProtectriceRedirectPercent   = 30;
 
@@ -731,7 +731,7 @@ namespace Quantum
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.Enemy,
                         RangeMin = 1,
-                        RangeMax = 1,
+                        RangeMax = 2,                        // équilibrage 2 juin : 1->2 (anti-kite Soulrender)
                         DamageAmount = 220,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
@@ -1073,12 +1073,13 @@ namespace Quantum
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.Enemy,
                         RangeMin = 1,
-                        RangeMax = 6,
+                        RangeMax = 4,                        // équilibrage 2 juin : 6->4
                         DamageAmount = TirPrecisDmg,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                        MaxUsesPerTurn = 1,                  // équilibrage 2 juin : cap 1x/tour
                     };
                     return true;
 
@@ -1288,7 +1289,7 @@ namespace Quantum
                 case SpellId.NightseerPasFurtif:
                     def = new SpellDef
                     {
-                        PACost = 2,
+                        PACost = 4,                          // équilibrage 2 juin : 2->4 PA (+ portée 4->3)
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.EmptyTile,
                         RangeMin = 1,
@@ -1527,6 +1528,7 @@ namespace Quantum
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
                         MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
+                        CooldownTurns = 2,  // équilibrage 2 juin : intervalle de relance 1 tour (jouable un tour sur deux)
                     };
                     return true;
 
@@ -1807,6 +1809,7 @@ namespace Quantum
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,                     // refonte : pose de zone, pas d'attaque directe
                         MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
+                        CooldownTurns = 2,  // équilibrage 2 juin : intervalle de relance 1 tour (jouable un tour sur deux)
                     };
                     return true;
 
@@ -2049,6 +2052,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                        MaxUsesPerTurn = 2, // équilibrage 2 juin : outil de spam du combo, cap 2x/tour
                     };
                     return true;
 

@@ -265,9 +265,11 @@ namespace Nymora.Editor.Tools
                 labelGO.transform.localPosition = new Vector3(0f, 0.55f, 0f);
                 var tmp = labelGO.AddComponent<TextMeshPro>();
                 tmp.text = defaultHpLabel;
-                tmp.fontSize = 3;
+                // NB : la taille + le contour sont (re)appliques au runtime par ObstacleView.StyleHpLabel
+                // (demande Lorenzo) ; cette valeur n'est qu'un defaut de prefab, le runtime fait foi.
+                tmp.fontSize = 2.1f;
                 tmp.alignment = TextAlignmentOptions.Center;
-                tmp.color = new Color(1f, 1f, 0.9f, 1f);
+                tmp.color = new Color(1f, 0.96f, 0.75f, 1f);
                 tmp.sortingOrder = 1100; // au-dessus de tout (combattants ~700-990)
                 var rect = labelGO.GetComponent<RectTransform>();
                 if (rect != null) rect.sizeDelta = new Vector2(2f, 0.5f);

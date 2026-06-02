@@ -24,6 +24,23 @@ namespace Nymora.Combat.View.Obstacles
         [Tooltip("HP label (TMP world space). Optionnel — si null, on n'affiche pas le HP.")]
         [SerializeField] private TextMeshPro _hpLabel;
 
+        // -----------------------------------------------------------------
+        // Style HP label (demande Lorenzo : petit + lisible avec fond sombre).
+        // NB : valeurs en CONSTANTES code, PAS en [SerializeField]. Un champ serialise ajoute
+        // apres coup se fait "baker" dans le prefab existant avec son ancienne valeur par defaut
+        // -> changer le defaut dans le code n'avait plus aucun effet (bug fond "toujours aussi
+        // gros"). En constante, le runtime applique TOUJOURS ces valeurs, prefab inchange.
+        // -----------------------------------------------------------------
+        private const float HpFontSize = 1.6f;
+        private const float HpOutlineWidth = 0.3f;
+        private const bool HpUseBackground = true;
+        // Le fond se dimensionne sur le texte (GetPreferredValues) + ce padding -> toujours snug.
+        private const float HpBackgroundPadX = 0.22f;
+        private const float HpBackgroundPadY = 0.12f;
+        private static readonly Color HpTextColor = new Color(1f, 0.96f, 0.75f, 1f);
+        private static readonly Color HpOutlineColor = new Color(0f, 0f, 0f, 1f);
+        private static readonly Color HpBackgroundColor = new Color(0f, 0f, 0f, 0.7f);
+
         [Tooltip("Frames pilotees par le ratio HP/MaxHP. 4 frames attendus : 100% > 75% > 50% > 25%. Vide = sprite statique.")]
         [SerializeField] private Sprite[] _hpFrames;
 
@@ -40,8 +57,85 @@ namespace Nymora.Combat.View.Obstacles
             Entity = entity;
             if (_sprite == null) _sprite = GetComponentInChildren<SpriteRenderer>();
             if (_hpLabel == null) _hpLabel = GetComponentInChildren<TextMeshPro>();
-            // Polish 3.3.d : HP cache par defaut, affiche uniquement au survol souris (TileHoverView).
-            if (_hpLabel != null) _hpLabel.gameObject.SetActive(false);
+            if (_hpLabel != null)
+            {
+                StyleHpLabel();
+                // Polish 3.3.d : HP cache par defaut, affiche uniquement au survol souris (TileHoverView).
+                _hpLabel.gameObject.SetActive(false);
+            }
+        }
+
+        /// <summary>
+        /// Applique le style du HP label au runtime (demande Lorenzo : police petite + lisible).
+        /// Fait ici plutot que dans le prefab pour ne PAS exiger une re-generation des prefabs.
+        /// Le contour passe par le materiau INSTANCIE (_hpLabel.fontMaterial) -> n'affecte aucun
+        /// autre texte de la scene. Le fond est cree ici puis DIMENSIONNE sur le texte dans UpdateData.
+        /// </summary>
+        private void StyleHpLabel()
+        {
+            _hpLabel.fontSize = HpFontSize;
+            _hpLabel.color = HpTextColor;
+            _hpLabel.fontStyle |= TMPro.FontStyles.Bold;
+            if (HpOutlineWidth > 0f)
+            {
+                // L'acces a fontMaterial cree une instance dediee (copie du shared material) :
+                // le contour ne deborde donc pas sur les autres TMP.
+                _ = _hpLabel.fontMaterial;
+                _hpLabel.outlineColor = HpOutlineColor;
+                _hpLabel.outlineWidth = HpOutlineWidth;
+            }
+            if (HpUseBackground) EnsureHpBackground();
+        }
+
+        // Fond sombre derriere le HP (cree une fois, enfant du label -> suit l'affichage/masquage).
+        private SpriteRenderer _hpBg;
+
+        private void EnsureHpBackground()
+        {
+            if (_hpBg == null)
+            {
+                var bgGO = new GameObject("HPBackground");
+                bgGO.transform.SetParent(_hpLabel.transform, false);
+                bgGO.transform.localPosition = Vector3.zero;
+                _hpBg = bgGO.AddComponent<SpriteRenderer>();
+                _hpBg.sprite = GetSolidSprite();
+                // Juste derriere le texte (TMP HP label = sortingOrder 1100), meme couche.
+                _hpBg.sortingOrder = _hpLabel.sortingOrder - 1;
+            }
+            _hpBg.color = HpBackgroundColor;
+            ResizeHpBackgroundToText();
+        }
+
+        /// <summary>
+        /// Dimensionne le fond sur la taille reelle du texte HP (GetPreferredValues) + padding ->
+        /// toujours snug, plus de taille en dur a deviner. Appele a chaque update de texte.
+        /// </summary>
+        private void ResizeHpBackgroundToText()
+        {
+            if (_hpBg == null || _hpLabel == null) return;
+            Vector2 pref = _hpLabel.GetPreferredValues();
+            float w = pref.x + HpBackgroundPadX;
+            float h = pref.y + HpBackgroundPadY;
+            // Le sprite plein fait 1x1 unite monde (PPU = taille px) -> scale = taille voulue.
+            _hpBg.transform.localScale = new Vector3(w, h, 1f);
+        }
+
+        // Sprite blanc plein 1x1 unite monde, partage (cache static). Tinte via SpriteRenderer.color.
+        private static Sprite _solidSprite;
+
+        private static Sprite GetSolidSprite()
+        {
+            if (_solidSprite != null) return _solidSprite;
+            const int Size = 4;
+            var tex = new Texture2D(Size, Size, TextureFormat.RGBA32, false) { name = "ObstacleHpBgTex" };
+            var pixels = new Color32[Size * Size];
+            for (int i = 0; i < pixels.Length; i++) pixels[i] = new Color32(255, 255, 255, 255);
+            tex.SetPixels32(pixels);
+            tex.Apply(false, false);
+            // PPU = Size -> le sprite couvre 1x1 unite monde (scale ensuite a la taille voulue).
+            _solidSprite = Sprite.Create(tex, new Rect(0, 0, Size, Size), new Vector2(0.5f, 0.5f), Size);
+            _solidSprite.name = "ObstacleHpBgSprite";
+            return _solidSprite;
         }
 
         /// <summary>
@@ -67,6 +161,8 @@ namespace Nymora.Combat.View.Obstacles
             {
                 // Update le text meme si cache : TileHoverView peut l'activer instantanement.
                 _hpLabel.text = $"{data.HP}/{data.MaxHP}";
+                // Fond redimensionne sur le texte courant (la largeur varie selon les HP).
+                if (_hpBg != null) ResizeHpBackgroundToText();
             }
             if (_sprite != null)
             {

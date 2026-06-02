@@ -207,7 +207,8 @@ namespace Nymora.Combat.View
             // survolee = SA case (cohérent avec le clic de cast), pas la case sol projetée derrière.
             // Gate par le filtre (unité/leurre) OU les sorts en ligne droite (AnyTile mais visent un
             // ennemi le long de la ligne) cote TryPickSpriteTargetCell.
-            if (TileHoverView.TryPickSpriteTargetCell(mouseWorld, spellFilter, isStraightLineSpell, _gridSettings, _centerOffset, out int spriteGx, out int spriteGy))
+            bool snappedToUnit = TileHoverView.TryPickSpriteTargetCell(mouseWorld, spellFilter, isStraightLineSpell, _gridSettings, _centerOffset, out int spriteGx, out int spriteGy);
+            if (snappedToUnit)
             {
                 hoverGx = spriteGx;
                 hoverGy = spriteGy;
@@ -223,9 +224,18 @@ namespace Nymora.Combat.View
             bool isSelfSpell = spellFilter == TargetingFilter.Self;
             bool hoveringCaster = hoverGx == casterX && hoverGy == casterY;
 
+            // Modèle hybride tolérant (juin 2026) — un sort qui vise une UNITÉ (Enemy/Ally/AnyUnit/
+            // leurre, hors self et hors ligne droite) n'affiche sa zone d'effet QUE si le curseur est
+            // bien sur une unité (snappedToUnit). Sinon on n'affiche rien : cohérent avec le clic qui
+            // est désormais annulé dans le vide (plus de prévisu rouge trompeuse sur une case sol).
+            bool unitTargetSpell = !isSelfSpell && !isStraightLineSpell
+                                   && TileHoverView.FilterTargetsUnitSprite(spellFilter);
+
             // Effect zone affichee si on survole une case castable, OU pour un self quand on survole
             // le caster (sa case n'est pas forcément dans la range castable selon RangeMin).
-            if (hoverIdx >= 0 && (visibleCastable.Contains(hoverIdx) || (isSelfSpell && hoveringCaster)))
+            if (hoverIdx >= 0
+                && (visibleCastable.Contains(hoverIdx) || (isSelfSpell && hoveringCaster))
+                && (!unitTargetSpell || snappedToUnit))
             {
                 if (isStraightLineSpell)
                 {

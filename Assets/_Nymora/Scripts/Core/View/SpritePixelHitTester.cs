@@ -37,47 +37,71 @@ namespace Nymora.Core.View
         private static readonly Dictionary<int, Texture2D> _readableCache = new Dictionary<int, Texture2D>();
 
         /// <summary>
-        /// True si <paramref name="mouseWorld"/> tombe sur un pixel opaque du sprite rendu par
-        /// <paramref name="sr"/>. Gere position/scale/flip. Fallback AABB si rotation non triviale
-        /// ou si la lecture des pixels echoue.
+        /// True si <paramref name="mouseWorld"/> tombe sur un pixel OPAQUE (alpha >= seuil) du sprite
+        /// rendu par <paramref name="sr"/> — c.-à-d. sur le CONTOUR VISIBLE du sprite, jamais dans la
+        /// zone transparente autour. Gère position / rotation / scale / flipX / flipY et le TRIM
+        /// d'import (Aseprite rogne les bords transparents -> textureRect plus petit que le rect
+        /// original). Fallback AABB uniquement si le readback des pixels échoue.
+        ///
+        /// Refonte ciblage juin 2026 (demande Lorenzo « contours à la perfection ») : on n'utilise
+        /// plus la projection bounds->textureRect (fausse dès qu'il y a trim ou mesh Tight). On passe
+        /// le point en espace LOCAL du sprite (InverseTransformPoint), puis pivot + PPU pour trouver
+        /// le pixel dans le rect ORIGINAL, puis on décale dans le textureRect packé via
+        /// textureRectOffset. Un point dans la marge rognée = transparent = miss. Résultat : la zone
+        /// cliquable colle exactement au dessin, indépendamment du type de mesh.
         /// </summary>
         public static bool OverlapsOpaque(SpriteRenderer sr, Vector3 mouseWorld)
         {
             if (sr == null || sr.sprite == null) return false;
 
-            // 1) Early-out AABB : hors de la boite englobante -> jamais sur le sprite.
+            // 1) Early-out AABB (cheap) : hors de la boite englobante monde -> jamais sur le sprite.
+            //    Superset sûr (la boite englobe toujours le contenu, rotation comprise).
             Bounds b = sr.bounds;
             if (mouseWorld.x < b.min.x || mouseWorld.x > b.max.x) return false;
             if (mouseWorld.y < b.min.y || mouseWorld.y > b.max.y) return false;
 
-            // 2) Rotation non triviale -> le mapping lineaire ne tient plus, on garde l'AABB.
-            float zAngle = sr.transform.rotation.eulerAngles.z % 360f;
-            if (zAngle > 0.5f && zAngle < 359.5f)
-            {
-                return true;
-            }
-
-            // 3) Copie lisible de l'atlas (cache par texture).
             var sprite = sr.sprite;
             var tex = sprite.texture;
             if (tex == null) return true; // pas de texture -> fallback AABB
+            float ppu = sprite.pixelsPerUnit;
+            if (ppu <= 0f) return true;    // PPU invalide -> fallback AABB
+
+            // 2) Point en espace LOCAL du sprite : annule position, rotation et scale du transform
+            //    (le flipX/flipY du SpriteRenderer est une propriété de rendu, PAS du transform :
+            //    on le gère à la main plus bas).
+            Vector3 local = sr.transform.InverseTransformPoint(mouseWorld);
+
+            // 3) Pixel dans le rect ORIGINAL (non rogné), origine en bas-gauche. pivot est en pixels
+            //    relatif à ce bas-gauche, donc local*PPU + pivot recadre correctement.
+            Rect rect = sprite.rect;            // rect original complet (dimensions source)
+            Vector2 pivot = sprite.pivot;       // pivot en pixels (depuis le bas-gauche du rect)
+            float fx = local.x * ppu + pivot.x;
+            float fy = local.y * ppu + pivot.y;
+
+            // flipX/flipY : miroir autour du centre du rect (pivot X centré 0.5 sur nos persos, donc
+            // miroir-centre == miroir-pivot ; correct aussi pour les pièges/leurres centrés).
+            if (sr.flipX) fx = rect.width - fx;
+            if (sr.flipY) fy = rect.height - fy;
+
+            // Hors du rect original -> pas sur le sprite.
+            if (fx < 0f || fx >= rect.width || fy < 0f || fy >= rect.height) return false;
+
+            // 4) Décalage du trim : le contenu réel vit dans textureRect, positionné dans le rect
+            //    original à textureRectOffset. Un point hors de cette sous-zone a été rogné = transparent.
+            Rect tr = sprite.textureRect;
+            Vector2 trimOffset = sprite.textureRectOffset;
+            float localContentX = fx - trimOffset.x;
+            float localContentY = fy - trimOffset.y;
+            if (localContentX < 0f || localContentX >= tr.width || localContentY < 0f || localContentY >= tr.height)
+                return false; // dans la marge rognée -> transparent
+
+            // 5) Pixel atlas correspondant + lecture alpha (copie lisible cachée).
             Texture2D readable = GetReadableCopy(tex);
             if (readable == null) return true; // readback impossible -> fallback AABB
 
-            // 4) Position normalisee dans l'AABB (== etendue du contenu trimme du sprite, car
-            //    mesh "Tight" : bounds == textureRect en monde). Inverse selon flipX/flipY.
-            float u = (mouseWorld.x - b.min.x) / b.size.x;
-            float v = (mouseWorld.y - b.min.y) / b.size.y;
-            if (sr.flipX) u = 1f - u;
-            if (sr.flipY) v = 1f - v;
-
-            // 5) Pixel correspondant dans l'atlas via textureRect (rect du sprite dans la texture).
-            Rect tr = sprite.textureRect;
-            int px = Mathf.FloorToInt(tr.x + u * tr.width);
-            int py = Mathf.FloorToInt(tr.y + v * tr.height);
-            px = Mathf.Clamp(px, Mathf.FloorToInt(tr.x), Mathf.FloorToInt(tr.x + tr.width) - 1);
-            py = Mathf.Clamp(py, Mathf.FloorToInt(tr.y), Mathf.FloorToInt(tr.y + tr.height) - 1);
-            if (px < 0 || px >= readable.width || py < 0 || py >= readable.height) return true;
+            int px = Mathf.FloorToInt(tr.x + localContentX);
+            int py = Mathf.FloorToInt(tr.y + localContentY);
+            if (px < 0 || px >= readable.width || py < 0 || py >= readable.height) return false;
 
             return readable.GetPixel(px, py).a >= AlphaHitThreshold;
         }

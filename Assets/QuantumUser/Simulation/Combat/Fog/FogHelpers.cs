@@ -115,6 +115,13 @@ namespace Quantum
                 ClearTrap(f, x, y);
                 return;
             }
+            // Fix 2 juin — pas d'embuche sur une case occupee par un COMBATTANT (joueur), un OBSTACLE
+            // (Pilier/Mur/Faille) ou un LEURRE Ghostra. Garde par-case : couvre les poses directes
+            // (Filet de Ronces, Piege Bondissant), les clusters (Champ de Mines saute la case) et les
+            // poses secondaires (Filet derriere la cible). Symetrique du garde SpawnObstacle.
+            if (GridHelpers.GetOccupant(f, x, y) != EntityRef.None) { Log.Warn($"[Trap] pose rejetee : case ({x},{y}) occupee par un combattant"); return; }
+            if (ObstacleHelpers.HasObstacleAt(f, x, y)) { Log.Warn($"[Trap] pose rejetee : case ({x},{y}) porte un obstacle"); return; }
+            if (DecoyHelpers.HasAnyDecoyAt(f, x, y)) { Log.Warn($"[Trap] pose rejetee : case ({x},{y}) porte un leurre"); return; }
             var fog = f.Unsafe.GetPointerSingleton<FogSingleton>();
             int idx = GridHelpers.Index(x, y);
             fog->Tiles[idx].Trap = kind;

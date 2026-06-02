@@ -91,7 +91,37 @@ namespace Nymora.Core.Data
         //                piege est consomme AVANT de rejouer la trajectoire de catapulte, (2) garde de
         //                profondeur de recursion (PiegeBondissantMaxChainDepth). Pure logique, aucun champ
         //                [Networked] touche.
-        public const int CombatRulesVersion = 97;
+        // 98 (Fix TP sur Faille/obstacle, 2 juin) : on ne peut plus teleporter ni etre deplace (MoveNonPM)
+        //                sur une case occupee par un OBSTACLE (Faille d'Effondrement, Pilier, Mur). Avant,
+        //                MoveNonPM ne checkait pas HasObstacleAt et le filtre EmptyTile considerait une
+        //                Faille comme case vide -> on TP sur une Faille pour s'echapper de l'ulti Colossar
+        //                sans la casser ni attendre son expiration. Fix : MatchesFilter(EmptyTile) exige
+        //                desormais !HasObstacleAt, et MoveNonPM rejette les cases-obstacles (defense).
+        //                Pure logique, aucun champ [Networked] touche.
+        // 99 (Pas d'obstacle sur embuche/leurre, 2 juin) : on ne peut plus poser un Pilier / Mur /
+        //                Faille (Effondrement) sur une case portant une EMBUCHE (piege Nightseer) ou
+        //                un LEURRE Ghostra. Garde par-case dans ObstacleHelpers.SpawnObstacle (Mur saute
+        //                le segment, Failles sautent la case) + pre-check pre-PA pour le Pilier (cast
+        //                unique, evite de gaspiller le tour). Pure logique, aucun champ [Networked] touche.
+        // 100 (Pas d'embuche sur case occupee, 2 juin) : symetrique du 99. Le Nightseer ne peut plus
+        //                poser de piege (Filet de Ronces / Champ de Mines / Piege Bondissant) sur une
+        //                case occupee par un COMBATTANT (joueur), un OBSTACLE (Pilier/Mur/Faille) ou un
+        //                LEURRE Ghostra. Garde par-case dans FogHelpers.PlaceTrap (Champ de Mines saute
+        //                la case, poses secondaires couvertes) + pre-check pre-PA pour Filet de Ronces
+        //                et Piege Bondissant (pose unique). Pure logique, aucun champ [Networked] touche.
+        // 101 (Anti-teleport respecte par les self-teleports, 2 juin) : un caster sous AnchorImmune
+        //                (Ancrage Colossar / Stoicisme) ou AntiTeleport (Rugissement Soulrender) ne peut
+        //                plus lancer un sort qui le teleporte (Pas Furtif, Evanescence, Traquenard, Dernier
+        //                Pas, Pas dans l'Ombre, Frappe Fantome, Permutation). Avant, ces statuts ne
+        //                bloquaient que les deplacements SUBIS -> un Nightseer ancre pouvait encore se TP.
+        //                Helper SpellIsSelfTeleport + reject pre-PA. Pure logique, aucun champ [Networked] touche.
+        // 102 (Passe d'equilibrage, 2 juin) : Colossar Mur de Pierre relance 2 tours · Ghostra Replique
+        //                Protectrice 4->3 PA + duree 3->4 rounds (= leurre classique) · Ghostra Lame Vorace
+        //                3->2 PA, 130->110 dmg, cap 2x/tour (outil de spam, distinct de Lame Spectrale) ·
+        //                Soulrender Tranche-Ame portee 1->2 (anti-kite) · Necram Brume Toxique relance 2 tours ·
+        //                Nightseer Tir Precis portee 6->4 + 200/280->150/210 dmg + 1x/tour · Nightseer Pas
+        //                Furtif 2->4 PA + portee 4->3. Pure logique, aucun champ [Networked] touche.
+        public const int CombatRulesVersion = 102;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

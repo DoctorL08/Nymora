@@ -24,6 +24,11 @@ namespace Quantum
             if (!GridHelpers.InBounds(toX, toY)) return false;
             if (!GridHelpers.IsWalkable(f, toX, toY)) return false;
             if (GridHelpers.GetOccupant(f, toX, toY) != EntityRef.None) return false;
+            // Fix 2 juin — une case-OBSTACLE (Faille d'Effondrement, Pilier, Mur) est solide : on ne
+            // peut ni y teleporter ni y etre pousse/tire. IsWalkable ne teste que le flag statique de
+            // la tuile (pas les obstacles dynamiques) -> check explicite ici. Bloque l'exploit "TP sur
+            // Faille pour fuir l'ulti Colossar" et tout move-spell qui atterrirait sur un obstacle.
+            if (ObstacleHelpers.HasObstacleAt(f, toX, toY)) return false;
             // 3.7.a.i.4 — TOUT leurre Ghostra bloque la destination (Bible-strict).
             // Applique a tout sort-move (Charge Brutale, recul Tranche-Ame, etc.).
             if (DecoyHelpers.HasAnyDecoyAt(f, toX, toY)) return false;

@@ -23,7 +23,7 @@ namespace Quantum
     {
         public const int MaxDecoys = 3;            // verrouille — taille array Decoys
         public const int LifetimeRounds = 4;       // AMENDEMENT 16 mai 2026 (Bible orig "2 tours" -> 4 pour permettre combos)
-        public const int ProtectiveLifetimeRounds = 3; // AMENDEMENT 16 mai 2026 (cap Réplique Protectrice : 3 rounds au lieu de 4 pour balance)
+        public const int ProtectiveLifetimeRounds = 4; // équilibrage 2 juin : 3->4 rounds (= leurre classique LifetimeRounds), en parallèle du passage à 3 PA
         public const int ProtectiveDecoyMaxHP = 200; // Bible Réplique Protectrice
 
         // Heal Ghostra owner sur destruction d'un leurre (Bible V7.1 par sort) :

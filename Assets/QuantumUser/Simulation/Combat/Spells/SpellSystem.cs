@@ -480,6 +480,47 @@ namespace Quantum
                 }
             }
 
+            // Fix 2 juin — Garde ANTI-TELEPORT : un caster sous AnchorImmune (Ancrage / Stoicisme) ou
+            //   AntiTeleport (Rugissement) ne peut PAS lancer un sort qui le teleporte (Bible : "rien
+            //   ne me deplace"). Avant, ces statuts ne bloquaient que les deplacements SUBIS, pas les
+            //   self-teleports -> NS ancre se TP quand meme. Reject AVANT consommation PA.
+            if (SpellIsSelfTeleport(cmd.Spell)
+                && (StatusHelper.Has(caster, StatusKind.AnchorImmune)
+                    || StatusHelper.Has(caster, StatusKind.AntiTeleport)))
+            {
+                Log.Warn($"[Spell] rejet : {cmd.Spell} bloque (caster P{caster->PlayerIndex} sous Ancrage/AntiTeleport — rien ne le deplace). PA non consomme.");
+                return;
+            }
+
+            // Fix 2 juin — Pilier : pas de pose sur une case qui porte une EMBUCHE (piege) ou un
+            //   LEURRE. Reject AVANT consommation PA (pose unique -> sinon tour gaspille). Le Mur
+            //   (multi-segments) saute juste les segments concernes cote SpawnObstacle, donc pas de
+            //   pre-check ici pour lui (pose partielle acceptable). SpawnObstacle garde la regle par-case.
+            if (cmd.Spell == SpellId.ColossarPilier)
+            {
+                if (FogHelpers.GetTrapOwner(f, cmd.TargetX, cmd.TargetY) != -1
+                    || DecoyHelpers.HasAnyDecoyAt(f, cmd.TargetX, cmd.TargetY))
+                {
+                    Log.Warn($"[Spell] rejet : Pilier sur ({cmd.TargetX},{cmd.TargetY}) impossible (embuche ou leurre present). PA non consomme.");
+                    return;
+                }
+            }
+
+            // Fix 2 juin — pose d'EMBUCHE directe (Filet de Ronces, Piège Bondissant) : pas sur une
+            //   case occupee par un combattant (joueur), un obstacle (Pilier/Mur/Faille) ou un leurre.
+            //   Reject AVANT consommation PA (pose unique -> sinon tour gaspille). Le Champ de Mines
+            //   (cluster) saute les cases concernees cote PlaceTrap (pose partielle acceptable).
+            if (cmd.Spell == SpellId.NightseerFiletDeRonces || cmd.Spell == SpellId.NightseerSouffleGlacial)
+            {
+                if (GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY) != EntityRef.None
+                    || ObstacleHelpers.HasObstacleAt(f, cmd.TargetX, cmd.TargetY)
+                    || DecoyHelpers.HasAnyDecoyAt(f, cmd.TargetX, cmd.TargetY))
+                {
+                    Log.Warn($"[Spell] rejet : {cmd.Spell} sur ({cmd.TargetX},{cmd.TargetY}) impossible (case occupee : joueur, obstacle ou leurre). PA non consomme.");
+                    return;
+                }
+            }
+
             // Refonte 29 mai — Détonation Virulente : requiert une cible ennemie MARQUÉE (venin)
             //   vivante. Reject AVANT consommation PA (pas de tick à vide).
             if (cmd.Spell == SpellId.NecramDetonationVirulente)
@@ -1435,12 +1476,27 @@ namespace Quantum
             // Refonte 29 mai — ancienne génération PR "+1 par hit Traqué" RETIRÉE (nouvelle économie
             //   = pièges posés/déclenchés + marques appliquées, cf NightseerPassif).
 
-            // 2.15.a — Volee d'Epines : pose un Filet de Ronces sur la DERNIERE case touchee.
-            // Si aucune cible n'a ete touchee (ligne tiree dans le vide), pas de Filet pose.
+            // 2.15.a — Volee d'Epines : pose un Filet de Ronces DERRIERE la derniere cible touchee.
+            // Refonte juin 2026 (demande Lorenzo) : au lieu de poser sur la case de la cible, on
+            // pose UNE CASE PLUS LOIN dans le sens du tir (en s'eloignant du caster) -> coupe la
+            // retraite de l'ennemi (Bible PRESSION : "foncer dans le filet ou contourner"). Si la
+            // case derriere est hors grille / non walkable (mur, bord), fallback sur la case de la
+            // cible. Si aucune cible touchee (ligne tiree dans le vide), pas de Filet pose.
             if (cmd.Spell == SpellId.NightseerVoleeDEpines && volEpinesLastHitX >= 0)
             {
-                FogHelpers.PlaceTrap(f, volEpinesLastHitX, volEpinesLastHitY, TrapKind.FiletRonces, caster->PlayerIndex, currentTurn);
-                Log.Info($"[Spell] Volee d'Epines : Filet de Ronces pose sur ({volEpinesLastHitX},{volEpinesLastHitY}) par P{caster->PlayerIndex}");
+                // Sens cardinal du tir = signe(target - caster). Le tir etant valide en ligne droite
+                // (SpellIsStraightLine), exactement un des deux axes est non nul.
+                int fireDirX = cmd.TargetX == caster->GridX ? 0 : (cmd.TargetX > caster->GridX ? 1 : -1);
+                int fireDirY = cmd.TargetY == caster->GridY ? 0 : (cmd.TargetY > caster->GridY ? 1 : -1);
+                int trapX = volEpinesLastHitX + fireDirX;
+                int trapY = volEpinesLastHitY + fireDirY;
+                if (!GridHelpers.IsWalkable(f, trapX, trapY))
+                {
+                    trapX = volEpinesLastHitX;
+                    trapY = volEpinesLastHitY;
+                }
+                FogHelpers.PlaceTrap(f, trapX, trapY, TrapKind.FiletRonces, caster->PlayerIndex, currentTurn);
+                Log.Info($"[Spell] Volee d'Epines : Filet de Ronces pose DERRIERE la cible sur ({trapX},{trapY}) par P{caster->PlayerIndex} (cible ({volEpinesLastHitX},{volEpinesLastHitY}), sens ({fireDirX},{fireDirY}))");
             }
 
             // ===== Consume Pacte buff si utilise =====
@@ -3761,6 +3817,33 @@ namespace Quantum
         }
 
         /// <summary>
+        /// Fix 2 juin — Sorts qui TELEPORTENT le CASTER (il se deplace lui-meme sans marcher).
+        /// Servent au garde anti-teleport : un caster sous AnchorImmune (Ancrage Colossar /
+        /// Stoicisme) ou AntiTeleport (Rugissement Soulrender) ne peut PAS les lancer ("rien ne me
+        /// deplace"). Avant, ces statuts ne bloquaient que les deplacements SUBIS (push/pull/swap
+        /// imposes), pas les self-teleports -> un Nightseer ancre pouvait quand meme se TP (bug vu NS vs Colossar).
+        ///
+        /// Permutation (swap Ghostra<->son leurre) et Frappe Fantome (TP + frappe) incluses : le
+        /// caster s'y deplace, donc bloquees aussi sous ancrage.
+        /// </summary>
+        public static bool SpellIsSelfTeleport(SpellId id)
+        {
+            switch (id)
+            {
+                case SpellId.NightseerPasFurtif:
+                case SpellId.NightseerEvanescence:
+                case SpellId.NightseerTraquenard:
+                case SpellId.GhostraDernierPas:
+                case SpellId.GhostraPasDansLOmbre:
+                case SpellId.GhostraFrappeFantome:
+                case SpellId.GhostraPermutation:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
         /// True si le sort tire/agit en LIGNE DROITE cardinale depuis le caster : la cible doit
         /// etre alignee (meme ligne OU meme colonne). Couvre la shape Line (resolution generique
         /// TargetingResolver) ET les sorts a resolution de ligne CUSTOM (Shape SingleTile mais
@@ -3836,6 +3919,7 @@ namespace Quantum
                 if (!GridHelpers.InBounds(cx, cy)) continue;
                 if (!GridHelpers.IsWalkable(f, cx, cy)) continue;
                 if (GridHelpers.GetOccupant(f, cx, cy) != EntityRef.None) continue;
+                if (ObstacleHelpers.HasObstacleAt(f, cx, cy)) continue; // Fix 2 juin : pas d'atterrissage sur Faille/Pilier/Mur
                 landX = cx;
                 landY = cy;
                 return true;
@@ -4072,6 +4156,7 @@ namespace Quantum
             if (!GridHelpers.InBounds(x, y)) return false;
             if (!GridHelpers.IsWalkable(f, x, y)) return false;
             if (GridHelpers.GetOccupant(f, x, y) != EntityRef.None) return false;
+            if (ObstacleHelpers.HasObstacleAt(f, x, y)) return false; // Fix 2 juin : Faille/Pilier/Mur = case solide (pull/Frappe Fantome n'y depose pas)
             return true;
         }
 

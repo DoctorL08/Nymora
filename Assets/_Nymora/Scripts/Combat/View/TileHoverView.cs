@@ -119,18 +119,14 @@ namespace Nymora.Combat.View
             // pas sur sa case grille, on detecte quand meme. Le hover combatant est calcule
             // chaque frame (peu de combatants en jeu, O(N) negligeable) ; tile/obstacle
             // restent gerees par changement de case (cf early-return ci-dessous).
+            // Modèle hybride tolérant (juin 2026) — un combattant est ciblé si la souris est sur son
+            // SPRITE (pixel opaque) OU sur sa CASE-PIEDS ; départage par la case-pieds la plus proche
+            // du curseur (cf FindCombatantViewHybrid). Le hover reflète ainsi EXACTEMENT ce que le
+            // clic de cast ciblera, et deux persos collés ne sont plus départagés par le seul sprite
+            // du dessus.
             CombatantView hoveredCombatant = _enableCombatantHover
-                ? FindCombatantViewByMouse(mouseWorld)
+                ? FindCombatantViewHybrid(mouseWorld, _gridSettings, _centerOffset)
                 : null;
-
-            // Fix juin 2026 — fallback : si aucun sprite sous le curseur, mais que la souris est sur
-            // la CASE LOGIQUE d'un combattant, on affiche quand même son tooltip (HP + prévisu dégâts).
-            // Permet de survoler la case où il se tient (sol devant les pieds, pixel transparent) et
-            // pas seulement son sprite.
-            if (hoveredCombatant == null && _enableCombatantHover && !outOfGrid)
-            {
-                hoveredCombatant = FindCombatantViewAtCell(gx, gy);
-            }
 
             // Si pas de vrai CombatantView hovered, check les leurres Ghostra : leur proxy
             // pointe vers l'Entity du vrai Ghostra parent, ce qui permet d'afficher le MEME
@@ -151,6 +147,16 @@ namespace Nymora.Combat.View
                 }
             }
             UpdateCombatantHover(hoveredCombatant, tooltipEntity, tooltipAnchor);
+
+            // Fix piliers/murs juin 2026 — si on ne survole ni combattant ni leurre, on teste les
+            // sprites d'obstacles (Pilier/Mur) : leur sprite déborde leur tuile en hauteur, donc
+            // survoler leur corps doit faire suivre le glow + reveal HP sur LEUR case-pieds, pas sur
+            // la case sol derrière. Cohérent avec le snap de ciblage (TryPickSpriteTargetCell).
+            ObstacleView hoveredObstacle = null;
+            if (hoveredCombatant == null && hoveredDecoy == null && _enableObstacleHpReveal)
+            {
+                hoveredObstacle = FindObstacleViewByMouse(mouseWorld);
+            }
 
             // Cellule a highlighter. Quand on survole un perso (ou un leurre), on cible SA case
             // et pas la case sous la souris : le sprite deborde largement sa tuile (scale 1.16x +
@@ -175,6 +181,13 @@ namespace Nymora.Combat.View
                 targetX = dx;
                 targetY = dy;
                 hasTargetCell = dx >= 0 && dx < gridWidth && dy >= 0 && dy < gridHeight;
+            }
+            else if (hoveredObstacle != null)
+            {
+                // Obstacle survolé par son sprite : on cible SA case-pieds (stockée sur l'ObstacleView).
+                targetX = hoveredObstacle.GridX;
+                targetY = hoveredObstacle.GridY;
+                hasTargetCell = targetX >= 0 && targetX < gridWidth && targetY >= 0 && targetY < gridHeight;
             }
             else
             {
@@ -296,34 +309,59 @@ namespace Nymora.Combat.View
             gx = -1;
             gy = -1;
 
-            if (!FilterTargetsUnitSprite(filter) && !isStraightLineSpell) return false;
+            bool wantsUnit = FilterTargetsUnitSprite(filter) || isStraightLineSpell;
+            bool wantsObstacle = FilterTargetsObstacleSprite(filter);
+            if (!wantsUnit && !wantsObstacle) return false;
 
-            // 1) Vrai combattant : il porte sa case logique (GridX/GridY).
-            var combatant = FindCombatantViewByMouse(mouseWorld);
-            if (combatant != null)
+            if (wantsUnit)
             {
-                gx = combatant.GridX;
-                gy = combatant.GridY;
-                return true;
+                // 1) Vrai combattant (modèle hybride tolérant juin 2026) : candidat si sprite-opaque OU
+                //    case-pieds sous le curseur, départagé par la case-pieds la plus proche (cf
+                //    FindCombatantViewHybrid). Il porte sa case logique (GridX/GridY).
+                var combatant = FindCombatantViewHybrid(mouseWorld, gridSettings, centerOffset);
+                if (combatant != null)
+                {
+                    gx = combatant.GridX;
+                    gy = combatant.GridY;
+                    return true;
+                }
+
+                // 2) Leurre Ghostra : pas de case stockée -> dérivée de sa position monde.
+                if (gridSettings != null)
+                {
+                    var decoy = FindDecoyHoverProxyByMouse(mouseWorld);
+                    if (decoy != null)
+                    {
+                        var (dx, dy) = IsoProjection.WorldToGrid(
+                            decoy.transform.position,
+                            gridSettings.TileWorldWidth,
+                            gridSettings.TileWorldHeight,
+                            centerOffset);
+                        if (dx >= 0 && dx < Quantum.GridConstants.Width && dy >= 0 && dy < Quantum.GridConstants.Height)
+                        {
+                            gx = dx;
+                            gy = dy;
+                            return true;
+                        }
+                    }
+                }
             }
 
-            // 2) Leurre Ghostra : pas de case stockée -> dérivée de sa position monde.
-            if (gridSettings != null)
+            // 3) Fix piliers/murs juin 2026 — un obstacle (Pilier/Mur Colossar) a lui aussi un sprite
+            //    qui déborde sa tuile en hauteur : survoler/cliquer son corps doit cibler SA case-pieds
+            //    (GridX/GridY), pas la case sol projetée derrière. Sans ça, Éboulement (qui vise « un de
+            //    TES Piliers », filtre AnyTile) ratait toujours sa cible -> piliers/murs « inciblables ».
+            //    Gate sur les filtres qui peuvent légitimement viser une case-obstacle (AnyTile /
+            //    TileWithObstacle) : les sorts de POSE (EmptyTile : Pilier, Mur, leurre) gardent la case
+            //    sol sous le curseur pour ne pas snapper sur un obstacle déjà en place.
+            if (wantsObstacle)
             {
-                var decoy = FindDecoyHoverProxyByMouse(mouseWorld);
-                if (decoy != null)
+                var obstacle = FindObstacleViewByMouse(mouseWorld);
+                if (obstacle != null)
                 {
-                    var (dx, dy) = IsoProjection.WorldToGrid(
-                        decoy.transform.position,
-                        gridSettings.TileWorldWidth,
-                        gridSettings.TileWorldHeight,
-                        centerOffset);
-                    if (dx >= 0 && dx < Quantum.GridConstants.Width && dy >= 0 && dy < Quantum.GridConstants.Height)
-                    {
-                        gx = dx;
-                        gy = dy;
-                        return true;
-                    }
+                    gx = obstacle.GridX;
+                    gy = obstacle.GridY;
+                    return true;
                 }
             }
 
@@ -335,8 +373,11 @@ namespace Nymora.Combat.View
         /// Les filtres de case sol (EmptyTile / TileWithObstacle / AnyTile) sont exclus.
         /// Self est inclus : le caster doit pouvoir cliquer SON propre sprite pour se cibler
         /// (l'appelant vérifie ensuite que la case résolue est bien la sienne).
+        ///
+        /// Public : CombatInputController s'en sert pour annuler proprement un cast quand un
+        /// sort à cible-unité ne résout AUCUN combattant sous le curseur (pas de misfire sol).
         /// </summary>
-        private static bool FilterTargetsUnitSprite(TargetingFilter filter)
+        public static bool FilterTargetsUnitSprite(TargetingFilter filter)
         {
             switch (filter)
             {
@@ -350,6 +391,65 @@ namespace Nymora.Combat.View
                 default:
                     return false;
             }
+        }
+
+        /// <summary>
+        /// Fix piliers/murs juin 2026 — True si le filtre peut viser une case occupée par un OBSTACLE
+        /// (Pilier/Mur) -> le snap sprite obstacle a du sens. Couvre :
+        ///   - TileWithObstacle : sorts qui ciblent explicitement un obstacle.
+        ///   - AnyTile          : Éboulement vise « un de TES Piliers » via AnyTile (Bible V7.1) ;
+        ///                        survoler le pilier doit cibler SA case et pas le sol derrière.
+        ///   - Enemy / AnyUnit  : un sort OFFENSIF à cible-ennemi peut viser un OBSTACLE ADVERSE pour
+        ///                        le détruire (Pilier/Mur destructibles, PATCH sim 22 mai dans
+        ///                        SpellSystem.TryCastSpell). Les obstacles n'étant PAS dans l'occupancy
+        ///                        combattant (ObstacleSingleton à part), le snap unité ne les trouvait
+        ///                        pas et l'anti-misfire annulait le cast -> piliers/murs « inciblables ».
+        ///                        Snapper vers l'obstacle rend snapped=true, donc plus d'annulation ;
+        ///                        la sim filtre l'appartenance (own obstacle -> rejet propre, 0 PA).
+        /// EmptyTile est EXCLU : les sorts de pose (Pilier, Mur, leurre) doivent garder la case sol
+        /// libre sous le curseur, jamais snapper sur un obstacle déjà présent. Self/Ally aussi exclus
+        /// (on ne cible pas un obstacle en allié).
+        /// </summary>
+        public static bool FilterTargetsObstacleSprite(TargetingFilter filter)
+        {
+            switch (filter)
+            {
+                case TargetingFilter.TileWithObstacle:
+                case TargetingFilter.AnyTile:
+                case TargetingFilter.Enemy:
+                case TargetingFilter.AnyUnit:
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        /// Fix piliers/murs juin 2026 — Détecte un ObstacleView (Pilier/Mur) sous la souris par test
+        /// pixel-parfait (cf SpritePixelHitTester), comme FindDecoyHoverProxyByMouse pour les leurres.
+        /// Le sprite obstacle déborde sa tuile en hauteur (anim « sort du sol », pivot bas), donc on ne
+        /// peut pas se fier à la case sol projetée. Retourne l'obstacle au meilleur sortingOrder si
+        /// plusieurs se chevauchent. O(N obstacles) — max ~5 concurrents (cap FD = 3 piliers + 1 mur).
+        /// </summary>
+        private static ObstacleView FindObstacleViewByMouse(Vector3 mouseWorld)
+        {
+            var views = Object.FindObjectsByType<ObstacleView>(FindObjectsSortMode.None);
+            ObstacleView best = null;
+            int bestSortingOrder = int.MinValue;
+            for (int i = 0; i < views.Length; i++)
+            {
+                var v = views[i];
+                if (v == null || !v.isActiveAndEnabled) continue;
+                var sr = v.GetComponentInChildren<SpriteRenderer>();
+                if (sr == null || !sr.enabled || sr.sprite == null) continue;
+                if (!SpritePixelHitTester.OverlapsOpaque(sr, mouseWorld)) continue;
+                if (sr.sortingOrder > bestSortingOrder)
+                {
+                    bestSortingOrder = sr.sortingOrder;
+                    best = v;
+                }
+            }
+            return best;
         }
 
         /// <summary>
@@ -381,52 +481,82 @@ namespace Nymora.Combat.View
         }
 
         /// <summary>
-        /// POLISH-5d — Detection sprite-based : iterate tous les CombatantView, check si la
-        /// souris tombe sur un PIXEL OPAQUE du sprite du combatant (cf SpritePixelHitTester,
-        /// fix hover juin 2026 — l'ancien test AABB declenchait dans tout le transparent).
-        /// Plus precis que la detection grille quand le sprite deborde de sa tile (sprite
-        /// scale 1.16x + child Visual Y -0.22 chez plusieurs classes). Si plusieurs sprites
-        /// se chevauchent visuellement, le plus haut sortingOrder gagne.
+        /// Modèle hybride tolérant (juin 2026) — Résout LE combattant ciblé par la souris.
+        /// Un combattant est CANDIDAT si :
+        ///   (a) sa case-pieds (GridX/GridY) == la case sous le curseur (WorldToGrid), OU
+        ///   (b) un pixel OPAQUE de son sprite est sous le curseur (cf SpritePixelHitTester —
+        ///       le sprite pixel-art déborde sa tuile en hauteur, scale 1.16x + Visual Y -0.22).
+        /// Parmi les candidats, on retient celui dont le CENTRE de sa case-pieds (en monde) est le
+        /// plus proche du curseur. Ça remplace l'ancien tri par sortingOrder : quand deux persos
+        /// sont collés et que leurs sprites se chevauchent, on cible celui vers la BASE duquel on
+        /// pointe, au lieu de toujours prendre le sprite au-dessus (back-perso devenait
+        /// inaccessible). Retourne null si AUCUN candidat -> plus de misfire sur la case sol
+        /// derrière un quasi-clic (le clic de cast est alors annulé plutôt que mal placé).
+        ///
+        /// Combine l'ancien FindCombatantViewByMouse (sprite-opaque) et FindCombatantViewAtCell
+        /// (case logique) : le hover ET le clic de cast partagent désormais cette résolution, donc
+        /// le glow montre exactement ce qui sera ciblé.
+        ///
+        /// <paramref name="gridSettings"/> null (scène de test minimale) -> fallback historique
+        /// sprite-opaque + sortingOrder le plus haut.
         /// </summary>
-        private static CombatantView FindCombatantViewByMouse(Vector3 mouseWorld)
+        private static CombatantView FindCombatantViewHybrid(Vector3 mouseWorld, GridSettings gridSettings, Vector3 centerOffset)
         {
+            bool hasGrid = gridSettings != null;
+            int cellX = int.MinValue, cellY = int.MinValue;
+            if (hasGrid)
+            {
+                var (cx, cy) = IsoProjection.WorldToGrid(
+                    mouseWorld, gridSettings.TileWorldWidth, gridSettings.TileWorldHeight, centerOffset);
+                cellX = cx;
+                cellY = cy;
+            }
+
             var views = Object.FindObjectsByType<CombatantView>(FindObjectsSortMode.None);
             CombatantView best = null;
-            int bestSortingOrder = int.MinValue;
+            float bestFootDistSq = float.MaxValue;
+            int bestSortingOrder = int.MinValue; // fallback quand gridSettings null
+
             for (int i = 0; i < views.Length; i++)
             {
                 var v = views[i];
                 if (v == null || !v.isActiveAndEnabled) continue;
+
+                // (a) case-pieds exactement sous le curseur.
+                bool onFootCell = hasGrid && v.GridX == cellX && v.GridY == cellY;
+
+                // (b) pixel opaque du sprite sous le curseur.
                 var sr = v.GetComponentInChildren<SpriteRenderer>();
-                if (sr == null || !sr.enabled || sr.sprite == null) continue;
-                // Pixel-parfait : la souris doit etre sur un pixel OPAQUE du sprite, pas
-                // seulement dans son AABB rectangulaire (qui inclut tout le transparent
-                // autour/entre le dessin -> sinon tooltip declenche "loin du sprite").
-                if (!SpritePixelHitTester.OverlapsOpaque(sr, mouseWorld)) continue;
-                if (sr.sortingOrder > bestSortingOrder)
+                bool onSprite = sr != null && sr.enabled && sr.sprite != null
+                                && SpritePixelHitTester.OverlapsOpaque(sr, mouseWorld);
+
+                if (!onFootCell && !onSprite) continue;
+
+                if (hasGrid)
                 {
-                    bestSortingOrder = sr.sortingOrder;
-                    best = v;
+                    // Départage tolérant : la case-pieds dont le centre monde est le plus proche
+                    // du curseur (deux persos collés -> on prend celui vers lequel on pointe).
+                    Vector3 footWorld = IsoProjection.GridToWorld(
+                        v.GridX, v.GridY, gridSettings.TileWorldWidth, gridSettings.TileWorldHeight) + centerOffset;
+                    float distSq = ((Vector2)(mouseWorld - footWorld)).sqrMagnitude;
+                    if (distSq < bestFootDistSq)
+                    {
+                        bestFootDistSq = distSq;
+                        best = v;
+                    }
+                }
+                else
+                {
+                    // Fallback historique sans grille : sprite le plus haut.
+                    int order = sr != null ? sr.sortingOrder : int.MinValue;
+                    if (order > bestSortingOrder)
+                    {
+                        bestSortingOrder = order;
+                        best = v;
+                    }
                 }
             }
             return best;
-        }
-
-        /// <summary>
-        /// Fix juin 2026 — Combatant dont la CASE LOGIQUE == (gx,gy). Fallback du hover sprite :
-        /// survoler la case où un combattant se tient affiche son tooltip même si le pixel sous le
-        /// curseur est transparent. (Un combattant mort n'a plus de CombatantView actif.)
-        /// </summary>
-        private static CombatantView FindCombatantViewAtCell(int gx, int gy)
-        {
-            var views = Object.FindObjectsByType<CombatantView>(FindObjectsSortMode.None);
-            for (int i = 0; i < views.Length; i++)
-            {
-                var v = views[i];
-                if (v == null || !v.isActiveAndEnabled) continue;
-                if (v.GridX == gx && v.GridY == gy) return v;
-            }
-            return null;
         }
 
         /// <summary>

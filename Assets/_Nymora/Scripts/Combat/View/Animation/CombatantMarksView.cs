@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Quantum;
+using TMPro;
 using UnityEngine;
 
 namespace Nymora.Combat.View.Animation
@@ -48,11 +49,18 @@ namespace Nymora.Combat.View.Animation
                  "A desactiver une fois le bug 'marks invisibles' resolu.")]
         [SerializeField] private bool _verboseLog = true;
 
+        [Header("Venin Necram (compteur de marques)")]
+        [Tooltip("Taille de police du compteur de marques de venin (nombre 1-4 sous l'icone). Monde.")]
+        [SerializeField, Min(0.1f)] private float _veninCountFontSize = 2.2f;
+        [Tooltip("Couleur du compteur de venin.")]
+        [SerializeField] private Color _veninCountColor = new Color(0.7f, 1f, 0.4f, 1f); // vert venin
+
         // Etat runtime. Key encoding : pour eviter de melanger StatusKind et MarkKind dans le meme
         // dict, on prefixe StatusKind avec 0x1000 (Status) et MarkKind avec 0x2000 (Mark). Resultat :
         // un int unique par "type de marque visuelle" sans collisions entre enums.
         private const int KeyStatus = 0x1000;
         private const int KeyMark = 0x2000;
+        private const int KeyVenin = 0x3000; // Necram : compteur de marques de venin (combatant.VeninStacks, hors Statuses[])
         private readonly Dictionary<EntityRef, CombatantView> _viewByEntity = new Dictionary<EntityRef, CombatantView>(4);
         private readonly Dictionary<EntityRef, Dictionary<int, GameObject>> _overlays =
             new Dictionary<EntityRef, Dictionary<int, GameObject>>(4);
@@ -131,6 +139,13 @@ namespace Nymora.Combat.View.Animation
                     _activeBuffer.Add(KeyMark | (int)combatant.CurrentMark);
                 }
             }
+            //    c) Venin Necram (combatant.VeninStacks, cumulable 1-4) — overlay icone + compteur.
+            //       Hors Statuses[] : c'est un compteur entier dedie. Une seule cle (KeyVenin), le
+            //       nombre est affiche dans le label de l'overlay (mis a jour en etape 5).
+            if (combatant.VeninStacks > 0 && _library.GetVeninFrames() != null)
+            {
+                _activeBuffer.Add(KeyVenin);
+            }
 
             // 2) Recupere ou cree le dictionnaire d'overlays pour ce combattant.
             if (!_overlays.TryGetValue(entity, out var perEntity))
@@ -170,11 +185,26 @@ namespace Nymora.Combat.View.Animation
                 if (!perEntity.TryGetValue(key, out var go) || go == null) continue;
                 float xOffset = (i - (count - 1) * 0.5f) * _markSpacingX;
                 go.transform.localPosition = new Vector3(_baseOffset.x + xOffset, _baseOffset.y, 0f);
+
+                // Venin : met a jour le compteur (le nombre de marques varie de 1 a 4).
+                if (key == KeyVenin)
+                {
+                    var countLabel = go.transform.Find("Count");
+                    if (countLabel != null)
+                    {
+                        var tmp = countLabel.GetComponent<TextMeshPro>();
+                        if (tmp != null) tmp.text = combatant.VeninStacks.ToString();
+                    }
+                }
             }
         }
 
         private GameObject SpawnOverlay(CombatantView view, int key)
         {
+            // Venin : overlay dedie (icone animee + compteur TMP). Geometrie differente des autres
+            // marques (root non scale, enfants Icon + Count), d'ou un chemin separe.
+            if (key == KeyVenin) return SpawnVeninOverlay(view);
+
             // Decode (StatusKind ou MarkKind) selon le prefixe.
             Sprite[] frames;
             string nameSuffix;
@@ -228,6 +258,60 @@ namespace Nymora.Combat.View.Animation
             var anim = go.AddComponent<SpriteAnimator>();
             anim.SetFrames(frames, _framesPerSecond, loop: true);
             return go;
+        }
+
+        /// <summary>
+        /// Necram (2 juin) — overlay de venin : une icone animee (marque_venin_putrefaction) + un
+        /// compteur du nombre de marques actives (combatant.VeninStacks, 1-4). Le root n'est PAS scale
+        /// (l'icone est scalee a part), pour que le compteur garde une taille lisible. Le texte est
+        /// mis a jour chaque frame dans UpdateMarksForCombatant (etape 5).
+        /// </summary>
+        private GameObject SpawnVeninOverlay(CombatantView view)
+        {
+            var frames = _library.GetVeninFrames();
+            if (frames == null || frames.Length == 0)
+            {
+                if (_verboseLog) Debug.LogWarning($"[Nymora.Marks] SKIP venin on {view.name} : _veninStacksFrames vide (relance Nymora > ... > Populate Combat Sprite Libraries).");
+                return null;
+            }
+
+            var root = new GameObject("Venin");
+            root.transform.SetParent(view.transform, false);
+            root.transform.localPosition = new Vector3(_baseOffset.x, _baseOffset.y, 0f);
+
+            // Icone animee, scalee a la taille monde commune des marques.
+            var iconGO = new GameObject("Icon");
+            iconGO.transform.SetParent(root.transform, false);
+            var sr = iconGO.AddComponent<SpriteRenderer>();
+            sr.sortingLayerName = "Default";
+            sr.sortingOrder = _sortingOrder;
+            sr.sprite = frames[0];
+            float nativeMax = Mathf.Max(frames[0].bounds.size.x, frames[0].bounds.size.y);
+            float uniformScale = nativeMax > 0.0001f ? _markTargetWorldSize / nativeMax : 1f;
+            iconGO.transform.localScale = new Vector3(uniformScale, uniformScale, 1f);
+            var anim = iconGO.AddComponent<SpriteAnimator>();
+            anim.SetFrames(frames, _framesPerSecond, loop: true);
+
+            // Compteur (coin bas-droit de l'icone), TMP world space.
+            var countGO = new GameObject("Count");
+            countGO.transform.SetParent(root.transform, false);
+            countGO.transform.localPosition = new Vector3(_markTargetWorldSize * 0.4f, -_markTargetWorldSize * 0.4f, 0f);
+            var tmp = countGO.AddComponent<TextMeshPro>();
+            tmp.text = "1";
+            tmp.fontSize = _veninCountFontSize;
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.color = _veninCountColor;
+            tmp.fontStyle |= FontStyles.Bold;
+            tmp.sortingOrder = _sortingOrder + 1; // devant l'icone
+            // Contour noir lisible, via materiau instancie (n'affecte aucun autre TMP).
+            _ = tmp.fontMaterial;
+            tmp.outlineColor = new Color(0f, 0f, 0f, 1f);
+            tmp.outlineWidth = 0.3f;
+            var rect = countGO.GetComponent<RectTransform>();
+            if (rect != null) rect.sizeDelta = new Vector2(1f, 0.6f);
+
+            if (_verboseLog) Debug.Log($"[Nymora.Marks] Spawn Venin on {view.name} : {frames.Length} frame(s), targetSize={_markTargetWorldSize}, sortingOrder={_sortingOrder}");
+            return root;
         }
 
         private void ClearAll()

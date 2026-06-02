@@ -316,12 +316,50 @@ namespace Nymora.Combat.View
                     // Fix ciblage juin 2026 — si la souris est sur le SPRITE d'un combattant/leurre,
                     // cibler SA case (le sprite déborde sa tuile en hauteur), pas la case sol projetée
                     // derrière lui. Gate par le filtre (unité/leurre/self) OU les sorts en ligne droite.
-                    if (gotDef
+                    // sx/sy pré-déclarés : le snap est court-circuité si !gotDef, et l'analyse
+                    // d'assignation C# ne corrèle pas snapped==true avec l'appel TryPick -> on
+                    // initialise pour éviter CS0165 (lecture potentiellement non assignée).
+                    int sx = 0, sy = 0;
+                    bool isStraightLine = Quantum.SpellSystem.SpellIsStraightLine(armedSpell);
+                    bool snapped = gotDef
                         && TileHoverView.TryPickSpriteTargetCell(mouseWorld, def.Filter,
-                               Quantum.SpellSystem.SpellIsStraightLine(armedSpell), _gridSettings, _centerOffset, out int sx, out int sy))
+                               isStraightLine, _gridSettings, _centerOffset, out sx, out sy);
+                    if (snapped)
                     {
                         tx = sx;
                         ty = sy;
+                    }
+
+                    // Refonte 29 mai — sort directionnel (Bourrasque, Piège Bondissant) : 1er clic = cible,
+                    //   on attend un 2e clic pour le sens (cast PAS encore envoyé). DOIT être testé AVANT
+                    //   l'anti-misfire ci-dessous : Bourrasque a le filtre Enemy, donc un 1er clic qui ne
+                    //   snappe pas pile sur l'ennemi serait annulé par l'anti-misfire SANS entrer en mode
+                    //   direction -> le clic suivant (sens voulu) repartait en MoveCommand et le Nightseer
+                    //   marchait au lieu de cibler la direction (bug 2 juin). En entrant en mode direction
+                    //   ici, les 2 clics sont toujours capturés ; la validité de la cible est tranchée par
+                    //   la sim au cast (Bourrasque rejette une case sans ennemi, pré-PA, sans gâcher le tour).
+                    if (IsDirectionalSpell(armedSpell))
+                    {
+                        _awaitingPushDir = true;
+                        _pushDirSpell = armedSpell;
+                        _pushDirTargetX = tx;
+                        _pushDirTargetY = ty;
+                        Debug.Log($"[Nymora.CombatInput] {armedSpell} : cible ({tx},{ty}) — clique une 2e case pour le sens du push.");
+                        return;
+                    }
+
+                    // Modèle hybride tolérant (juin 2026) — un sort qui vise une UNITÉ (Enemy/Ally/
+                    // AnyUnit/leurre) ne doit JAMAIS partir dans le vide : si aucun combattant/leurre
+                    // n'est résolu sous le curseur, on annule proprement plutôt que de viser la case
+                    // sol derrière (= cast rejeté par la sim, tour gâché sur les 15 s). Self est traité
+                    // juste en dessous ; les sorts en ligne droite et case sol gardent la case brute.
+                    if (gotDef && !snapped
+                        && def.Filter != TargetingFilter.Self
+                        && !isStraightLine
+                        && TileHoverView.FilterTargetsUnitSprite(def.Filter))
+                    {
+                        Debug.Log($"[Nymora.CombatInput] {armedSpell} : clic hors de toute unité — cast annulé (pas de misfire sol).");
+                        return;
                     }
 
                     // Self : on ne caste QUE si le clic vise bien le caster (son sprite ou sa case).
@@ -334,18 +372,6 @@ namespace Nymora.Combat.View
                             Debug.Log($"[Nymora.CombatInput] {armedSpell} (self) : clic hors du caster ({tx},{ty}) — cast annule.");
                             return;
                         }
-                    }
-
-                    // Refonte 29 mai — sort directionnel : 1er clic = cible, on attend un 2e clic
-                    //   pour le sens (cast PAS encore envoyé).
-                    if (IsDirectionalSpell(armedSpell))
-                    {
-                        _awaitingPushDir = true;
-                        _pushDirSpell = armedSpell;
-                        _pushDirTargetX = tx;
-                        _pushDirTargetY = ty;
-                        Debug.Log($"[Nymora.CombatInput] {armedSpell} : cible ({tx},{ty}) — clique une 2e case pour le sens du push.");
-                        return;
                     }
 
                     SendSpellAt(game, splitscreenSlot, senderPlayer, armedSpell, tx, ty, 0);

@@ -182,7 +182,14 @@ namespace Quantum
                 case TargetingFilter.AnyUnit:
                     return occupied;
                 case TargetingFilter.EmptyTile:
-                    return !occupied && GridHelpers.IsWalkable(f, cellX, cellY);
+                    // Fix 2 juin — une case avec OBSTACLE (Faille d'Effondrement, Pilier, Mur) n'est PAS
+                    // vide : sans ce check, les TP filtre EmptyTile (Dernier Pas, Pas dans l'Ombre...)
+                    // pouvaient atterrir sur une Faille pour s'echapper de l'ulti Colossar. Les poses
+                    // d'obstacle (Pilier/Mur, aussi EmptyTile) rejettent deja les cases occupees cote
+                    // SpawnObstacle ; ce filtre les bloque maintenant aussi proprement avant les PA.
+                    return !occupied
+                        && GridHelpers.IsWalkable(f, cellX, cellY)
+                        && !ObstacleHelpers.HasObstacleAt(f, cellX, cellY);
                 case TargetingFilter.TileWithObstacle:
                     // PATCH 22 mai (test designer) — case occupee par un obstacle (Pilier/Mur/Faille).
                     return ObstacleHelpers.HasObstacleAt(f, cellX, cellY);
