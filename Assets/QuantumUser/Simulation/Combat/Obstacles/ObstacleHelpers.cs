@@ -60,7 +60,8 @@ namespace Quantum
             ObstacleKind kind, int hp,
             int x, int y,
             EntityRef owner, int ownerPlayerIndex,
-            int expiresOnTurn)
+            int expiresOnTurn,
+            bool gainFondation = true)
         {
             if (!GridHelpers.InBounds(x, y))
             {
@@ -115,11 +116,12 @@ namespace Quantum
 
             Log.Info($"[Obstacle] Spawn {kind} entity={entity} pos=({x},{y}) HP={hp} owner=P{ownerPlayerIndex} expires={expiresOnTurn}");
 
-            // 3.2 — Bible V7.1 Fondation : "+1 FD chaque fois que le Colossar pose un Pilier
-            // ou un Mur". Branche ici (au lieu de dans chaque sort 3.3.b) pour DRY. Le helper
-            // est no-op si owner != Colossar (defensif), donc safe a appeler aussi pour les
-            // obstacles debug spawne par P0 si P0=Colossar (3.1.bis switch).
-            if (owner != EntityRef.None && f.Unsafe.TryGetPointer<Combatant>(owner, out var ownerC))
+            // 3.2 — Bible V7.1 Fondation : "+1 FD quand le Colossar pose un Pilier". Branche ici
+            // (au lieu de dans chaque sort) pour DRY. No-op si owner != Colossar (defensif).
+            // Equilibrage juin : gainFondation=false pour le Mur de Pierre -> ses segments ne
+            // donnent plus +1 FD chacun (c'etait +3 a +5 FD/Mur) ; le handler Mur accorde +2 FD
+            // FLAT apres la pose. Les Failles d'Effondrement passent owner=None -> aucun FD.
+            if (gainFondation && owner != EntityRef.None && f.Unsafe.TryGetPointer<Combatant>(owner, out var ownerC))
             {
                 ColossarPassif.GainFondation(ownerC, $"Spawn {kind}");
             }

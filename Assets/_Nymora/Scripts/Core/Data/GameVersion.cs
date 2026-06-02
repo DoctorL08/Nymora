@@ -150,7 +150,13 @@ namespace Nymora.Core.Data
         //                (HGCostMaxOptional 1 -> 0, push fixe 2 cases, const BonusBourrasquePushBonus1PR
         //                supprimee). Soulrender Charge Brutale 4 -> 3 PA. Descriptions deck builder
         //                synchronisees. Pure logique, aucun champ [Networked] touche.
-        public const int CombatRulesVersion = 106;
+        // 107 (Nerf FD du Mur, juin) : Mur de Pierre donnait +1 FD PAR SEGMENT (= +3 a +5 FD/Mur via
+        //                le hook SpawnObstacle). Desormais +2 FD FLAT par Mur pose. SpawnObstacle gagne
+        //                un flag gainFondation (defaut true ; false pour les segments de Mur) ; le
+        //                handler accorde MurDePierreFondationGain (2). GainFondation gagne un param
+        //                amount. Pilier (+1) et Failles (owner=None -> 0 FD) inchanges. Description
+        //                synchronisee. Pure logique, aucun champ [Networked] touche.
+        public const int CombatRulesVersion = 107;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

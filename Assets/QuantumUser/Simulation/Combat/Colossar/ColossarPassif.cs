@@ -175,17 +175,21 @@ namespace Quantum
         // ====================================================================
 
         /// <summary>
-        /// Gain +1 FD sur le combattant si Class == Colossar. Cap a CombatantStats.GetMaxResource.
-        /// No-op silencieux si pas Colossar (defensif). Log la raison pour debug.
+        /// Gain +amount FD (defaut 1) sur le combattant si Class == Colossar. Cap a
+        /// CombatantStats.GetMaxResource. No-op silencieux si pas Colossar ou amount <= 0
+        /// (defensif). Log la raison pour debug. amount=2 utilise par Mur de Pierre (equilibrage juin).
         /// </summary>
-        public static void GainFondation(Combatant* combatant, string reason)
+        public static void GainFondation(Combatant* combatant, string reason, int amount = 1)
         {
             if (combatant->Class != NymoraClass.Colossar) return;
+            if (amount <= 0) return;
             int max = CombatantStats.GetMaxResource(NymoraClass.Colossar);
             int before = combatant->Resource;
             if (before >= max) return; // deja au cap
-            combatant->Resource = before + 1;
-            Log.Info($"[Fondation] +1 FD sur P{combatant->PlayerIndex} ({reason}) : {before} -> {combatant->Resource}/{max}");
+            int after = before + amount;
+            if (after > max) after = max;
+            combatant->Resource = after;
+            Log.Info($"[Fondation] +{after - before} FD sur P{combatant->PlayerIndex} ({reason}) : {before} -> {after}/{max}");
         }
     }
 }

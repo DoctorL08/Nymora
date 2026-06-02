@@ -3466,7 +3466,8 @@ namespace Quantum
                     // Bible : pose une LIGNE de 3 cases de Mur (150 HP / 2 tours / case) centree sur
                     // (cmd.TargetX, cmd.TargetY), ORIENTEE PERPENDICULAIREMENT a l'axe caster->cible.
                     // Cases occupees ou deja obstacle : skip silencieux (SpawnObstacle refuse + log warn).
-                    // Chaque spawn reussi declenche +1 FD via le hook (max 3 FD posables d'un coup).
+                    // Equilibrage juin : le Mur donne +2 FD FLAT (gainFondation:false par segment ci-dessous
+                    //   -> plus de +1/segment, soit +3 a +5 avant ; grant unique +2 apres la pose).
                     int wsx = caster->GridX;
                     int wsy = caster->GridY;
                     int wdx = cmd.TargetX - wsx;
@@ -3505,10 +3506,16 @@ namespace Quantum
                             ObstacleKind.Wall, SpellRegistry.MurDePierreSegmentHP,
                             wx, wy,
                             owner: casterEntity, ownerPlayerIndex: caster->PlayerIndex,
-                            expiresOnTurn: currentTurn + SpellRegistry.MurDePierreTurns);
+                            expiresOnTurn: currentTurn + SpellRegistry.MurDePierreTurns,
+                            gainFondation: false); // equilibrage juin : pas de +1 FD/segment, grant +2 flat plus bas
                         if (wallEntity != EntityRef.None) segmentsSpawned++;
                     }
                     Log.Info($"[Spell] Mur de Pierre : {segmentsSpawned}/{murSegments} segments poses (centre {cmd.TargetX},{cmd.TargetY}, axe perp {wPerpStepX},{wPerpStepY}, option boost FD={hgSpend})");
+                    // Equilibrage juin : +2 FD FLAT par Mur pose (au lieu de +1 par segment).
+                    if (segmentsSpawned > 0)
+                    {
+                        ColossarPassif.GainFondation(caster, "Mur de Pierre (pose)", SpellRegistry.MurDePierreFondationGain);
+                    }
                     break;
                 }
 

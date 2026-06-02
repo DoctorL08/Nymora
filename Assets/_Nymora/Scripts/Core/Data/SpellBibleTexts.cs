@@ -169,7 +169,7 @@ namespace Nymora.Core.Data
                 Description = "Pose un Pilier (200 HP, infranchissable, occupe 1 case) sur une case vide. Reste jusqu'à destruction. Le Colossar gagne +1 FD à la pose. Le Pilier bloque les lignes de vue et de tir des sorts directs.",
                 LoreFlavor  = "L'outil. À lui seul, Pilier ne menace personne. En combinaison avec push/pull, il devient un instrument de meurtre." },
             new Entry { SpellIdValue = 56, SpellIdTech = "colossar_mur_de_pierre",          ClassId = NymoraClass.Colossar, Category = SpellCategory.Tactical,  DisplayName = "Mur de Pierre",
-                Description = "Crée un mur infranchissable de 3 cases (en ligne) pendant 2 tours — 5 cases si tu as au moins 1 FD (dépensé automatiquement). Le Mur bloque tout : déplacements, ciblages directs, lignes de tir. Cap : 1×/tour, relance 2 tours.",
+                Description = "Crée un mur infranchissable de 3 cases (en ligne) pendant 2 tours — 5 cases si tu as au moins 1 FD (dépensé automatiquement). Le Colossar gagne +2 FD à la pose. Le Mur bloque tout : déplacements, ciblages directs, lignes de tir. Cap : 1×/tour, relance 2 tours.",
                 LoreFlavor  = "Le grand séparateur. Un Mur bien posé peut couper la map en deux et forcer l'adversaire à choisir : il fait demi-tour ou il détruit le mur." },
             new Entry { SpellIdValue = 57, SpellIdTech = "colossar_ancrage",                ClassId = NymoraClass.Colossar, Category = SpellCategory.Tactical,  DisplayName = "Ancrage",
                 Description = "La cible perd 2 PM pendant 2 tours ET ne peut pas être déplacée par effets externes (push/pull/téléport) au prochain tour. Pas de dégâts.",

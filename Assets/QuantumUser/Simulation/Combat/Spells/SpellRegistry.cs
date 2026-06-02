@@ -244,6 +244,7 @@ namespace Quantum
         public const int MurDePierreSegmentsBase      = 3;    // segments de base (sans option ressource)
         public const int MurDePierreSegmentsBoosted   = 5;    // segments si option 1 FD depense
         public const int MurDePierreRangeMax          = 4;    // portee Bible
+        public const int MurDePierreFondationGain     = 2;    // equilibrage juin : +2 FD FLAT par Mur (etait +1/segment)
 
         // 3.3.b.iii — Ancrage Bible-correct (Colossar TACTIQUE anti-mobilite) — refacto rétroactif.
         // Bible : 2 PA, range 4, ENEMY. Cible perd 2 PM pendant 2 tours ET ne peut pas etre deplacee
@@ -1514,7 +1515,7 @@ namespace Quantum
 
                 // Mur de Pierre (3.3.b.iii Bible-correct) : 4 PA, range 4, ligne 3 cases (perpendiculaire
                 // axe caster->cible) 150 HP / 2 tours. Optionnel : 1 FD -> 5 segments au lieu de 3.
-                // +1 FD par segment pose via SpawnObstacle hook.
+                // Equilibrage juin : +2 FD FLAT par Mur (handler), au lieu de +1 par segment (gainFondation:false).
                 case SpellId.ColossarMurDePierre:
                     def = new SpellDef
                     {
