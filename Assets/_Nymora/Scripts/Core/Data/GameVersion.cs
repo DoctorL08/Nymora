@@ -131,7 +131,13 @@ namespace Nymora.Core.Data
         //                damage : owner-check retire -> l'obstacle own prend les degats. Helper
         //                IsAdverseObstacleAt supprime (remplace par ObstacleHelpers.HasObstacleAt). Pure
         //                logique, aucun champ [Networked] touche.
-        public const int CombatRulesVersion = 103;
+        // 104 (Eboulement sur Mur/Faille, juin) : le pre-check d'Eboulement (ColossarSoinLourd)
+        //                acceptait uniquement un PILIER own ; il accepte desormais TOUT obstacle own
+        //                (Pilier/Mur/Faille). Le handler detruit l'obstacle quel que soit son Kind
+        //                (AoE 150 + push identiques) ; le +30 HP Densite Inerte reste reserve au Pilier
+        //                (DestroyObstacle). Description deck builder synchronisee. Pure logique, aucun
+        //                champ [Networked] touche.
+        public const int CombatRulesVersion = 104;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

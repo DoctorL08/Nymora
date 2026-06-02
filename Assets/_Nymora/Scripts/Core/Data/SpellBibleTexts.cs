@@ -193,7 +193,7 @@ namespace Nymora.Core.Data
                 Description = "Pendant 1 tour, toute attaque (mêlée OU à distance) subie par le Colossar renvoie 60 dégâts à l'attaquant. Cap à 4 retours.",
                 LoreFlavor  = "Le miroir. Renvoi du Bouclier est l'anti-Nightseer — un sort à distance qui frappe le Colossar lui revient direct." },
             new Entry { SpellIdValue = 64, SpellIdTech = "colossar_soin_lourd",             ClassId = NymoraClass.Colossar, Category = SpellCategory.Offensive, DisplayName = "Éboulement",
-                Description = "Vise un de TES Piliers (portée 3) et le fait s'effondrer : 150 dégâts en zone (rayon 1) sur les ennemis autour + ils sont poussés. Tu récupères 30 HP (destruction de pilier). Cap : 1 fois par tour.",
+                Description = "Vise un de TES obstacles — Pilier, Mur ou Faille (portée 3) — et le fait s'effondrer : 150 dégâts en zone (rayon 1) sur les ennemis autour + ils sont poussés. Si c'est un Pilier, tu récupères 30 HP. Cap : 1 fois par tour.",
                 LoreFlavor  = "Le sacrifice de pierre. Le Colossar transforme sa propre fortification en bombe : la défense devient l'attaque." },
             new Entry { SpellIdValue = 65, SpellIdTech = "colossar_effondrement",           ClassId = NymoraClass.Colossar, Category = SpellCategory.Signature, DisplayName = "Effondrement",
                 Description = "IMMÉDIAT : toutes les cases autour du Colossar (rayon 2) deviennent IMPRATICABLES pendant 2 tours. Les ennemis dessus prennent 200 dégâts et sont éjectés vers la case libre la plus proche. Pendant 2 tours, les sorts du Colossar coûtent -1 PA et toute attaque qu'il subit est réduite de 30%. Coûte 5 FD (jauge pleine). Relance 4 tours.",

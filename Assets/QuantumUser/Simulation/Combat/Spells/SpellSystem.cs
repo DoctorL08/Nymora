@@ -465,19 +465,21 @@ namespace Quantum
                 return;
             }
 
-            // Refonte 29 mai — Éboulement (ex-Soin Lourd) : requiert un de TES Piliers sur la case
-            //   ciblée. Reject AVANT consommation PA (pas de cast à vide).
+            // Refonte 29 mai + brique juin 2026 — Éboulement (ex-Soin Lourd) : requiert un de TES
+            //   obstacles sur la case ciblée. Avant, seul un Pilier était accepté ; on étend aux Murs
+            //   et Failles (le handler détruit l'obstacle quel que soit son Kind, l'AoE 150 + le push
+            //   s'appliquent pareil ; seul le +30 HP Densité Inerte reste réservé au Pilier dans
+            //   DestroyObstacle). Reject AVANT consommation PA (pas de cast à vide).
             if (cmd.Spell == SpellId.ColossarSoinLourd)
             {
                 EntityRef ebObs = ObstacleHelpers.GetObstacleAt(f, cmd.TargetX, cmd.TargetY);
-                bool ownPillar = ebObs != EntityRef.None
+                bool ownObstacle = ebObs != EntityRef.None
                     && f.Unsafe.TryGetPointer<Obstacle>(ebObs, out Obstacle* ebObsC)
-                    && ebObsC->Kind == ObstacleKind.Pillar
                     && ebObsC->OwnerPlayerIndex == caster->PlayerIndex
                     && ebObsC->HP > 0;
-                if (!ownPillar)
+                if (!ownObstacle)
                 {
-                    Log.Warn($"[Spell] rejet : Éboulement requiert un de tes Piliers sur ({cmd.TargetX},{cmd.TargetY})");
+                    Log.Warn($"[Spell] rejet : Éboulement requiert un de tes obstacles (Pilier/Mur/Faille) sur ({cmd.TargetX},{cmd.TargetY})");
                     return;
                 }
             }
@@ -3686,30 +3688,31 @@ namespace Quantum
 
                 case SpellId.ColossarSoinLourd: // EBOULEMENT (refonte 29 mai)
                 {
-                    // Les 150 AoE (rayon 1 autour du Pilier) sont déjà appliqués par le pipeline
-                    //   (CircleSmall). Ici : détruis le Pilier ciblé (+30 HP via passif Densité Inerte)
-                    //   puis push les ennemis survivants autour, loin du pilier.
-                    int pillarX = cmd.TargetX;
-                    int pillarY = cmd.TargetY;
-                    EntityRef pillar = ObstacleHelpers.GetObstacleAt(f, pillarX, pillarY);
-                    if (pillar != EntityRef.None)
+                    // Les 150 AoE (rayon 1 autour de l'obstacle) sont déjà appliqués par le pipeline
+                    //   (CircleSmall). Ici : détruis l'obstacle ciblé (Pilier/Mur/Faille ; +30 HP via
+                    //   passif Densité Inerte UNIQUEMENT si c'est un Pilier — géré dans DestroyObstacle)
+                    //   puis push les ennemis survivants autour, loin de l'obstacle.
+                    int obsX = cmd.TargetX;
+                    int obsY = cmd.TargetY;
+                    EntityRef ebTargetObs = ObstacleHelpers.GetObstacleAt(f, obsX, obsY);
+                    if (ebTargetObs != EntityRef.None)
                     {
-                        ObstacleHelpers.DestroyObstacle(f, pillar); // +30 HP owner (passif destruction)
-                        Log.Info($"[Spell] Éboulement : Pilier détruit en ({pillarX},{pillarY}) par P{caster->PlayerIndex}");
+                        ObstacleHelpers.DestroyObstacle(f, ebTargetObs); // +30 HP owner si Pilier (passif destruction)
+                        Log.Info($"[Spell] Éboulement : obstacle détruit en ({obsX},{obsY}) par P{caster->PlayerIndex}");
                     }
 
                     int[] ebDx = { 1, -1, 0, 0 };
                     int[] ebDy = { 0, 0, 1, -1 };
                     for (int i = 0; i < 4; i++)
                     {
-                        int nx = pillarX + ebDx[i];
-                        int ny = pillarY + ebDy[i];
+                        int nx = obsX + ebDx[i];
+                        int ny = obsY + ebDy[i];
                         if (!GridHelpers.InBounds(nx, ny)) continue;
                         EntityRef occ = GridHelpers.GetOccupant(f, nx, ny);
                         if (occ == EntityRef.None || occ == casterEntity) continue;
                         if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* ebC)) continue;
                         if (ebC->PlayerIndex == caster->PlayerIndex || ebC->HP <= 0) continue;
-                        PushAndTrigger(f, ebC, occ, pillarX, pillarY,
+                        PushAndTrigger(f, ebC, occ, obsX, obsY,
                             SpellRegistry.EboulementPushDistance, currentTurn, caster);
                     }
                     break;
