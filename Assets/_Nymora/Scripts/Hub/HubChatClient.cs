@@ -325,6 +325,7 @@ namespace Nymora.Hub
             string title =
                 reason == "banned" ? "Compte banni" :
                 reason == "maintenance" ? "Serveurs fermés" :
+                reason == "update" ? "Mise à jour disponible" :
                 "Déconnecté";
             if (string.IsNullOrEmpty(message))
                 message = "Tu as été déconnecté du serveur.";
