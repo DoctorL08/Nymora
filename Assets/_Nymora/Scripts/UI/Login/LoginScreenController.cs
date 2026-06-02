@@ -94,6 +94,9 @@ namespace Nymora.UI.Login
 
             _api = new NymoraApiClient(_backendSettings);
             _auth = new AuthService(_api);
+            // Analytics D4 — fournit la base URL au reporter d'erreurs client (auto-demarre
+            // au boot). A partir d'ici, les erreurs runtime remontent vers /telemetry/error.
+            ClientErrorReporter.Configure(_backendSettings.BaseUrl);
             _versionClient = new NymoraVersionClient(_api);
             _updateService = new LauncherUpdateService();
             _cts = new CancellationTokenSource();
