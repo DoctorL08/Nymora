@@ -137,7 +137,16 @@ namespace Nymora.Core.Data
         //                (AoE 150 + push identiques) ; le +30 HP Densite Inerte reste reserve au Pilier
         //                (DestroyObstacle). Description deck builder synchronisee. Pure logique, aucun
         //                champ [Networked] touche.
-        public const int CombatRulesVersion = 104;
+        // 105 (Conso ressource optionnelle en AUTO, juin) : le bind manuel "Shift+X" ayant ete retire
+        //                le 17 mai, cmd.HGSpend arrivait toujours a 0 -> les bonus de consommation
+        //                optionnelle ne partaient JAMAIS et la ressource n'etait pas consommee.
+        //                SpellSystem auto-remplit desormais hgSpend au max finançable apres le cout
+        //                obligatoire (cmd.HGSpend conserve comme plafond optionnel pour IA/futur UI).
+        //                Touche 9 sorts : Ouvre-Plaie, Seve Vive, Detonation Sanglante, Bourrasque, Pas
+        //                Furtif, Mur de Pierre, Regeneration Necrotique, Pas dans l'Ombre, Detonation
+        //                Onirique. Descriptions deck builder synchronisees. Pure logique, aucun champ
+        //                [Networked] touche.
+        public const int CombatRulesVersion = 105;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

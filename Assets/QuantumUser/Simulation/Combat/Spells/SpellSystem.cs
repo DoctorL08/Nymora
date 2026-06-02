@@ -291,14 +291,28 @@ namespace Quantum
                 }
             }
 
-            // HG validation (mandatory + optional clamped).
-            int hgSpend = cmd.HGSpend;
-            if (hgSpend > spellDef.HGCostMaxOptional) hgSpend = spellDef.HGCostMaxOptional;
+            // ===== Cout en ressource de classe (HG/PR/FD/PT) : mandatory + optionnel AUTO =====
+            // Brique juin 2026 (decision Lorenzo : "depense si dispo") — le bind manuel "Shift+X"
+            //   ayant ete retire le 17 mai, cmd.HGSpend arrive TOUJOURS a 0 cote joueur -> les bonus
+            //   de consommation (Ouvre-Plaie +120, Seve Vive +60, Detonation Sanglante, Mur de Pierre
+            //   5 segments, Pas Furtif voile, Symbiose +30 HP, Pas dans l'Ombre leurre, Detonation
+            //   Onirique portee 10, Contagion) ne partaient JAMAIS, et la ressource n'etait pas
+            //   consommee. On depense desormais AUTOMATIQUEMENT le maximum optionnel finançable APRES
+            //   le cout obligatoire. Trade-off assume : on ne peut plus "banker" sa ressource pour la
+            //   signature (Ame Laceree 5 HG / Effondrement 5 FD / Virus Fatal 6 PT) en castant ces
+            //   sorts a bas cout. cmd.HGSpend conserve comme PLAFOND optionnel : un appelant (IA / futur
+            //   UI) qui met HGSpend > 0 borne l'auto ; 0 (cas joueur actuel) = auto au max.
+            int optionalBudget = caster->Resource - spellDef.HGCostMandatory; // ressource restante apres mandatory
+            if (optionalBudget < 0) optionalBudget = 0;
+            int hgSpend = spellDef.HGCostMaxOptional;
+            if (cmd.HGSpend > 0 && cmd.HGSpend < hgSpend) hgSpend = cmd.HGSpend; // plafond explicite si fourni
+            if (hgSpend > optionalBudget) hgSpend = optionalBudget;            // borne par ce qui est finançable
             if (hgSpend < 0) hgSpend = 0;
             int totalHgCost = spellDef.HGCostMandatory + hgSpend;
             if (caster->Resource < totalHgCost)
             {
-                Log.Warn($"[Spell] rejet : HG {caster->Resource} < cost {totalHgCost} (mand {spellDef.HGCostMandatory} + opt {hgSpend})");
+                // Ne peut pas payer le cout OBLIGATOIRE (l'optionnel est deja borne au finançable).
+                Log.Warn($"[Spell] rejet : ressource {caster->Resource} < cout obligatoire {spellDef.HGCostMandatory} ({cmd.Spell})");
                 return;
             }
 
