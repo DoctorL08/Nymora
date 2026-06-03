@@ -14,8 +14,8 @@ namespace Nymora.Hub.Menu
     /// M3b — Deck builder complet au style du nouveau menu (colonne droite de l'onglet Classe).
     ///
     /// Gauche : liste des decks + "Nouveau deck". Droite : nom du deck (input) + Save/Supprimer,
-    /// 6 slots équipés (clic = retirer), onglets catégories (Offensifs/Tactiques/Survie) + grille
-    /// de sorts (clic = ajouter au prochain slot vide).
+    /// 6 slots équipés (clic = retirer, glisser-déposer = réordonner), onglets catégories
+    /// (Offensifs/Tactiques/Survie) + grille de sorts (clic = ajouter au prochain slot vide).
     ///
     /// Réutilise les règles Bible (6 sorts uniques, 5 decks max, signature auto) et les appels
     /// backend de HubDeckBuilderPanel. Après save/select, synchronise le deck actif du combat
@@ -484,8 +484,13 @@ namespace Nymora.Hub.Menu
                 var box = _f.MakeImage("Slot_" + i, _slotsRow, def != null ? _t.CardBg : new Color(1f, 1f, 1f, 0.04f));
                 var le = box.gameObject.AddComponent<LayoutElement>();
                 le.preferredWidth = 116f; le.preferredHeight = 116f;
-                var btn = box.gameObject.AddComponent<Button>(); btn.targetGraphic = box;
-                btn.onClick.AddListener(() => RemoveSlot(slotIndex));
+                // Clic = retirer le sort · glisser sur un autre slot = réordonner (swap). DeckDragHandler
+                // combine les deux (le clic est annulé après un vrai drag). _slotItems est passé par
+                // référence : il est entièrement rempli au moment où l'utilisateur interagit.
+                var slotHandler = box.gameObject.AddComponent<DeckDragHandler>();
+                slotHandler.Init(def != null, def != null ? def.IconSprite : null, _slotItems,
+                    () => RemoveSlot(slotIndex),
+                    (target) => ReorderSlots(slotIndex, target));
 
                 if (def != null && def.IconSprite != null)
                 {
@@ -513,6 +518,34 @@ namespace Nymora.Hub.Menu
         {
             if (_slots[i] == null) return;
             _slots[i] = null;
+            RenderSlots();
+            RenderSpellGrid();
+            UpdateStatus();
+        }
+
+        // Glisser-déposer : échange (swap) les deux slots. L'ordre de _slots = l'ordre des sorts
+        // en combat (hotkeys 1-6), et il est persisté tel quel par OnSave -> il suffit de réordonner
+        // puis re-render. Pas besoin de RenderSpellGrid (l'ensemble des sorts équipés ne change pas).
+        private void ReorderSlots(int from, int to)
+        {
+            if (from == to || from < 0 || from >= 6 || to < 0 || to >= 6) return;
+            string tmp = _slots[from];
+            _slots[from] = _slots[to];
+            _slots[to] = tmp;
+            RenderSlots();
+            UpdateStatus();
+        }
+
+        // Glisser un sort de la grille sur un slot : le place à ce slot (remplace le sort présent,
+        // qui retourne dans la grille). Retire d'abord une éventuelle occurrence existante du même
+        // sort pour préserver l'unicité (les cartes équipées ne sont normalement pas draggables,
+        // garde défensive). L'ensemble équipé change -> on re-render aussi la grille.
+        private void PlaceSpellInSlot(string spellId, int slot)
+        {
+            if (slot < 0 || slot >= 6 || string.IsNullOrEmpty(spellId)) return;
+            int existing = System.Array.IndexOf(_slots, spellId);
+            if (existing >= 0 && existing != slot) _slots[existing] = null;
+            _slots[slot] = spellId;
             RenderSlots();
             RenderSpellGrid();
             UpdateStatus();
@@ -572,8 +605,14 @@ namespace Nymora.Hub.Menu
                 var cell = _f.MakeImage("Spell_" + spellId, _spellGridContent, equipped ? _t.CardBgHover : _t.CardBg);
                 var cle = cell.gameObject.AddComponent<LayoutElement>();
                 cle.preferredWidth = 150f; cle.preferredHeight = 196f;
-                var btn = cell.gameObject.AddComponent<Button>(); btn.targetGraphic = cell; btn.interactable = !equipped;
-                btn.onClick.AddListener(() => AddSpell(spellId));
+                // Clic = ajouter au 1er slot vide · glisser sur un slot = placer le sort à ce slot
+                // (remplace l'occupant). Carte déjà équipée = inerte (onClick null + canDrag false),
+                // signalée par le fond (CardBgHover). Cibles de drop = les 6 slots (_slotItems).
+                bool canUse = !equipped;
+                var cellHandler = cell.gameObject.AddComponent<DeckDragHandler>();
+                cellHandler.Init(canUse, def.IconSprite, _slotItems,
+                    canUse ? (System.Action)(() => AddSpell(spellId)) : null,
+                    (target) => PlaceSpellInSlot(spellId, target));
 
                 if (def.IconSprite != null)
                 {
@@ -760,5 +799,103 @@ namespace Nymora.Hub.Menu
 
         public void OnPointerEnter(PointerEventData _) => _show?.Invoke(_text);
         public void OnPointerExit(PointerEventData _) => _hide?.Invoke();
+    }
+
+    /// <summary>
+    /// Source draggable du deck builder, partagée par DEUX usages :
+    ///   - un SLOT équipé : clic = retirer · glisser sur un autre slot = réordonner (swap) ;
+    ///   - une CARTE de la grille de sorts : clic = ajouter au 1er slot vide · glisser sur un slot
+    ///     = placer le sort à ce slot (remplace l'occupant).
+    /// Combine clic + drag dans UN composant pour annuler le clic après un vrai drag (sinon lâcher
+    /// sur soi déclencherait l'action de clic). Un fantôme d'icône suit le curseur, la source est
+    /// atténuée. Les cibles de drop sont les 6 slots du deck (slotItems). `onClick` peut être null
+    /// (carte déjà équipée = inerte) ; `canDrag` false bloque le drag mais la case reste cible de drop.
+    /// </summary>
+    internal sealed class DeckDragHandler : MonoBehaviour,
+        IPointerDownHandler, IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
+    {
+        private bool _canDrag;
+        private Sprite _icon;
+        private List<GameObject> _slotItems;        // cibles de drop = les 6 slots (référence partagée)
+        private System.Action _onClick;             // clic simple (retirer un slot / ajouter un sort)
+        private System.Action<int> _onDropOnSlot;   // drag lâché sur le slot d'index donné
+
+        private bool _dragged;
+        private GameObject _ghost;
+        private Image _selfImage;
+        private Color _selfColor;
+
+        public void Init(bool canDrag, Sprite icon, List<GameObject> slotItems,
+            System.Action onClick, System.Action<int> onDropOnSlot)
+        {
+            _canDrag = canDrag; _icon = icon; _slotItems = slotItems;
+            _onClick = onClick; _onDropOnSlot = onDropOnSlot;
+            _selfImage = GetComponent<Image>();
+            if (_selfImage != null) _selfColor = _selfImage.color;
+        }
+
+        public void OnPointerDown(PointerEventData e) => _dragged = false;
+
+        public void OnPointerClick(PointerEventData e)
+        {
+            if (_dragged) return;                 // un drag vient d'avoir lieu -> pas de clic
+            _onClick?.Invoke();
+        }
+
+        public void OnBeginDrag(PointerEventData e)
+        {
+            if (!_canDrag) return;                // case inerte (slot vide / sort déjà équipé)
+            _dragged = true;
+            var canvas = GetComponentInParent<Canvas>();
+            if (canvas == null) return;
+            canvas = canvas.rootCanvas;
+
+            _ghost = new GameObject("DeckDragGhost", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            var grt = (RectTransform)_ghost.transform;
+            grt.SetParent(canvas.transform, false);
+            grt.anchorMin = grt.anchorMax = grt.pivot = new Vector2(0.5f, 0.5f);
+            grt.sizeDelta = new Vector2(72f, 72f);
+            grt.SetAsLastSibling();
+            var gimg = _ghost.GetComponent<Image>();
+            gimg.sprite = _icon; gimg.preserveAspect = true; gimg.raycastTarget = false;
+            gimg.color = new Color(1f, 1f, 1f, _icon != null ? 0.9f : 0.4f);
+
+            if (_selfImage != null) _selfImage.color = new Color(_selfColor.r, _selfColor.g, _selfColor.b, _selfColor.a * 0.35f);
+            MoveGhost(e);
+        }
+
+        public void OnDrag(PointerEventData e)
+        {
+            if (_ghost != null) MoveGhost(e);
+        }
+
+        public void OnEndDrag(PointerEventData e)
+        {
+            if (_ghost != null) { Destroy(_ghost); _ghost = null; }
+            if (_selfImage != null) _selfImage.color = _selfColor; // restaure avant le re-render
+            if (!_canDrag || _slotItems == null) return;
+
+            int target = -1;
+            for (int i = 0; i < _slotItems.Count; i++)
+            {
+                var go = _slotItems[i];
+                if (go == null) continue;
+                if (RectTransformUtility.RectangleContainsScreenPoint((RectTransform)go.transform, e.position, e.pressEventCamera))
+                { target = i; break; }
+            }
+            if (target >= 0) _onDropOnSlot?.Invoke(target);   // ReorderSlots / PlaceSpellInSlot (gèrent le no-op)
+        }
+
+        private void MoveGhost(PointerEventData e)
+        {
+            if (!(_ghost.transform.parent is RectTransform canvasRt)) return;
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRt, e.position, e.pressEventCamera, out var local))
+                ((RectTransform)_ghost.transform).anchoredPosition = local;
+        }
+
+        private void OnDisable()
+        {
+            if (_ghost != null) { Destroy(_ghost); _ghost = null; } // sécurité si le menu se ferme en plein drag
+        }
     }
 }
