@@ -598,6 +598,8 @@ namespace Quantum
         public const int VoileSpectralPACost            = 2;
         public const int VoileSpectralRangeMax          = 4;
         public const int VoileSpectraleMaxUsesPerTurn   = 1;
+        public const int VoileSpectralDmgPerAdjacent    = 60;  // #21 (5 juin) : 60 dmg par leurre TP adjacent à la cible
+        public const int VoileSpectralDmgMax            = 180; // #21 : cap 180 (= 3 leurres tous adjacents)
 
         // 3.7.c.iii — Réplique Protectrice (Bible V7.1 ligne 1187, AMENDEMENT 16 mai 2026) :
         //   Bible orig : 3 PA, 40% redirection, +60 HP heal destroy, 2 rounds.
@@ -2095,7 +2097,7 @@ namespace Quantum
                         RangeMax = PasDansLOmbreRangeMax,
                         DamageAmount = 0,
                         HGCostMandatory = 0,
-                        HGCostMaxOptional = 1, // 1 = trigger pose leurre case quittee (Shift+H)
+                        HGCostMaxOptional = 0, // fix 5 juin : leurre case quittée posé INCONDITIONNELLEMENT (la conso auto confondait l'option avec la jauge de leurres Ghostra)
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
                         MaxUsesPerTurn = 1, // refonte 30 mai (brique 2) : cap 1x/tour
@@ -2253,11 +2255,11 @@ namespace Quantum
                         Filter = TargetingFilter.Enemy,
                         RangeMin = 1,
                         RangeMax = VoileSpectralRangeMax,
-                        DamageAmount = 0,
+                        DamageAmount = 0,                    // calculé dynamiquement : 60/leurre adjacent (effectiveDmg)
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
-                        IsOffensive = 0,
+                        IsOffensive = 1,                     // #21 (5 juin) : offensif -> entre dans le damage loop (sinon aucun dégât)
                         MaxUsesPerTurn = VoileSpectraleMaxUsesPerTurn,
                     };
                     return true;

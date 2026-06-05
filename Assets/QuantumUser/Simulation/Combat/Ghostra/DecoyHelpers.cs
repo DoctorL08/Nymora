@@ -129,6 +129,101 @@ namespace Quantum
         }
 
         /// <summary>
+        /// #22 (5 juin) — True si (posX,posY) accepterait un leurre (hors borne / Ghostra / combattant /
+        /// obstacle / autre leurre exclus). Mêmes gardes que TrySpawn SAUF le cap (utilisé pour décider
+        /// d'évincer le plus ancien sans sacrifier un leurre pour une case de toute façon invalide).
+        /// </summary>
+        public static bool CanSpawnAt(Frame f, Combatant* ghostra, int posX, int posY)
+        {
+            if (ghostra == null) return false;
+            if (!GridHelpers.InBounds(posX, posY)) return false;
+            if (ghostra->GridX == posX && ghostra->GridY == posY) return false;
+            if (FindSlotAtPosition(ghostra, posX, posY) >= 0) return false;
+            if (GridHelpers.GetOccupant(f, posX, posY) != EntityRef.None) return false;
+            if (ObstacleHelpers.HasObstacleAt(f, posX, posY)) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// #22 (5 juin) — Si le cap MaxDecoys est atteint, détruit le leurre LE PLUS ANCIEN (min
+        /// SpawnedOnTurn) via DestroyAtSlot (consommation interne, PAS de heal) pour libérer un slot.
+        /// Pattern partagé par les spawners (Réplique Fantôme/Protectrice, Dernier Pas). Retourne true
+        /// si un slot a été libéré.
+        /// </summary>
+        public static bool DestroyOldestIfAtCap(Combatant* ghostra)
+        {
+            if (ghostra == null) return false;
+            if (CountActive(ghostra) < MaxDecoys) return false;
+            int oldestSlot = -1;
+            int oldestTurn = int.MaxValue;
+            for (int i = 0; i < MaxDecoys; i++)
+            {
+                if (ghostra->Decoys[i].Kind != DecoyKind.None && ghostra->Decoys[i].SpawnedOnTurn < oldestTurn)
+                {
+                    oldestTurn = ghostra->Decoys[i].SpawnedOnTurn;
+                    oldestSlot = i;
+                }
+            }
+            if (oldestSlot < 0) return false;
+            Log.Info($"[Decoy] DestroyOldestIfAtCap : cap {MaxDecoys} atteint, destroy oldest slot {oldestSlot} (spawned turn {oldestTurn})");
+            DestroyAtSlot(ghostra, oldestSlot);
+            return true;
+        }
+
+        /// <summary>
+        /// #22 (5 juin) — Pose un leurre en évinçant le PLUS ANCIEN si le cap est atteint (au lieu de
+        /// "partir dans le vide"). N'évince QUE si la case est réellement spawnable (CanSpawnAt) : on ne
+        /// sacrifie pas un leurre pour une case invalide. Retourne true si un leurre a été posé.
+        /// </summary>
+        public static bool TrySpawnEvictingOldest(Frame f, Combatant* ghostra, int posX, int posY, DecoyKind kind, int currentTurn)
+        {
+            if (ghostra == null) return false;
+            if (CanSpawnAt(f, ghostra, posX, posY)) DestroyOldestIfAtCap(ghostra);
+            return TrySpawn(f, ghostra, posX, posY, kind, currentTurn);
+        }
+
+        /// <summary>
+        /// #20 (5 juin) — Éveil Spectral (rework auto-TP) : PLANIFIE le téléport d'un de tes leurres sur
+        /// une case libre ADJACENTE à la cible (dorsal-prioritaire pour le bonus Angle Mort + Plaie). Ne
+        /// MUTE PAS (validation pré-PA) : renvoie le slot + la case + dorsal ; le déplacement réel est fait
+        /// par SpellSystem APRÈS commit du cast. Renvoie false si aucun leurre actif OU aucune case
+        /// adjacente libre.
+        /// </summary>
+        public static bool TryPlanEveilAutoTeleport(Frame f, Combatant* ghostra, Combatant* target,
+            out int outSlot, out int outX, out int outY, out bool outDorsal)
+        {
+            outSlot = -1; outX = -1; outY = -1; outDorsal = false;
+            if (ghostra == null || target == null) return false;
+            int slot = -1;
+            for (int i = 0; i < MaxDecoys; i++)
+                if (ghostra->Decoys[i].Kind != DecoyKind.None) { slot = i; break; }
+            if (slot < 0) return false; // aucun leurre à téléporter
+
+            int tx = target->GridX, ty = target->GridY;
+            int* candX = stackalloc int[4] { tx + 1, tx - 1, tx,     tx     };
+            int* candY = stackalloc int[4] { ty,     ty,     ty + 1, ty - 1 };
+            int fallbackX = -1, fallbackY = -1;
+            for (int c = 0; c < 4; c++)
+            {
+                int nx = candX[c], ny = candY[c];
+                if (!GridHelpers.InBounds(nx, ny)) continue;
+                if (!GridHelpers.IsWalkable(f, nx, ny)) continue;
+                if (ObstacleHelpers.HasObstacleAt(f, nx, ny)) continue;
+                if (GridHelpers.GetOccupant(f, nx, ny) != EntityRef.None) continue;
+                int occ = FindSlotAtPosition(ghostra, nx, ny);
+                if (occ >= 0 && occ != slot) continue; // case prise par un AUTRE leurre
+                if (FacingHelpers.IsDorsalFromPosition(nx, ny, target))
+                {
+                    outSlot = slot; outX = nx; outY = ny; outDorsal = true; return true; // dorsal prioritaire
+                }
+                if (fallbackX < 0) { fallbackX = nx; fallbackY = ny; }
+            }
+            if (fallbackX < 0) return false; // aucune case adjacente libre
+            outSlot = slot; outX = fallbackX; outY = fallbackY; outDorsal = false;
+            return true;
+        }
+
+        /// <summary>
         /// Destroy un slot specifique SANS heal. Utilise pour consommation INTERNE par la Ghostra
         /// elle-meme (Exécution Spectrale qui consomme 3/3 leurres, Permutation qui ne detruit pas
         /// mais swap, etc.). Pour destruction PAR ACTION ADVERSE (sort/AoE qui touche le leurre)

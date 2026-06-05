@@ -561,8 +561,13 @@ namespace Quantum
             //   à la cible ennemie. Reject AVANT consommation PA. On mémorise le leurre choisi
             //   (dorsal prioritaire) dans eveilLeurreX/Y + eveilDorsal pour que le pipeline de
             //   dégâts calcule le bonus dorsal + la Plaie depuis le LEURRE (et non depuis la Ghostra).
+            // #20 (5 juin) — Éveil Spectral REWORK auto-TP : on PLANIFIE (sans muter) le téléport d'un de
+            //   tes leurres sur une case libre adjacente (dorsal-prioritaire) à la cible. Reject pré-PA si
+            //   aucun leurre OU aucune case adjacente libre. Le déplacement réel est fait APRÈS le commit
+            //   du cast (plus bas) pour ne pas bouger un leurre si un gate ultérieur (cap/relance) rejette.
             int eveilLeurreX = -1, eveilLeurreY = -1;
             bool eveilDorsal = false;
+            int eveilSlot = -1;
             if (cmd.Spell == SpellId.GhostraEveilSpectral)
             {
                 EntityRef esTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
@@ -570,12 +575,12 @@ namespace Quantum
                     || !f.Unsafe.TryGetPointer<Combatant>(esTarget, out Combatant* esTargetC)
                     || esTargetC->PlayerIndex == caster->PlayerIndex
                     || esTargetC->HP <= 0
-                    || !DecoyHelpers.TryFindEveilLeurre(f, caster, esTargetC, out eveilLeurreX, out eveilLeurreY, out eveilDorsal))
+                    || !DecoyHelpers.TryPlanEveilAutoTeleport(f, caster, esTargetC, out eveilSlot, out eveilLeurreX, out eveilLeurreY, out eveilDorsal))
                 {
-                    Log.Warn($"[Spell] rejet : Éveil Spectral requiert un de tes leurres adjacent à la cible ennemie en ({cmd.TargetX},{cmd.TargetY})");
+                    Log.Warn($"[Spell] rejet : Éveil Spectral requiert au moins un leurre actif ET une case libre adjacente à la cible en ({cmd.TargetX},{cmd.TargetY})");
                     return;
                 }
-                Log.Info($"[Éveil Spectral] leurre choisi ({eveilLeurreX},{eveilLeurreY}) dorsal={eveilDorsal} sur cible ({cmd.TargetX},{cmd.TargetY})");
+                Log.Info($"[Éveil Spectral] plan auto-TP leurre slot {eveilSlot} -> ({eveilLeurreX},{eveilLeurreY}) dorsal={eveilDorsal} sur cible ({cmd.TargetX},{cmd.TargetY})");
             }
 
             // 3.7.c.ii — Voile Spectral (rework) : requiert au moins 1 leurre actif à téléporter.
@@ -635,6 +640,23 @@ namespace Quantum
                 SpellLimitsHelper.SetCooldown(caster, cmd.Spell, currentTurn);
             }
 
+            // #20/#21 (5 juin) — mutations de leurres Ghostra APRÈS le commit du cast (PA + cap/relance
+            //   validés), AVANT le calcul de dégâts (pour que CountOwnDecoysAdjacent soit à jour).
+            if (cmd.Spell == SpellId.GhostraEveilSpectral && eveilSlot >= 0)
+            {
+                // #20 : auto-TP du leurre choisi sur la case adjacente (dorsal-prioritaire) planifiée au gate.
+                caster->Decoys[eveilSlot].PosX = eveilLeurreX;
+                caster->Decoys[eveilSlot].PosY = eveilLeurreY;
+                Log.Info($"[Éveil Spectral] leurre slot {eveilSlot} auto-TP -> ({eveilLeurreX},{eveilLeurreY})");
+            }
+            else if (cmd.Spell == SpellId.GhostraVoileSpectral)
+            {
+                // #21 : TP de TOUS les leurres autour de la cible (les dégâts/leurre adjacent sont calculés
+                //   juste après dans la section effectiveDmg, sur les positions POST-TP).
+                int movedV = DecoyHelpers.TeleportAllDecoysAround(f, caster, cmd.TargetX, cmd.TargetY);
+                Log.Info($"[Voile Spectral] {movedV} leurre(s) téléporté(s) autour de la cible ({cmd.TargetX},{cmd.TargetY})");
+            }
+
             // ===== Calcul damage effectif (buffs + HG variants) =====
             int effectiveDmg = spellDef.DamageAmount;
             // 3.7.a — Nuée Spectrale (refonte 30 mai) : burst cible-unique qui SCALE avec les leurres.
@@ -648,6 +670,16 @@ namespace Quantum
                              + SpellRegistry.NueeSpectralePerLeurre * nueeActive
                              + SpellRegistry.NueeSpectralePerAdjacent * nueeAdjacent;
                 Log.Info($"[Nuée Spectrale] dmg {effectiveDmg} = {SpellRegistry.NueeSpectraleBaseDamage} + {SpellRegistry.NueeSpectralePerLeurre}x{nueeActive} leurres + {SpellRegistry.NueeSpectralePerAdjacent}x{nueeAdjacent} adjacents");
+            }
+            // #21 (5 juin) — Voile Spectral : 60 dmg par leurre désormais ADJACENT à la cible (le TP a été
+            //   fait juste au-dessus, après commit), cap 180 (= 3 leurres). Passe par le pipeline standard
+            //   (boucliers/réductions de la cible). 0 leurre adjacent (cas rare, tous bloqués) -> 0 dmg.
+            if (cmd.Spell == SpellId.GhostraVoileSpectral)
+            {
+                int voileAdj = DecoyHelpers.CountOwnDecoysAdjacent(caster, cmd.TargetX, cmd.TargetY);
+                effectiveDmg = voileAdj * SpellRegistry.VoileSpectralDmgPerAdjacent;
+                if (effectiveDmg > SpellRegistry.VoileSpectralDmgMax) effectiveDmg = SpellRegistry.VoileSpectralDmgMax;
+                Log.Info($"[Voile Spectral] dmg {effectiveDmg} = {SpellRegistry.VoileSpectralDmgPerAdjacent} x {voileAdj} leurres adjacents (cap {SpellRegistry.VoileSpectralDmgMax})");
             }
             // Ouvre-Plaie : 1 HG depense -> +120 dgts (Bible V7.1)
             if (cmd.Spell == SpellId.SoulrenderOuvrePlaie && hgSpend >= 1)
@@ -1012,8 +1044,8 @@ namespace Quantum
                         //   depuis la Ghostra. Nuée Spectrale : AUCUN bonus dorsal (le scaling leurres
                         //   EST le bonus). Les autres sorts gardent le dorsal caster standard.
                         int dorsalBonus;
-                        if (cmd.Spell == SpellId.GhostraNueeSpectrale)
-                            dorsalBonus = 0;
+                        if (cmd.Spell == SpellId.GhostraNueeSpectrale || cmd.Spell == SpellId.GhostraVoileSpectral)
+                            dorsalBonus = 0; // #21 : Voile = scaling par leurre adjacent, pas de dorsal caster
                         else if (cmd.Spell == SpellId.GhostraEveilSpectral)
                             dorsalBonus = eveilDorsal ? GhostraPassif.GetDorsalBonusForGhostra(caster) : 0;
                         else
@@ -1430,7 +1462,8 @@ namespace Quantum
                     if (caster->Class == NymoraClass.Ghostra
                         && targetC->HP > 0
                         && spellDef.IsOffensive == 1
-                        && cmd.Spell != SpellId.GhostraNueeSpectrale) // Nuée : pas de Plaie (pas de mécanique dorsale)
+                        && cmd.Spell != SpellId.GhostraNueeSpectrale  // Nuée : pas de Plaie (pas de mécanique dorsale)
+                        && cmd.Spell != SpellId.GhostraVoileSpectral) // #21 : Voile non plus (dégâts = scaling par leurre)
                     {
                         // 3.7.b — Éveil Spectral : Plaie évaluée depuis le LEURRE (dorsal du leurre),
                         //   pas depuis la Ghostra. Les autres sorts gardent le dorsal caster standard.
@@ -2421,12 +2454,9 @@ namespace Quantum
                 //   actifs de la Ghostra autour de l'ennemi ciblé (cmd.TargetX/Y). Cardinales en
                 //   priorité (Manhattan 1 -> enchaîne Éveil/Nuée dorsal), diagonales en secours.
                 //   Plus de cleanse anti-DoT. Gate >=1 leurre fait en amont (pré-PA).
-                case SpellId.GhostraVoileSpectral:
-                {
-                    int movedV = DecoyHelpers.TeleportAllDecoysAround(f, caster, cmd.TargetX, cmd.TargetY);
-                    Log.Info($"[Spell] Voile Spectral : {movedV} leurre(s) téléporté(s) autour de l'ennemi ({cmd.TargetX},{cmd.TargetY})");
-                    break;
-                }
+                // 3.7.c.ii — Voile Spectral (rework #21, 5 juin) : le TP des leurres autour de la cible ET
+                //   les 60 dmg/leurre adjacent sont désormais gérés AVANT le damage loop (mutation après
+                //   commit + section effectiveDmg) pour compter les leurres POST-TP. Plus de handler ici.
 
                 // 3.7.c.iii — Réplique Protectrice (Bible V7.1 ligne 1187) : 3 PA range 3
                 // case vide. Pose un DecoyKind.Protective (HP=200) qui redirige 40% des dgts
@@ -2436,7 +2466,8 @@ namespace Quantum
                 // silencieux si cap atteint ou case occupee, PA deja consume - choix MVP).
                 case SpellId.GhostraRepliqueProtectrice:
                 {
-                    bool spawned = DecoyHelpers.TrySpawn(f, caster, cmd.TargetX, cmd.TargetY,
+                    // #22 (5 juin) : poser un 4e leurre (cap 3 atteint) vire le PLUS ANCIEN au lieu de partir dans le vide.
+                    bool spawned = DecoyHelpers.TrySpawnEvictingOldest(f, caster, cmd.TargetX, cmd.TargetY,
                         DecoyKind.Protective, currentTurn);
                     if (spawned)
                     {
@@ -2479,27 +2510,8 @@ namespace Quantum
                     }
                     Log.Info($"[Spell] Dernier Pas : P{caster->PlayerIndex} teleport ({dpOldX},{dpOldY}) -> ({cmd.TargetX},{cmd.TargetY})");
 
-                    // (3) Pose leurre Standard sur case quittee. Si cap 3 atteint -> destroy oldest.
-                    if (DecoyHelpers.CountActive(caster) >= DecoyHelpers.MaxDecoys)
-                    {
-                        int oldestSlotDP = -1;
-                        int oldestTurnDP = int.MaxValue;
-                        for (int sDP = 0; sDP < DecoyHelpers.MaxDecoys; sDP++)
-                        {
-                            if (caster->Decoys[sDP].Kind != DecoyKind.None
-                                && caster->Decoys[sDP].SpawnedOnTurn < oldestTurnDP)
-                            {
-                                oldestTurnDP = caster->Decoys[sDP].SpawnedOnTurn;
-                                oldestSlotDP = sDP;
-                            }
-                        }
-                        if (oldestSlotDP >= 0)
-                        {
-                            Log.Info($"[Spell] Dernier Pas : cap 3 atteint, destroy oldest slot {oldestSlotDP} (spawned turn {oldestTurnDP}) pour faire place");
-                            DecoyHelpers.DestroyAtSlot(caster, oldestSlotDP);
-                        }
-                    }
-                    bool dpDecoySpawned = DecoyHelpers.TrySpawn(f, caster, dpOldX, dpOldY,
+                    // (3) Pose leurre Standard sur case quittee. Cap 3 : évince le plus ancien (#22, helper partagé).
+                    bool dpDecoySpawned = DecoyHelpers.TrySpawnEvictingOldest(f, caster, dpOldX, dpOldY,
                         DecoyKind.Standard, currentTurn);
                     if (dpDecoySpawned)
                     {
@@ -2799,7 +2811,8 @@ namespace Quantum
                 // echoue, le PA reste consomme (Bible : decision joueur, on n'annule pas).
                 case SpellId.GhostraRepliqueFantome:
                 {
-                    bool spawned = DecoyHelpers.TrySpawn(f, caster,
+                    // #22 (5 juin) : poser un 4e leurre (cap 3 atteint) vire le PLUS ANCIEN au lieu de partir dans le vide.
+                    bool spawned = DecoyHelpers.TrySpawnEvictingOldest(f, caster,
                         cmd.TargetX, cmd.TargetY,
                         DecoyKind.RepliqueFantome, currentTurn);
                     if (spawned)
@@ -2869,19 +2882,19 @@ namespace Quantum
                         Log.Info($"[Spell] Pas dans l'Ombre : aucune cible adjacente a pivoter");
                     }
 
-                    // Option Shift+H (HGSpend >= 1) : pose DecoyKind.Standard sur case quittee.
-                    // Refus silencieux si cap 3 atteint (Bible : le slot est la "ressource", pas une jauge).
-                    if (hgSpend >= 1)
+                    // Fix 5 juin — pose TOUJOURS un leurre Standard sur la case quittée. Le toggle Shift+H
+                    //   a disparu (bind retiré le 17 mai) et la conso auto du 3 juin confondait l'"option"
+                    //   avec la JAUGE de leurres du Ghostra (Resource = nb de leurres) -> le leurre ne popait
+                    //   que si un leurre existait DÉJÀ. Refus silencieux au cap 3 (le slot EST la ressource ;
+                    //   pas d'évinçage ici, contrairement aux vrais spawners — cf #22).
+                    bool spawnedPDO = DecoyHelpers.TrySpawn(f, caster, oldPDOX, oldPDOY, DecoyKind.Standard, currentTurn);
+                    if (spawnedPDO)
                     {
-                        bool spawnedPDO = DecoyHelpers.TrySpawn(f, caster, oldPDOX, oldPDOY, DecoyKind.Standard, currentTurn);
-                        if (spawnedPDO)
-                        {
-                            Log.Info($"[Spell] Pas dans l'Ombre : leurre Standard pose sur case quittee ({oldPDOX},{oldPDOY})");
-                        }
-                        else
-                        {
-                            Log.Info($"[Spell] Pas dans l'Ombre : pose leurre case quittee ({oldPDOX},{oldPDOY}) refusee silencieusement (cap 3 atteint?)");
-                        }
+                        Log.Info($"[Spell] Pas dans l'Ombre : leurre Standard posé sur case quittée ({oldPDOX},{oldPDOY})");
+                    }
+                    else
+                    {
+                        Log.Info($"[Spell] Pas dans l'Ombre : pose leurre case quittée ({oldPDOX},{oldPDOY}) refusée (cap 3 atteint)");
                     }
                     break;
                 }

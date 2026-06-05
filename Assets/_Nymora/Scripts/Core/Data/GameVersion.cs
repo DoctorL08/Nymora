@@ -179,7 +179,17 @@ namespace Nymora.Core.Data
         //                / Piège Bondissant (PA non consommé) + garde par-case dans FogHelpers.PlaceTrap
         //                (le Champ de Mines saute les cases déjà piégées). Le reste de B5 (#8/#9/#11/#13)
         //                est View-only. Pure logique, aucun champ [Networked] touche.
-        public const int CombatRulesVersion = 110;
+        // 111 (B6 Ghostra, 5 juin) : (#20) Éveil Spectral REWORK auto-TP — téléporte un de tes leurres sur
+        //                une case adjacente (dorsal-prioritaire) à la cible PUIS le fait poignarder (plus
+        //                besoin de pré-positionner). (#21) Voile Spectral — après le TP des leurres, 60 dmg
+        //                par leurre adjacent à la cible (max 180), via le pipeline standard. (#22) Poser un
+        //                4e leurre (cap 3) vire le PLUS ANCIEN au lieu de partir dans le vide (Réplique
+        //                Fantôme/Protectrice + Dernier Pas via DecoyHelpers.TrySpawnEvictingOldest). Les
+        //                mutations de leurres sont faites APRÈS le commit du cast. + Fix Pas dans l'Ombre :
+        //                le leurre sur la case quittée est posé INCONDITIONNELLEMENT (cap 3) — la conso auto
+        //                du 3 juin confondait l'option avec la jauge de leurres (HGCostMaxOptional 1->0).
+        //                Pure logique, aucun champ [Networked] touche.
+        public const int CombatRulesVersion = 111;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";
