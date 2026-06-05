@@ -189,7 +189,14 @@ namespace Nymora.Core.Data
         //                le leurre sur la case quittée est posé INCONDITIONNELLEMENT (cap 3) — la conso auto
         //                du 3 juin confondait l'option avec la jauge de leurres (HGCostMaxOptional 1->0).
         //                Pure logique, aucun champ [Networked] touche.
-        public const int CombatRulesVersion = 111;
+        // 112 (#1 tooltip degats, 5 juin) : Charge Brutale infligeait ses degats via un chemin CUSTOM
+        //                (ApplySpellSpecificEffects) qui bypassait le pipeline offensif generique ->
+        //                Pacte de Sang +50% / Frenesie / Sang Bouillant n'etaient JAMAIS appliques (le
+        //                HUD les prevoyait pourtant via SpellPreview = "l'effet ne marche pas"). CB passe
+        //                desormais par ApplyOffensiveCasterBuffs + consomme les buffs one-shot localement.
+        //                SpellPreview.FinalizeOffensive complete avec Frenesie + Sang Bouillant (preview
+        //                == sim). Pure logique, aucun champ [Networked] touche.
+        public const int CombatRulesVersion = 112;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

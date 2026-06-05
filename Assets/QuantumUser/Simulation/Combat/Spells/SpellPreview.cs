@@ -20,26 +20,26 @@ namespace Quantum
     /// POLISH-6a-f (19 mai 2026) — Helper PUR read-only qui calcule la preview damage/heal/shield
     /// d'un sort sur une cible AVANT cast. Permet a la View d'afficher au survol "ce que ferait
     /// le sort si je clique ici". Source : mirror du pipeline SpellSystem.cs (memes constantes
-    /// SpellRegistry, memes helpers passifs).
+    /// SpellRegistry, memes helpers passifs). N'est PAS dans la boucle de simulation -> aucune
+    /// contrainte de determinisme (jamais appele par Update).
     ///
-    /// Scope :
-    ///   - POLISH-6a : Ghostra Frappe Fantome (ref implementation)
-    ///   - POLISH-6b-f : Soulrender + Nightseer + Colossar + Necram + Ghostra (80 sorts)
+    /// Modifiers offensifs couverts (audit 5 juin — preview == sim par classe) :
+    ///   - Pacte de Sang (+%), Frenesie (+%), Sang Bouillant (flat) [Soulrender]
+    ///   - Peau de Fer (+30, MELEE only = RangeMax 1, si ShieldActive) [Soulrender]
+    ///   - Bonus HG auto-depense : Ouvre-Plaie (+120), Detonation Sanglante (+40/HG) [Soulrender]
+    ///   - Bonus dorsal Ghostra (+0/+50/+80) + Marque de l'Ombre (+20) [Ghostra]
+    ///   - Passif phase >= 2 (+30 flat sur tous les sorts offensifs) [Nightseer]
+    ///   - Densite Inerte adjacence (+20, sorts portee 1-2 si adjacent a un obstacle own) [Colossar]
+    ///   - Reduction defensive cible (Densite Inerte + Ancrage + Garde Prot + Effondrement, cap 50%)
+    ///   - Shield absorption (ShieldActive) / AntiHealShield (bloque heal)
+    ///   - Sorts BYPASS shield/reduction : Detonation Virulente + Virus Fatal (tick venin),
+    ///     Execution Spectrale (signature), Choc Sismique (reduc mais pas shield), Onde de Choc
+    ///     (bonus +80 vs mur, heuristique de push)
     ///
-    /// Modifiers couverts (pipeline offensif generique) :
-    ///   - Pacte de Sang (BuffNextOffensiveDmgPercent +50%)
-    ///   - Peau de Fer (+30 melee si caster a ShieldActive)
-    ///   - Bonus dorsal Ghostra (+0/+50/+80 selon leurres)
-    ///   - Marque de l'Ombre Ghostra (+20)
-    ///   - Reduction defensive cible (Densite Inerte + Ancrage + Garde Protectrice cap 50%)
-    ///   - Shield absorption (ShieldActive)
-    ///   - AntiHealShield (bloque heal)
-    ///
-    /// Approximations (Bible-fidele a 90% — debug visuel + ajustement par sort plus tard) :
-    ///   - Sorts AoE multi-cible : preview du dmg base par cible touchee (cas central)
-    ///   - Sorts mobilite avec hit (Charge Brutale, Pas de l'Au-Dela) : dmg final post-modifiers
-    ///   - Effects post-damage (PlaieOuverte, marques venin, status apply) NON modelises dans dmg
-    ///     mais affiches eventuellement separement plus tard
+    /// Approximations restantes (documentees, hors "bonus de degats") :
+    ///   - Sorts AoE multi-cible : preview du dmg sur la cible survolee (cas central pour Salve)
+    ///   - Effects post-damage (PlaieOuverte/marques venin appliquees) non chiffres separement
+    ///   - Onde de Choc vs mur : la detection "pousse contre un mur" est une heuristique de trajet
     /// </summary>
     public unsafe static class SpellPreview
     {
@@ -50,23 +50,26 @@ namespace Quantum
             if (!f.Unsafe.TryGetPointer<Combatant>(casterEntity, out Combatant* caster)) return false;
             if (!f.Unsafe.TryGetPointer<Combatant>(targetEntity, out Combatant* target)) return false;
 
+            // Contexte du sort (portee = gate Peau de Fer melee + Densite Inerte adjacence Colossar).
+            SpellRegistry.TryGet(spellId, out SpellDef sdef);
+            int rangeMax = sdef.RangeMax;
+
             switch (spellId)
             {
                 // ============== GHOSTRA ==============
                 case SpellId.GhostraFrappeFantome:
-                    return TryComputeFrappeFantome(f, caster, target, out preview);
+                    return TryComputeFrappeFantome(f, caster, target, rangeMax, out preview);
                 case SpellId.GhostraLameSpectrale:
-                    return TryComputeLameSpectrale(f, caster, target, out preview);
+                    return TryComputeLameSpectrale(f, caster, target, rangeMax, out preview);
                 case SpellId.GhostraLameVoraceSpectrale:
-                    return TryComputeLameVorace(f, caster, target, out preview);
+                    return TryComputeLameVorace(f, caster, target, rangeMax, out preview);
                 case SpellId.GhostraSaigneAme:
-                    return TryComputeSaigneAme(f, caster, target, out preview);
+                    return TryComputeSaigneAme(f, caster, target, rangeMax, out preview);
                 case SpellId.GhostraNueeSpectrale:
                 {
-                    // Dégât scalé sur les leurres : base + 40/leurre actif + 20/leurre adjacent.
-                    //   IMPORTANT : Nuée n'a PAS de bonus dorsal (la sim le skip). On NE passe donc
-                    //   PAS par TryComputeOffensiveSimple (qui ajoute le dorsal caster). On ajoute
-                    //   uniquement le +20 Marque de l'Ombre, comme la sim, puis réductions/shield.
+                    // Degat scale sur les leurres : base + 70/leurre actif + 30/leurre adjacent (constantes
+                    //   SpellRegistry, cf sim). PAS de bonus dorsal (le scaling leurres EST le bonus).
+                    //   On ajoute le +20 Marque de l'Ombre comme la sim, puis reductions/shield.
                     int nActive = DecoyHelpers.CountActive(caster);
                     int nAdj = DecoyHelpers.CountOwnDecoysAdjacent(caster, target->GridX, target->GridY);
                     int nueeRaw = SpellRegistry.NueeSpectraleBaseDamage
@@ -74,15 +77,30 @@ namespace Quantum
                                 + SpellRegistry.NueeSpectralePerAdjacent * nAdj;
                     int nueeBonus = StatusHelper.GetMagnitude(target, StatusKind.MarqueDeLOmbre, 0);
                     preview = default;
-                    FinalizeOffensive(f, caster, target, nueeRaw, nueeBonus, ref preview);
+                    FinalizeOffensive(f, caster, target, nueeRaw, nueeBonus, rangeMax, ref preview);
                     return true;
                 }
-                // Permutation (ex-Volte-Face slot 90) : aucun degat -> pas de preview offensif
-                //   (le swap n'affiche pas de nombre de degats). Falls through au default.
+                case SpellId.GhostraVoileSpectral:
+                {
+                    // #21 (5 juin) : 60 dmg par leurre ADJACENT a la cible (cap 180). Pas de dorsal (comme
+                    //   Nuee, le scaling leurres EST le bonus). Passe par le pipeline standard (reductions/
+                    //   shield) + Marque de l'Ombre. Mirror sim ligne ~677.
+                    int voileAdj = DecoyHelpers.CountOwnDecoysAdjacent(caster, target->GridX, target->GridY);
+                    int voileRaw = voileAdj * SpellRegistry.VoileSpectralDmgPerAdjacent;
+                    if (voileRaw > SpellRegistry.VoileSpectralDmgMax) voileRaw = SpellRegistry.VoileSpectralDmgMax;
+                    int voileBonus = StatusHelper.GetMagnitude(target, StatusKind.MarqueDeLOmbre, 0);
+                    preview = default;
+                    FinalizeOffensive(f, caster, target, voileRaw, voileBonus, rangeMax, ref preview);
+                    return true;
+                }
+                // Permutation (ex-Volte-Face slot 90) : aucun degat -> pas de preview offensif. Falls through.
                 case SpellId.GhostraEveilSpectral:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.EveilSpectraleDamage, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.EveilSpectraleDamage, rangeMax, out preview);
                 case SpellId.GhostraExecutionSpectrale:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.ExecutionSpectraleDamage, out preview);
+                    // Signature : 350 dmg DIRECT bypass shield + reduction (Bible-stricte). Pas de dorsal.
+                    preview = default;
+                    FinalizeBypass(f, target, SpellRegistry.ExecutionSpectraleDamage, applyReduction: false, ref preview);
+                    return true;
                 case SpellId.GhostraCommunionSpectrale:
                     return TryComputeHealSelf(f, caster, SpellRegistry.CommunionHeal, out preview);
                 case SpellId.GhostraLinceulDOmbres:
@@ -92,19 +110,29 @@ namespace Quantum
 
                 // ============== SOULRENDER ==============
                 case SpellId.SoulrenderChargeBrutale:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.ChargeBrutaleDamage, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.ChargeBrutaleDamage, rangeMax, out preview);
                 case SpellId.SoulrenderOuvrePlaie:
-                    // Bible 110 base, +120 si 1 HG depense (preview pessimiste : sans HG).
-                    return TryComputeOffensiveSimple(f, caster, target, 110, out preview);
+                {
+                    // 110 base + 120 si >= 1 HG depense. Conso HG AUTO depuis le 3 juin -> le bonus part
+                    //   des qu'un HG optionnel est financable (mirror sim ligne 685).
+                    int op = 110;
+                    if (AutoHgSpend(caster, sdef) >= 1) op += 120;
+                    return TryComputeOffensiveSimple(f, caster, target, op, rangeMax, out preview);
+                }
                 case SpellId.SoulrenderTrancheAme:
-                    return TryComputeOffensiveSimple(f, caster, target, 220, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, 220, rangeMax, out preview);
                 case SpellId.SoulrenderDetonationSanglante:
-                    // Bible : 60 base + 40 par HG depense optionnel. Preview pessimiste : sans HG.
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.DetonationBaseDamage, out preview);
+                {
+                    // 60 base + 40 par HG TOTAL (mandatory + optional). Conso AUTO depuis le 3 juin
+                    //   -> totalHG = mandatory + auto (mirror sim ligne 691).
+                    int totalHG = sdef.HGCostMandatory + AutoHgSpend(caster, sdef);
+                    int dmg = SpellRegistry.DetonationBaseDamage + SpellRegistry.DetonationDamagePerHG * totalHG;
+                    return TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview);
+                }
                 case SpellId.SoulrenderAmeLaceree:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.AmeLaceeDamage, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.AmeLaceeDamage, rangeMax, out preview);
                 case SpellId.SoulrenderCuree:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.CureeDamage, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.CureeDamage, rangeMax, out preview);
                 case SpellId.SoulrenderPeauDeFer:
                     return TryComputeShieldSelf(SpellRegistry.PeauDeFerShieldHP, out preview);
                 case SpellId.SoulrenderSeveVive:
@@ -112,8 +140,7 @@ namespace Quantum
                 case SpellId.SoulrenderDernierSouffle:
                     return TryComputeHealSelf(f, caster, SpellRegistry.DernierSouffleHealAmount, out preview);
                 case SpellId.SoulrenderCauterisation:
-                    // SANG BOUILLANT (refonte 29 mai) : buff reactif sans nombre immediat -> pas de
-                    //   preview chiffre (comme Frenesie / Riposte Carmin).
+                    // SANG BOUILLANT (refonte 29 mai) : buff reactif sans nombre immediat -> pas de preview.
                     preview = default;
                     return false;
 
@@ -123,45 +150,44 @@ namespace Quantum
                     int dmg = MarkHelpers.HasMark(target, MarkKind.Traque)
                         ? SpellRegistry.TirPrecisDmgIfTraque
                         : SpellRegistry.TirPrecisDmg;
-                    return TryComputeOffensiveSimple(f, caster, target, dmg, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview);
                 }
                 case SpellId.NightseerVoleeDEpines:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.VoleeDEpinesDmg, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.VoleeDEpinesDmg, rangeMax, out preview);
                 case SpellId.NightseerDetonationOnirique:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.DetonationOniriqueDmg, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.DetonationOniriqueDmg, rangeMax, out preview);
                 case SpellId.NightseerFrappeDeLOmbre:
                 {
-                    // Refonte 29 mai : 160 (+50 si le Nightseer a dépensé >= 3 PM au dernier tour).
+                    // Refonte 29 mai : 160 (+50 si le Nightseer a depense >= 3 PM au dernier tour).
                     int dmg = SpellRegistry.FrappeDeLOmbreDmg;
                     if (caster->PMSpentLastTurn >= 3) dmg += SpellRegistry.FrappeDeLOmbreDmgBonusPM;
-                    return TryComputeOffensiveSimple(f, caster, target, dmg, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview);
                 }
-                case SpellId.NightseerVoileDOmbre: // FLÈCHE TRAÇANTE (refonte 29 mai)
+                case SpellId.NightseerVoileDOmbre: // FLECHE TRACANTE (refonte 29 mai)
                 {
-                    // 60/PM dépensé au dernier tour (max 180) si la cible est Traqué, sinon 0.
+                    // 60/PM depense au dernier tour (max 180) si la cible est Traque, sinon 0.
                     int dmg = 0;
                     if (MarkHelpers.HasMark(target, MarkKind.Traque))
                     {
                         dmg = caster->PMSpentLastTurn * SpellRegistry.FlecheTracanteDmgPerPM;
                         if (dmg > SpellRegistry.FlecheTracanteMaxDmg) dmg = SpellRegistry.FlecheTracanteMaxDmg;
                     }
-                    return TryComputeOffensiveSimple(f, caster, target, dmg, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview);
                 }
                 case SpellId.NightseerSalveMortelle:
                 {
-                    // Bible : 220 centre / 130 cotes. Preview = centre (Lorenzo verra cas par cas).
+                    // Bible : 220 centre / 130 cotes. Preview = centre (cas central de l'AoE).
                     int dmg = SpellRegistry.SalveMortelleDmgCenter;
                     if (MarkHelpers.HasMark(target, MarkKind.Traque)) dmg += SpellRegistry.SalveMortelleDmgIfTraque;
-                    return TryComputeOffensiveSimple(f, caster, target, dmg, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview);
                 }
-                case SpellId.NightseerSouffleGlacial: // PIÈGE BONDISSANT (refonte 29 mai)
-                    // Pose de piège-catapulte (pas de dégât direct) -> pas de preview chiffré.
+                case SpellId.NightseerSouffleGlacial: // PIEGE BONDISSANT (refonte 29 mai)
                     preview = default;
                     return false;
                 case SpellId.NightseerFiletDeRonces:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.FiletDeRoncesDmg, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.FiletDeRoncesDmg, rangeMax, out preview);
                 case SpellId.NightseerChampDeMines:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.ChampDeMinesDmg, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.ChampDeMinesDmg, rangeMax, out preview);
                 case SpellId.NightseerCamouflageRonces:
                     return TryComputeShieldSelf(SpellRegistry.CamouflageRoncesShieldHP, out preview);
                 case SpellId.NightseerSeveSauvage:
@@ -171,13 +197,12 @@ namespace Quantum
                 case SpellId.NightseerTraquenard:
                 {
                     int dmg = SpellRegistry.TraquenardDmgBase;
-                    // Si target porte Traque/Voile/Empreinte : +80
                     if (MarkHelpers.HasMark(target, MarkKind.Traque)
                         || MarkHelpers.HasMark(target, MarkKind.Empreinte))
                     {
                         dmg += SpellRegistry.TraquenardDmgBonusIfMarked;
                     }
-                    return TryComputeOffensiveSimple(f, caster, target, dmg, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview);
                 }
 
                 // ============== COLOSSAR ==============
@@ -186,66 +211,86 @@ namespace Quantum
                     int dmg = ColossarPassif.IsTargetPinnedFromCaster(f, caster, target)
                         ? SpellRegistry.FrappeLourdeDmgIfPinned
                         : SpellRegistry.FrappeLourdeDmgBase;
-                    return TryComputeOffensiveSimple(f, caster, target, dmg, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview);
                 }
                 case SpellId.ColossarMarteauPunisseur:
                 {
                     int dmg = target->PA < SpellRegistry.MarteauPunisseurDepletedPAThreshold
                         ? SpellRegistry.MarteauPunisseurDmgIfDepleted
                         : SpellRegistry.MarteauPunisseurDmg;
-                    return TryComputeOffensiveSimple(f, caster, target, dmg, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview);
                 }
                 case SpellId.ColossarRepresailles:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.RepresaillesDmgImmediate, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.RepresaillesDmgImmediate, rangeMax, out preview);
                 case SpellId.ColossarOndeDeChoc:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.OndeDeChocDmg, out preview);
+                {
+                    // Base AoE via pipeline. + bonus +80 DIRECT (bypass) si la cible est poussee contre un
+                    //   mur/bord (heuristique de trajet, mirror sim "stoppedAgainst" ligne ~3348).
+                    int obonus = ComputeOffensiveBonusGeneric(f, caster, target, rangeMax);
+                    preview = default;
+                    FinalizeOffensive(f, caster, target, SpellRegistry.OndeDeChocDmg, obonus, rangeMax, ref preview);
+                    if (WouldStopAgainstWall(f, caster, target, SpellRegistry.OndeDeChocPushDistance))
+                    {
+                        int wall = SpellRegistry.OndeDeChocBonusVsWall;
+                        preview.FinalDamage += wall;
+                        int room = target->HP - preview.HpLost;
+                        if (room < 0) room = 0;
+                        preview.HpLost += wall > room ? room : wall;
+                    }
+                    return true;
+                }
                 case SpellId.ColossarChocSismique:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.ChocSismiqueDmgBase, out preview);
+                    // Bypass shield (simplification sim ligne 3451) mais la reduction (Densite Inerte +
+                    //   Ancrage) s'applique. Pas de buff offensif (Colossar n'en a pas).
+                    preview = default;
+                    FinalizeBypass(f, target, SpellRegistry.ChocSismiqueDmgBase, applyReduction: true, ref preview);
+                    return true;
                 case SpellId.ColossarBrisure:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.BrisureDamage, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.BrisureDamage, rangeMax, out preview);
                 case SpellId.ColossarEffondrement:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.EffondrementDamage, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.EffondrementDamage, rangeMax, out preview);
                 case SpellId.ColossarStoicisme:
                     return TryComputeShieldSelf(SpellRegistry.StoicismeShieldHP, out preview);
                 case SpellId.ColossarRessacVital:
                     return TryComputeHealSelf(f, caster, SpellRegistry.RessacVitalHealBase, out preview);
                 case SpellId.ColossarSoinLourd:
-                    // EBOULEMENT (refonte 29 mai) : AoE 150 autour d'un Pilier ciblé (pas de cible
-                    //   combattant directe) -> pas de preview chiffré sur la case.
+                    // EBOULEMENT (refonte 29 mai) : AoE autour d'un Pilier (pas de cible directe) -> pas de preview.
                     preview = default;
                     return false;
 
                 // ============== NECRAM ==============
                 case SpellId.NecramCrachatAcide:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.CrachatAcideDmg, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.CrachatAcideDmg, rangeMax, out preview);
                 case SpellId.NecramMorsurePutride:
                 {
                     int marks = target->VeninStacks;
                     int bonus = marks * SpellRegistry.MorsurePutrideDmgPerMark;
                     if (bonus > SpellRegistry.MorsurePutrideDmgBonusCap) bonus = SpellRegistry.MorsurePutrideDmgBonusCap;
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.MorsurePutrideDmgBase + bonus, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.MorsurePutrideDmgBase + bonus, rangeMax, out preview);
                 }
                 case SpellId.NecramDetonationVirulente:
                 {
-                    // Refonte 29 mai : tick venin complet = marques * clock Floraison + Marque Sac (bypass).
+                    // Tick venin complet = marques * clock Floraison + Marque Sac. BYPASS shield + reduction
+                    //   (comme un tick venin standard, sim ligne 2312).
                     int density = VeninHelpers.GetGlobalDensity(f);
                     int dmg = target->VeninStacks * VeninHelpers.GetTickDmgPerMark(density)
                             + StatusHelper.GetMagnitude(target, StatusKind.MarqueSacrificielle, 0);
-                    return TryComputeOffensiveSimple(f, caster, target, dmg, out preview);
+                    preview = default;
+                    FinalizeBypass(f, target, dmg, applyReduction: false, ref preview);
+                    return true;
                 }
                 case SpellId.NecramFauxDecharnee:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.FauxDecharneeDmg, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.FauxDecharneeDmg, rangeMax, out preview);
                 case SpellId.NecramBrumeToxique:
-                    // Refonte 29 mai : zone de marques + tick majoré, plus de dégâts directs -> pas de preview chiffré.
+                    // Refonte 29 mai : zone de marques + tick majore, plus de degats directs -> pas de preview.
                     preview = default;
                     return false;
                 case SpellId.NecramDrainVital:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.DrainVitalDamage, out preview);
-                case SpellId.NecramPasSpectral: // ÉCHANGE SPECTRAL (refonte 29 mai) : swap + 80 dmg
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.EchangeSpectralDamage, out preview);
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.DrainVitalDamage, rangeMax, out preview);
+                case SpellId.NecramPasSpectral: // ECHANGE SPECTRAL (refonte 29 mai) : swap + 80 dmg
+                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.EchangeSpectralDamage, rangeMax, out preview);
                 case SpellId.NecramPulseSanguinVert:
                 {
-                    // Heal = base + 15 par marque venin sur ennemis dans rayon, cap 90
                     int marks = target->VeninStacks;
                     int bonus = marks * SpellRegistry.PulseSanguinVertHealPerMark;
                     if (bonus > SpellRegistry.PulseSanguinVertHealCap) bonus = SpellRegistry.PulseSanguinVertHealCap;
@@ -267,15 +312,14 @@ namespace Quantum
         // =====================================================================
 
         /// <summary>
-        /// Calc generique d'un sort offensif : applique le pipeline complet (Pacte de Sang +
-        /// Peau de Fer + dorsal Ghostra + Marque de l'Ombre + reductions defensives + shield).
-        /// Utilise pour la majorite des sorts offensifs (Lame Spec, Charge Brutale, Tir Precis, etc.).
+        /// Calc generique d'un sort offensif : bonus offensifs (dorsal/Marque/Nightseer/Colossar) +
+        /// pipeline final (buffs % + reduction + shield). Majorite des sorts offensifs.
         /// </summary>
-        private static bool TryComputeOffensiveSimple(Frame f, Combatant* caster, Combatant* target, int rawDamage, out DamagePreviewResult p)
+        private static bool TryComputeOffensiveSimple(Frame f, Combatant* caster, Combatant* target, int rawDamage, int rangeMax, out DamagePreviewResult p)
         {
             p = default;
-            int offensiveBonus = ComputeOffensiveBonusGeneric(f, caster, target);
-            FinalizeOffensive(f, caster, target, rawDamage, offensiveBonus, ref p);
+            int offensiveBonus = ComputeOffensiveBonusGeneric(f, caster, target, rangeMax);
+            FinalizeOffensive(f, caster, target, rawDamage, offensiveBonus, rangeMax, ref p);
             return true;
         }
 
@@ -283,7 +327,7 @@ namespace Quantum
         /// Frappe Fantome : meme pipeline mais le bonus dorsal Ghostra simule le teleport
         /// (back-cell free check) au lieu de la position actuelle du caster.
         /// </summary>
-        private static bool TryComputeFrappeFantome(Frame f, Combatant* caster, Combatant* target, out DamagePreviewResult p)
+        private static bool TryComputeFrappeFantome(Frame f, Combatant* caster, Combatant* target, int rangeMax, out DamagePreviewResult p)
         {
             p = default;
             int offensiveBonus = 0;
@@ -299,37 +343,37 @@ namespace Quantum
                 }
             }
             offensiveBonus += StatusHelper.GetMagnitude(target, StatusKind.MarqueDeLOmbre, 0);
-            FinalizeOffensive(f, caster, target, SpellRegistry.FrappeFantomeDmgBase, offensiveBonus, ref p);
+            FinalizeOffensive(f, caster, target, SpellRegistry.FrappeFantomeDmgBase, offensiveBonus, rangeMax, ref p);
             return true;
         }
 
-        private static bool TryComputeLameSpectrale(Frame f, Combatant* caster, Combatant* target, out DamagePreviewResult p)
+        private static bool TryComputeLameSpectrale(Frame f, Combatant* caster, Combatant* target, int rangeMax, out DamagePreviewResult p)
         {
             int raw = SpellRegistry.LameSpectraleDmgBase;
             if (StatusHelper.Has(target, StatusKind.PlaieOuverte)) raw += SpellRegistry.LameSpectralePlaieBonus;
-            int offensiveBonus = ComputeOffensiveBonusGeneric(f, caster, target);
+            int offensiveBonus = ComputeOffensiveBonusGeneric(f, caster, target, rangeMax);
             p = default;
-            FinalizeOffensive(f, caster, target, raw, offensiveBonus, ref p);
+            FinalizeOffensive(f, caster, target, raw, offensiveBonus, rangeMax, ref p);
             return true;
         }
 
-        private static bool TryComputeLameVorace(Frame f, Combatant* caster, Combatant* target, out DamagePreviewResult p)
+        private static bool TryComputeLameVorace(Frame f, Combatant* caster, Combatant* target, int rangeMax, out DamagePreviewResult p)
         {
             int raw = SpellRegistry.LameVoraceDmgBase;
             if (StatusHelper.Has(target, StatusKind.PlaieOuverte)) raw += SpellRegistry.LameVoracePlaieBonus;
-            int offensiveBonus = ComputeOffensiveBonusGeneric(f, caster, target);
+            int offensiveBonus = ComputeOffensiveBonusGeneric(f, caster, target, rangeMax);
             p = default;
-            FinalizeOffensive(f, caster, target, raw, offensiveBonus, ref p);
+            FinalizeOffensive(f, caster, target, raw, offensiveBonus, rangeMax, ref p);
             return true;
         }
 
-        private static bool TryComputeSaigneAme(Frame f, Combatant* caster, Combatant* target, out DamagePreviewResult p)
+        private static bool TryComputeSaigneAme(Frame f, Combatant* caster, Combatant* target, int rangeMax, out DamagePreviewResult p)
         {
             int raw = SpellRegistry.SaigneAmeDmgBase;
             if (StatusHelper.Has(target, StatusKind.PlaieOuverte)) raw += SpellRegistry.SaigneAmePlaieBonus;
-            int offensiveBonus = ComputeOffensiveBonusGeneric(f, caster, target);
+            int offensiveBonus = ComputeOffensiveBonusGeneric(f, caster, target, rangeMax);
             p = default;
-            FinalizeOffensive(f, caster, target, raw, offensiveBonus, ref p);
+            FinalizeOffensive(f, caster, target, raw, offensiveBonus, rangeMax, ref p);
             return true;
         }
 
@@ -357,24 +401,64 @@ namespace Quantum
         }
 
         /// <summary>
-        /// Modifiers offensifs cote CASTER applicables a la plupart des sorts dmg :
-        ///   - Bonus dorsal Ghostra (Angle Mort) si caster Ghostra et hit dorsal depuis position actuelle
-        ///   - Bonus Marque de l'Ombre (+20) si target marque
+        /// HG optionnel auto-depense (3 juin) : max finançable apres le cout mandatory, plafonne par
+        /// HGCostMaxOptional. Mirror exact de SpellSystem (cmd.HGSpend=0 cote preview -> auto au max).
         /// </summary>
-        private static int ComputeOffensiveBonusGeneric(Frame f, Combatant* caster, Combatant* target)
+        private static int AutoHgSpend(Combatant* caster, in SpellDef sdef)
+        {
+            int optionalBudget = caster->Resource - sdef.HGCostMandatory;
+            if (optionalBudget < 0) optionalBudget = 0;
+            int hg = sdef.HGCostMaxOptional;
+            if (hg > optionalBudget) hg = optionalBudget;
+            if (hg < 0) hg = 0;
+            return hg;
+        }
+
+        /// <summary>
+        /// Bonus offensifs cote CASTER (flat, AVANT le pipeline %/reduction), par classe :
+        ///   - Ghostra : dorsal (Angle Mort) + Marque de l'Ombre (+20)
+        ///   - Nightseer : passif phase >= 2 (+30 flat) — mirror SpellSystem ligne ~1072
+        ///   - Colossar : Densite Inerte adjacence (+20 sorts portee 1-2 si adjacent obstacle own) — ~1085
+        /// Les bonus sont mutuellement exclusifs par classe du caster (jamais 2 a la fois).
+        /// </summary>
+        private static int ComputeOffensiveBonusGeneric(Frame f, Combatant* caster, Combatant* target, int rangeMax)
         {
             int bonus = 0;
+            // Ghostra.
             bonus += GhostraPassif.GetDorsalBonusIfApplicable(caster, target);
             bonus += StatusHelper.GetMagnitude(target, StatusKind.MarqueDeLOmbre, 0);
+            // Nightseer : +30 flat en phase >= 2 (PR 3-4+).
+            if (caster->Class == NymoraClass.Nightseer
+                && NightseerPassif.FlatDamageRangeBonusActive(caster->Resource))
+            {
+                bonus += NightseerPassif.FlatDamageBonus;
+            }
+            // Colossar : +20 si sort portee 1-2 ET adjacent a un de ses obstacles.
+            if (caster->Class == NymoraClass.Colossar
+                && rangeMax >= 1
+                && rangeMax <= SpellRegistry.DensiteInerteAdjacenceMaxRange
+                && ColossarPassif.IsAdjacentToOwnObstacle(f, caster, caster->PlayerIndex))
+            {
+                bonus += SpellRegistry.DensiteInerteAdjacenceBonus;
+            }
             return bonus;
         }
 
         /// <summary>
-        /// Applique le pipeline final : multiplier Pacte de Sang + Peau de Fer + reduction defensive
-        /// + shield absorb. Remplit la struct DamagePreviewResult.
+        /// Pipeline final : buffs % du caster (Pacte de Sang, Peau de Fer melee, Frenesie, Sang
+        /// Bouillant) + reduction defensive cible + shield. Remplit DamagePreviewResult.
+        /// isMelee = rangeMax == 1 (gate Peau de Fer, melee only Bible).
         /// </summary>
-        private static void FinalizeOffensive(Frame f, Combatant* caster, Combatant* target, int rawDamage, int offensiveBonus, ref DamagePreviewResult p)
+        private static void FinalizeOffensive(Frame f, Combatant* caster, Combatant* target, int rawDamage, int offensiveBonus, int rangeMax, ref DamagePreviewResult p)
         {
+            // Sort sans degat de base (ex : Fleche Tracante sur cible non-Traque) = AUCUN bonus offensif :
+            // la sim gate les bonus (Nightseer phase +30, etc.) sur dmgThisTarget > 0. Preview = 0.
+            if (rawDamage <= 0)
+            {
+                p.Valid = true;
+                p.RawDamage = 0;
+                return;
+            }
             int totalBeforeMultipliers = rawDamage + offensiveBonus;
 
             // Pacte de Sang : multiplier +% (Bible 50%).
@@ -383,12 +467,21 @@ namespace Quantum
             {
                 totalBeforeMultipliers += totalBeforeMultipliers * pacteBuffPct / 100;
             }
-            // Peau de Fer : +30 melee si caster a ShieldActive (cf SpellSystem ligne 484).
-            // Approximation : on assume tous les sorts dmg sont eligibles (ne distinguons pas
-            // melee vs distance dans la preview — Lorenzo verra cas par cas).
-            if (StatusHelper.GetMagnitude(caster, StatusKind.ShieldActive, 0) > 0)
+            // Peau de Fer : +30 MELEE (RangeMax 1) si caster a ShieldActive (mirror SpellSystem ligne 714).
+            if (rangeMax == 1 && StatusHelper.GetMagnitude(caster, StatusKind.ShieldActive, 0) > 0)
             {
                 totalBeforeMultipliers += SpellRegistry.PeauDeFerMeleeDmgBonus;
+            }
+            // Frenesie : +% dgts offensifs tant que RageInsatiableActive (mirror SpellSystem ~ligne 723).
+            if (StatusHelper.Has(caster, StatusKind.RageInsatiableActive))
+            {
+                totalBeforeMultipliers += totalBeforeMultipliers * SpellRegistry.FrenesieDmgBonusPct / 100;
+            }
+            // Sang Bouillant : bonus FLAT "prochaine frappe +X" (NextStrikeBonus, mirror SpellSystem ~ligne 729).
+            int nextStrikeBonus = StatusHelper.GetMagnitude(caster, StatusKind.NextStrikeBonus, 0);
+            if (nextStrikeBonus > 0)
+            {
+                totalBeforeMultipliers += nextStrikeBonus;
             }
 
             // Reduction defensive cible (Densite Inerte + Ancrage + Garde Prot + Effondrement, cap 50%).
@@ -411,6 +504,56 @@ namespace Quantum
             p.FinalDamage = finalDamage;
             p.AbsorbedByShield = absorbed;
             p.HpLost = hpLost;
+        }
+
+        /// <summary>
+        /// Finalize pour les sorts qui BYPASSENT le shield (ticks venin / signature / Choc Sismique).
+        /// applyReduction = applique la reduction defensive (Choc Sismique : Densite Inerte/Ancrage) ;
+        /// false = bypass total (tick venin, Execution Spectrale). Jamais de shield absorb.
+        /// </summary>
+        private static void FinalizeBypass(Frame f, Combatant* target, int rawDamage, bool applyReduction, ref DamagePreviewResult p)
+        {
+            int reductionPct = 0;
+            int dmg = rawDamage;
+            if (applyReduction)
+            {
+                reductionPct = ColossarPassif.GetCombinedDamageReductionPercent(f, target);
+                dmg = dmg * (100 - reductionPct) / 100;
+            }
+            if (dmg < 0) dmg = 0;
+            int hpLost = dmg > target->HP ? target->HP : dmg;
+
+            p.Valid = true;
+            p.RawDamage = rawDamage;
+            p.OffensiveBonus = 0;
+            p.DefensiveReductionPercent = reductionPct;
+            p.FinalDamage = dmg;
+            p.AbsorbedByShield = 0; // bypass shield
+            p.HpLost = hpLost;
+        }
+
+        /// <summary>
+        /// Heuristique Onde de Choc : la cible est poussee pushDistance cases loin du caster (cardinal).
+        /// "Stoppee contre un mur" = une case du trajet est hors-grille / non-walkable / occupee.
+        /// Approximation du "stoppedAgainst" de PushAndTriggerEx (suffisant pour le cas central).
+        /// </summary>
+        private static bool WouldStopAgainstWall(Frame f, Combatant* caster, Combatant* target, int pushDistance)
+        {
+            int pdx = target->GridX > caster->GridX ? 1 : (target->GridX < caster->GridX ? -1 : 0);
+            int pdy = target->GridY > caster->GridY ? 1 : (target->GridY < caster->GridY ? -1 : 0);
+            if (pdx == 0 && pdy == 0) return false;
+            int cx = target->GridX, cy = target->GridY;
+            for (int step = 0; step < pushDistance; step++)
+            {
+                int nx = cx + pdx, ny = cy + pdy;
+                if (!GridHelpers.InBounds(nx, ny) || !GridHelpers.IsWalkable(f, nx, ny)
+                    || GridHelpers.GetOccupant(f, nx, ny) != EntityRef.None)
+                {
+                    return true;
+                }
+                cx = nx; cy = ny;
+            }
+            return false;
         }
     }
 }

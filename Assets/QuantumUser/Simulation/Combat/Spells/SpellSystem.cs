@@ -1977,7 +1977,11 @@ namespace Quantum
                     {
                         int hpBeforeHit = hitC->HP;
                         // Shield absorption manuel (Charge Brutale non-pipeline).
-                        int dmgLeft = SpellRegistry.ChargeBrutaleDamage;
+                        // Fix 5 juin (#1) — CB bypassait le pipeline offensif generique (~ligne 704) :
+                        // Pacte de Sang +50% / Frenesie / Sang Bouillant n'etaient JAMAIS appliques
+                        // (alors que le HUD les prevoit via SpellPreview). On les rebranche ici comme
+                        // on rebranche deja les hooks DEFENSIFS plus bas. isMelee=false (portee 4).
+                        int dmgLeft = ApplyOffensiveCasterBuffs(caster, isMelee: false, SpellRegistry.ChargeBrutaleDamage);
                         // 3.2 — Densite Inerte (Bible Colossar) appliquee AVANT shield, comme le
                         // damage loop standard. Charge Brutale bypass le pipeline donc on rebranche
                         // le hook ici manuellement (3.2 fix retour Lorenzo).
@@ -2138,6 +2142,13 @@ namespace Quantum
                                     Log.Info($"[Spell] HG +1 sur P{hitC->PlayerIndex} (Charge Brutale subi) : {beforeResCT} -> {hitC->Resource}");
                                 }
                             }
+
+                            // Fix 5 juin (#1) — conso des buffs one-shot que Charge Brutale vient
+                            // d'appliquer (Pacte de Sang + Sang Bouillant) : la conso generique
+                            // (~ligne 1555) ne fire pas pour ce custom path (effectiveDmg==0) -> sans ca
+                            // le buff se reporterait sur le sort suivant (double-dip). Frenesie (duree)
+                            // n'est pas consommee.
+                            ConsumeOffensiveOneShotBuffs(caster);
                         }
                     }
                     break;
@@ -3859,6 +3870,48 @@ namespace Quantum
                 default:
                     return false;
             }
+        }
+
+        /// <summary>
+        /// Fix 5 juin (#1) — Applique les buffs OFFENSIFS du caster a un degat brut : Pacte de Sang
+        /// (+%), Peau de Fer (+30 si melee & ShieldActive), Frenesie (+%), Sang Bouillant (flat).
+        /// MIRROR du bloc generique (~ligne 704) — sert aux paths CUSTOM qui bypassent le damage loop
+        /// standard (Charge Brutale) pour que ces buffs s'appliquent comme partout + que la preview
+        /// (SpellPreview.FinalizeOffensive) colle au degat reel. Ne CONSOMME rien (cf
+        /// <see cref="ConsumeOffensiveOneShotBuffs"/>). isMelee = spellDef.RangeMax == 1 (Peau de Fer
+        /// = melee only, Bible V7.1).
+        /// </summary>
+        private static int ApplyOffensiveCasterBuffs(Combatant* caster, bool isMelee, int rawDamage)
+        {
+            if (rawDamage <= 0) return rawDamage;
+            int dmg = rawDamage;
+            // Pacte de Sang : multiplicateur +% (Bible 50%).
+            int pacteBuffPct = StatusHelper.GetMagnitude(caster, StatusKind.BuffNextOffensiveDmgPercent, 0);
+            if (pacteBuffPct > 0) dmg += dmg * pacteBuffPct / 100;
+            // Peau de Fer : +30 melee si le caster a un shield actif.
+            if (isMelee && StatusHelper.GetMagnitude(caster, StatusKind.ShieldActive, 0) > 0)
+                dmg += SpellRegistry.PeauDeFerMeleeDmgBonus;
+            // Frenesie : +% dgts offensifs tant que RageInsatiableActive.
+            if (StatusHelper.Has(caster, StatusKind.RageInsatiableActive))
+                dmg += dmg * SpellRegistry.FrenesieDmgBonusPct / 100;
+            // Sang Bouillant : bonus FLAT "prochaine frappe +X" (NextStrikeBonus).
+            int nextStrikeBonus = StatusHelper.GetMagnitude(caster, StatusKind.NextStrikeBonus, 0);
+            if (nextStrikeBonus > 0) dmg += nextStrikeBonus;
+            return dmg;
+        }
+
+        /// <summary>
+        /// Fix 5 juin (#1) — Consomme les buffs offensifs ONE-SHOT (Pacte de Sang + Sang Bouillant)
+        /// apres qu'un path CUSTOM (Charge Brutale) a inflige ses degats : la conso generique
+        /// (~ligne 1555) ne fire pas pour ces sorts (effectiveDmg==0 / casterHitSomething jamais mis).
+        /// Frenesie (buff de duree) N'EST PAS consommee. A appeler une seule fois, apres le hit.
+        /// </summary>
+        private static void ConsumeOffensiveOneShotBuffs(Combatant* caster)
+        {
+            if (StatusHelper.GetMagnitude(caster, StatusKind.BuffNextOffensiveDmgPercent, 0) > 0)
+                StatusHelper.Consume(caster, StatusKind.BuffNextOffensiveDmgPercent);
+            if (StatusHelper.GetMagnitude(caster, StatusKind.NextStrikeBonus, 0) > 0)
+                StatusHelper.Consume(caster, StatusKind.NextStrikeBonus);
         }
 
         /// <summary>
