@@ -17,6 +17,18 @@
 
 ---
 
+**SESSION 5 juin 2026 (ter) — 🎨 #23 CONTOUR D'ÉQUIPE MIROIR FINALISÉ (refonte propre + 5 cibles) — COMMIT + PUSH GitHub :** session **100% View** (zéro Sim, **pas de bump `CombatRulesVersion`**, pas de régén/rebuild). Reprise du **reliquat #23** laissé WIP en (bis) — supersède le WIP « 8 copies du sprite » jugé mauvais.
+
+- **🟦 Nouvelle technique = CONTOUR DE CASE** : on trace le **losange iso de la case** en couleur d'équipe via un **LineRenderer** (`MirrorOutlineHelper`), au lieu d'outliner le sprite (qui dédoublait le contenu texturé). Net, constant, zéro dépendance à l'art. Shader `SpriteSolid` (tentative intermédiaire) créé puis **supprimé**.
+- **2 points d'entrée** : `Refresh(TileView)` pour les objets de map **statiques** (contour enfant de la tile) ; `RefreshOnUnit(Transform)` pour les **unités mobiles** (contour enfant de l'unité, posé au sol, **compense le scale** — squash de hit / scale 1.16 des leurres — taille constante, suit le lerp de marche).
+- **5 cibles câblées** : **Pièges** (`TrapView`) · **Terrain** Soulrender (`TerrainView`, owner `GetTerrainOwner`) · **Pilliers / Murs / Failles** (`ObstacleRenderer` → `RefreshOnUnit`, sorting `sprite-1` = objet au premier plan + contour au sol autour de la base ; dépendance GridRenderer supprimée, contour détruit avec l'obstacle) · **Combattants** (`CombatantRenderer`, caché si voilé/mort/hors miroir) · **Leurres** (`DecoyView`, centré sur la CASE = **identique au vrai Ghostra → indiscernable côté adverse**, Bible V7.1 OK).
+- **Décision Lorenzo** : contour appliqué au **vrai Ghostra ET aux leurres** (même couleur d'équipe) → garde le mindgame vrai/leurre tout en distinguant les équipes en miroir Ghostra.
+- **Détail** : contour visible UNIQUEMENT en **match miroir** (`MatchViewHelpers.IsMirrorMatch`) ; `MirrorOwnershipOutlineView` reste le composant de config (couleurs/épaisseur) des scènes combat. Fix compile `ObstacleView` (`Sprite.Create` → `UnityEngine.Sprite.Create`, collision avec le nouvel accessor `public SpriteRenderer Sprite`).
+- **À RETENIR** : (1) **100% View, pas de bump version, pas de régén** → **pas de rebuild standalone** pour cette brique. (2) **2 commits** (`feat(combat)` code + `docs` statut) **+ PUSH GitHub** → vide enfin le **backlog différé** des sessions 3→5 juin (poussé sur `main`). (3) Hors-commit habituel maintenu (2 fonts TMP, 4 scènes, `SpellCatalog.asset`, `ProjectSettings.asset`, dump `StackOverflowException`).
+- **PROCHAINE ÉTAPE** : backlog restant — **Majeur #2 mode spectateur** ; **Mineur** : replay rewind · gamma/contraste sans shader · succès collecteur hub cassé · bug bannière clan · signature/death panel · textes tuto (é manquants) · MP casse-sensible.
+
+---
+
 **SESSION 5 juin 2026 (bis) — 🩹 SUITE PATCHS (reliquat icône reset · pop-up deck · #3 LoS · #1 tooltip + AUDIT prévisu 5 classes · #5 pièges tp/charge · audit descriptions passifs · #23 couleurs miroir WIP) — 8 COMMITS LOCAUX (push différé) :** session **View + Sim**. **`CombatRulesVersion` 111 → 114** (112 Charge Brutale/Pacte, 113 pièges tp/charge, 114 `TerrainOwner` pour #23).
 
 - **⏪ Reliquat #16 — icône reset** (`f3a49ed`) : `reset_arrow.svg.meta` passé `svgType: 0 → 1` (VectorSprite → **TexturedSprite**, comme tous les autres SVG du projet) → l'icône reset du menu Raccourcis s'affiche enfin. Code inchangé (le fallback "RAZ" reste).
