@@ -45,15 +45,16 @@ namespace Nymora.Combat.View.HUD
                     return "Chaque sort offensif qui inflige des dégâts génère 1 HG (max 5). " +
                            "Les sorts à coût HG consomment ce pool. Au cap, la signature Âme Lacérée est débloquée.";
                 case NymoraClass.Nightseer:
-                    return "Récompense la furtivité totale : gagne 1 PR par round où aucun dégât n'est subi, " +
-                           "perd 1 PR si touché. Cap 4. Au cap, signature Traquenard prête.";
+                    return "Passif phasé sur la Prescience (marque unique Traqué) : plus la Prescience monte, " +
+                           "plus tes pièges et tes sorts gagnent en puissance, portée et furtivité. Cap 5. " +
+                           "Au cap, signature Traquenard prête.";
                 case NymoraClass.Colossar:
                     return "Réduit les dégâts subis de 6% par obstacle actif (-18% max à 3 obstacles). " +
                            "Bonus +20 dgts sur sorts portée 1-2 si adjacent à un obstacle propre. " +
                            "+30 HP à chaque destruction de pilier.";
                 case NymoraClass.Necram:
                     return "Toutes les marques de venin/peste appliquées ticquent plus violemment au fil " +
-                           "des accumulations. La signature Virus Fatal déclenche x3 tous les ticks au cap.";
+                           "des accumulations. La signature Virus Fatal déclenche tous les ticks ×1,5 au cap.";
                 case NymoraClass.Ghostra:
                     return "Bonus dorsal qui augmente avec le nombre de leurres actifs sur le terrain. " +
                            "À Angle 2+ (1+ leurre), applique automatiquement Plaie Ouverte sur tout coup dorsal.";
@@ -69,8 +70,8 @@ namespace Nymora.Combat.View.HUD
                     return "<color=#ffd060><b>Génération HG :</b></color>  +1 par sort qui inflige dgts (max 1/sort). " +
                            "Bonus +1 si cible Marquée de Carnage.  Cap 5.";
                 case NymoraClass.Nightseer:
-                    return "<color=#c0b0d0><b>Génération PR :</b></color>  +1 par round SANS dégâts subis. " +
-                           "-1 par round avec dégâts (plancher 0).  Cap 4.";
+                    return "<color=#c0b0d0><b>Génération PR :</b></color>  +1 par piège posé  ·  +1 par piège déclenché  ·  " +
+                           "+1 par marque Traqué appliquée.  Max +3 PR/tour.  Cap 5.";
                 case NymoraClass.Colossar:
                     return "<color=#a0d0ff><b>Génération FD :</b></color>  +1 par obstacle spawné (pilier ou mur)  ·  +1 par ennemi poussé contre un obstacle.  Cap 5.";
                 case NymoraClass.Necram:
