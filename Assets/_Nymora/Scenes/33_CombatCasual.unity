@@ -20790,6 +20790,8 @@ MonoBehaviour:
   _markSpacingX: 0.4
   _sortingOrder: 1500
   _verboseLog: 0
+  _veninCountFontSize: 2.2
+  _veninCountColor: {r: 0.7, g: 1, b: 0.4, a: 1}
 --- !u!114 &932372497
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -28260,6 +28262,56 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1281668476
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1281668478}
+  - component: {fileID: 1281668477}
+  m_Layer: 0
+  m_Name: MirrorOutline
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1281668477
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1281668476}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1427809486da1f4ca450bb4995e21a1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _gridRenderer: {fileID: 932372492}
+  _teamColorP0: {r: 0.32, g: 0.66, b: 1, a: 0.95}
+  _teamColorP1: {r: 1, g: 0.55, b: 0.16, a: 0.95}
+  _frameScale: 1
+  _sortingOrderOffset: 30
+  _borderThickness: 0.11
+--- !u!4 &1281668478
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1281668476}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.4776489, y: 0.0741544, z: 0.12966485}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -52106,3 +52158,4 @@ SceneRoots:
   - {fileID: 564267796}
   - {fileID: 848007393}
   - {fileID: 412183969}
+  - {fileID: 1281668478}

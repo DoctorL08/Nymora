@@ -39,6 +39,17 @@ namespace Quantum
             return sing->Tiles[GridHelpers.Index(x, y)].Obstacle;
         }
 
+        // #23 (5 juin) — Owner de l'obstacle sur la case (PlayerIndex), ou -1 si aucun. Read-only,
+        //   pour l'affichage de l'outline d'equipe en match miroir (Mur / Pilier). Les Failles
+        //   d'Effondrement ont owner=None -> OwnerPlayerIndex sentinelle ; la View ne colore que P0/P1.
+        public static int GetObstacleOwnerAt(Frame f, int x, int y)
+        {
+            EntityRef e = GetObstacleAt(f, x, y);
+            if (e == EntityRef.None) return -1;
+            if (!f.Unsafe.TryGetPointer<Obstacle>(e, out var obs)) return -1;
+            return obs->OwnerPlayerIndex;
+        }
+
         // ====================================================================
         // Spawn / Destroy lifecycle.
         // ====================================================================

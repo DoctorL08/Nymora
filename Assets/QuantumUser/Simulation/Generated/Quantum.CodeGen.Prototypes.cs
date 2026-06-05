@@ -253,6 +253,7 @@ namespace Quantum.Prototypes {
     public Int32 TrapOwner;
     public Int32 TrapAppliedOnTurn;
     public Byte TrapDir;
+    public Byte TerrainOwner;
     partial void MaterializeUser(Frame frame, ref Quantum.FogTile result, in PrototypeMaterializationContext context);
     public void Materialize(Frame frame, ref Quantum.FogTile result, in PrototypeMaterializationContext context = default) {
         result.VeiledByPlayer = this.VeiledByPlayer;
@@ -262,6 +263,7 @@ namespace Quantum.Prototypes {
         result.TrapOwner = this.TrapOwner;
         result.TrapAppliedOnTurn = this.TrapAppliedOnTurn;
         result.TrapDir = this.TrapDir;
+        result.TerrainOwner = this.TerrainOwner;
         MaterializeUser(frame, ref result, in context);
     }
   }

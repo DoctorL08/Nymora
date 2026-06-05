@@ -174,6 +174,27 @@ namespace Quantum
             return tile.Trap == TrapKind.None ? -1 : tile.TrapOwner;
         }
 
+        // #23 (5 juin) — Owner du TERRAIN (Vapeur Carmin / Sang Coagulé / Brume Toxique) pour
+        //   l'affichage (outline d'équipe en match miroir). Convention PlayerIndex+1 (0 = aucun),
+        //   comme VeiledByPlayer. Écrit par GridHelpers.SetTerrain ; la sim ne lit jamais ce champ.
+        public static void SetTerrainOwner(Frame f, int x, int y, int ownerPlayerIndex)
+        {
+            if (!GridHelpers.InBounds(x, y)) return;
+            var fog = f.Unsafe.GetPointerSingleton<FogSingleton>();
+            fog->Tiles[GridHelpers.Index(x, y)].TerrainOwner =
+                ownerPlayerIndex < 0 ? (byte)0 : (byte)(ownerPlayerIndex + 1);
+        }
+
+        /// <summary>Owner du terrain sur la case (PlayerIndex), ou -1 si aucun owner enregistré.
+        /// Ne teste PAS la présence d'un terrain : l'appelant (View) vérifie d'abord GetTerrainKind.</summary>
+        public static int GetTerrainOwner(Frame f, int x, int y)
+        {
+            if (!GridHelpers.InBounds(x, y)) return -1;
+            var fog = f.Unsafe.GetPointerSingleton<FogSingleton>();
+            byte raw = fog->Tiles[GridHelpers.Index(x, y)].TerrainOwner;
+            return raw == 0 ? -1 : raw - 1;
+        }
+
         // ====================================================================
         // 2.15.b — Trigger trap quand un combattant entre sur la case.
         // Appele depuis MovementSystem (mouvement normal) et SpellSystem.PushAndTrigger

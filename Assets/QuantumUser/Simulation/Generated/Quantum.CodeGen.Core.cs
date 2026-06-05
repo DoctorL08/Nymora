@@ -752,20 +752,22 @@ namespace Quantum {
   public unsafe partial struct FogTile {
     public const Int32 SIZE = 20;
     public const Int32 ALIGNMENT = 4;
-    [FieldOffset(1)]
+    [FieldOffset(2)]
     public Byte VeiledByPlayer;
     [FieldOffset(16)]
     public Int32 VeiledTurnsLeft;
     [FieldOffset(12)]
     public Int32 VeiledAppliedOnTurn;
-    [FieldOffset(2)]
+    [FieldOffset(3)]
     public TrapKind Trap;
     [FieldOffset(8)]
     public Int32 TrapOwner;
     [FieldOffset(4)]
     public Int32 TrapAppliedOnTurn;
-    [FieldOffset(0)]
+    [FieldOffset(1)]
     public Byte TrapDir;
+    [FieldOffset(0)]
+    public Byte TerrainOwner;
     public override readonly Int32 GetHashCode() {
       unchecked { 
         var hash = 10613;
@@ -776,11 +778,13 @@ namespace Quantum {
         hash = hash * 31 + TrapOwner.GetHashCode();
         hash = hash * 31 + TrapAppliedOnTurn.GetHashCode();
         hash = hash * 31 + TrapDir.GetHashCode();
+        hash = hash * 31 + TerrainOwner.GetHashCode();
         return hash;
       }
     }
     public static void Serialize(void* ptr, FrameSerializer serializer) {
         var p = (FogTile*)ptr;
+        serializer.Stream.Serialize(&p->TerrainOwner);
         serializer.Stream.Serialize(&p->TrapDir);
         serializer.Stream.Serialize(&p->VeiledByPlayer);
         serializer.Stream.Serialize((Byte*)&p->Trap);

@@ -31,6 +31,12 @@ struct FogTile {
     // Refonte 29 mai — Piège Bondissant : direction d'éjection choisie à la pose. Encodage
     //   cardinal : 0 = aucune (pièges normaux), 1 = +X, 2 = -X, 3 = +Y, 4 = -Y.
     Byte TrapDir;
+
+    // #23 (5 juin) — Propriétaire du TERRAIN posé sur la case (Vapeur Carmin / Sang Coagulé /
+    //   Brume Toxique). 0 = aucun owner connu, sinon (PlayerIndex + 1) — même convention que
+    //   VeiledByPlayer. Sert UNIQUEMENT à l'affichage (outline d'équipe en match miroir), la sim
+    //   ne s'en sert pas. Stocké ici (singleton séparé) car Tile est proche de la limite Quantum.
+    Byte TerrainOwner;
 }
 
 singleton component FogSingleton {

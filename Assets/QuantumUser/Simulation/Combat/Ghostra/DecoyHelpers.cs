@@ -51,6 +51,27 @@ namespace Quantum
             return count;
         }
 
+        // #23 (5 juin) — Owner du leurre present sur la case (PlayerIndex du Ghostra), ou -1 si aucun.
+        //   Read-only, pour l'affichage de l'outline d'equipe en match miroir. Itere les Ghostra et
+        //   leurs slots de leurres (cap 3). La sim ne s'en sert pas.
+        public static int GetDecoyOwnerAt(Frame f, int x, int y)
+        {
+            var it = f.Filter<Combatant>();
+            while (it.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->Class != NymoraClass.Ghostra) continue;
+                for (int i = 0; i < MaxDecoys; i++)
+                {
+                    if (c->Decoys[i].Kind != DecoyKind.None
+                        && c->Decoys[i].PosX == x && c->Decoys[i].PosY == y)
+                    {
+                        return c->PlayerIndex;
+                    }
+                }
+            }
+            return -1;
+        }
+
         /// <summary>
         /// Tente de poser un leurre sur (posX, posY). Retourne true si pose, false sinon
         /// (cap 3 atteint OU case occupee par Ghostra elle-meme OU hors grille).

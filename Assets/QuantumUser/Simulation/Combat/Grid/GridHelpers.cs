@@ -76,7 +76,7 @@ namespace Quantum
         /// (refresh duree). AppliedOnTurn est utilise pour la regle skip-decrement
         /// (le tour ou le terrain a ete pose ne compte pas dans la decrementation).
         /// </summary>
-        public static void SetTerrain(Frame f, int x, int y, TerrainKind kind, int turnsLeft, int currentTurn)
+        public static void SetTerrain(Frame f, int x, int y, TerrainKind kind, int turnsLeft, int currentTurn, int ownerPlayerIndex = -1)
         {
             if (!InBounds(x, y)) return;
             if (kind == TerrainKind.None || turnsLeft <= 0)
@@ -88,6 +88,9 @@ namespace Quantum
             grid->Tiles[Index(x, y)].Terrain = kind;
             grid->Tiles[Index(x, y)].TerrainTurnsLeft = turnsLeft;
             grid->Tiles[Index(x, y)].TerrainAppliedOnTurn = currentTurn;
+            // #23 — owner du terrain (affichage outline d'equipe en miroir), stocke dans FogSingleton.
+            //   Pure data View ; la sim ne le lit jamais. -1 = aucun owner (debug / calls non migres).
+            FogHelpers.SetTerrainOwner(f, x, y, ownerPlayerIndex);
         }
 
         public static void ClearTerrain(Frame f, int x, int y)
@@ -97,6 +100,7 @@ namespace Quantum
             grid->Tiles[Index(x, y)].Terrain = TerrainKind.None;
             grid->Tiles[Index(x, y)].TerrainTurnsLeft = 0;
             grid->Tiles[Index(x, y)].TerrainAppliedOnTurn = 0;
+            FogHelpers.SetTerrainOwner(f, x, y, -1); // #23 — clear owner
         }
 
         /// <summary>

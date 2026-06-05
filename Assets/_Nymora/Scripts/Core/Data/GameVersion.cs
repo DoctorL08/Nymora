@@ -206,7 +206,12 @@ namespace Nymora.Core.Data
         //                Spectral). Charge Brutale declenche en plus les cases TRAVERSEES. Owner-filtre
         //                (jamais ses propres pieges). Permutation N/A (case-leurre ne peut pas porter de piege).
         //                Pure logique, aucun champ [Networked] touche.
-        public const int CombatRulesVersion = 113;
+        // 114 (#23 couleurs miroir, 5 juin) : ajout d'un champ [Networked] FogTile.TerrainOwner
+        //                (Byte, convention PlayerIndex+1) ecrit par GridHelpers.SetTerrain pour
+        //                l'AFFICHAGE (outline d'equipe en match miroir). La sim ne lit jamais ce
+        //                champ -> aucun impact gameplay, mais c'est un champ [Networked] => REGEN
+        //                (codegen Quantum + prefabs/scenes) + rebuild standalone requis.
+        public const int CombatRulesVersion = 114;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

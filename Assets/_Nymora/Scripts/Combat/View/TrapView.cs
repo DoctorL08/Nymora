@@ -184,6 +184,8 @@ namespace Nymora.Combat.View
             if (!frame.TryGetSingleton<FogSingleton>(out _)) return;
 
             int viewer = _forcedViewerPlayer >= 0 ? _forcedViewerPlayer : LocalPlayerResolver.Resolve();
+            // #23 — liseré d'équipe (silhouette) sur les pièges UNIQUEMENT en match miroir.
+            bool mirror = MatchViewHelpers.IsMirrorMatch(frame);
 
             for (int y = 0; y < _height; y++)
             {
@@ -225,6 +227,8 @@ namespace Nymora.Combat.View
                             sr.flipX = false;
                             sr.flipY = false;
                         }
+                        // #23 — liseré d'équipe épousant la silhouette du piège (caché hors miroir).
+                        MirrorOutlineHelper.Refresh(sr, mirror, owner);
                         if (!wasActive)
                         {
                             _overlayGOs[idx].SetActive(true);
