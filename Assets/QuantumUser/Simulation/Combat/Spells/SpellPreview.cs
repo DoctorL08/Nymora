@@ -155,7 +155,19 @@ namespace Quantum
                 case SpellId.NightseerVoleeDEpines:
                     return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.VoleeDEpinesDmg, rangeMax, out preview);
                 case SpellId.NightseerDetonationOnirique:
-                    return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.DetonationOniriqueDmg, rangeMax, out preview);
+                {
+                    // Patch 5 juin — précision preview : +80 si la case de la cible couvre un de TES
+                    //   pièges (mirror SpellSystem damage loop, AVANT le pipeline de buffs) + dégâts de
+                    //   la détonation du piège sur la cible (bypass shield/réduction).
+                    int dmg = SpellRegistry.DetonationOniriqueDmg;
+                    if (FogHelpers.GetTrapOwner(f, target->GridX, target->GridY) == caster->PlayerIndex)
+                    {
+                        dmg += SpellRegistry.DetonationOniriqueDmgVoile;
+                    }
+                    if (!TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview)) return false;
+                    AddOwnTrapDetonationDamage(f, caster, target, ref preview);
+                    return true;
+                }
                 case SpellId.NightseerFrappeDeLOmbre:
                 {
                     // Refonte 29 mai : 160 (+50 si le Nightseer a depense >= 3 PM au dernier tour).
@@ -176,10 +188,14 @@ namespace Quantum
                 }
                 case SpellId.NightseerSalveMortelle:
                 {
-                    // Bible : 220 centre / 130 cotes. Preview = centre (cas central de l'AoE).
+                    // Preview = centre de la croix (cas où on cible directement l'ennemi -> il est au
+                    //   centre, 200). Patch 5 juin : + dégâts de la détonation du piège sous la cible
+                    //   (bypass shield/réduction), désormais que Salve "détone tes embûches".
                     int dmg = SpellRegistry.SalveMortelleDmgCenter;
                     if (MarkHelpers.HasMark(target, MarkKind.Traque)) dmg += SpellRegistry.SalveMortelleDmgIfTraque;
-                    return TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview);
+                    if (!TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview)) return false;
+                    AddOwnTrapDetonationDamage(f, caster, target, ref preview);
+                    return true;
                 }
                 case SpellId.NightseerSouffleGlacial: // PIEGE BONDISSANT (refonte 29 mai)
                     preview = default;
@@ -530,6 +546,45 @@ namespace Quantum
             p.FinalDamage = dmg;
             p.AbsorbedByShield = 0; // bypass shield
             p.HpLost = hpLost;
+        }
+
+        /// <summary>
+        /// Patch 5 juin — précision preview pour Salve Mortelle / Détonation Onirique qui "détonent tes
+        /// embûches" (cf FogHelpers.DetonateOwnTrapsInArea). Si la cible se tient sur un piège du CASTER,
+        /// le piège lui inflige ses dégâts DIRECTS (bypass shield + réduction, comme TryTriggerTrapOnEnter) :
+        ///   - Filet de Ronces / Champ de Mines : dégâts de base + 15% si le Nightseer est en phase >= 1 ;
+        ///   - Piège Bondissant : 0 (catapulte, pas de dégâts).
+        /// Ajouté APRÈS le pipeline du sort. Approximation assumée : la CHAÎNE des mines (+40/mine proche)
+        /// n'est pas chiffrée (dépend des mines voisines). On ne touche que les ennemis (les pièges ne
+        /// déclenchent pas sur le poseur).
+        /// </summary>
+        private static void AddOwnTrapDetonationDamage(Frame f, Combatant* caster, Combatant* target, ref DamagePreviewResult p)
+        {
+            if (!p.Valid) return;
+            if (target->PlayerIndex == caster->PlayerIndex) return;
+            if (FogHelpers.GetTrapOwner(f, target->GridX, target->GridY) != caster->PlayerIndex) return;
+
+            TrapKind kind = FogHelpers.GetTrapKind(f, target->GridX, target->GridY);
+            int trapDmg;
+            switch (kind)
+            {
+                case TrapKind.FiletRonces: trapDmg = SpellRegistry.FiletDeRoncesDmg; break;
+                case TrapKind.Mine:        trapDmg = SpellRegistry.ChampDeMinesDmg; break;
+                default:                   trapDmg = 0; break; // Bondissant : catapulte sans dégâts
+            }
+            if (trapDmg <= 0) return;
+
+            // +15% si le Nightseer propriétaire (= caster) est en phase >= 1 (mirror FogHelpers).
+            if (caster->Class == NymoraClass.Nightseer
+                && NightseerPassif.TrapDamageBonusActive(caster->Resource))
+            {
+                trapDmg += trapDmg * NightseerPassif.TrapDamageBonusPct / 100;
+            }
+
+            // Dégâts DIRECTS (ni shield ni réduction) -> ajout brut au total affiché et aux HP perdus.
+            p.FinalDamage += trapDmg;
+            p.HpLost += trapDmg;
+            if (p.HpLost > target->HP) p.HpLost = target->HP;
         }
 
         /// <summary>

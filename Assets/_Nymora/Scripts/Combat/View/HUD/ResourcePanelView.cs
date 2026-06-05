@@ -83,20 +83,21 @@ namespace Nymora.Combat.View.HUD
 
         private static string FormatStatuses(in Combatant c)
         {
+            // Patch 5 juin — affiche l'EFFET (« -1 PM », « bouclier 200 »...) au lieu du nom technique
+            //   de l'enum (« MovementMalus:1x1 »). Cf StatusEffectLabel. Statuts cachés (minuteur venin,
+            //   flags réservés) renvoient "" et sont sautés.
             var sb = new System.Text.StringBuilder();
             for (int i = 0; i < 8; i++)
             {
                 var s = c.Statuses[i];
                 if (s.Kind == StatusKind.None || s.TurnsLeft <= 0) continue;
+                string label = StatusEffectLabel.Describe(s.Kind, s.Magnitude);
+                if (string.IsNullOrEmpty(label)) continue;
                 if (sb.Length > 0) sb.Append(", ");
-                sb.Append(s.Kind);
-                sb.Append(':');
+                sb.Append(label);
+                sb.Append(" (");
                 sb.Append(s.TurnsLeft);
-                if (s.Magnitude != 0 && s.Kind != StatusKind.RageInsatiableActive)
-                {
-                    sb.Append('x');
-                    sb.Append(s.Magnitude);
-                }
+                sb.Append("t)");
             }
             return sb.ToString();
         }

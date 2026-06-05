@@ -290,6 +290,15 @@ namespace Nymora.Combat.View
                     // PATCH #6/#7 — familier colle au leurre (meme pet que la Ghostra), teinte
                     // comme le leurre. Indiscernable cote adverse (la vraie Ghostra a aussi le sien).
                     UpdateDecoyPet(key, go, ownerPet, localOwnsGhostra, decoyBaseWorld);
+
+                    // Patch 5 juin — pousse l'HP du leurre à son proxy (barre d'HP affichée au survol,
+                    //   cf DecoyHoverProxy). max = HP de spawn du kind (0 = leurre 1-hit -> barre pleine).
+                    var hoverProxy = go.GetComponent<DecoyHoverProxy>();
+                    if (hoverProxy != null)
+                    {
+                        hoverProxy.SlotIndex = slot;
+                        hoverProxy.SetHp(d.HP, DecoyHelpers.GetDecoyMaxHp(d.Kind));
+                    }
                 }
             }
 

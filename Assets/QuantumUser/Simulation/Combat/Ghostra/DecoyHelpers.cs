@@ -24,7 +24,10 @@ namespace Quantum
         public const int MaxDecoys = 3;            // verrouille — taille array Decoys
         public const int LifetimeRounds = 4;       // AMENDEMENT 16 mai 2026 (Bible orig "2 tours" -> 4 pour permettre combos)
         public const int ProtectiveLifetimeRounds = 4; // équilibrage 2 juin : 3->4 rounds (= leurre classique LifetimeRounds), en parallèle du passage à 3 PA
-        public const int ProtectiveDecoyMaxHP = 200; // Bible Réplique Protectrice
+        // Patch 5 juin (Lorenzo) : les leurres ont désormais une RÉSERVE D'HP et encaissent les dégâts
+        //   (détruits seulement à 0 HP), au lieu d'être détruits en 1 sort.
+        public const int StandardDecoyMaxHP = 200;   // leurre classique (Standard + Réplique Fantôme)
+        public const int ProtectiveDecoyMaxHP = 250;  // Réplique Protectrice (était 200)
 
         // Heal Ghostra owner sur destruction d'un leurre (Bible V7.1 par sort) :
         //   - Réplique Fantôme  : +40 HP si detruit, +80 HP si survit la duree complete
@@ -34,6 +37,22 @@ namespace Quantum
         public const int RepliqueFantomeHealOnDestroy   = 40;  // detruit prematurement par action adverse
         public const int RepliqueFantomeHealOnExpire    = 80;  // survit naturellement LifetimeRounds
         public const int RepliqueProtectriceHealOnDestroy = 80; // AMENDEMENT 16 mai 2026 (cap Bible orig 60 -> 80 pour compenser nerf 40%->30% + 3 PA -> 4 PA)
+
+        /// <summary>
+        /// HP de spawn (= max) d'un leurre selon son Kind. Source unique pour la pose ET la barre
+        /// d'HP côté View (DecoyHoverProxy). 0 = leurre sans réserve d'HP (1-hit). Patch 5 juin :
+        /// valeurs à ajuster avec la demande Lorenzo (leurre classique 200 / Protectrice 250).
+        /// </summary>
+        public static int GetDecoyMaxHp(DecoyKind kind)
+        {
+            switch (kind)
+            {
+                case DecoyKind.Protective:      return ProtectiveDecoyMaxHP;   // 250
+                case DecoyKind.Standard:        return StandardDecoyMaxHP;     // 200
+                case DecoyKind.RepliqueFantome: return StandardDecoyMaxHP;     // 200 (leurre classique)
+                default:                        return 0;
+            }
+        }
 
         /// <summary>
         /// Compte les leurres actifs (Kind != None) du Ghostra. Cache aussi le resultat
@@ -130,7 +149,7 @@ namespace Quantum
                 return false;
             }
 
-            int hp = (kind == DecoyKind.Protective) ? ProtectiveDecoyMaxHP : 0;
+            int hp = GetDecoyMaxHp(kind); // patch 5 juin : tous les leurres ont une réserve d'HP
             ghostra->Decoys[freeSlot] = new DecoySlot
             {
                 Kind = kind,
@@ -317,26 +336,22 @@ namespace Quantum
             DecoyKind k = ghostra->Decoys[slotIndex].Kind;
             if (k == DecoyKind.None) return false;
 
-            if (k == DecoyKind.Protective)
+            // Patch 5 juin (Lorenzo) — TOUS les leurres ont une réserve d'HP et ENCAISSENT les dégâts
+            //   (détruits seulement à 0 HP), comme la Protectrice. Avant : Standard/Fantôme = 1-hit.
+            //   Un sort sans dégâts (damage <= 0) n'entame pas le leurre.
+            int hpBefore = ghostra->Decoys[slotIndex].HP;
+            int absorbed = damage <= 0 ? 0 : (damage > hpBefore ? hpBefore : damage);
+            int hpAfter = hpBefore - absorbed;
+            var slot = ghostra->Decoys[slotIndex];
+            slot.HP = hpAfter;
+            ghostra->Decoys[slotIndex] = slot;
+            Log.Info($"[Decoy] Hit direct {k} P{ghostra->PlayerIndex} slot {slotIndex} : -{absorbed} HP ({hpBefore}->{hpAfter})");
+            if (hpAfter <= 0)
             {
-                int hpBefore = ghostra->Decoys[slotIndex].HP;
-                int absorbed = damage <= 0 ? 0 : (damage > hpBefore ? hpBefore : damage);
-                int hpAfter = hpBefore - absorbed;
-                var slot = ghostra->Decoys[slotIndex];
-                slot.HP = hpAfter;
-                ghostra->Decoys[slotIndex] = slot;
-                Log.Info($"[Decoy] Hit direct PROTECTIVE P{ghostra->PlayerIndex} slot {slotIndex} : -{absorbed} HP ({hpBefore}->{hpAfter})");
-                if (hpAfter <= 0)
-                {
-                    DestroyByEnemyAction(ghostra, slotIndex); // heal +80 Bible
-                    return true;
-                }
-                return false;
+                DestroyByEnemyAction(ghostra, slotIndex); // heal Bible selon Kind (Fantôme +40 / Protective +80 / Standard 0)
+                return true;
             }
-
-            // Standard / RepliqueFantome (HP=0) : 1-hit destroy (toute interaction de sort).
-            DestroyByEnemyAction(ghostra, slotIndex);
-            return true;
+            return false;
         }
 
         /// <summary>

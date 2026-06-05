@@ -202,6 +202,7 @@ namespace Quantum {
     MarqueSacrificielle = 18,
     SymbioseMorbide = 19,
     Contagious = 32,
+    VeninDecay = 33,
     PestilenceAura = 21,
     PasSpectralReady = 20,
     PlaieOuverte = 23,

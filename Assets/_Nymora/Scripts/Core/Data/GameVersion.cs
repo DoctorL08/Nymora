@@ -211,7 +211,61 @@ namespace Nymora.Core.Data
         //                l'AFFICHAGE (outline d'equipe en match miroir). La sim ne lit jamais ce
         //                champ -> aucun impact gameplay, mais c'est un champ [Networked] => REGEN
         //                (codegen Quantum + prefabs/scenes) + rebuild standalone requis.
-        public const int CombatRulesVersion = 114;
+        // 115 (Fix gain PT Necram en miroir, 5 juin) : en match miroir Necram vs Necram, un seul
+        //                Necram gagnait des PT (Putrefaction) et pas l'autre. Cause : les deux hooks
+        //                de gain (GainPutrefactionFromMarkApply via marque + GainPutrefactionFromTick
+        //                via tick venin) bouclaient sur Filter<Combatant> et creditaient le PREMIER
+        //                Necram vivant rencontre (ordre du filter) -> toujours le meme. Fix : crediter
+        //                le Necram dont l'EQUIPE (PlayerIndex) != celle de la cible affectee — le venin
+        //                etant toujours pose sur un ennemi du Necram, ce Necram est forcement l'auteur
+        //                (1v1 + miroir). Bonus : le cas Carapace Visqueuse (venin pose par un Ghostra
+        //                sur l'attaquant) ne credite plus a tort un Necram. Pure logique, aucun champ
+        //                [Networked] touche.
+        // 116 (Fix anti-deplacement Stoicisme/Ancrage vs Piege Bondissant, 5 juin) : la catapulte du
+        //                Piege Bondissant (Nightseer) deplacait un Colossar sous Stoicisme ou Ancrage,
+        //                alors que ces statuts (AnchorImmune) disent "rien ne me deplace". Cause : le
+        //                catapultage dans FogHelpers.TryTriggerTrapOnEnter ne checkait pas AnchorImmune
+        //                (contrairement au push PushAndTriggerEx, au pull Empoignade et au swap Echange
+        //                Spectral). Du point de vue joueur l'immunite marchait "un tour sur deux" selon
+        //                le moyen de deplacement adverse. Fix : sous AnchorImmune la catapulte est annulee,
+        //                mais le piege est tout de meme declenche (consomme + Traque + PR au owner).
+        //                Pure logique, aucun champ [Networked] touche.
+        // 117 (Nerf Traquenard PM malus, 5 juin) : la PARALYSIE de la signature Nightseer Traquenard
+        //                passe de -3 PM a -2 PM (TraquenardParalysiePMMalus 3->2). Duree inchangee
+        //                (1 tour, deja le cas malgre l'observation "3 tours") et -2 PA conserve.
+        //                Description deck builder synchronisee. Pure logique, aucun champ [Networked] touche.
+        // 118 (Necram : poisons durent 2 tours max, 5 juin) : les marques de venin n'expiraient JAMAIS
+        //                par duree (consommation only). Desormais elles expirent VeninDurationTurns (2)
+        //                rounds apres la DERNIERE application. Implementation via un nouveau StatusKind
+        //                VeninDecay (=33) : minuteur refresh a chaque ApplyMark ; a son expiration
+        //                (DecrementAllOnTurnEnd) le hook VeninHelpers.ClearExpiredVenin (fin de round)
+        //                vide les VeninStacks. NB : ajout d'une valeur d'enum Byte -> codegen Quantum +
+        //                rebuild standalone requis, mais PAS de regen prefab/scene (layout inchange).
+        // 119 (Charge Brutale ne touche que si melee, 5 juin) : Charge Brutale infligeait ses 180 degats
+        //                a la cible bloquante meme si un piege REPULSANT (Bondissant Nightseer) avait
+        //                catapulte le caster hors de sa case d'arrivee pendant le deplacement. Desormais
+        //                les degats ne partent que si le caster finit bien sur sa case d'arrivee prevue
+        //                (finalX/finalY, adjacente a la cible) ET vivant (garde chargeConnected). Pure
+        //                logique, aucun champ [Networked] touche.
+        // 120 (Nightseer Detonation Onirique AoE + chaine pieges Salve/Detonation, 5 juin) :
+        //                (1) Detonation Onirique passe de SingleTile (mono-case, l'AoE 2x2 annoncee
+        //                n'avait jamais ete codee) a une vraie AoE Square3x3 (9 cases) — geree par
+        //                TargetingResolver donc sim ET preview View d'un coup. (2) Salve Mortelle ET
+        //                Detonation Onirique "declenchent tes embuches" : nouveau FogHelpers
+        //                .DetonateOwnTrapsInArea -> detone TOUS les pieges du caster sous la zone
+        //                (ennemi present = effet complet ; case vide = piege consomme). Avant : Salve
+        //                ne declenchait que sur ennemi occupant, Detonation rien. Descriptions deck
+        //                builder synchronisees. Pure logique, aucun champ [Networked] touche.
+        // 121 (Leurres Ghostra avec reserve d'HP, 5 juin) : decision Lorenzo. Tous les leurres
+        //                NON-protecteurs (Standard residuels + Replique Fantome) passent de 1-hit a
+        //                200 HP ; la Replique Protectrice passe de 200 a 250 HP. Desormais TOUS les
+        //                leurres ENCAISSENT les degats (DecoyHelpers.HitDecoyByEnemyAction generalise)
+        //                et ne sont detruits qu'a 0 HP (renverse la regle Bible "un sort detruit le
+        //                leurre"). Charge Brutale qui s'arrete sur un leurre lui inflige ses degats au
+        //                lieu de le detruire d'office. HP de spawn centralise dans GetDecoyMaxHp.
+        //                Descriptions deck builder (Replique Fantome / Protectrice) synchronisees.
+        //                DecoySlot.HP existait deja -> aucun champ [Networked] ajoute, pas de regen.
+        public const int CombatRulesVersion = 121;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

@@ -43,19 +43,22 @@ namespace Nymora.Combat.View.HUD
             {
                 var s = c.Statuses[i];
                 if (s.Kind == StatusKind.None) continue;
+                // Patch 5 juin — affiche l'EFFET (« -1 PM »...) au lieu du nom enum. Cf StatusEffectLabel.
+                //   Statuts cachés (minuteur venin, réservés) renvoient "" et sont sautés.
+                string label = StatusEffectLabel.Describe(s.Kind, s.Magnitude);
+                if (string.IsNullOrEmpty(label)) continue;
                 if (count >= 4)
                 {
                     body += "\n<size=12><i><color=#888>... et plus</color></i></size>";
-                    return "\n\n<size=13><b><color=#c8b8ff>Statuses :</color></b></size>" + body;
+                    return "\n\n<size=13><b><color=#c8b8ff>Effets :</color></b></size>" + body;
                 }
                 int turnsLeft = s.TurnsLeft;
-                string magnitude = s.Magnitude > 0 ? $" ×{s.Magnitude}" : "";
                 string turnsStr = turnsLeft > 0 ? $" ({turnsLeft}t)" : "";
-                body += $"\n<size=13>• {s.Kind}{magnitude}{turnsStr}</size>";
+                body += $"\n<size=13>• {label}{turnsStr}</size>";
                 count++;
             }
             if (count == 0) return "";
-            return "\n\n<size=13><b><color=#c8b8ff>Statuses :</color></b></size>" + body;
+            return "\n\n<size=13><b><color=#c8b8ff>Effets :</color></b></size>" + body;
         }
 
         private static int ComputeStage(Combatant c)

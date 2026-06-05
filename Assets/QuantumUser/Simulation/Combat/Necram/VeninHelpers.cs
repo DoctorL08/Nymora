@@ -39,6 +39,12 @@ namespace Quantum
         public const int PutrefactionGainPerTickGlobal = 1;
         public const int PutrefactionGainCapPerNecramTurn = 2; // cap +2 PT/tour via marques appliquees
 
+        // Patch 5 juin — « les poisons durent 2 tours max ». Avant, les marques venin n'expiraient
+        // jamais par duree (consommation only). Desormais chaque application (re)pose le minuteur
+        // StatusKind.VeninDecay pour ce nombre de rounds ; a son expiration, ClearExpiredVenin vide
+        // les VeninStacks du porteur (cf TurnSystem fin de round).
+        public const int VeninDurationTurns = 2;
+
         /// <summary>
         /// Somme des marques venin actives sur tous les combattants vivants. Calcule la
         /// densite globale Floraison (1 valeur partagee, pas une "densite par camp").
@@ -111,9 +117,19 @@ namespace Quantum
             // travaille le poison MEME si la cible est saturee (applied=0, deja 4 marques qui ne
             // redescendent jamais). Cap +2 PT/tour conserve (PutrefactionMarksGainedThisTurn). DotImmune
             // (Voile Spectral) a deja court-circuite plus haut -> pas de PT (poison totalement nie).
-            // En 1v1 simple : on cherche le seul Necram vivant. En multi (Phase 6+) on tracera un
-            // VeninOwnerPlayerIndex sur le Combatant porteur si necessaire.
-            GainPutrefactionFromMarkApply(f, amount, currentTurn);
+            // Owner = le Necram dont l'EQUIPE != celle de la cible marquee (le venin est tjs pose sur
+            // un ennemi). Robuste en miroir Necram vs Necram (chacun recolte SES PT) ; en 1v1 simple le
+            // seul Necram est tjs l'ennemi de la cible. (Le cas Carapace Visqueuse marque l'attaquant :
+            // pas de Necram en face -> 0 PT, ce qui est correct, c'est une riposte Ghostra.)
+            // En multi (Phase 6+) il faudra un VeninOwnerPlayerIndex par porteur.
+            GainPutrefactionFromMarkApply(f, amount, currentTurn, target->PlayerIndex);
+
+            // Patch 5 juin — « les poisons durent 2 tours max » : (re)pose le minuteur d'expiration
+            // a chaque application (refresh), MEME si la cible est saturee (applied=0) -> le Necram
+            // entretient son poison et prolonge sa duree de 2 rounds. A l'expiration de VeninDecay,
+            // ClearExpiredVenin (TurnSystem fin de round) vide les marques.
+            StatusHelper.Apply(target, StatusKind.VeninDecay, magnitude: 0,
+                turnsLeft: VeninDurationTurns, currentTurn);
 
             if (applied <= 0)
             {
@@ -129,6 +145,26 @@ namespace Quantum
         {
             if (target == null) return;
             target->VeninStacks = 0;
+        }
+
+        /// <summary>
+        /// Patch 5 juin — « les poisons durent 2 tours max ». A appeler en fin de round (apres
+        /// StatusHelper.DecrementAllOnTurnEnd, qui a deja expire les minuteurs VeninDecay echus).
+        /// Pour chaque combattant qui porte encore des VeninStacks mais dont le minuteur VeninDecay
+        /// a expire (plus actif), on vide les marques : le poison a vecu ses 2 tours sans etre
+        /// rafraichi par une nouvelle application. Les marques consommees (Detonation/Virus Fatal)
+        /// passent deja par VeninStacks=0 et sont ignorees ici (VeninStacks <= 0).
+        /// </summary>
+        public static void ClearExpiredVenin(Frame f)
+        {
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->VeninStacks <= 0) continue;
+                if (StatusHelper.Has(c, StatusKind.VeninDecay)) continue; // minuteur encore actif
+                Log.Info($"[Venin] Marques expirees ({VeninDurationTurns} tours ecoules) sur P{c->PlayerIndex} : {c->VeninStacks} -> 0");
+                c->VeninStacks = 0;
+            }
         }
 
         /// <summary>
@@ -245,8 +281,10 @@ namespace Quantum
 
             // Gain Putrefaction Necram : +1 PT par tick global (Bible "tour ou une unite
             // ennemie subit du DoT venin"). NON cape par PutrefactionMarksGainedThisTurn
-            // (ce cap concerne uniquement les gains "par marque appliquee").
-            GainPutrefactionFromTick(f);
+            // (ce cap concerne uniquement les gains "par marque appliquee"). Owner = le Necram
+            // dont l'EQUIPE != celle de la cible qui tick (cf ApplyMark) -> en miroir chaque
+            // Necram gagne ses PT quand SON venin tick sur l'ennemi.
+            GainPutrefactionFromTick(f, target->PlayerIndex);
 
             if (marqueSacBonus > 0)
             {
@@ -282,9 +320,13 @@ namespace Quantum
             return true;
         }
 
-        // ===== Putrefaction gain hooks (1v1 — owner = unique Necram vivant) =====
+        // ===== Putrefaction gain hooks =====
+        // Owner du venin = le Necram vivant dont l'EQUIPE (PlayerIndex) != celle de la cible
+        // affectee. Le venin etant toujours pose sur un ENNEMI du Necram, ce Necram est forcement
+        // l'auteur en 1v1 (mirror inclus). En 2v2/3v3 (Phase 6+) il faudra tracer un
+        // VeninOwnerPlayerIndex par porteur pour lever l'ambiguite a plusieurs Necram par camp.
 
-        private static void GainPutrefactionFromMarkApply(Frame f, int marksApplied, int currentTurn)
+        private static void GainPutrefactionFromMarkApply(Frame f, int marksApplied, int currentTurn, int targetPlayerIndex)
         {
             if (marksApplied <= 0) return;
             int maxRes = CombatantStats.GetMaxResource(NymoraClass.Necram);
@@ -293,6 +335,7 @@ namespace Quantum
             {
                 if (c->Class != NymoraClass.Necram) continue;
                 if (c->HP <= 0) continue;
+                if (c->PlayerIndex == targetPlayerIndex) continue; // owner = Necram d'en face (pas la cible/son camp)
                 int alreadyGained = c->PutrefactionMarksGainedThisTurn;
                 int remainingCap = PutrefactionGainCapPerNecramTurn - alreadyGained;
                 if (remainingCap <= 0) return;
@@ -310,7 +353,7 @@ namespace Quantum
             }
         }
 
-        private static void GainPutrefactionFromTick(Frame f)
+        private static void GainPutrefactionFromTick(Frame f, int targetPlayerIndex)
         {
             int maxRes = CombatantStats.GetMaxResource(NymoraClass.Necram);
             var filter = f.Filter<Combatant>();
@@ -318,6 +361,7 @@ namespace Quantum
             {
                 if (c->Class != NymoraClass.Necram) continue;
                 if (c->HP <= 0) continue;
+                if (c->PlayerIndex == targetPlayerIndex) continue; // owner = Necram d'en face (pas la cible/son camp)
                 int before = c->Resource;
                 c->Resource = before + PutrefactionGainPerTickGlobal > maxRes
                     ? maxRes

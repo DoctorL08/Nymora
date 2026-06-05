@@ -187,7 +187,7 @@ namespace Quantum
         // 2.16 — Nightseer Signature TRAQUENARD (Bible V7.1).
         public const int TraquenardDmgBase            = 280;  // dgts cible
         public const int TraquenardDmgBonusIfMarked   = 80;   // +80 si target Traque/Voile/Empreinte (= 360 total)
-        public const int TraquenardParalysiePMMalus   = 3;    // -3 PM au prochain tour cible
+        public const int TraquenardParalysiePMMalus   = 2;    // -2 PM au prochain tour cible (nerf 5 juin : etait 3)
         public const int TraquenardParalysieAPMalus   = 2;    // -2 PA au prochain tour cible
         public const int TraquenardParalysieTurns     = 1;    // 1 tour actif (skip-decrement convention)
         public const int TraquenardCooldownTurns      = 4;    // 4 tours apres usage (re-castable si PR remonte a 4)
@@ -1113,7 +1113,10 @@ namespace Quantum
                     def = new SpellDef
                     {
                         PACost = 4,
-                        Shape = TargetingShape.SingleTile, // AoE 2x2 hardcoded dans SpellSystem
+                        // Patch 5 juin (choix Lorenzo) : vraie AoE carrée 3x3 (9 cases). Avant : SingleTile
+                        //   (mono-case) -> l'« AoE 2x2 » annoncée n'avait jamais été codée. Square3x3 est géré
+                        //   par TargetingResolver (sim) ET par le preview View (même resolver) -> AoE visible.
+                        Shape = TargetingShape.Square3x3,
                         Filter = TargetingFilter.AnyTile,
                         RangeMin = 1,
                         RangeMax = DetonationOniriqueRangeMaxBase, // 5 ; override a 10 si hgSpend >= 2 (handler)

@@ -1920,16 +1920,17 @@ namespace Quantum
                         }
 
                         // 3.7.a.i.4 — Bible V7.1 Ghostra : un leurre stoppe la Charge (visuellement
-                        // indiscernable de la vraie). Le caster s'arrete sur la case precedente, le
-                        // leurre est detruit (Bible "sort qui touche un leurre le detruit"). Pas de
-                        // damage (le sort a touche un leurre, pas une cible vivante).
-                        // 3.7.b.i — DestroyByEnemyAction applique le heal Bible-conforme selon Kind
-                        // (Réplique Fantôme +40 HP, Réplique Protectrice +60 HP, Standard pas de heal).
+                        // indiscernable de la vraie). Le caster s'arrete sur la case precedente.
+                        // Patch 5 juin (Lorenzo) — les leurres ont desormais des HP : la charge leur
+                        // inflige ses degats (HitDecoyByEnemyAction) au lieu de les detruire en 1 coup.
+                        // Le leurre survit si sa reserve d'HP > degats charge (200/250 vs 180). Heal
+                        // Bible-conforme applique seulement s'il tombe a 0 (DestroyByEnemyAction interne).
                         if (DecoyHelpers.TryFindEnemyDecoyForCaster(f, caster->PlayerIndex, cx, cy,
                             out Combatant* decoyGhostra, out int decoySlot))
                         {
-                            Log.Info($"[Spell] Charge Brutale : stoppee par leurre Ghostra P{decoyGhostra->PlayerIndex} en ({cx},{cy}) — leurre detruit, pas de damage");
-                            DecoyHelpers.DestroyByEnemyAction(decoyGhostra, decoySlot);
+                            bool cbDecoyDestroyed = DecoyHelpers.HitDecoyByEnemyAction(
+                                decoyGhostra, decoySlot, SpellRegistry.ChargeBrutaleDamage);
+                            Log.Info($"[Spell] Charge Brutale : stoppee par leurre Ghostra P{decoyGhostra->PlayerIndex} en ({cx},{cy}) — {SpellRegistry.ChargeBrutaleDamage} dgts au leurre ({(cbDecoyDestroyed ? "DETRUIT" : "survit")})");
                             break;
                         }
 
@@ -1987,8 +1988,22 @@ namespace Quantum
                         }
                     }
 
-                    // Damage 180 a la cible bloquante si presente.
+                    // Patch 5 juin — Charge Brutale ne touche QUE si elle finit au corps a corps. Si un
+                    //   piege REPULSANT (Bondissant) du Nightseer a catapulte le caster hors de sa case
+                    //   d'arrivee prevue (finalX/finalY, adjacente a la cible) pendant MoveNonPM / les
+                    //   triggers de cases traversees, la charge est INTERROMPUE -> pas de degats. Avant,
+                    //   les 180 partaient meme apres ejection. On verifie aussi que le caster est vivant
+                    //   (mort possible sur un Filet/Mine traverse).
+                    bool chargeConnected = caster->HP > 0
+                                           && caster->GridX == finalX && caster->GridY == finalY;
+                    if (hitTarget != EntityRef.None && !chargeConnected)
+                    {
+                        Log.Info($"[Spell] Charge Brutale : INTERROMPUE — caster en ({caster->GridX},{caster->GridY}) != arrivee prevue ({finalX},{finalY}) (piege repulsant ?) ou mort -> aucun degat sur la cible.");
+                    }
+
+                    // Damage 180 a la cible bloquante si presente ET si la charge a connecte (melee).
                     if (hitTarget != EntityRef.None
+                        && chargeConnected
                         && f.Unsafe.TryGetPointer<Combatant>(hitTarget, out Combatant* hitC))
                     {
                         int hpBeforeHit = hitC->HP;
@@ -2249,23 +2264,17 @@ namespace Quantum
                     Log.Info($"[Spell] Sang Bouillant : actif {SpellRegistry.SangBouillantTurns} rounds sur P{caster->PlayerIndex}");
                     break;
 
-                // Refonte 29 mai — Salve Mortelle "chaîne tes embûches" : déclenche les pièges du
-                //   Nightseer situés sous la croix sur les ennemis qui s'y trouvent (dégâts piège +
-                //   Traqué + chaîne de mines). Les 200/120 + Traqué sont déjà appliqués par le loop.
+                // Patch 5 juin — Salve Mortelle ET Détonation Onirique "déclenchent tes embûches" sous
+                //   leur zone d'effet. Décision Lorenzo « détoner tous (chaîne) » : TOUS les pièges du
+                //   Nightseer sous l'AoE partent, qu'un ennemi soit dessus ou non (ennemi présent =
+                //   dégâts/catapulte + Traqué + chaîne mines + PR ; case vide = piège consommé sans
+                //   effet). Avant : Salve ne déclenchait que sur un ennemi occupant, Détonation rien du
+                //   tout. Les dégâts directs (Salve 200/120 + Traqué, Détonation 170 + 80 si pièges)
+                //   sont déjà appliqués par le damage loop ; ici on ne gère que la détonation des pièges.
                 case SpellId.NightseerSalveMortelle:
+                case SpellId.NightseerDetonationOnirique:
                 {
-                    for (int i = 0; i < effectCount; i++)
-                    {
-                        int idx = effectBuffer[i];
-                        int scx = idx % GridConstants.Width;
-                        int scy = idx / GridConstants.Width;
-                        if (FogHelpers.GetTrapOwner(f, scx, scy) != caster->PlayerIndex) continue;
-                        EntityRef occ = GridHelpers.GetOccupant(f, scx, scy);
-                        if (occ == EntityRef.None) continue;
-                        if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* occC)) continue;
-                        if (occC->PlayerIndex == caster->PlayerIndex || occC->HP <= 0) continue;
-                        FogHelpers.TryTriggerTrapOnEnter(f, occ, occC, scx, scy, currentTurn);
-                    }
+                    FogHelpers.DetonateOwnTrapsInArea(f, effectBuffer, effectCount, caster->PlayerIndex, currentTurn);
                     break;
                 }
 

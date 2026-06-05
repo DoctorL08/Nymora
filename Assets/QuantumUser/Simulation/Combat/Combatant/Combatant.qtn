@@ -200,9 +200,12 @@ component Combatant
     //     - ShieldActive (passe a travers les boucliers)
     //     - DamageReductionPercent (Garde Protectrice Colossar 30%)
     //     - Densite Inerte (passif Colossar 8% par obstacle, cap 24%)
-    //   Les marques NE expirent PAS par duree (pas de TurnsLeft) — elles restent jusqu'a
-    //   consommation par Detonation Virulente, Virus Fatal (signature) ou kill+Morsure
-    //   Putride (transfert).
+    //   Patch 5 juin — « les poisons durent 2 tours max » : les marques expirent desormais
+    //   VeninHelpers.VeninDurationTurns (2) rounds apres la DERNIERE application (minuteur
+    //   StatusKind.VeninDecay refresh a chaque ApplyMark, vide par VeninHelpers.ClearExpiredVenin
+    //   en fin de round). Elles peuvent aussi etre consommees avant par Detonation Virulente,
+    //   Virus Fatal (signature) ou kill+Morsure Putride (transfert). (Avant ce patch : pas
+    //   d'expiration par duree, consommation only.)
     Int32 VeninStacks;
 
     // 3.4 — Necram : tour du dernier tick venin sur ce porteur. Anti-double-tick si

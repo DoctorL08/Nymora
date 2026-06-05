@@ -209,8 +209,15 @@ namespace Nymora.Combat.View.HUD
                     EntityRef occ = GridHelpers.GetOccupant(frame, nx, ny);
                     bool occupied = occ != EntityRef.None;
                     if (occupied && !ignoreEnemyOccupants) continue;
-                    // Note : on n'exclut PAS les obstacles ici car GridHelpers.IsWalkable les
-                    // rejette deja (Pilier/Mur Colossar non traversables, meme via Pas Spectral).
+                    // FIX prévisu PM (5 juin) : les obstacles (Pilier/Mur/Faille) ne posent PAS
+                    // Walkable=0 (ils sont trackés séparément via ObstacleHelpers, comme dans la sim
+                    // et ViewPathfinder). L'ancien commentaire « IsWalkable les rejette déjà » était
+                    // FAUX : ce BFS croyait traverser un pilier en ligne droite -> il marquait la case
+                    // derrière le pilier comme atteignable (coût court) alors que le vrai chemin
+                    // (ViewPathfinder) la contourne -> le chemin jaune affichait 5 cases pour une case
+                    // inatteignable avec les PM dispos. On exclut désormais les obstacles, exactement
+                    // comme ViewPathfinder.IsBlocked, pour que portée verte + chemin jaune soient cohérents.
+                    if (ObstacleHelpers.HasObstacleAt(frame, nx, ny)) continue;
                     // PATCH #8 — un leurre Ghostra bloque le deplacement (silhouette, comme dans la
                     // sim via HasAnyDecoyAt) : la portee verte s'arrete aux leurres au lieu de les
                     // traverser. Coherent avec ViewPathfinder.IsBlocked.

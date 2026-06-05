@@ -43,6 +43,10 @@ namespace Nymora.Combat.View.HUD
         [SerializeField] private Color _bigDamageColor = new Color(1f, 0.55f, 0.12f, 1f);
         [Tooltip("Couleur des chiffres de bouclier (gain +N / absorption -N). Bleu spectral, calé sur le tooltip.")]
         [SerializeField] private Color _shieldColor = new Color(0.5f, 0.78f, 1f, 1f);
+        [Tooltip("Couleur du flottant de perte de PA (rouge rubis, calé sur la gemme PA).")]
+        [SerializeField] private Color _paLossColor = new Color(0.93f, 0.35f, 0.35f, 1f);
+        [Tooltip("Couleur du flottant de perte de PM (vert, calé sur la gemme PM).")]
+        [SerializeField] private Color _pmLossColor = new Color(0.45f, 0.85f, 0.45f, 1f);
 
         // Signature "SMASH!!" — dark fantasy / trash. Mot percutant + chiffre dessous, sur une
         // eclaboussure de sang generee par code (BloodSplatSprite). Police Anton (lourde).
@@ -112,6 +116,19 @@ namespace Nymora.Combat.View.HUD
             if (amount == 0) return;
             string text = amount < 0 ? amount.ToString() : "+" + amount;
             SpawnNumber(worldPos, text, _shieldColor, 0f);
+        }
+
+        /// <summary>
+        /// Patch 5 juin — flottant de perte de ressource d'action/mouvement : "-N PA" (rouge) ou
+        /// "-N PM" (vert). <paramref name="amount"/> &lt; 0 = perte (affiché "-N unit"), &gt; 0 = "+N unit".
+        /// <paramref name="isPm"/> choisit la couleur (PM vert / PA rouge).
+        /// </summary>
+        public void SpawnResourceDelta(Vector3 worldPos, int amount, bool isPm)
+        {
+            if (amount == 0) return;
+            string unit = isPm ? " PM" : " PA";
+            string text = (amount < 0 ? amount.ToString() : "+" + amount) + unit;
+            SpawnNumber(worldPos, text, isPm ? _pmLossColor : _paLossColor, 0f);
         }
 
         private void SpawnNumber(Vector3 worldPos, string text, Color color, float emphasis01)

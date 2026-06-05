@@ -28,9 +28,14 @@ namespace Nymora.Combat.View
     /// </summary>
     public static class ViewPathfinder
     {
-        public const int Width = 15;
-        public const int Height = 17;
-        public const int Count = Width * Height;
+        // FIX 5 juin : ces constantes etaient restees a 15x17 alors que la grille a ete reduite a
+        // 10x10 le 17 mai (POLISH-5e). Le tie-break A* (index = y*Width+x) divergeait donc de celui
+        // de la sim (AStarPathfinder, Width = GridConstants.Width=10) -> ViewPathfinder n'etait plus
+        // "bit-identique" au chemin de la sim comme promis (chemins a cout egal pouvaient differer).
+        // On lit desormais GridConstants (source unique, plus de derive possible).
+        public const int Width = Quantum.GridConstants.Width;
+        public const int Height = Quantum.GridConstants.Height;
+        public const int Count = Quantum.GridConstants.Count;
 
         private const int Unreachable = -1;
         private const int Infinity = int.MaxValue;

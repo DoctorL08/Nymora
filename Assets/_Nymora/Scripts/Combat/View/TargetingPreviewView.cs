@@ -155,6 +155,16 @@ namespace Nymora.Combat.View
                 {
                     casterX = combatant.GridX;
                     casterY = combatant.GridY;
+                    // Fix 5 juin — Détonation Onirique : l'option 2 PR double la portée (5 -> 10). Le sim
+                    //   l'applique au cast (auto-conso si PR dispo) AVANT le bonus de phase ; on le reflète
+                    //   ici pour que les cases gagnées soient réellement affichées comme castables (avant,
+                    //   la portée preview restait bloquée à 5 alors que le sort partait jusqu'à 10).
+                    if (_hudController != null && _hudController.ArmedSpell.HasValue
+                        && _hudController.ArmedSpell.Value == SpellId.NightseerDetonationOnirique
+                        && combatant.Resource >= SpellRegistry.DetonationOniriquePROptionCost)
+                    {
+                        rangeMax = SpellRegistry.DetonationOniriqueRangeMaxBoosted;
+                    }
                     // Fix 5 juin (B5/#11) : applique le +1 portée du passif Nightseer P2+ au PREVIEW.
                     //   Le sim l'applique déjà au cast (SpellSystem.effectiveRangeMax) ; sans ça la
                     //   case gagnée en phase 2 n'apparaissait pas (bleu castable / rouge cible).

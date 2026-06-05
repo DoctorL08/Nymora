@@ -1,5 +1,6 @@
 using System.Collections;
 using Nymora.Combat.View.Animation;
+using Nymora.Core.View;
 using Quantum;
 using UnityEngine;
 
@@ -59,6 +60,18 @@ namespace Nymora.Combat.View
         [Tooltip("Piège Bondissant (catapulte) — overlay JAUNE pour le distinguer (refonte 29 mai).")]
         [SerializeField] private Color _bondissantColor = new Color(0.98f, 0.85f, 0.15f, 0.95f);
 
+        [Header("Flèche de direction (Piège Bondissant, owner only — patch 5 juin)")]
+        [Tooltip("Couleur de la flèche SVG indiquant la direction d'éjection choisie. Visible " +
+                 "UNIQUEMENT par le poseur (le casteur).")]
+        [SerializeField] private Color _bondissantArrowColor = new Color(1f, 0.97f, 0.55f, 1f);
+        [Tooltip("Taille MONDE cible de la flèche, en units (une case ≈ 2 units -> ~0.4-0.7 pour une " +
+                 "petite flèche au centre du piège). Le scale réel est CALCULÉ depuis les bounds du " +
+                 "sprite SVG importé (dont la taille monde est imprévisible), donc cette valeur reste " +
+                 "stable quel que soit l'import.")]
+        [SerializeField, Min(0.05f)] private float _arrowWorldSize = 0.3f;
+        [Tooltip("Offset de sortingOrder de la flèche au-dessus de la rune du piège.")]
+        [SerializeField] private int _arrowSortingOffset = 3;
+
         [Header("Rendu")]
         [Tooltip("Offset de sortingOrder par rapport a la tile de base (1 = juste au-dessus du sol, " +
                  "aligne sur TerrainView).")]
@@ -85,6 +98,38 @@ namespace Nymora.Combat.View
         private TrapKind[] _currentKind;
         private int[] _currentOwner;
         private Coroutine[] _emergeCos; // J8 — anim "sort du sol" par overlay
+
+        // Patch 5 juin — flèche de direction du Piège Bondissant (owner only). Un overlay par case,
+        // créé inactif, activé/orienté dans LateUpdate quand un Bondissant du viewer est posé.
+        private GameObject[] _arrowGOs;
+        private SpriteRenderer[] _arrowRenderers;
+        private static Sprite _arrowSpriteCache;
+        private static bool _arrowSpriteLoaded;
+
+        private static Sprite GetArrowSprite()
+        {
+            if (_arrowSpriteLoaded) return _arrowSpriteCache;
+            _arrowSpriteLoaded = true;
+            _arrowSpriteCache = Resources.Load<Sprite>("UI/Icons/direction_arrow");
+            if (_arrowSpriteCache == null)
+            {
+                Debug.LogWarning("[Nymora.TrapView] direction_arrow.svg introuvable dans Resources/UI/Icons " +
+                                 "(import SVG -> TexturedSprite). La flèche de direction du Piège Bondissant " +
+                                 "ne s'affichera pas tant que l'asset n'est pas importé.");
+            }
+            return _arrowSpriteCache;
+        }
+
+        // Convertit _arrowWorldSize (units) en scale local, depuis la plus grande dimension monde du
+        // sprite (bounds = taille à scale 1). Rend la flèche petite et stable quelle que soit la
+        // taille monde aléatoire du SVG TexturedSprite importé.
+        private float ComputeArrowScale(Sprite sprite)
+        {
+            if (sprite == null) return _arrowWorldSize;
+            Vector3 size = sprite.bounds.size;
+            float maxDim = Mathf.Max(size.x, size.y);
+            return maxDim > 0.0001f ? _arrowWorldSize / maxDim : _arrowWorldSize;
+        }
 
         private void Awake()
         {
@@ -128,6 +173,12 @@ namespace Nymora.Combat.View
             _currentKind = new TrapKind[count];
             _currentOwner = new int[count];
             _emergeCos = new Coroutine[count];
+            _arrowGOs = new GameObject[count];
+            _arrowRenderers = new SpriteRenderer[count];
+            Sprite arrowSprite = GetArrowSprite();
+            // Scale calculé depuis les bounds RÉELS du sprite (taille monde SVG imprévisible) pour
+            // atteindre _arrowWorldSize units, peu importe l'import. Évite la flèche géante.
+            float arrowScale = ComputeArrowScale(arrowSprite);
 
             for (int y = 0; y < _height; y++)
             {
@@ -161,6 +212,23 @@ namespace Nymora.Combat.View
                     _overlayAnimators[idx] = anim;
                     _currentKind[idx] = TrapKind.None;
                     _currentOwner[idx] = -1;
+
+                    // Patch 5 juin — flèche de direction (Piège Bondissant, owner only). Enfant de la
+                    //   tile (pas de l'overlay rune : évite d'hériter de son scale 2x / flip mines).
+                    //   Sortant au-dessus de la rune. Sprite null toléré (warning loggé une fois) -> juste
+                    //   pas de flèche tant que le SVG n'est pas importé.
+                    var arrowGo = new GameObject($"TrapDirArrow_{x}_{y}");
+                    arrowGo.transform.SetParent(tile.transform, false);
+                    arrowGo.transform.localPosition = Vector3.zero;
+                    arrowGo.transform.localScale = new Vector3(arrowScale, arrowScale, 1f);
+                    var asr = arrowGo.AddComponent<SpriteRenderer>();
+                    asr.sortingLayerName = tile.SortingLayerName;
+                    asr.sortingOrder = sr.sortingOrder + _arrowSortingOffset;
+                    asr.sprite = arrowSprite;
+                    asr.color = _bondissantArrowColor;
+                    arrowGo.SetActive(false);
+                    _arrowGOs[idx] = arrowGo;
+                    _arrowRenderers[idx] = asr;
                 }
             }
 
@@ -252,6 +320,44 @@ namespace Nymora.Combat.View
                             }
                         }
                     }
+                    // Patch 5 juin — flèche de direction du Piège Bondissant, visible UNIQUEMENT par le
+                    //   poseur (owner == viewer). Orientée vers la case d'éjection : on convertit la
+                    //   direction grille (TrapDir) en angle ÉCRAN via la projection iso (la flèche SVG
+                    //   pointe +x à 0°). Cachée si pas un Bondissant, pas le viewer, pas de direction
+                    //   stockée (dir 0 = fallback runtime), ou sprite SVG absent.
+                    var arrowGo = _arrowGOs[idx];
+                    if (arrowGo != null)
+                    {
+                        var asr = _arrowRenderers[idx];
+                        byte dir = FogHelpers.GetTrapDir(frame, x, y);
+                        bool showArrow = show && kind == TrapKind.Bondissant && owner == viewer
+                                         && dir != 0 && asr != null && asr.sprite != null;
+                        if (showArrow)
+                        {
+                            int adx = 0, ady = 0;
+                            switch (dir)
+                            {
+                                case 1: adx = 1; break;
+                                case 2: adx = -1; break;
+                                case 3: ady = 1; break;
+                                case 4: ady = -1; break;
+                            }
+                            Vector3 hereW = IsoProjection.GridToWorld(x, y,
+                                _gridRenderer.TileWorldWidth, _gridRenderer.TileWorldHeight);
+                            Vector3 thereW = IsoProjection.GridToWorld(x + adx, y + ady,
+                                _gridRenderer.TileWorldWidth, _gridRenderer.TileWorldHeight);
+                            Vector2 dWorld = (Vector2)(thereW - hereW);
+                            float ang = Mathf.Atan2(dWorld.y, dWorld.x) * Mathf.Rad2Deg;
+                            arrowGo.transform.localRotation = Quaternion.Euler(0f, 0f, ang);
+                            asr.color = _bondissantArrowColor;
+                            if (!arrowGo.activeSelf) arrowGo.SetActive(true);
+                        }
+                        else if (arrowGo.activeSelf)
+                        {
+                            arrowGo.SetActive(false);
+                        }
+                    }
+
                     // #23 (révisé) — contour de CASE en couleur d'équipe : visible UNIQUEMENT quand
                     //   le piège est affiché ET en match miroir. Géré hors du if(show)/else pour aussi
                     //   CACHER le contour quand le piège disparaît. GetTileView = lookup tableau (cheap).

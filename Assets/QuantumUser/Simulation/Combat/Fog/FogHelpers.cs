@@ -229,6 +229,27 @@ namespace Quantum
             //   COURANTE de l'enterer (move déjà appliqué -> pas de ré-entrance).
             if (trap == TrapKind.Bondissant)
             {
+                // Stoïcisme / Ancrage : "rien ne me déplace". La catapulte est un DÉPLACEMENT FORCÉ
+                //   -> annulée sur une cible AnchorImmune, exactement comme le push standard
+                //   (PushAndTriggerEx), l'Empoignade (pull) et l'Échange Spectral (swap). Le piège est
+                //   tout de même DÉCLENCHÉ : consommé + Traqué + voile clear + PR au owner (l'immunité
+                //   protège du déplacement, pas du marquage — cohérent "reste appliqué"). Corrige le
+                //   Piège Bondissant qui catapultait le Colossar sous Stoïcisme.
+                if (StatusHelper.Has(entererC, StatusKind.AnchorImmune))
+                {
+                    Log.Info($"[Ancrage] Piège Bondissant ({x},{y}) : catapulte annulée sur P{entererC->PlayerIndex} (AnchorImmune) — piège tout de même déclenché.");
+                    ClearTrap(f, x, y);
+                    ClearVeil(f, x, y);
+                    MarkHelpers.ApplyMark(entererC, MarkKind.Traque,
+                        Quantum.SpellRegistry.ChampDeMinesEmpreinteTurns, trapOwner, currentTurn);
+                    var anchoredOwnerFilter = f.Filter<Combatant>();
+                    while (anchoredOwnerFilter.NextUnsafe(out EntityRef _, out Combatant* aoc))
+                    {
+                        if (aoc->PlayerIndex == trapOwner) { aoc->LastTrapTriggeredOnTurn = currentTurn; break; }
+                    }
+                    NightseerPassif.GainPrescienceForPlayer(f, trapOwner, currentTurn, "piège bondissant déclenché (cible ancrée)");
+                    return true;
+                }
                 byte dir = GetTrapDir(f, x, y);
                 int edx = 0, edy = 0;
                 switch (dir)
@@ -400,6 +421,44 @@ namespace Quantum
             // Refonte 29 mai — économie PR : +1 PR au Nightseer (piège déclenché), cappé +3/tour.
             NightseerPassif.GainPrescienceForPlayer(f, trapOwner, currentTurn, "piège déclenché");
             return true;
+        }
+
+        /// <summary>
+        /// Patch 5 juin — « déclenche tes embûches dans la zone » (Salve Mortelle + Détonation
+        /// Onirique). Détone TOUS les pièges du caster (`ownerPlayerIndex`) présents sur les cases
+        /// `cells` (AoE du sort) — décision Lorenzo « détoner tous (chaîne) » :
+        ///   - si un ENNEMI vivant se tient sur le piège -> déclenchement complet via
+        ///     TryTriggerTrapOnEnter (dégâts/catapulte + Traqué + chaîne mines + PR au owner) ;
+        ///   - sinon le piège est détoné À VIDE : consommé (ClearTrap+ClearVeil), sans effet
+        ///     (un Bondissant ne catapulte personne, un Filet/Mine n'a personne à toucher).
+        /// On ne touche QUE les pièges du caster (pas ceux de l'adversaire). Owner-filtre dans
+        /// TryTriggerTrapOnEnter respecté (l'enterer ennemi != owner -> déclenche bien).
+        /// </summary>
+        public static void DetonateOwnTrapsInArea(Frame f, int* cells, int count, int ownerPlayerIndex, int currentTurn)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                int idx = cells[i];
+                int x = idx % GridConstants.Width;
+                int y = idx / GridConstants.Width;
+                TrapKind kind = GetTrapKind(f, x, y);
+                if (kind == TrapKind.None) continue;
+                if (GetTrapOwner(f, x, y) != ownerPlayerIndex) continue; // seulement TES embûches
+
+                EntityRef occ = GridHelpers.GetOccupant(f, x, y);
+                if (occ != EntityRef.None
+                    && f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* occC)
+                    && occC->PlayerIndex != ownerPlayerIndex && occC->HP > 0)
+                {
+                    TryTriggerTrapOnEnter(f, occ, occC, x, y, currentTurn);
+                }
+                else
+                {
+                    Log.Info($"[Trap] Détonation chaîne : {kind} ({x},{y}) détoné à vide (aucun ennemi) -> consommé.");
+                    ClearTrap(f, x, y);
+                    ClearVeil(f, x, y);
+                }
+            }
         }
     }
 }

@@ -91,6 +91,15 @@ enum StatusKind : Byte
                                        //   sub-turn du porteur, +1 marque venin AUTO sur lui-même
                                        //   (auto-propagation). Skip si DotImmune.
 
+    VeninDecay                   = 33, // Minuteur d'expiration des marques de venin (patch 5 juin : « les
+                                       //   poisons durent 2 tours max »). Magnitude inutilisée (0). (RE)posé
+                                       //   à VeninHelpers.VeninDurationTurns rounds à CHAQUE application de
+                                       //   venin (refresh). Quand il expire (DecrementAllOnTurnEnd), le hook
+                                       //   VeninHelpers.ClearExpiredVenin (fin de round, après décrément) vide
+                                       //   les VeninStacks du porteur. Avant ce patch, les marques ne
+                                       //   expiraient JAMAIS par durée (consommation only). N'affecte pas le
+                                       //   layout (enum Byte) -> codegen Quantum + rebuild, pas de régén prefab/scène.
+
     // Necram (3.5.c.i) — refonte 29 mai : ex-Voile de Pestilence, désormais NUÉE DE SPORES.
     PestilenceAura               = 21, // Refonte : buff self du Necram 2 rounds (Nuée de Spores).
                                        //   Magnitude inutilisée (0). Hook (SpellSystem post-cast) :

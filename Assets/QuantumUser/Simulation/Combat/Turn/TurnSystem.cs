@@ -488,6 +488,11 @@ namespace Quantum
                 FogHelpers.DecrementAllVeilsOnTurnEnd(f, state->TurnNumber);
                 MarkHelpers.DecrementAllMarksOnTurnEnd(f, state->TurnNumber);
 
+                // Patch 5 juin — « les poisons durent 2 tours max » : apres le decrement (qui a expire
+                // les minuteurs VeninDecay echus), on vide les marques venin des porteurs dont le
+                // minuteur n'est plus actif. Apres DecrementAllOnTurnEnd pour lire l'etat post-expiration.
+                VeninHelpers.ClearExpiredVenin(f);
+
                 // Refonte 29 mai — Prescience : l'ancienne génération de fin de round (+1 sans dégâts /
                 //   -1 avec dégâts) est RETIRÉE. Nouvelle économie : +1 PR par piège posé / déclenché /
                 //   marque appliquée (cap +3/tour), gérée par NightseerPassif.GainPrescienceForPlayer

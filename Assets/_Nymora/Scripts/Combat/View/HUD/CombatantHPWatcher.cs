@@ -33,12 +33,20 @@ namespace Nymora.Combat.View.HUD
         [Tooltip("Offset Y additionnel pour les chiffres de bouclier (au-dessus des degats, pour ne pas se chevaucher).")]
         [SerializeField] private float _shieldExtraYOffsetWorld = 0.35f;
 
+        [Tooltip("Offset Y additionnel pour les flottants de perte PA/PM (au-dessus du bouclier).")]
+        [SerializeField] private float _resourceExtraYOffsetWorld = 0.7f;
+
         private readonly Dictionary<EntityRef, int> _lastHP = new Dictionary<EntityRef, int>(4);
         // J5 — suit la Magnitude du status ShieldActive par entite (gain / absorption).
         private readonly Dictionary<EntityRef, int> _lastShield = new Dictionary<EntityRef, int>(4);
         // PATCH #4 — suit LastCastSequence par entite pour detecter les casts de signature
         // depuis la FRAME (deterministe -> arme le bridge sur les 2 clients, pas que le caster).
         private readonly Dictionary<EntityRef, int> _lastCastSeq = new Dictionary<EntityRef, int>(4);
+        // Patch 5 juin — suit la magnitude des malus PM (MovementMalus) / PA (ActionMalus) par entite,
+        // pour spawn un flottant "-N PM" / "-N PA" quand le malus est appliqué (forced drain, pas le
+        // coût de sort normal).
+        private readonly Dictionary<EntityRef, int> _lastPmMalus = new Dictionary<EntityRef, int>(4);
+        private readonly Dictionary<EntityRef, int> _lastPaMalus = new Dictionary<EntityRef, int>(4);
         private Vector3 _centerOffset;
         private bool _gridReady;
 
@@ -53,6 +61,8 @@ namespace Nymora.Combat.View.HUD
             _lastHP.Clear();
             _lastShield.Clear();
             _lastCastSeq.Clear();
+            _lastPmMalus.Clear();
+            _lastPaMalus.Clear();
             if (_gridSettings == null)
             {
                 Debug.LogWarning("[CombatantHPWatcher] GridSettings manquant — cable dans l'Inspector.", this);
@@ -150,7 +160,45 @@ namespace Nymora.Combat.View.HUD
                     }
                 }
                 _lastShield[entity] = currentShield;
+
+                // --- Patch 5 juin : perte de PM (MovementMalus) / PA (ActionMalus) ---
+                //   On spawn "-N PM" / "-N PA" quand le malus APPARAÎT ou AUGMENTE (= drain forcé par
+                //   un effet : Rugissement, Ancrage, Provocation, Choc Sismique, Traquenard...). On ne
+                //   suit PAS le coût de sort normal (qui n'est pas un malus -> pas de bruit visuel).
+                int pmMalus = ReadStatusMagnitude(c, StatusKind.MovementMalus);
+                if (_lastPmMalus.TryGetValue(entity, out int prevPmMalus) && pmMalus > prevPmMalus)
+                {
+                    Vector3 pmPos = baseWorldPos;
+                    pmPos.y += _resourceExtraYOffsetWorld;
+                    _manager.SpawnResourceDelta(pmPos, -(pmMalus - prevPmMalus), isPm: true);
+                }
+                _lastPmMalus[entity] = pmMalus;
+
+                int paMalus = ReadStatusMagnitude(c, StatusKind.ActionMalus);
+                if (_lastPaMalus.TryGetValue(entity, out int prevPaMalus) && paMalus > prevPaMalus)
+                {
+                    Vector3 paPos = baseWorldPos;
+                    paPos.y += _resourceExtraYOffsetWorld + 0.3f; // légèrement au-dessus du flottant PM
+                    _manager.SpawnResourceDelta(paPos, -(paMalus - prevPaMalus), isPm: false);
+                }
+                _lastPaMalus[entity] = paMalus;
             }
+        }
+
+        /// <summary>
+        /// Magnitude du status `kind` actif (TurnsLeft > 0) sur le snapshot, 0 sinon. Sert aux malus
+        /// PM (MovementMalus) / PA (ActionMalus) pour le flottant de perte de ressource.
+        /// </summary>
+        private static int ReadStatusMagnitude(in Combatant c, StatusKind kind)
+        {
+            for (int s = 0; s < StatusHelper.SlotCount; s++)
+            {
+                if (c.Statuses[s].Kind == kind && c.Statuses[s].TurnsLeft > 0)
+                {
+                    return c.Statuses[s].Magnitude;
+                }
+            }
+            return 0;
         }
 
         /// <summary>

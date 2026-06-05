@@ -50,6 +50,7 @@ namespace Nymora.Combat.View
         private TileView _prevTile;
         private ObstacleView _prevObstacle;
         private CombatantView _prevCombatant;
+        private DecoyHoverProxy _prevHoveredDecoy; // patch 5 juin : barre d'HP leurre au survol
 
         private void Awake()
         {
@@ -137,14 +138,16 @@ namespace Nymora.Combat.View
             if (hoveredCombatant == null && _enableCombatantHover)
             {
                 hoveredDecoy = FindDecoyHoverProxyByMouse(mouseWorld);
-                if (hoveredDecoy != null)
-                {
-                    tooltipEntity = hoveredDecoy.GhostraParentEntity;
-                    // Ancre sur le GameObject du leurre survole PRECISEMENT (pas le 1er leurre
-                    // trouve par entite) : 2 leurres du meme Ghostra partagent l'EntityRef parent
-                    // mais sont des GameObjects distincts -> chacun a donc son propre tooltip.
-                    tooltipAnchor = hoveredDecoy.transform;
-                }
+                // Patch 5 juin (choix Lorenzo) — au survol d'un leurre on N'AFFICHE PLUS le tooltip du
+                //   vrai Ghostra : on montre la BARRE D'HP du leurre (gérée par DecoyHoverProxy). Donc
+                //   on ne renseigne PAS tooltipEntity ici (-> pas de tooltip Ghostra).
+            }
+            // Toggle de la barre d'HP du leurre survolé (et extinction du précédent).
+            if (hoveredDecoy != _prevHoveredDecoy)
+            {
+                if (_prevHoveredDecoy != null) _prevHoveredDecoy.SetHovered(false);
+                if (hoveredDecoy != null) hoveredDecoy.SetHovered(true);
+                _prevHoveredDecoy = hoveredDecoy;
             }
             UpdateCombatantHover(hoveredCombatant, tooltipEntity, tooltipAnchor);
 
@@ -312,6 +315,25 @@ namespace Nymora.Combat.View
             bool wantsUnit = FilterTargetsUnitSprite(filter) || isStraightLineSpell;
             bool wantsObstacle = FilterTargetsObstacleSprite(filter);
             if (!wantsUnit && !wantsObstacle) return false;
+
+            // FIX 5 juin — PRIORITÉ OBSTACLE (choix Lorenzo). Quand un sort peut viser un obstacle ET
+            // qu'un sprite d'obstacle (Pilier/Mur) est opaque-hit sous le curseur, on cible l'obstacle
+            // EN PRIORITÉ, même si un combattant le chevauche visuellement. Sans ça, le sprite haut du
+            // Colossar masquait ses propres piliers -> « très difficile de cibler ses piliers ». On
+            // EXCLUT les sorts en LIGNE DROITE (Choc Sismique / Charge Brutale) : eux visent l'ennemi
+            // le long de la ligne, on garde la priorité unité pour ne pas snapper sur un obstacle
+            // traversé. Les unités n'occupant jamais une case-obstacle, le seul conflit est le
+            // chevauchement visuel de sprites.
+            if (wantsObstacle && !isStraightLineSpell)
+            {
+                var obstaclePriority = FindObstacleViewByMouse(mouseWorld);
+                if (obstaclePriority != null)
+                {
+                    gx = obstaclePriority.GridX;
+                    gy = obstaclePriority.GridY;
+                    return true;
+                }
+            }
 
             if (wantsUnit)
             {

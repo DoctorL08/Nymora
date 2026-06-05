@@ -2,6 +2,7 @@ using System;
 using Nymora.Core.Data;
 using Nymora.Core.ScriptableObjects;
 using Quantum;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Button = UnityEngine.UI.Button;
@@ -56,6 +57,25 @@ namespace Nymora.Combat.View.HUD
         [SerializeField] private Button _endTurnButton;
         [SerializeField] private SpellTooltipView _tooltip;
         [SerializeField] private MatchEndOverlay _matchEndOverlay;
+
+        [Header("Badges Rubis PA/PM (gauche de la barre de sorts — patch 5 juin)")]
+        [Tooltip("Affiche 2 gemmes (PA en haut, PM en bas) du joueur local, juste à gauche de la barre.")]
+        [SerializeField] private bool _showResourceGems = true;
+        [Tooltip("Écart entre la barre et les gemmes (px). + = plus loin à gauche.")]
+        [SerializeField] private float _resourceGemsGap = 18f;
+        [Tooltip("Décalage manuel fin des gemmes (tuning visuel dans l'inspector).")]
+        [SerializeField] private Vector2 _resourceGemsExtraOffset = Vector2.zero;
+        [Tooltip("Taille d'une gemme (px).")]
+        [SerializeField] private float _resourceGemSize = 46f;
+        [Tooltip("Espace vertical entre la gemme PA et la gemme PM (px).")]
+        [SerializeField] private float _resourceGemSpacing = 6f;
+
+        private RectTransform _resourceGemsRoot;
+        private TMP_Text _paGemValue;
+        private TMP_Text _pmGemValue;
+        // PA = rubis rouge (cohérent avec les badges de coût des sorts) ; PM = vert (émeraude).
+        private static readonly Color PaGemColor = new Color(0.86f, 0.15f, 0.20f, 1f);
+        private static readonly Color PmGemColor = new Color(0.30f, 0.78f, 0.36f, 1f);
 
         // Etat armed (Option 2). Consume via ConsumeArmedSpell() pour le CombatInputController.
         private SpellId? _armedSpell;
@@ -408,6 +428,9 @@ namespace Nymora.Combat.View.HUD
             // 2.13.c : passe aussi le turnNumber pour calcul du cooldown signature.
             RefreshSlots(hasLocal ? local : default, hasLocal, state.TurnNumber, localTurn, enemyHpRatio);
 
+            // Patch 5 juin — badges Rubis PA/PM du joueur local, à gauche de la barre de sorts.
+            RefreshResourceGems(hasLocal ? local : default, hasLocal);
+
             // End Turn : seul le joueur actif peut le presser. (Si _debugAllPlayersControllable
             // est false et qu'on n'est pas le joueur actif, on grise le bouton.)
             if (_endTurnButton != null)
@@ -453,6 +476,94 @@ namespace Nymora.Combat.View.HUD
             {
                 _signatureEnhancer.SetUnlocked(valid && localTurn && IsSignatureUnlocked(c));
             }
+        }
+
+        // ====================================================================
+        // Badges Rubis PA / PM du joueur local (patch 5 juin) — créés au runtime,
+        // ancrés juste à GAUCHE de la barre de sorts (LayoutElement ignoreLayout +
+        // ancrage relatif à la barre -> robuste quelle que soit la position de la barre).
+        // ====================================================================
+
+        private void RefreshResourceGems(in Combatant c, bool valid)
+        {
+            if (!_showResourceGems) return;
+            EnsureResourceGems();
+            if (_resourceGemsRoot == null) return; // barre pas encore prête
+
+            bool show = valid && c.HP > 0;
+            if (_resourceGemsRoot.gameObject.activeSelf != show)
+            {
+                _resourceGemsRoot.gameObject.SetActive(show);
+            }
+            if (!show) return;
+
+            if (_paGemValue != null) _paGemValue.text = c.PA.ToString();
+            if (_pmGemValue != null) _pmGemValue.text = c.PM.ToString();
+        }
+
+        private void EnsureResourceGems()
+        {
+            if (_resourceGemsRoot != null) return;
+            RectTransform bar = SpellBarRect;
+            if (bar == null) return; // barre de sorts pas encore câblée -> on réessaiera au prochain refresh
+
+            var rootGO = new GameObject("ResourceGems(PA/PM)", typeof(RectTransform));
+            rootGO.transform.SetParent(bar, false);
+            _resourceGemsRoot = (RectTransform)rootGO.transform;
+            // Ignore un éventuel HorizontalLayoutGroup de la barre (sinon les gemmes seraient
+            // disposées comme des slots).
+            var le = rootGO.AddComponent<LayoutElement>();
+            le.ignoreLayout = true;
+            // Ancré au bord GAUCHE-centre de la barre, pivot à droite -> les gemmes débordent à gauche.
+            _resourceGemsRoot.anchorMin = _resourceGemsRoot.anchorMax = new Vector2(0f, 0.5f);
+            _resourceGemsRoot.pivot = new Vector2(1f, 0.5f);
+            _resourceGemsRoot.sizeDelta = new Vector2(_resourceGemSize, _resourceGemSize * 2f + _resourceGemSpacing);
+            _resourceGemsRoot.anchoredPosition = new Vector2(-_resourceGemsGap, 0f) + _resourceGemsExtraOffset;
+
+            // PA (haut) = rubis rouge ; PM (bas) = vert.
+            _paGemValue = CreateResourceGem("PaGem", PaGemColor, top: true);
+            _pmGemValue = CreateResourceGem("PmGem", PmGemColor, top: false);
+        }
+
+        // Crée une gemme (diamant arrondi + chiffre upright), ancrée en haut ou en bas du root.
+        // Même style que le badge de coût des SpellSlotView (CombatUiKit.ApplyRounded + rotation 45°).
+        private TMP_Text CreateResourceGem(string name, Color color, bool top)
+        {
+            var gemGO = new GameObject(name, typeof(RectTransform));
+            gemGO.transform.SetParent(_resourceGemsRoot, false);
+            var grt = (RectTransform)gemGO.transform;
+            grt.sizeDelta = new Vector2(_resourceGemSize, _resourceGemSize);
+            grt.anchorMin = grt.anchorMax = new Vector2(0.5f, top ? 1f : 0f);
+            grt.pivot = new Vector2(0.5f, top ? 1f : 0f);
+            grt.anchoredPosition = Vector2.zero;
+
+            // Diamant = carré arrondi tourné 45°.
+            var diamondGO = new GameObject("Gem", typeof(RectTransform));
+            diamondGO.transform.SetParent(grt, false);
+            var drt = (RectTransform)diamondGO.transform;
+            drt.anchorMin = Vector2.zero; drt.anchorMax = Vector2.one;
+            drt.offsetMin = Vector2.zero; drt.offsetMax = Vector2.zero;
+            drt.localRotation = Quaternion.Euler(0f, 0f, 45f);
+            drt.localScale = Vector3.one * 0.72f;
+            var img = diamondGO.AddComponent<Image>();
+            CombatUiKit.ApplyRounded(img, 6f);
+            img.color = color;
+            img.raycastTarget = false;
+
+            // Chiffre (valeur courante), non tourné.
+            var txtGO = new GameObject("Value", typeof(RectTransform));
+            txtGO.transform.SetParent(grt, false);
+            var trt = (RectTransform)txtGO.transform;
+            trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+            trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
+            var txt = txtGO.AddComponent<TextMeshProUGUI>();
+            txt.alignment = TextAlignmentOptions.Center;
+            txt.fontSize = 20f;
+            txt.fontStyle = FontStyles.Bold;
+            txt.color = Color.white;
+            txt.raycastTarget = false;
+            txt.enableWordWrapping = false;
+            return txt;
         }
 
         /// <summary>
@@ -546,13 +657,30 @@ namespace Nymora.Combat.View.HUD
             return cost;
         }
 
+        /// <summary>
+        /// Coût PA À AFFICHER (badge rubis + tooltip) = coût effectif + surcoût Provocation (+2 PA
+        /// quand le combattant porte Provoked, cf SpellSystem.OnCast). On affiche le surcoût car
+        /// toutes les cibles SAUF le provocateur le paient. Le GRISÉ des slots, lui, reste calculé
+        /// sur ComputeEffectivePaCost (sans le +2) : viser le provocateur coûte le coût de base, donc
+        /// on ne bloque jamais la contre-attaque sur le Colossar. Décision Lorenzo 5 juin (option A).
+        /// </summary>
+        private int ComputeDisplayPaCost(in Combatant c, in SpellDef def, int enemyHpRatio, int turnNumber)
+        {
+            int cost = ComputeEffectivePaCost(c, def, enemyHpRatio, turnNumber);
+            if (HasStatus(c, StatusKind.Provoked))
+            {
+                cost += SpellRegistry.ProvocationCostBumpNonCible;
+            }
+            return cost;
+        }
+
         /// <summary>PA à afficher dans le badge rubis (-1 = pas de badge : slot vide).</summary>
         private int ResolveBadgePaCost(SpellId spell, in Combatant c, bool valid, int turnNumber, int enemyHpRatio)
         {
             if (spell == SpellId.None) return -1;
             if (!SpellRegistry.TryGet(spell, out SpellDef def)) return -1;
             if (!valid) return def.PACost; // pas de combattant résolu → coût de base
-            return ComputeEffectivePaCost(c, def, enemyHpRatio, turnNumber);
+            return ComputeDisplayPaCost(c, def, enemyHpRatio, turnNumber);
         }
 
         // ---- Couleur du losange selon la catégorie du sort (offensif/tactique/survie) ----
@@ -728,7 +856,7 @@ namespace Nymora.Combat.View.HUD
             if (_tooltip == null) return;
             int pa = -1;
             if (_hasCachedLocal && SpellRegistry.TryGet(spell, out SpellDef def))
-                pa = ComputeEffectivePaCost(_cachedLocal, def, _cachedEnemyHpRatio, _cachedTurnNumber);
+                pa = ComputeDisplayPaCost(_cachedLocal, def, _cachedEnemyHpRatio, _cachedTurnNumber);
             _tooltip.Show(spell, anchor, pa);
         }
 
