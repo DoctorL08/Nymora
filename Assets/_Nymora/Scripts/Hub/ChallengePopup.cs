@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Cysharp.Threading.Tasks;
 using Nymora.Hub.Menu;
 using TMPro;
 using UnityEngine;
@@ -354,7 +355,7 @@ namespace Nymora.Hub
 
         // ====== Handlers d'actions ======
 
-        private void DefyTarget(HubAvatar target)
+        private async void DefyTarget(HubAvatar target)
         {
             if (target == null) { Hide(); return; }
             var targetSub = target.Sub;
@@ -370,8 +371,20 @@ namespace Nymora.Hub
                 Hide();
                 return;
             }
-            HubChatClient.Instance.SendChallenge(targetSub);
+            // Ferme le menu contextuel tout de suite (la vérif de deck est asynchrone).
             Hide();
+
+            // Garde deck : pas de défi sans deck équipé pour la classe sélectionnée — sinon
+            // l'adversaire accepte et poireaute pendant qu'on annule côté local (cf le TODO
+            // "cancel" de HubMatchTransition). On bloque donc AVANT l'envoi du défi.
+            var dbp = HubDeckBuilderPanel.Instance;
+            if (dbp == null || !await dbp.HasEquippedDeckForSelectedClassAsync())
+            {
+                HubNoticePopup.ShowNoDeck();
+                return;
+            }
+
+            HubChatClient.Instance?.SendChallenge(targetSub);
         }
 
         private void WhisperTarget(HubAvatar target)

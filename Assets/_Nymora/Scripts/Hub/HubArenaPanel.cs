@@ -135,6 +135,7 @@ namespace Nymora.Hub
             if (dbp.MyDecks == null || dbp.MyDecks.Count == 0)
             {
                 Debug.LogWarning($"[ArenaPanel] Aucun deck '{selectedClass}' equipe. Cree un deck dans le Deck Builder avant de lancer un combat.");
+                HubNoticePopup.ShowNoDeck();
                 return;
             }
             // Utilise le deck SELECTIONNE par l'utilisateur (clique en dernier dans la liste)

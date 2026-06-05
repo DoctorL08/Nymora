@@ -292,6 +292,29 @@ namespace Nymora.Hub
         }
 
         /// <summary>
+        /// Vrai si un deck est équipé pour la classe actuellement sélectionnée (Class Selector).
+        /// Force le fetch de la classe avant de lire MyDecks/SelectedDeck — même garde que les
+        /// entrées de combat (Arène IA, recherche ranked, défi casual envoyé/accepté). Retourne
+        /// false si le chargement échoue (backend KO) : l'appelant affiche alors la pop-up
+        /// "crée un deck" (cf <see cref="HubNoticePopup.ShowNoDeck"/>).
+        /// </summary>
+        public async UniTask<bool> HasEquippedDeckForSelectedClassAsync()
+        {
+            string selectedClass = SelectedClassPreferences.Get();
+            if (string.IsNullOrEmpty(selectedClass)) selectedClass = "Soulrender";
+            try
+            {
+                await EnsureClassLoadedAsync(selectedClass);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogWarning($"[DeckBuilderPanel] HasEquippedDeck… EnsureClassLoadedAsync({selectedClass}) échec : {ex.Message}");
+                return false;
+            }
+            return _myDecks != null && _myDecks.Count > 0 && SelectedDeck != null;
+        }
+
+        /// <summary>
         /// Lobby pré-combat (B1) — Récupère le MMR du joueur local via /profile/me, pour
         /// l'afficher dans le lobby et le diffuser en P2P à l'adversaire (PreCombatBridge.LocalMmr).
         /// Réutilise le NymoraApiClient + le token déjà gérés par ce panel. Retourne 0 si échec

@@ -181,7 +181,8 @@ namespace Nymora.Hub
             if (dbp.MyDecks == null || dbp.MyDecks.Count == 0 || dbp.SelectedDeck == null)
             {
                 _searching = false;
-                SetStatus($"Aucun deck '{selectedClass}' équipé.\nCrée un deck dans le Deck Builder d'abord.");
+                SetStatus($"Aucun deck '{selectedClass}' équipé.");
+                HubNoticePopup.ShowNoDeck();
                 return;
             }
 

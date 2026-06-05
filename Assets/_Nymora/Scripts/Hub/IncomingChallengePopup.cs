@@ -1,3 +1,4 @@
+using Cysharp.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -77,8 +78,17 @@ namespace Nymora.Hub
             Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(Nymora.Core.Audio.SoundId.ChallengeReceived);
         }
 
-        private void OnAcceptClicked()
+        private async void OnAcceptClicked()
         {
+            // Garde deck : impossible d'accepter un défi sans deck équipé. On refuse alors
+            // poliment (le challenger est notifié au lieu de timeouter) + pop-up "crée un deck".
+            var dbp = HubDeckBuilderPanel.Instance;
+            if (dbp == null || !await dbp.HasEquippedDeckForSelectedClassAsync())
+            {
+                HubNoticePopup.ShowNoDeck();
+                Respond(false);
+                return;
+            }
             Respond(true);
         }
 
