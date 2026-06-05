@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 namespace Nymora.Combat.View
 {
@@ -120,6 +121,13 @@ namespace Nymora.Combat.View
             float wheel = UnityEngine.Input.GetAxis("Mouse ScrollWheel");
             if (Mathf.Abs(wheel) < 0.0001f) return;
             if (!_camera.orthographic) return; // Phase 2 : caméra ortho iso
+
+            // #1 (5 juin) — molette contextuelle : pas de zoom combat si la souris est sur de l'UI
+            //   (chat / HUD via IsPointerOverGameObject) ou HORS de la fenêtre de jeu. Le chat
+            //   (ScrollRect) garde ainsi sa molette pour lui ; la map se zoome normalement.
+            if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+            Vector3 mp = UnityEngine.Input.mousePosition;
+            if (mp.x < 0f || mp.x > Screen.width || mp.y < 0f || mp.y > Screen.height) return;
 
             // Zoom centre sur curseur : capture le point monde sous la souris, change la taille
             // ortho, puis re-positionne pour garder ce point monde sous la souris.

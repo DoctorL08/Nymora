@@ -111,6 +111,8 @@ namespace Nymora.Hub
                 _historyText.lineSpacing = inCombatScene ? _historyLineSpacing : _historyLineSpacingHub;
             RefreshHistoryText();
             EnsureHistoryClickHandler();
+            // #34 (5 juin) : molette du chat plus rapide (ScrollRect.scrollSensitivity défaut = 1 = trop lent).
+            if (_scrollRect != null) _scrollRect.scrollSensitivity = 24f;
             EnsureBadges();
             RefreshBadges();
             if (HubChatClient.Instance != null)
