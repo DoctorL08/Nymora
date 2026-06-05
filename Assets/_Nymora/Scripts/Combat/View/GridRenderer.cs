@@ -28,6 +28,13 @@ namespace Nymora.Combat.View
 
         private GameObject[] _tiles;
 
+        /// <summary>Largeur monde d'une case iso (depuis GridSettings). 0 si settings manquant.
+        /// Utilisé par le contour de case d'équipe (MirrorOutlineHelper) pour tracer le losange.</summary>
+        public float TileWorldWidth => _settings != null ? _settings.TileWorldWidth : 0f;
+
+        /// <summary>Hauteur monde d'une case iso (depuis GridSettings). 0 si settings manquant.</summary>
+        public float TileWorldHeight => _settings != null ? _settings.TileWorldHeight : 0f;
+
         private void Awake()
         {
             QuantumCallback.Subscribe(this, (CallbackGameStarted c) => OnGameStarted(c.Game));

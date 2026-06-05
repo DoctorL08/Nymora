@@ -67,6 +67,9 @@ namespace Nymora.Combat.View.Obstacles
 
             _seenThisFrame.Clear();
 
+            // #23 — contour de case d'équipe (uniquement en match miroir). Constant sur le match.
+            bool mirror = MatchViewHelpers.IsMirrorMatch(frame);
+
             // 1. Iterate tous les Obstacle de la frame, spawn / update les vues.
             var filter = frame.Filter<Obstacle>();
             while (filter.Next(out EntityRef entity, out Obstacle data))
@@ -86,6 +89,19 @@ namespace Nymora.Combat.View.Obstacles
                     + _centerOffset;
 
                 view.UpdateData(data, worldPos);
+
+                // #23 — contour de CASE en couleur d'équipe sous l'obstacle (Pilier / Mur / Faille).
+                //   Attaché à l'obstacle (comme les combattants), rendu JUSTE DERRIÈRE son sprite
+                //   (sprite-1) : l'OBSTACLE reste au premier plan, le losange de case dépasse au sol
+                //   autour de sa base. (Un contour au niveau du sol ~56 serait lui totalement masqué
+                //   par l'obstacle qui rend sur la couche des combattants ~700+.)
+                if (view.Sprite != null)
+                {
+                    MirrorOutlineHelper.RefreshOnUnit(view.transform, worldPos,
+                        _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight,
+                        mirror, data.OwnerPlayerIndex,
+                        view.Sprite.sortingLayerID, view.Sprite.sortingOrder - 1);
+                }
             }
 
             // 2. Despawn les vues dont l'entity n'existe plus dans la frame (destroyed).
@@ -102,6 +118,7 @@ namespace Nymora.Combat.View.Obstacles
                 EntityRef key = _toDestroy[i];
                 if (_views.TryGetValue(key, out var view) && view != null)
                 {
+                    // #23 — le contour de case est enfant de l'obstacle -> détruit avec lui, rien à cacher.
                     Destroy(view.gameObject);
                 }
                 _views.Remove(key);

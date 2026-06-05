@@ -6,7 +6,7 @@ namespace Nymora.Combat.View
     /// #23 (5 juin) — CONFIG de l'outline d'équipe (match miroir). Porte les 2 couleurs d'équipe
     /// (schéma fixe par PlayerIndex) + l'épaisseur du liseré, et les pousse à <see cref="MirrorOutlineHelper"/>.
     ///
-    /// Le DESSIN du liseré (silhouette) est fait dans les vues d'objets (TrapView, DecoyView,
+    /// Le DESSIN du contour de CASE est fait dans les vues d'objets (TrapView puis DecoyView,
     /// ObstacleView, TerrainView) via MirrorOutlineHelper.Refresh ; le marquage n'apparaît qu'en
     /// match miroir (même classe), test fait dans les vues via Quantum.MatchViewHelpers.IsMirrorMatch.
     ///
@@ -22,8 +22,8 @@ namespace Nymora.Combat.View
         [SerializeField] private Color _teamColorP1 = new Color(1f, 0.55f, 0.16f, 1f);   // orange
 
         [Header("Rendu")]
-        [Tooltip("Épaisseur du liseré en unités monde (0.02 fin → 0.08 épais).")]
-        [SerializeField, Range(0.01f, 0.15f)] private float _outlineWidth = 0.05f;
+        [Tooltip("Épaisseur du trait du contour de case en unités monde (0.04 fin → 0.10 épais).")]
+        [SerializeField, Range(0.01f, 0.15f)] private float _outlineWidth = 0.07f;
 
         private void OnEnable() => Push();
 

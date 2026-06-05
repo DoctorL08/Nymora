@@ -227,8 +227,6 @@ namespace Nymora.Combat.View
                             sr.flipX = false;
                             sr.flipY = false;
                         }
-                        // #23 — liseré d'équipe épousant la silhouette du piège (caché hors miroir).
-                        MirrorOutlineHelper.Refresh(sr, mirror, owner);
                         if (!wasActive)
                         {
                             _overlayGOs[idx].SetActive(true);
@@ -254,6 +252,13 @@ namespace Nymora.Combat.View
                             }
                         }
                     }
+                    // #23 (révisé) — contour de CASE en couleur d'équipe : visible UNIQUEMENT quand
+                    //   le piège est affiché ET en match miroir. Géré hors du if(show)/else pour aussi
+                    //   CACHER le contour quand le piège disparaît. GetTileView = lookup tableau (cheap).
+                    MirrorOutlineHelper.Refresh(_gridRenderer.GetTileView(x, y),
+                        _gridRenderer.TileWorldWidth, _gridRenderer.TileWorldHeight,
+                        show && mirror, owner);
+
                     // Refonte 29 mai — Piège Bondissant DÉCLENCHÉ : la case passe de Bondissant à
                     //   rien (ClearTrap au trigger) -> bouffée de FUMÉE à la position de la case,
                     //   pour montrer clairement où/quand le piège a sauté. Spawn une seule fois.

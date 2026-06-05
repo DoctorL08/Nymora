@@ -152,6 +152,9 @@ namespace Nymora.Combat.View.Animation
             if (frame == null) return;
             if (!frame.TryGetSingleton<GridSingleton>(out _)) return;
 
+            // #23 — contour de case d'équipe (uniquement en match miroir). Constant sur le match.
+            bool mirror = MatchViewHelpers.IsMirrorMatch(frame);
+
             for (int y = 0; y < _height; y++)
             {
                 for (int x = 0; x < _width; x++)
@@ -162,6 +165,14 @@ namespace Nymora.Combat.View.Animation
 
                     ApplyTerrain(idx, kind);
                     _currentKind[idx] = kind;
+
+                    // #23 — contour de CASE en couleur d'équipe sous le terrain (aligné TrapView).
+                    //   Mis à jour au changement de terrain ; l'owner est stable le temps de vie du
+                    //   terrain. kind None -> show=false -> cache le contour quand le terrain expire.
+                    int owner = kind != TerrainKind.None ? FogHelpers.GetTerrainOwner(frame, x, y) : -1;
+                    MirrorOutlineHelper.Refresh(_gridRenderer.GetTileView(x, y),
+                        _gridRenderer.TileWorldWidth, _gridRenderer.TileWorldHeight,
+                        kind != TerrainKind.None && mirror, owner);
                 }
             }
         }

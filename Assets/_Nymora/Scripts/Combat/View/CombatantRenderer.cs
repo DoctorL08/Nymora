@@ -184,6 +184,9 @@ namespace Nymora.Combat.View
             // l'ecran adverse, pas du sien). Meme resolveur que FogOfWarView/TrapView.
             int localViewer = LocalPlayerResolver.Resolve();
 
+            // #23 — contour de case d'équipe : actif UNIQUEMENT en match miroir (même classe).
+            bool mirror = MatchViewHelpers.IsMirrorMatch(frame);
+
             // Pass 1 : snapshot tous les combatants vivants (besoin de la position adverse
             // pour calculer le facing iso de chacun).
             _frameCombatants.Clear();
@@ -445,6 +448,17 @@ namespace Nymora.Combat.View
                                         && combatant.HP > 0
                                         && HasUntargetable(combatant);
                 view.SetCloaked(cloakedForViewer);
+
+                // #23 — contour de CASE en couleur d'équipe sous le combattant (match miroir).
+                //   Attaché au GO -> suit le lerp de marche ; caché si voilé / mort / hors miroir.
+                //   Le vrai Ghostra ET ses leurres reçoivent le MÊME contour -> indiscernables côté adverse.
+                if (view.Sprite != null)
+                {
+                    MirrorOutlineHelper.RefreshOnUnit(view.transform, view.transform.position,
+                        _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight,
+                        mirror && combatant.HP > 0 && !cloakedForViewer, combatant.PlayerIndex,
+                        view.Sprite.sortingLayerID, view.Sprite.sortingOrder - 1);
+                }
 
                 // 5.10 (B5) — familier : colle au combattant (même case, offset combat), reprend
                 // son facing, masqué quand le combattant est voilé pour le viewer.

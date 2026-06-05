@@ -48,6 +48,10 @@ namespace Nymora.Combat.View.Obstacles
         public int GridX { get; private set; }
         public int GridY { get; private set; }
 
+        /// <summary>#23 — SpriteRenderer de l'obstacle, lu par ObstacleRenderer pour caler le contour
+        /// de case d'équipe (layer + sorting) juste au-dessus de l'obstacle.</summary>
+        public SpriteRenderer Sprite => _sprite;
+
         // J8 — anim "sort du sol" jouee une fois a l'apparition de l'obstacle.
         private const float EmergeDuration = 0.32f;
         private bool _emerged;
@@ -133,7 +137,7 @@ namespace Nymora.Combat.View.Obstacles
             tex.SetPixels32(pixels);
             tex.Apply(false, false);
             // PPU = Size -> le sprite couvre 1x1 unite monde (scale ensuite a la taille voulue).
-            _solidSprite = Sprite.Create(tex, new Rect(0, 0, Size, Size), new Vector2(0.5f, 0.5f), Size);
+            _solidSprite = UnityEngine.Sprite.Create(tex, new Rect(0, 0, Size, Size), new Vector2(0.5f, 0.5f), Size);
             _solidSprite.name = "ObstacleHpBgSprite";
             return _solidSprite;
         }

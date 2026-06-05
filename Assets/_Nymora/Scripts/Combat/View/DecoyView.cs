@@ -139,6 +139,9 @@ namespace Nymora.Combat.View
             var frame = game.Frames.Predicted;
             if (frame == null) return;
 
+            // #23 — contour de case d'équipe : actif UNIQUEMENT en match miroir (Ghostra vs Ghostra).
+            bool mirror = MatchViewHelpers.IsMirrorMatch(frame);
+
             // Marquer les cles a supprimer (slots qui ne sont plus actifs cette frame).
             var seen = new HashSet<(EntityRef, int)>();
 
@@ -248,6 +251,19 @@ namespace Nymora.Combat.View
                         // Meme materiau que la vraie Ghostra (2D Lit) -> rendu identique sous les lights.
                         if (ghostraMat != null && decoySr.sharedMaterial != ghostraMat)
                             decoySr.sharedMaterial = ghostraMat;
+                    }
+
+                    // #23 — contour de CASE d'équipe sous le leurre, centré sur la CASE (sans l'offset
+                    //   de calibration X/Y du sprite) -> IDENTIQUE à celui du vrai Ghostra (même
+                    //   couleur/taille/sorting) -> indiscernable côté adverse (Bible V7.1).
+                    if (decoySr != null)
+                    {
+                        Vector3 decoyCellGround = IsoProjection.GridToWorld(d.PosX, d.PosY,
+                            _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight)
+                            + _centerOffset + transform.position;
+                        MirrorOutlineHelper.RefreshOnUnit(go.transform, decoyCellGround,
+                            _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight,
+                            mirror, ghostra.PlayerIndex, decoySr.sortingLayerID, decoySr.sortingOrder - 1);
                     }
 
                     // Flash spectral de téléportation si le Voile vient d'être casté (leurre qui surgit).
