@@ -1971,6 +1971,22 @@ namespace Quantum
                         Log.Info($"[Spell] Charge Brutale : Vapeur Carmin pose sur cases foulees ({SpellRegistry.VapeurCarminTurns} tour)");
                     }
 
+                    // Fix #5 (5 juin) — Charge Brutale declenche les pieges sur TOUTES les cases TRAVERSEES.
+                    //   La case finale est deja geree par MoveNonPM ci-dessus ; ici on couvre les cases
+                    //   INTERMEDIAIRES (sx+step jusqu'a AVANT finalX/finalY). Owner-filtre. Borne maxSteps
+                    //   (anti-boucle deterministe).
+                    if (finalX != sx || finalY != sy)
+                    {
+                        int cbtx = sx, cbty = sy;
+                        for (int cbStep = 0; cbStep < maxSteps; cbStep++)
+                        {
+                            cbtx += stepX; cbty += stepY;
+                            if (cbtx == finalX && cbty == finalY) break; // landing deja declenche par MoveNonPM
+                            if (caster->HP <= 0) break;
+                            FogHelpers.TryTriggerTrapOnEnter(f, casterEntity, caster, cbtx, cbty, currentTurn);
+                        }
+                    }
+
                     // Damage 180 a la cible bloquante si presente.
                     if (hitTarget != EntityRef.None
                         && f.Unsafe.TryGetPointer<Combatant>(hitTarget, out Combatant* hitC))
@@ -2403,6 +2419,10 @@ namespace Quantum
                             GridHelpers.SetOccupant(f, esTargetX, esTargetY, casterEntity);
                             GridHelpers.SetOccupant(f, esCasterX, esCasterY, esTarget);
                             Log.Info($"[Spell] Échange Spectral : swap P{caster->PlayerIndex} <-> P{esTargetC->PlayerIndex} ({esCasterX},{esCasterY}) <-> ({esTargetX},{esTargetY})");
+                            // Fix #5 — un SWAP est un deplacement force pour les DEUX : declenche les pieges
+                            //   ennemis sur les 2 cases d'arrivee (owner-filtre dans TryTriggerTrapOnEnter).
+                            FogHelpers.TryTriggerTrapOnEnter(f, casterEntity, caster, esTargetX, esTargetY, currentTurn);
+                            FogHelpers.TryTriggerTrapOnEnter(f, esTarget, esTargetC, esCasterX, esCasterY, currentTurn);
                         }
                     }
                     break;
@@ -3175,6 +3195,8 @@ namespace Quantum
                     caster->Facing = FacingHelpers.FacingFromGridDelta(cmd.TargetX - oldX, cmd.TargetY - oldY); // 3.7.a.i.0
                     GridHelpers.SetOccupant(f, cmd.TargetX, cmd.TargetY, casterEntity);
                     Log.Info($"[Spell] Pas Furtif : P{caster->PlayerIndex} ({oldX},{oldY}) -> ({cmd.TargetX},{cmd.TargetY})");
+                    // Fix #5 — le teleport declenche un piege ennemi sur la case d'arrivee (owner-filtre).
+                    FogHelpers.TryTriggerTrapOnEnter(f, casterEntity, caster, cmd.TargetX, cmd.TargetY, currentTurn);
 
                     // Refonte 29 mai — 1 PR optionnel -> pose un Filet de Ronces sur la case QUITTÉE
                     //   (cadeau d'adieu), au lieu de l'ancien voile. Visible par défaut (cf phase).
@@ -3230,6 +3252,8 @@ namespace Quantum
                     caster->GridY = cmd.TargetY;
                     caster->Facing = FacingHelpers.FacingFromGridDelta(cmd.TargetX - oldX, cmd.TargetY - oldY); // 3.7.a.i.0
                     GridHelpers.SetOccupant(f, cmd.TargetX, cmd.TargetY, casterEntity);
+                    // Fix #5 — le teleport declenche un piege ennemi sur la case d'arrivee (owner-filtre).
+                    FogHelpers.TryTriggerTrapOnEnter(f, casterEntity, caster, cmd.TargetX, cmd.TargetY, currentTurn);
 
                     int hpBeforeEvan = caster->HP;
                     caster->HP += SpellRegistry.EvanescenceHeal;
@@ -3263,6 +3287,8 @@ namespace Quantum
                         caster->Facing = FacingHelpers.FacingFromGridDelta(landX - oldX, landY - oldY); // 3.7.a.i.0
                         GridHelpers.SetOccupant(f, landX, landY, casterEntity);
                         Log.Info($"[Spell] Traquenard : P{caster->PlayerIndex} teleport ({oldX},{oldY}) -> ({landX},{landY}) adjacent cible ({cmd.TargetX},{cmd.TargetY})");
+                        // Fix #5 — le teleport declenche un piege ennemi sur la case d'arrivee (owner-filtre).
+                        FogHelpers.TryTriggerTrapOnEnter(f, casterEntity, caster, landX, landY, currentTurn);
                     }
 
                     // Apply Paralysie (-3 PM, -2 PA prochain tour) + consume marque + +2 PR si bonus.

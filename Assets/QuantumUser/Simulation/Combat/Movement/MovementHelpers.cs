@@ -47,6 +47,14 @@ namespace Quantum
             combatant->GridX = toX;
             combatant->GridY = toY;
             GridHelpers.SetOccupant(f, toX, toY, entity);
+
+            // Fix #5 (5 juin) — tout déplacement FORCÉ via MoveNonPM (Charge Brutale, recul Tranche-Âme,
+            //   téléports Frappe Fantôme / Dernier Pas / Pas dans l'Ombre…) DÉCLENCHE les pièges de la
+            //   case d'arrivée, comme la marche (MovementSystem.ApplyMove) et les push (PushAndTriggerEx).
+            //   TryTriggerTrapOnEnter self-filtre l'owner (jamais ses propres pièges) + anti-boucle (cap
+            //   de profondeur). currentTurn lu sur le singleton (MoveNonPM n'a pas le paramètre).
+            int currentTurn = f.TryGetSingleton<CombatState>(out var cbState) ? cbState.TurnNumber : 0;
+            FogHelpers.TryTriggerTrapOnEnter(f, entity, combatant, toX, toY, currentTurn);
             return true;
         }
     }

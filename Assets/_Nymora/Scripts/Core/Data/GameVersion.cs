@@ -196,7 +196,17 @@ namespace Nymora.Core.Data
         //                desormais par ApplyOffensiveCasterBuffs + consomme les buffs one-shot localement.
         //                SpellPreview.FinalizeOffensive complete avec Frenesie + Sang Bouillant (preview
         //                == sim). Pure logique, aucun champ [Networked] touche.
-        public const int CombatRulesVersion = 112;
+        // 113 (#5 tp/charge declenchent les pieges, 5 juin) : un deplacement FORCE (teleport, Charge
+        //                Brutale, recul Tranche-Ame, swap Echange Spectral) ne declenchait PAS les pieges
+        //                Nightseer (Filet/Mine/Bondissant) -> l'ennemi les contournait via mobilite. Le
+        //                trigger TryTriggerTrapOnEnter (deja appele par la marche + les push) est desormais
+        //                appele en post-move : centralise dans MovementHelpers.MoveNonPM (Charge Brutale
+        //                landing, Frappe Fantome, Dernier Pas, Pas dans l'Ombre, recul Tranche-Ame) +
+        //                ajoute aux teleports a pose directe (Pas Furtif, Evanescence, Traquenard, Echange
+        //                Spectral). Charge Brutale declenche en plus les cases TRAVERSEES. Owner-filtre
+        //                (jamais ses propres pieges). Permutation N/A (case-leurre ne peut pas porter de piege).
+        //                Pure logique, aucun champ [Networked] touche.
+        public const int CombatRulesVersion = 113;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";
