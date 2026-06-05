@@ -17,6 +17,18 @@
 
 ---
 
+**SESSION 6 juin 2026 — 🔎 RECHERCHE RANKED EN ARRIÈRE-PLAN + 🟢 COMPTEUR JOUEURS EN LIGNE (backlog `Patch à faire.txt`, MAJEUR #1) — COMMIT LOCAL CLIENT (`7de00e8`, push différé) + BACKEND DÉPLOYÉ OVH :** session **View + backend**. **Pas de bump `CombatRulesVersion`**, pas de Quantum/régén, pas de rebuild standalone.
+
+- **🔎 Recherche ranked en arrière-plan (`HubMenuShell` = le vrai chemin ranked, pas le `HubRankedSearchPanel` legacy)** : fermer le menu Échap **ou** quitter l'écran matchmaking **n'annule plus** la file — elle continue côté backend. Seuls le bouton **« Annuler »** de l'écran et la **croix du bandeau** coupent la file. **Garde anti double-file** (rouvrir l'écran ne ré-enfile pas : `StartRankedSearch` court-circuité si `_searching`). Lancer une partie **IA** pendant une recherche l'annule proprement.
+- **🟢 Overlay haut-centre du hub** (sur le canvas menu, hors MenuRoot → visible **uniquement menu fermé**, géré par `RefreshSearchOverlay`) : pilule **« N joueurs en ligne »** (live) + bandeau **« Recherche classée — MM:SS »** (chrono `Time.unscaledTime`) **cliquable** (rouvre l'écran matchmaking) avec **croix SVG** d'annulation.
+- **➖ Bouton « − » (réduire)** en haut-droite de l'écran matchmaking : minimise (= `Close()`, file en fond → bandeau flottant). Distinct de « Annuler » (coupe) et de la flèche retour.
+- **🌐 Backend (`nymora-backend`, commit `8375654`, déployé prod + validé)** : `channels.broadcastAll()` + push **`ONLINE_COUNT { count }`** (users distincts via `onlineUserCount()`) à toutes les sockets au connect/disconnect. `HubChatClient` parse → `OnlineCount` (caché, relu au retour hub) + event `OnOnlineCountChanged`.
+- **🎨 Asset** : `Resources/UI/Icons/ui_icon_close.svg` (croix blanche, **TexturedSprite `svgType:1`** — le `.meta` auto-généré par Unity était en VectorSprite `svgType:0`, corrigé ; piège connu reset_arrow). Le bandeau a un **fallback texte `✗`** si l'import n'est pas prêt.
+- **À RETENIR** : (1) **Pas de bump `CombatRulesVersion`** ⇒ pas de rebuild standalone. (2) **Backend déployé + validé prod** (`api.nymora.fr` → `{"status":"ok"}`, v0.1.14, 0 erreur). (3) Client = **commit local `7de00e8`, push GitHub DIFFÉRÉ** (cumulé avec le backlog des sessions précédentes). (4) Hors-commit habituel maintenu (2 fonts TMP, 4 scènes, `SpellCatalog.asset`, `ProjectSettings.asset`, dump `StackOverflowException`). (5) Réimporter `ui_icon_close.svg` si la croix ne sort pas tout de suite. (6) Le compteur est **caché quand le menu Échap est ouvert** (overlap barre d'onglets) — à déplacer si Lorenzo le veut permanent.
+- **PROCHAINE ÉTAPE** : valider en jeu (recherche en fond + compteur live à 2 instances). Backlog `Patch à faire.txt` restant — **Majeur #2 mode spectateur** ; **Mineur** : replay rewind · gamma/contraste sans shader · succès « collecteur » hub cassé · bug bannière clan · signature/death panel · textes tuto (é manquants) · MP casse-insensible.
+
+---
+
 **SESSION 5-6 juin 2026 — 🩹 GROSSE PASSE PATCHS GAMEPLAY + UI (liste `Desktop/Patch à faire.txt`) — 1 COMMIT (`ac19fb3`) + PUSH GitHub :** session **Sim + View**. **`CombatRulesVersion` 114 → 121** (7 bumps). **Codegen Quantum à jour** (ajout d'un `StatusKind` enum Byte, layout inchangé) → **rebuild standalone requis, PAS de régén prefab/scène**.
 
 - **⚖️ Gameplay (sim) :**
