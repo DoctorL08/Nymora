@@ -156,7 +156,15 @@ namespace Nymora.Core.Data
         //                handler accorde MurDePierreFondationGain (2). GainFondation gagne un param
         //                amount. Pilier (+1) et Failles (owner=None -> 0 FD) inchanges. Description
         //                synchronisee. Pure logique, aucun champ [Networked] touche.
-        public const int CombatRulesVersion = 107;
+        // 108 (Passe equilibrage 5 juin / brique B3) : Soulrender Tranche-Ame portee 2 -> 1 (annule
+        //                l'anti-kite de v102) · Soulrender Charge Brutale cap 1x/tour · Colossar Ancrage
+        //                -2 PM -> -1 PM + relance 2 -> 3 tours · Colossar
+        //                Frappe Lourde cap 2x/tour · Colossar Onde de Choc cap 2x/tour · Ghostra Pas dans
+        //                l'Ombre portee 5 -> 4 + relance 2 tours (cap 1x/tour deja en place). Caps/relances
+        //                via le moteur generique (SpellDef.MaxUsesPerTurn/CooldownTurns, gate universel
+        //                SpellSystem). Descriptions deck builder synchronisees. Pure logique, aucun champ
+        //                [Networked] touche.
+        public const int CombatRulesVersion = 108;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

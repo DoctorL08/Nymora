@@ -250,7 +250,7 @@ namespace Quantum
         // Bible : 2 PA, range 4, ENEMY. Cible perd 2 PM pendant 2 tours ET ne peut pas etre deplacee
         // (push/pull/teleport) pendant 1 tour. Pas de damage. NE PAS confondre avec self-buff initial.
         public const int AncrageRangeMax              = 4;
-        public const int AncrageMovementMalusMag      = 2;    // -2 PM
+        public const int AncrageMovementMalusMag      = 1;    // equilibrage 5 juin : -1 PM (etait -2)
         public const int AncrageMovementMalusTurns    = 2;
         public const int AncrageImmuneTurns           = 1;    // immune push/pull/teleport 1 tour
 
@@ -512,7 +512,7 @@ namespace Quantum
         //   Pas de cout PT/PR/HG reel — la "ressource" est le slot leurre lui-meme (compte dans
         //   cap 3). Refus silencieux si cap atteint (teleport reussit quand meme).
         public const int PasDansLOmbrePACost        = 2;
-        public const int PasDansLOmbreRangeMax      = 5;
+        public const int PasDansLOmbreRangeMax      = 4;   // equilibrage 5 juin : portee 5 -> 4
 
         // 3.7.b — Volte-Face SUPPRIME du pool deckable (refonte 30 mai). Le slot SpellId 90 est
         //   reutilise par PERMUTATION (constantes Permutation* declarees plus bas, bloc signature).
@@ -732,7 +732,7 @@ namespace Quantum
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.Enemy,
                         RangeMin = 1,
-                        RangeMax = 2,                        // équilibrage 2 juin : 1->2 (anti-kite Soulrender)
+                        RangeMax = 1,                        // équilibrage 5 juin : 2->1 (retour mêlée pure, decision Lorenzo)
                         DamageAmount = 220,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
@@ -969,6 +969,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                        MaxUsesPerTurn = 1, // equilibrage 5 juin : cap 1x/tour
                     };
                     return true;
 
@@ -1407,6 +1408,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                        MaxUsesPerTurn = 2, // equilibrage 5 juin : cap 2x/tour
                     };
                     return true;
 
@@ -1450,6 +1452,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
+                        MaxUsesPerTurn = 2, // equilibrage 5 juin : cap 2x/tour
                     };
                     return true;
 
@@ -1550,7 +1553,7 @@ namespace Quantum
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
                         MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
-                        CooldownTurns = 2,  // Refonte 29 mai : relance 2 tours
+                        CooldownTurns = 3,  // equilibrage 5 juin : relance 3 tours (Lorenzo : +1 sur la relance, etait 2)
                     };
                     return true;
 
@@ -2095,6 +2098,7 @@ namespace Quantum
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
                         MaxUsesPerTurn = 1, // refonte 30 mai (brique 2) : cap 1x/tour
+                        CooldownTurns = 2,  // equilibrage 5 juin : relance (1 cast tous les 2 rounds)
                     };
                     return true;
 
