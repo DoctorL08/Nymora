@@ -25,7 +25,7 @@ MonoBehaviour:
   BaseActionPoints: 8
   BaseMovementPoints: 3
   ResourceKind: 2
-  ResourceCap: 4
+  ResourceCap: 5
   ResourceDescription: "PRESCIENCE \u2014 generee par la pose et la consommation
     de marques (Traque, Voile, Empreinte). Cap 4."
   PassiveName: L'Oeil qui n'est pas

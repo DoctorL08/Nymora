@@ -194,7 +194,7 @@ namespace Nymora.Hub.Menu
             string sigTitle = _classDef != null ? $"Signature : {_classDef.SignatureName}" : "Signature";
             string sigBody;
             if (sig != null)
-                sigBody = $"<color=#cce>{sig.ActionPointCost} PA · portée {sig.MinRange}-{sig.MaxRange}</color>\n" +
+                sigBody = $"<color=#cce>{sig.ActionPointCost} PA · <nobr>portée {sig.MinRange}-{sig.MaxRange}</nobr></color>\n" +
                           (!string.IsNullOrEmpty(sig.Description) ? sig.Description : (_classDef != null ? _classDef.SignatureDescription : ""));
             else
                 sigBody = (_classDef != null && !string.IsNullOrEmpty(_classDef.SignatureDescription)) ? _classDef.SignatureDescription : "—";
@@ -352,7 +352,7 @@ namespace Nymora.Hub.Menu
             string desc = string.IsNullOrEmpty(def.Description) ? "<i><color=#888>(description à remplir)</color></i>" : def.Description;
             string lore = string.IsNullOrEmpty(def.LoreFlavor) ? "" : $"\n\n<size=90%><i><color=#9988aa>{def.LoreFlavor}</color></i></size>";
             return $"<size=120%><b>{def.DisplayName}</b></size>\n<size=85%><color=#9aa>{def.Category} · {def.ClassId}</color></size>\n\n" +
-                   $"<color=#ffdd55><b>{def.ActionPointCost} PA</b> · portée {def.MinRange}-{def.MaxRange} · {def.Filter}</color>\n\n{desc}{lore}";
+                   $"<color=#ffdd55><b>{def.ActionPointCost} PA</b> · <nobr>portée {def.MinRange}-{def.MaxRange}</nobr> · {def.Filter}</color>\n\n{desc}{lore}";
         }
 
         private void AddSpellTooltip(GameObject go, SpellDefinition def)
@@ -630,7 +630,7 @@ namespace Nymora.Hub.Menu
                 nrt.sizeDelta = new Vector2(-10f, 44f); nrt.anchoredPosition = new Vector2(0f, def.IconSprite != null ? -74f : -10f);
 
                 var stats = _f.MakeText("Stats", cell.rectTransform,
-                    $"<b>{def.ActionPointCost} PA</b>  ·  <size=85%>portée {def.MinRange}-{def.MaxRange}</size>",
+                    $"<b>{def.ActionPointCost} PA</b>  ·  <size=85%><nobr>portée {def.MinRange}-{def.MaxRange}</nobr></size>",
                     _t.FontSizeSmall, _t.TextSecondary, _t.Font, TextAlignmentOptions.Bottom);
                 stats.raycastTarget = false;
                 var srt = stats.rectTransform;
