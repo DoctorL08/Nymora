@@ -737,6 +737,9 @@ namespace Nymora.Combat.View.HUD
             if (_tooltip != null) _tooltip.Hide();
         }
 
+        /// <summary>#24 (5 juin) — raccourci clavier F1 : passe le tour (même chemin/gardes que le bouton Fin de tour).</summary>
+        public void RequestEndTurnHotkey() => OnEndTurnClicked();
+
         private void OnEndTurnClicked()
         {
             var game = QuantumRunner.Default?.Game;

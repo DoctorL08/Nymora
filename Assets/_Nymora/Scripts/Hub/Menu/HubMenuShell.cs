@@ -1,11 +1,13 @@
 using System.Collections.Generic;
 using Fusion;
 using Nymora.Core.Data;
+using Nymora.Core.Input;
 using Nymora.Core.SceneFlow;
 using Nymora.Core.ScriptableObjects;
 using Nymora.Network.Backend;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Nymora.Hub.Menu
@@ -168,7 +170,41 @@ namespace Nymora.Hub.Menu
 
         private void Update()
         {
+            // Rebind en cours (onglet Raccourcis) : la capture clavier monopolise ce frame -> on ne
+            //   toggle pas le menu et on ne déclenche aucun raccourci pendant qu'on réassigne une touche.
+            if (KeyRebindCapture.IsCapturing) { KeyRebindCapture.Tick(); return; }
+
             if (Input.GetKeyDown(KeyCode.Escape)) Toggle();
+
+            // Raccourcis HUB rebindables (5 juin) : B/P/R/A/K -> ouvrent le menu correspondant.
+            //   IMPÉRATIF (demande Lorenzo) : ignorés si on tape dans un champ texte (chat) -> écrire
+            //   "boutique" ne doit pas ouvrir des menus en arrière-plan.
+            if (IsTypingInInputField()) return;
+            if      (KeybindingService.GetDown(Keybind.HubShop))       OpenScreen("shop");
+            else if (KeybindingService.GetDown(Keybind.HubCharacter))  OpenScreen("character");
+            else if (KeybindingService.GetDown(Keybind.HubReplay))     OpenScreen("replays");
+            else if (KeybindingService.GetDown(Keybind.HubArena))      OpenScreen("arena");
+            else if (KeybindingService.GetDown(Keybind.HubBattlePass)) OpenScreen("battlepass");
+        }
+
+        /// <summary>5 juin — raccourcis hub : ouvre le menu (si fermé) et navigue vers l'écran `id`.</summary>
+        public void OpenScreen(string id)
+        {
+            if (!_isOpen) Open();
+            ShowScreen(id);
+        }
+
+        /// <summary>True si le focus clavier est dans un champ de saisie (chat) -> on coupe les raccourcis hub.</summary>
+        private static bool IsTypingInInputField()
+        {
+            var es = EventSystem.current;
+            if (es == null) return false;
+            var go = es.currentSelectedGameObject;
+            if (go == null) return false;
+            var tmp = go.GetComponent<TMP_InputField>();
+            if (tmp != null && tmp.isFocused) return true;
+            var legacy = go.GetComponent<InputField>();
+            return legacy != null && legacy.isFocused;
         }
 
         // ===== Ouverture / fermeture =====

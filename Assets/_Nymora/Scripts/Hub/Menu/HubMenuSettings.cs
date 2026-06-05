@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Nymora.Core.Audio;
+using Nymora.Core.Input;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -41,13 +42,14 @@ namespace Nymora.Hub.Menu
         {
             var tabsRow = _f.MakeRect("SettingsTabs", parent);
             tabsRow.anchorMin = new Vector2(0.5f, 1f); tabsRow.anchorMax = new Vector2(0.5f, 1f); tabsRow.pivot = new Vector2(0.5f, 1f);
-            tabsRow.sizeDelta = new Vector2(360f, 42f); tabsRow.anchoredPosition = new Vector2(0f, -18f);
+            tabsRow.sizeDelta = new Vector2(540f, 42f); tabsRow.anchoredPosition = new Vector2(0f, -18f);
             var thlg = tabsRow.gameObject.AddComponent<HorizontalLayoutGroup>();
             thlg.spacing = 10f; thlg.childAlignment = TextAnchor.MiddleCenter;
             thlg.childControlWidth = true; thlg.childControlHeight = true;
             thlg.childForceExpandWidth = false; thlg.childForceExpandHeight = false;
             SpawnTab(tabsRow, "Affichage", 0);
             SpawnTab(tabsRow, "Audio", 1);
+            SpawnTab(tabsRow, "Raccourcis", 2);
 
             _content = _f.MakeRect("SettingsContent", parent);
             _content.anchorMin = new Vector2(0f, 0f); _content.anchorMax = new Vector2(1f, 1f);
@@ -91,7 +93,8 @@ namespace Nymora.Hub.Menu
 
             BuildScroll(_content);
             if (idx == 0) BuildAffichage();
-            else BuildAudio();
+            else if (idx == 1) BuildAudio();
+            else BuildRaccourcis();
         }
 
         // ===== Onglet Affichage =====
@@ -206,6 +209,74 @@ namespace Nymora.Hub.Menu
                 var bus = Buses[i];
                 SpawnSliderRow(BusLabels[i], audio.GetBusVolume(bus), v => audio.SetBusVolume(bus, v));
             }
+        }
+
+        // ===== Onglet Raccourcis (5 juin) =====
+
+        private void BuildRaccourcis()
+        {
+            SpawnInfoRow("<b>Combat</b>");
+            foreach (Keybind b in System.Enum.GetValues(typeof(Keybind)))
+                if (KeybindingService.IsCombat(b)) SpawnKeybindRow(b);
+
+            SpawnInfoRow("<b>Hub</b>");
+            foreach (Keybind b in System.Enum.GetValues(typeof(Keybind)))
+                if (!KeybindingService.IsCombat(b)) SpawnKeybindRow(b);
+
+            SpawnInfoRow("<i>Clique la touche d'une action pour la réassigner (Échap = annule). Taper dans le chat ne déclenche aucun raccourci.</i>");
+            SpawnButtonRow("Tout réinitialiser", () => { KeybindingService.ResetAll(); ShowTab(_tab); });
+        }
+
+        /// <summary>Ligne « action  ->  [touche]  [↺] » avec capture de touche au clic (rebind).</summary>
+        private void SpawnKeybindRow(Keybind action)
+        {
+            var row = MakeListRow(54f);
+
+            var lbl = _f.MakeText("Label", row, KeybindingService.DisplayName(action), _t.FontSizeBody, _t.TextPrimary, _t.Font, TextAlignmentOptions.MidlineLeft);
+            lbl.raycastTarget = false; lbl.enableWordWrapping = false;
+            var lrt = lbl.rectTransform;
+            lrt.anchorMin = new Vector2(0f, 0f); lrt.anchorMax = new Vector2(0f, 1f); lrt.pivot = new Vector2(0f, 0.5f);
+            lrt.sizeDelta = new Vector2(220f, 0f); lrt.anchoredPosition = new Vector2(16f, 0f);
+
+            var sel = _f.MakeRect("Sel", row);
+            sel.anchorMin = new Vector2(1f, 0.5f); sel.anchorMax = new Vector2(1f, 0.5f); sel.pivot = new Vector2(1f, 0.5f);
+            sel.sizeDelta = new Vector2(240f, 40f); sel.anchoredPosition = new Vector2(-12f, 0f);
+            var hlg = sel.gameObject.AddComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 8f; hlg.childAlignment = TextAnchor.MiddleRight;
+            hlg.childControlWidth = true; hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = false; hlg.childForceExpandHeight = false;
+
+            // Bouton "touche" : clic -> capture une nouvelle touche (KeyRebindCapture, piloté par HubMenuShell).
+            var keyBtn = _f.MakeButton(sel, KeybindingService.KeyLabelFr(KeybindingService.GetKey(action)), false, out var keyTxt);
+            var kle = keyBtn.gameObject.GetComponent<LayoutElement>(); kle.minWidth = 0f; kle.preferredWidth = 150f;
+            keyBtn.onClick.AddListener(() =>
+            {
+                keyTxt.text = "…";
+                KeyRebindCapture.Begin(action, () =>
+                {
+                    if (keyTxt != null) keyTxt.text = KeybindingService.KeyLabelFr(KeybindingService.GetKey(action));
+                });
+            });
+
+            // Bouton reset -> défaut d'usine. Icône SVG "flèche réinitialisation" (Resources/UI/Icons/
+            //   reset_arrow.svg, importée en Sprite par Vector Graphics) ; fallback glyphe "↺" si pas importée.
+            var resetSprite = Resources.Load<Sprite>("UI/Icons/reset_arrow");
+            var resetBtn = _f.MakeButton(sel, resetSprite != null ? "" : "RAZ", false, out var resetTxt);
+            var rle = resetBtn.gameObject.GetComponent<LayoutElement>(); rle.minWidth = 0f; rle.preferredWidth = 44f;
+            if (resetSprite != null)
+            {
+                if (resetTxt != null) resetTxt.gameObject.SetActive(false);
+                var icon = _f.MakeImage("ResetIcon", (RectTransform)resetBtn.transform, _t.TextSecondary);
+                icon.sprite = resetSprite;
+                icon.raycastTarget = false;
+                icon.preserveAspect = true;
+                HubMenuUIFactory.Stretch(icon.rectTransform, 11f, 11f, 11f, 11f);
+            }
+            resetBtn.onClick.AddListener(() =>
+            {
+                KeybindingService.ResetToDefault(action);
+                if (keyTxt != null) keyTxt.text = KeybindingService.KeyLabelFr(KeybindingService.GetKey(action));
+            });
         }
 
         // ===== Lignes =====

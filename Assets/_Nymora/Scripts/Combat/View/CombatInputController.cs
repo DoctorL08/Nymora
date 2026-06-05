@@ -1,5 +1,6 @@
 using Nymora.Combat.Grid;
 using Nymora.Combat.View.HUD;
+using Nymora.Core.Input;
 using Quantum;
 using UnityEngine;
 
@@ -225,17 +226,28 @@ namespace Nymora.Combat.View
             // Si le joueur tape dans un champ de saisie (chat combat), on NE lit PAS les hotkeys
             // de sorts : sinon taper "1" armerait le sort 1 en plus d'écrire dans le chat.
             bool typing = IsTypingInInputField();
-            bool slot1 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha1);
-            bool slot2 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha2);
-            bool slot3 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha3);
-            bool slot4 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha4);
-            bool slot5 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha5);
-            bool slot6 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha6);
-            bool slot7 = !typing && UnityEngine.Input.GetKeyDown(KeyCode.Alpha7); // signature
+            // Raccourcis REBINDABLES (5 juin) : lit KeybindingService (défauts F1 + chiffres 1-7).
+            //   Gardés !typing -> taper dans le chat n'arme jamais un sort et ne passe pas le tour.
+            bool slot1 = !typing && KeybindingService.GetDown(Keybind.CombatSpell1);
+            bool slot2 = !typing && KeybindingService.GetDown(Keybind.CombatSpell2);
+            bool slot3 = !typing && KeybindingService.GetDown(Keybind.CombatSpell3);
+            bool slot4 = !typing && KeybindingService.GetDown(Keybind.CombatSpell4);
+            bool slot5 = !typing && KeybindingService.GetDown(Keybind.CombatSpell5);
+            bool slot6 = !typing && KeybindingService.GetDown(Keybind.CombatSpell6);
+            bool slot7 = !typing && KeybindingService.GetDown(Keybind.CombatSpell7); // signature
+            bool endTurnKey = !typing && KeybindingService.GetDown(Keybind.CombatEndTurn); // #24 : passe le tour
 
             bool anySlotKey = slot1 || slot2 || slot3 || slot4 || slot5 || slot6 || slot7;
 
-            if (!mouseDown && !anySlotKey) return;
+            if (!mouseDown && !anySlotKey && !endTurnKey) return;
+
+            // #24 (5 juin) — F1 passe le tour (même chemin/gardes que le bouton Fin de tour : self-guard
+            //   tour du bot dans OnEndTurnClicked, et la sim ignore un EndTurn qui ne vient pas du joueur actif).
+            if (endTurnKey)
+            {
+                if (_hudController != null) _hudController.RequestEndTurnHotkey();
+                return;
+            }
 
             // Calcule la case sous la souris (partagee entre mvt, cast et debug commands).
             Vector3 mouseWorld = _camera.ScreenToWorldPoint(UnityEngine.Input.mousePosition);
