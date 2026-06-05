@@ -103,7 +103,11 @@ namespace Nymora.Editor.Tools
                 entry.MaxRange = def.RangeMax;
                 entry.Filter = (TargetingFilter)(byte)def.Filter;
                 entry.Shape = (TargetingShape)(byte)def.Shape;
-                entry.RequiresLineOfSight = true; // default — affiner si besoin
+                // LoS bridgée depuis la source unique sim (SpellSystem.SpellNeedsLineOfSight) :
+                // EXACTEMENT le même switch que la validation du cast + le grisé du preview de
+                // ciblage (TargetingPreviewView). Le deck builder lit ensuite ce champ pour
+                // afficher "Ligne de vue requise". Re-Populate après tout ajout au switch.
+                entry.RequiresLineOfSight = SpellSystem.SpellNeedsLineOfSight(spellId);
 
                 // Effects : list inchange (preserves)
                 if (entry.Effects == null) entry.Effects = new List<SpellEffect>();

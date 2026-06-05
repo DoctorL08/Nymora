@@ -351,8 +351,16 @@ namespace Nymora.Hub.Menu
         {
             string desc = string.IsNullOrEmpty(def.Description) ? "<i><color=#888>(description à remplir)</color></i>" : def.Description;
             string lore = string.IsNullOrEmpty(def.LoreFlavor) ? "" : $"\n\n<size=90%><i><color=#9988aa>{def.LoreFlavor}</color></i></size>";
+            // Ligne de vue : uniquement pour les sorts à distance (portée > 1). RequiresLineOfSight
+            // est bridgé depuis SpellSystem.SpellNeedsLineOfSight (cf Populate Spell Catalog) = la
+            // MÊME règle que la sim + le grisé du preview de ciblage. Mêlée/self (portée ≤ 1) : non concernés.
+            string los = def.MaxRange <= 1
+                ? ""
+                : def.RequiresLineOfSight
+                    ? "\n<size=85%><color=#c9a86a>Ligne de vue requise</color></size>"
+                    : "\n<size=85%><color=#8fb88f>Ligne de vue non requise</color></size>";
             return $"<size=120%><b>{def.DisplayName}</b></size>\n<size=85%><color=#9aa>{def.Category} · {def.ClassId}</color></size>\n\n" +
-                   $"<color=#ffdd55><b>{def.ActionPointCost} PA</b> · <nobr>portée {def.MinRange}-{def.MaxRange}</nobr> · {def.Filter}</color>\n\n{desc}{lore}";
+                   $"<color=#ffdd55><b>{def.ActionPointCost} PA</b> · <nobr>portée {def.MinRange}-{def.MaxRange}</nobr> · {def.Filter}</color>{los}\n\n{desc}{lore}";
         }
 
         private void AddSpellTooltip(GameObject go, SpellDefinition def)
