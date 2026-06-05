@@ -164,7 +164,17 @@ namespace Nymora.Core.Data
         //                via le moteur generique (SpellDef.MaxUsesPerTurn/CooldownTurns, gate universel
         //                SpellSystem). Descriptions deck builder synchronisees. Pure logique, aucun champ
         //                [Networked] touche.
-        public const int CombatRulesVersion = 108;
+        // 109 (Bugs ressource 5 juin / brique B4) : (1) Soulrender Seve Vive — le bonus +50 HP "si DoT
+        //                actif" testait StatusKind.BleedDoT, un statut MORT que rien n'applique -> bonus
+        //                jamais declenche. Detecte desormais les vrais DoT (VeninStacks + PlaieOuverte +
+        //                BleedDoT). (2) Necram Putrefaction — le gain de PT via marques mourait quand la
+        //                cible etait saturee a 4 marques (applied=0). Gain base sur l'INTENTION (amount
+        //                demande, cap 2/tour conserve) -> le Necram gagne ses PT meme a saturation ;
+        //                DotImmune (Voile Spectral) court-circuite -> 0 PT. (3) Necram Inoculation cap
+        //                1x/tour (anti-spam marques/PT, complement du fix PT). (#6b Charge Brutale +1 HG :
+        //                aucun changement, decision Lorenzo "garder tel quel".) Pure logique, aucun
+        //                champ [Networked] touche.
+        public const int CombatRulesVersion = 109;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

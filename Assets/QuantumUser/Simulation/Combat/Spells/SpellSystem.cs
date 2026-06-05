@@ -1805,7 +1805,12 @@ namespace Quantum
                     int healAmount = SpellRegistry.SeveViveHealBase;
                     int hgBonus = (hgSpend >= 1) ? SpellRegistry.SeveViveHealBonusHG : 0;
                     healAmount += hgBonus;
-                    bool isBleeding = StatusHelper.Has(caster, StatusKind.BleedDoT);
+                    // Fix 5 juin (B4) : BleedDoT etait un statut MORT (aucun sort ne l'applique)
+                    //   -> le bonus +50 ne partait JAMAIS. On detecte les VRAIS DoT du jeu (meme
+                    //   definition que Voile Spectral) : venin Necram (VeninStacks) + Plaie Ouverte.
+                    bool isBleeding = caster->VeninStacks > 0
+                        || StatusHelper.Has(caster, StatusKind.PlaieOuverte)
+                        || StatusHelper.Has(caster, StatusKind.BleedDoT);
                     int bleedBonus = isBleeding ? SpellRegistry.SeveViveHealBonusBleed : 0;
                     healAmount += bleedBonus;
 

@@ -216,7 +216,7 @@ namespace Nymora.Core.Data
                 Description = "Pose une zone toxique 3x3 pendant 3 tours. Toute unité ennemie qui se trouve dans la zone (à la pose, en entrant, ou en finissant son tour) prend +1 marque de venin. Tant qu'une unité tient dans la Brume, ses dégâts de venin par tour sont MAJORÉS (+10 par marque). Pas de dégâts directs. Cap : 1×/tour, relance 2 tours.",
                 LoreFlavor  = "L'air vicié. Brume Toxique ne tue pas — elle CONDAMNE : rester dedans, c'est accélérer sa propre pourriture." },
             new Entry { SpellIdValue = 75, SpellIdTech = "necram_inoculation",              ClassId = NymoraClass.Necram, Category = SpellCategory.Tactical,  DisplayName = "Inoculation",
-                Description = "Applique 2 marques de venin sur la cible (sans dégâts directs). Cap à 4 marques par cible.",
+                Description = "Applique 2 marques de venin sur la cible (sans dégâts directs). Cap à 4 marques par cible. Utilisable 1 fois par tour.",
                 LoreFlavor  = "Le baiser de la mort. Inoculation ne fait rien d'immédiat. L'adversaire qui prend 2 marques sait que les 3 prochains tours vont être un compte à rebours. La pression vient du SILENCE." },
             new Entry { SpellIdValue = 76, SpellIdTech = "necram_marque_sacrificielle",     ClassId = NymoraClass.Necram, Category = SpellCategory.Tactical,  DisplayName = "Marque Sacrificielle",
                 Description = "Pendant 3 tours, les marques de venin sur la cible infligent +20 dégâts par tour. La cible peut recevoir Marque Sacrificielle même si elle n'a pas encore de marques (mais sans marques actives, l'effet est neutre).",

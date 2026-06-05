@@ -1834,6 +1834,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        MaxUsesPerTurn = 1, // equilibrage 5 juin (B4) : cap 1x/tour (anti-spam marques/PT)
                     };
                     return true;
 

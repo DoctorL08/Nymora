@@ -104,13 +104,22 @@ namespace Quantum
             int after = before + amount;
             if (after > MaxStacksPerTarget) after = MaxStacksPerTarget;
             int applied = after - before;
-            if (applied <= 0) return 0;
             target->VeninStacks = after;
 
-            // Gain Putrefaction owner Necram (cap +2 PT/tour via marques appliquees).
-            // En 1v1 simple : on cherche le seul Necram vivant. En multi (Phase 6+) on
-            // tracera un VeninOwnerPlayerIndex sur le Combatant porteur si necessaire.
-            GainPutrefactionFromMarkApply(f, applied, currentTurn);
+            // Gain Putrefaction owner Necram : "PT sur l'intention" (decision Lorenzo 5 juin, B4).
+            // Base sur AMOUNT (marques demandees) et NON `applied` : le Necram gagne ses PT pour avoir
+            // travaille le poison MEME si la cible est saturee (applied=0, deja 4 marques qui ne
+            // redescendent jamais). Cap +2 PT/tour conserve (PutrefactionMarksGainedThisTurn). DotImmune
+            // (Voile Spectral) a deja court-circuite plus haut -> pas de PT (poison totalement nie).
+            // En 1v1 simple : on cherche le seul Necram vivant. En multi (Phase 6+) on tracera un
+            // VeninOwnerPlayerIndex sur le Combatant porteur si necessaire.
+            GainPutrefactionFromMarkApply(f, amount, currentTurn);
+
+            if (applied <= 0)
+            {
+                Log.Info($"[Venin] Apply +{amount} marque(s) SATURE sur P{target->PlayerIndex} (deja {before}/{MaxStacksPerTarget}) — PT gagnes sur l'intention");
+                return 0;
+            }
 
             Log.Info($"[Venin] Apply +{applied} marque(s) sur P{target->PlayerIndex} ({before}->{after}). Density global={GetGlobalDensity(f)}");
             return applied;
