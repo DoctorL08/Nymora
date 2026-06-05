@@ -17,6 +17,32 @@
 
 ---
 
+**SESSION 5-6 juin 2026 — 🩹 GROSSE PASSE PATCHS GAMEPLAY + UI (liste `Desktop/Patch à faire.txt`) — 1 COMMIT (`ac19fb3`) + PUSH GitHub :** session **Sim + View**. **`CombatRulesVersion` 114 → 121** (7 bumps). **Codegen Quantum à jour** (ajout d'un `StatusKind` enum Byte, layout inchangé) → **rebuild standalone requis, PAS de régén prefab/scène**.
+
+- **⚖️ Gameplay (sim) :**
+  - **v115 Necram miroir** : en Necram vs Necram un seul Necram récoltait les PT. Fix : les hooks `GainPutrefaction*` créditent le Necram dont l'équipe ≠ celle de la cible (= l'auteur du venin). Bonus : le venin Carapace Visqueuse (Ghostra) ne crédite plus à tort un Necram.
+  - **v116 Stoïcisme/Ancrage** : le Piège Bondissant (Nightseer) catapultait un Colossar `AnchorImmune`. Fix : `FogHelpers.TryTriggerTrapOnEnter` checke `AnchorImmune` → catapulte annulée (piège quand même déclenché : Traqué + PR). Le bouclier 200/2T + heal 80 étaient OK.
+  - **v117 Traquenard** : PARALYSIE **-3 PM → -2 PM** (durée déjà 1 tour ; -2 PA conservé).
+  - **v118 Necram poisons 2 tours max** : nouveau `StatusKind.VeninDecay` (=33) reposé à chaque application ; `VeninHelpers.ClearExpiredVenin` vide les marques en fin de round à expiration. Avant : pas d'expiration par durée.
+  - **v119 Charge Brutale** : ne touche plus si un piège répulsant (Bondissant) éjecte le caster hors du corps-à-corps (garde `chargeConnected` : doit finir sur `finalX/finalY` ET vivant).
+  - **v120 Détonation Onirique** : était `SingleTile` mono-case → **vraie AoE `Square3x3`** (sim + preview via `TargetingResolver`). **Salve Mortelle ET Détonation détonent TOUS tes pièges sous la zone** (`FogHelpers.DetonateOwnTrapsInArea` : ennemi dessus = effet complet, case vide = consommé).
+  - **v121 Leurres Ghostra avec HP** (demande Lorenzo) : leurres non-protecteurs (Standard + Réplique Fantôme) **1-hit → 200 HP**, Réplique Protectrice **200 → 250 HP** ; **tous encaissent** (détruits à 0 HP, plus en 1 sort) via `HitDecoyByEnemyAction` généralisé ; `GetDecoyMaxHp` centralise ; Charge Brutale leur inflige ses dégâts.
+- **🖥️ UI / View (recompile, aucun impact sim, aucun bump) :**
+  - **Provocation** : badge rubis + tooltip affichent coût+2 PA quand provoqué (grisé conservé sur le coût de base pour ne pas bloquer la contre-attaque sur le Colossar). La sim appliquait déjà le +2.
+  - **Détonation Onirique** : portée 5→10 (option 2 PR) affichée au preview ; **prévisu de dégâts précise** (+80 case-piège + dégâts de la détonation du piège, dans `SpellPreview` read-only).
+  - **Prévisu PM** : le BFS de portée (`MovementRangePreview`) excluait pas les obstacles (piliers ne posent pas `Walkable=0`) → chemin jaune de 5 cases pour une case inatteignable. Fix : exclut les obstacles comme `ViewPathfinder`. **Bonus** : `ViewPathfinder` rebranché sur `GridConstants` (était resté 15×17 au lieu de 10×10 → tie-break A* divergeait de la sim).
+  - **Sprite Colossar / piliers** : priorité ciblage à l'obstacle (`TileHoverView.TryPickSpriteTargetCell`) — un pilier sous le sprite du Colossar est ciblable (sorts en ligne droite exclus).
+  - **Piège Bondissant** : flèche SVG de direction (`direction_arrow.svg`) owner-only sur la case du piège.
+  - **Infos joueurs (coins) + tooltip timeline** : affichent l'**EFFET** (« -1 PM », « bouclier 200 », « anti-déplacement »…) au lieu du nom enum (`StatusEffectLabel`).
+  - **Badges Rubis PA (rouge) / PM (vert)** à gauche de la barre de sorts (`CombatHUDController`, runtime).
+  - **Texte flottant -x PA / -x PM** sur application de malus (Bouclier déjà géré).
+  - **Leurres** : label HP « x/y » au survol = **même style que les piliers** (`ObstacleView` répliqué dans `DecoyHoverProxy`), remplace le tooltip Ghostra (mindgame indiscernable volontairement abandonné, choix Lorenzo).
+- **À RETENIR** : (1) **`CombatRulesVersion` 114 → 121** ⇒ ⚠️ **rebuild standalone** avant ranked. (2) **Re-`Populate Spell Catalog`** (descriptions Traquenard, Détonation Onirique, Salve Mortelle, Réplique Fantôme, Réplique Protectrice). (3) **Codegen Quantum déjà régénéré + committé** (StatusKind `VeninDecay`) ; ajout d'enum Byte → **PAS de régén prefab/scène**. (4) Hors-commit habituel maintenu (2 fonts TMP, 4 scènes, `SpellCatalog.asset`, `ProjectSettings.asset`, dump `StackOverflowException`). (5) `direction_arrow.svg` importé en TexturedSprite par Unity (comme `reset_arrow`).
+- **À VALIDER EN JEU** : positionnement à l'aveugle des **badges PA/PM** (`_resourceGemsGap`/`_resourceGemsExtraOffset` sur `CombatHUDController`) et du **label HP leurre** ; équilibrage des **leurres tanky** (Fantôme 200 HP encaisse beaucoup) et du **combo Détonation 3×3 + chaîne pièges** (gros burst). Traquenard -2 PA à reconfirmer si à retirer.
+- **PROCHAINE ÉTAPE** : Publish + tests en jeu de toute la fournée. Backlog 05/06 restant (non démarré) : **mode spectateur (majeur)** · replay rewind · gamma/contraste sans shader · succès collecteur hub cassé · bug bannière clan · signature/death panel · textes tuto (é manquants) · MP insensible à la casse. (Lorenzo a choisi le mode spectateur comme prochain item mais session stoppée avant.)
+
+---
+
 **SESSION 5 juin 2026 (ter) — 🎨 #23 CONTOUR D'ÉQUIPE MIROIR FINALISÉ (refonte propre + 5 cibles) — COMMIT + PUSH GitHub :** session **100% View** (zéro Sim, **pas de bump `CombatRulesVersion`**, pas de régén/rebuild). Reprise du **reliquat #23** laissé WIP en (bis) — supersède le WIP « 8 copies du sprite » jugé mauvais.
 
 - **🟦 Nouvelle technique = CONTOUR DE CASE** : on trace le **losange iso de la case** en couleur d'équipe via un **LineRenderer** (`MirrorOutlineHelper`), au lieu d'outliner le sprite (qui dédoublait le contenu texturé). Net, constant, zéro dépendance à l'art. Shader `SpriteSolid` (tentative intermédiaire) créé puis **supprimé**.
