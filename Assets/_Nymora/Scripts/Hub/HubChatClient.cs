@@ -75,6 +75,11 @@ namespace Nymora.Hub
         public event Action OnRankedQueueLeft;                                 // ack sortie de file
         // 6.3 — MMR mis a jour apres un match ranked settle.
         public event Action<MmrUpdateData> OnMmrUpdated;
+        // Joueurs en ligne — compteur de users distincts, push live par le backend
+        // (ONLINE_COUNT) au connect/disconnect de n'importe qui. Cache la derniere valeur
+        // recue (OnlineCount) pour les vues qui apparaissent apres le push (ex : retour hub).
+        public event Action<int> OnOnlineCountChanged;
+        public int OnlineCount { get; private set; }
 
         public struct MmrUpdateData
         {
@@ -149,7 +154,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, ClanBannerUpdated, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate, ForceDisconnect }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, ClanBannerUpdated, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate, OnlineCount, ForceDisconnect }
 
         private struct IncomingEvent
         {
@@ -213,6 +218,8 @@ namespace Nymora.Hub
             public int RankedGames;
             public int RankedWins;
             public int RankedLosses;
+            // Joueurs en ligne
+            public int OnlineCountValue;
         }
 
         private void Awake()
@@ -500,6 +507,9 @@ namespace Nymora.Hub
                             RankedWins = msg.payload?.rankedWins ?? 0,
                             RankedLosses = msg.payload?.rankedLosses ?? 0,
                         });
+                        break;
+                    case "ONLINE_COUNT":
+                        _queue.Enqueue(new IncomingEvent { Kind = EventKind.OnlineCount, OnlineCountValue = msg.payload?.count ?? 0 });
                         break;
                     case "REPORT_SENT":
                         _queue.Enqueue(new IncomingEvent
@@ -790,6 +800,8 @@ namespace Nymora.Hub
             public int rankedGames;
             public int rankedWins;
             public int rankedLosses;
+            // Joueurs en ligne
+            public int count;
         }
 
         [Serializable]
@@ -887,6 +899,10 @@ namespace Nymora.Hub
                             RankedWins = ev.RankedWins,
                             RankedLosses = ev.RankedLosses,
                         });
+                        break;
+                    case EventKind.OnlineCount:
+                        OnlineCount = ev.OnlineCountValue;
+                        OnOnlineCountChanged?.Invoke(OnlineCount);
                         break;
                     case EventKind.ReportSent:
                         // POLISH-7 : param = toDisplayName au lieu de toEmail.

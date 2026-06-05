@@ -70,6 +70,16 @@ namespace Nymora.Hub.Menu
         // Matchmaking ranked (réutilise les events de file de HubChatClient)
         private bool _searching;
         private TextMeshProUGUI _mmStatus;
+        // Recherche en arrière-plan : la file backend continue de tourner même menu fermé
+        // / écran quitté. _searchStartTime sert au chrono du bandeau flottant.
+        private float _searchStartTime;
+        // Overlay hub permanent (canvas menu, hors MenuRoot -> visible UNIQUEMENT menu fermé) :
+        //   - compteur de joueurs en ligne (toujours)
+        //   - bandeau "Recherche classée — MM:SS" (uniquement si _searching)
+        private GameObject _onlineOverlayRoot;
+        private TextMeshProUGUI _onlineCountLabel;
+        private GameObject _searchTickerRoot;
+        private TextMeshProUGUI _searchTickerLabel;
         private TextMeshProUGUI _lbText;  // statut (chargement / erreur / vide) centré
         private RectTransform _lbList;    // conteneur des lignes du classement (VLG)
 
@@ -147,6 +157,10 @@ namespace Nymora.Hub.Menu
                 chat.OnRankedQueueJoined += HandleQueueJoined;
                 chat.OnRankedMatchFound += HandleMatchFound;
                 chat.OnRankedQueueLeft += HandleQueueLeft;
+                chat.OnOnlineCountChanged += HandleOnlineCount;
+                // Le 1er push ONLINE_COUNT peut être arrivé avant ce Start (ou avant un retour
+                // hub) : on lit la dernière valeur cachée par le client.
+                HandleOnlineCount(chat.OnlineCount);
             }
 
             // La devise du menu remplace l'ancien wallet hub : on masque celui-ci (évite le doublon)
@@ -165,11 +179,16 @@ namespace Nymora.Hub.Menu
                 chat.OnRankedQueueJoined -= HandleQueueJoined;
                 chat.OnRankedMatchFound -= HandleMatchFound;
                 chat.OnRankedQueueLeft -= HandleQueueLeft;
+                chat.OnOnlineCountChanged -= HandleOnlineCount;
             }
         }
 
         private void Update()
         {
+            // Overlay hub (compteur en ligne + bandeau recherche) : visibilité + chrono live.
+            // Avant le guard de rebind pour que le chrono ne se fige pas pendant une capture.
+            RefreshSearchOverlay();
+
             // Rebind en cours (onglet Raccourcis) : la capture clavier monopolise ce frame -> on ne
             //   toggle pas le menu et on ne déclenche aucun raccourci pendant qu'on réassigne une touche.
             if (KeyRebindCapture.IsCapturing) { KeyRebindCapture.Tick(); return; }
@@ -223,7 +242,8 @@ namespace Nymora.Hub.Menu
         public void Close()
         {
             if (!_isOpen || _menuRoot == null) return;
-            if (_searching) CancelSearch();
+            // La recherche classée n'est PLUS annulée à la fermeture : elle continue en
+            // arrière-plan (file backend) et le bandeau flottant prend le relais dans le hub.
             _isOpen = false;
             UiPanelAnimator.CloseAnimated(_menuRoot);
         }
@@ -295,6 +315,10 @@ namespace Nymora.Hub.Menu
             // Devise persistante (hors MenuRoot, sur le canvas menu = toujours visible, au-dessus
             // de tout y compris le voile). Icônes ash/blood + valeurs live.
             BuildPersistentCurrency(canvasRT);
+
+            // Overlay haut-centre du hub : joueurs en ligne + bandeau de recherche en arrière-plan.
+            // Visible uniquement menu fermé (RefreshSearchOverlay).
+            BuildOnlineOverlay(canvasRT);
 
             _menuRoot.SetActive(false);
         }
@@ -423,8 +447,8 @@ namespace Nymora.Hub.Menu
 
         private void ShowScreen(string id)
         {
-            // Sortir du matchmaking annule la file backend.
-            if (_searching && id != "matchmaking") CancelSearch();
+            // Sortir de l'écran matchmaking n'annule PLUS la file : la recherche continue en
+            // arrière-plan (bandeau flottant). Seul un clic explicite sur "Annuler" la coupe.
 
             if (_currentScreen != null) { Destroy(_currentScreen); _currentScreen = null; }
             _mmStatus = null;
@@ -487,7 +511,7 @@ namespace Nymora.Hub.Menu
 
             _arenaRankBadges.Clear();
             MakeModeCard(row, "Entraînement", "Affronte l'IA", true,
-                () => { Close(); if (HubArenaPanel.Instance != null) HubArenaPanel.Instance.StartTraining(); }, "mode_training");
+                () => { if (_searching) CancelSearch(); Close(); if (HubArenaPanel.Instance != null) HubArenaPanel.Instance.StartTraining(); }, "mode_training");
             MakeModeCard(row, "Ranked 1v1", "Classé · 1 contre 1", true,
                 () => ShowScreen("matchmaking"), "mode_1v1", showRank: true);
             MakeModeCard(row, "Ranked 2v2", "Bientôt disponible", false, null, "mode_2v2", showRank: true);
@@ -591,17 +615,41 @@ namespace Nymora.Hub.Menu
             trt.anchorMin = new Vector2(0.5f, 1f); trt.anchorMax = new Vector2(0.5f, 1f); trt.pivot = new Vector2(0.5f, 1f);
             trt.anchoredPosition = new Vector2(0f, -36f); trt.sizeDelta = new Vector2(560f, 40f);
 
+            // Bouton "réduire" (−), coin haut-droit du panneau : minimise la recherche -> ferme
+            // le menu, la file CONTINUE en arrière-plan (bandeau flottant). Plus clair que la
+            // flèche retour. (≠ "Annuler", qui coupe la file.)
+            var minImg = _f.MakeImage("Minimize", prt, _theme.ButtonGhostBg);
+            var minRt = minImg.rectTransform;
+            minRt.anchorMin = new Vector2(1f, 1f); minRt.anchorMax = new Vector2(1f, 1f); minRt.pivot = new Vector2(1f, 1f);
+            minRt.anchoredPosition = new Vector2(-14f, -14f);
+            minRt.sizeDelta = new Vector2(34f, 34f);
+            var minBtn = minImg.gameObject.AddComponent<Button>();
+            minBtn.targetGraphic = minImg;
+            var mc = minBtn.colors;
+            mc.normalColor = _theme.ButtonGhostBg; mc.highlightedColor = _theme.ButtonGhostBgHover;
+            mc.pressedColor = _theme.ButtonGhostBgHover; mc.fadeDuration = 0.1f;
+            minBtn.colors = mc;
+            minBtn.onClick.AddListener(Close);
+            // Barre horizontale = pictogramme "réduire".
+            var minBar = _f.MakeImage("Bar", minRt, _theme.TextPrimary, rounded: false);
+            var mbrt = minBar.rectTransform;
+            mbrt.anchorMin = mbrt.anchorMax = new Vector2(0.5f, 0.5f); mbrt.pivot = new Vector2(0.5f, 0.5f);
+            mbrt.sizeDelta = new Vector2(14f, 2.5f);
+            minBar.raycastTarget = false;
+
             _mmStatus = _f.MakeText("Status", prt, "Préparation...", _theme.FontSizeBody, _theme.TextSecondary, _theme.Font, TextAlignmentOptions.Center);
             _mmStatus.raycastTarget = false;
             var srt = _mmStatus.rectTransform;
             srt.anchorMin = new Vector2(0.5f, 0.5f); srt.anchorMax = new Vector2(0.5f, 0.5f); srt.pivot = new Vector2(0.5f, 0.5f);
             srt.anchoredPosition = new Vector2(0f, 8f); srt.sizeDelta = new Vector2(560f, 120f);
 
+            // "Annuler" = coupe explicitement la file (≠ flèche retour / Échap, qui laissent
+            // la recherche tourner en arrière-plan).
             var cancel = _f.MakeButton(prt, "Annuler", false, out _);
             var crt = (RectTransform)cancel.transform;
             crt.anchorMin = new Vector2(0.5f, 0f); crt.anchorMax = new Vector2(0.5f, 0f); crt.pivot = new Vector2(0.5f, 0f);
             crt.anchoredPosition = new Vector2(0f, 34f); crt.sizeDelta = new Vector2(200f, 46f);
-            cancel.onClick.AddListener(() => ShowScreen("arena"));
+            cancel.onClick.AddListener(() => { CancelSearch(); ShowScreen("arena"); });
 
             _currentScreen = holder.gameObject;
             StartRankedSearch();
@@ -610,6 +658,11 @@ namespace Nymora.Hub.Menu
         // Même garde-fou deck que HubRankedSearchPanel / HubArenaPanel, puis entre en file.
         private async void StartRankedSearch()
         {
+            // Recherche déjà active (relancée depuis l'arrière-plan en rouvrant l'écran) :
+            // on NE ré-enfile PAS — on reflète juste l'état. Le chrono est rafraîchi par
+            // RefreshSearchOverlay.
+            if (_searching) { SetMmStatus("Recherche d'un adversaire en cours..."); return; }
+
             var chat = HubChatClient.Instance;
             if (chat == null || !chat.IsConnected) { SetMmStatus("Pas connecté au serveur. Réessaie dans un instant."); return; }
 
@@ -635,6 +688,7 @@ namespace Nymora.Hub.Menu
             }
 
             _searching = true;
+            _searchStartTime = Time.unscaledTime; // démarre le chrono du bandeau flottant
             SetMmStatus("Connexion à la file classée...");
             chat.SendEnqueueRanked();
         }
@@ -643,22 +697,162 @@ namespace Nymora.Hub.Menu
         {
             _searching = false;
             HubChatClient.Instance?.SendDequeueRanked();
+            RefreshSearchOverlay(); // masque le bandeau immédiatement (pas d'attente d'ack)
         }
 
         private void HandleQueueJoined(int mmr)
         {
-            if (_searching) SetMmStatus($"Recherche d'un adversaire... (MMR {mmr})\nLa fenêtre s'élargit avec le temps d'attente.");
+            if (_searching && _currentScreenId == "matchmaking")
+                SetMmStatus($"Recherche d'un adversaire... (MMR {mmr})\nLa fenêtre s'élargit avec le temps d'attente.");
         }
 
         private void HandleMatchFound(string matchId, string opponentSub, string opponentDisplayName)
         {
             _searching = false; // la transition vers la scène ranked est pilotée par HubMatchTransition
-            SetMmStatus($"Adversaire trouvé : {opponentDisplayName} !\nLancement du combat...");
+            RefreshSearchOverlay();
+            if (_currentScreenId == "matchmaking")
+                SetMmStatus($"Adversaire trouvé : {opponentDisplayName} !\nLancement du combat...");
         }
 
         private void HandleQueueLeft()
         {
-            if (_currentScreenId == "matchmaking" && !_searching) SetMmStatus("File quittée.");
+            _searching = false;
+            RefreshSearchOverlay();
+            if (_currentScreenId == "matchmaking") SetMmStatus("File quittée.");
+        }
+
+        // ===== Overlay hub : compteur en ligne + bandeau de recherche en arrière-plan =====
+
+        private void HandleOnlineCount(int count)
+        {
+            if (_onlineCountLabel == null) return;
+            _onlineCountLabel.text = count <= 1 ? $"{count} joueur en ligne" : $"{count} joueurs en ligne";
+        }
+
+        /// <summary>
+        /// Construit l'overlay permanent (haut-centre) sur le canvas menu, HORS MenuRoot :
+        /// il n'est donc visible QUE menu fermé (= dans le hub). Le compteur en ligne est
+        /// toujours là ; le bandeau de recherche n'apparaît que pendant une file classée.
+        /// </summary>
+        private void BuildOnlineOverlay(RectTransform canvasRT)
+        {
+            _onlineOverlayRoot = _f.MakeRect("HubTopOverlay", canvasRT).gameObject;
+            var rootRt = (RectTransform)_onlineOverlayRoot.transform;
+            rootRt.anchorMin = new Vector2(0.5f, 1f); rootRt.anchorMax = new Vector2(0.5f, 1f); rootRt.pivot = new Vector2(0.5f, 1f);
+            rootRt.anchoredPosition = new Vector2(0f, -18f);
+            rootRt.sizeDelta = new Vector2(360f, 80f);
+            var vlg = _onlineOverlayRoot.AddComponent<VerticalLayoutGroup>();
+            vlg.spacing = 8f; vlg.childAlignment = TextAnchor.UpperCenter;
+            vlg.childControlWidth = true; vlg.childControlHeight = true;
+            vlg.childForceExpandWidth = false; vlg.childForceExpandHeight = false;
+
+            // --- Compteur de joueurs en ligne (pilule discrète) ---
+            var countPill = _f.MakeImage("OnlinePill", rootRt, new Color(0.06f, 0.062f, 0.075f, 0.78f));
+            var cple = countPill.gameObject.AddComponent<LayoutElement>();
+            cple.preferredHeight = 30f;
+            var cphlg = countPill.gameObject.AddComponent<HorizontalLayoutGroup>();
+            cphlg.padding = new RectOffset(14, 16, 0, 0); cphlg.spacing = 8f;
+            cphlg.childAlignment = TextAnchor.MiddleCenter;
+            cphlg.childControlWidth = true; cphlg.childControlHeight = true;
+            cphlg.childForceExpandWidth = false; cphlg.childForceExpandHeight = false;
+            var cpfit = countPill.gameObject.AddComponent<ContentSizeFitter>();
+            cpfit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize; cpfit.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+            countPill.raycastTarget = false;
+
+            // Point "live" vert sobre (statut, pas un retour au thème coloré).
+            var dot = _f.MakeImage("LiveDot", countPill.rectTransform, new Color(0.49f, 0.80f, 0.56f, 1f));
+            dot.raycastTarget = false;
+            var dle = dot.gameObject.AddComponent<LayoutElement>();
+            dle.preferredWidth = 9f; dle.preferredHeight = 9f; dle.minWidth = 9f; dle.minHeight = 9f;
+
+            _onlineCountLabel = _f.MakeText("Count", countPill.rectTransform, "— en ligne", _theme.FontSizeSmall, _theme.TextSecondary, _theme.Font, TextAlignmentOptions.Center);
+            _onlineCountLabel.enableWordWrapping = false;
+            _onlineCountLabel.raycastTarget = false;
+            _onlineCountLabel.gameObject.AddComponent<LayoutElement>().minWidth = 90f;
+
+            // --- Bandeau "Recherche classée — MM:SS" (cliquable = rouvre l'écran matchmaking) ---
+            var ticker = _f.MakeImage("SearchTicker", rootRt, new Color(0.10f, 0.105f, 0.13f, 0.96f));
+            _searchTickerRoot = ticker.gameObject;
+            var tle = ticker.gameObject.AddComponent<LayoutElement>();
+            tle.preferredHeight = 38f;
+            var thlg = ticker.gameObject.AddComponent<HorizontalLayoutGroup>();
+            thlg.padding = new RectOffset(16, 8, 0, 0); thlg.spacing = 10f;
+            thlg.childAlignment = TextAnchor.MiddleCenter;
+            thlg.childControlWidth = true; thlg.childControlHeight = true;
+            thlg.childForceExpandWidth = false; thlg.childForceExpandHeight = false;
+            var tfit = ticker.gameObject.AddComponent<ContentSizeFitter>();
+            tfit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize; tfit.verticalFit = ContentSizeFitter.FitMode.Unconstrained;
+
+            // Corps cliquable (rouvre matchmaking) — un Button sur le bandeau lui-même.
+            var tickerBtn = ticker.gameObject.AddComponent<Button>();
+            tickerBtn.targetGraphic = ticker;
+            var tc = tickerBtn.colors;
+            tc.normalColor = Color.white; tc.highlightedColor = new Color(1f, 1f, 1f, 0.92f);
+            tc.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f); tc.fadeDuration = 0.1f;
+            tickerBtn.colors = tc;
+            tickerBtn.onClick.AddListener(() => OpenScreen("matchmaking"));
+
+            _searchTickerLabel = _f.MakeText("Label", ticker.rectTransform, "Recherche classée — 00:00", _theme.FontSizeSmall, _theme.TextPrimary, _theme.FontBold, TextAlignmentOptions.Center);
+            _searchTickerLabel.enableWordWrapping = false;
+            _searchTickerLabel.raycastTarget = false;
+            _searchTickerLabel.gameObject.AddComponent<LayoutElement>().minWidth = 200f;
+
+            // Bouton d'annulation — coupe la file. Croix SVG (ui_icon_close, blanche teintée),
+            // fallback texte "✗" si l'import SVG n'est pas encore prêt. Au-dessus du corps cliquable.
+            var cancel = _f.MakeImage("Cancel", ticker.rectTransform, _theme.ButtonGhostBg);
+            var cancelBtn = cancel.gameObject.AddComponent<Button>();
+            cancelBtn.targetGraphic = cancel;
+            var cc = cancelBtn.colors;
+            cc.normalColor = _theme.ButtonGhostBg; cc.highlightedColor = _theme.ButtonGhostBgHover;
+            cc.pressedColor = _theme.ButtonGhostBgHover; cc.fadeDuration = 0.1f;
+            cancelBtn.colors = cc;
+            cancelBtn.onClick.AddListener(CancelSearch);
+            var ccle = cancel.gameObject.AddComponent<LayoutElement>();
+            ccle.preferredWidth = 28f; ccle.preferredHeight = 28f; ccle.minWidth = 28f;
+
+            var closeSprite = HubMenuUIFactory.LoadIcon("ui_icon_close");
+            if (closeSprite != null)
+            {
+                var xIcon = _f.MakeImage("X", cancel.rectTransform, _theme.TextPrimary, rounded: false);
+                xIcon.sprite = closeSprite; xIcon.type = Image.Type.Simple; xIcon.preserveAspect = true;
+                xIcon.raycastTarget = false;
+                var xrt = xIcon.rectTransform;
+                xrt.anchorMin = xrt.anchorMax = new Vector2(0.5f, 0.5f); xrt.pivot = new Vector2(0.5f, 0.5f);
+                xrt.sizeDelta = new Vector2(15f, 15f);
+            }
+            else
+            {
+                var cx = _f.MakeText("X", cancel.rectTransform, "✗", _theme.FontSizeSmall, _theme.TextPrimary, _theme.FontBold, TextAlignmentOptions.Center);
+                HubMenuUIFactory.Stretch(cx.rectTransform);
+                cx.raycastTarget = false;
+            }
+
+            _searchTickerRoot.SetActive(false);
+            _onlineOverlayRoot.SetActive(false); // RefreshSearchOverlay gère l'affichage menu fermé
+        }
+
+        /// <summary>
+        /// Pilote l'overlay haut-centre chaque frame : visible uniquement menu fermé (hub) ;
+        /// le bandeau de recherche n'apparaît que si une file classée tourne, et son chrono
+        /// est mis à jour en MM:SS.
+        /// </summary>
+        private void RefreshSearchOverlay()
+        {
+            if (_onlineOverlayRoot == null) return;
+
+            bool overlayVisible = !_isOpen; // dans le hub (menu Échap fermé)
+            if (_onlineOverlayRoot.activeSelf != overlayVisible) _onlineOverlayRoot.SetActive(overlayVisible);
+            if (!overlayVisible) return;
+
+            bool tickerVisible = _searching;
+            if (_searchTickerRoot != null && _searchTickerRoot.activeSelf != tickerVisible)
+                _searchTickerRoot.SetActive(tickerVisible);
+
+            if (tickerVisible && _searchTickerLabel != null)
+            {
+                int secs = Mathf.Max(0, Mathf.FloorToInt(Time.unscaledTime - _searchStartTime));
+                _searchTickerLabel.text = $"Recherche classée — {secs / 60:00}:{secs % 60:00}";
+            }
         }
 
         private void SetMmStatus(string s) { if (_mmStatus != null) _mmStatus.text = s; }
