@@ -18,7 +18,9 @@ namespace Nymora.Combat.View
         // terrain (Sang Coagule, piege, etc.), soit DESACTIVE par SetFloorVisible(false)
         // -> impossible de voir la portee de sort sur les cases avec terrain.
         // Offset +50 = au-dessus des terrains (+1) mais sous les combatants (700-1000).
-        private const int HighlightSortingOffset = 50;
+        // Public : TrapView s'aligne dessus (#8) pour rendre les pièges AU-DESSUS du surlignage de
+        // portée (sinon le bleu castable recouvre la rune et on ne voit plus le piège pendant le ciblage).
+        public const int HighlightSortingOffset = 50;
         private SpriteRenderer _highlightSprite;
 
         public int GridX { get; private set; }

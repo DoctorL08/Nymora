@@ -1,4 +1,5 @@
 using System.Collections;
+using Nymora.Combat.View;
 using Quantum;
 using UnityEngine;
 
@@ -34,6 +35,19 @@ namespace Nymora.Combat.View.Animation
             Vector2 dir = (Vector2)(targetPos - casterPos);
             if (dir.sqrMagnitude < 0.0001f) dir = FacingDir(caster.Facing);
             dir = dir.normalized;
+
+            // #13 (5 juin) — en phase 3, les pièges du Nightseer sont INVISIBLES pour l'adversaire
+            //   (TrapView). Mais le VFX de POSE de Filet de Ronces / Champ de Mines joue À LA POSITION
+            //   du/des piège(s) -> il révélait l'emplacement à l'ennemi. On le supprime côté ADVERSAIRE
+            //   quand le poseur est en phase 3 ; le propriétaire (viewer == caster) continue de le voir.
+            //   (Le Piège Bondissant joue autour du caster, pas sur le piège -> non concerné.)
+            if ((caster.LastCastSpellId == SpellId.NightseerFiletDeRonces
+                 || caster.LastCastSpellId == SpellId.NightseerChampDeMines)
+                && NightseerPassif.TrapsInvisible(caster.Resource)
+                && LocalPlayerResolver.Resolve() != caster.PlayerIndex)
+            {
+                return;
+            }
 
             // Recettes BESPOKE par sort (par classe). Si la classe du sort est mappée finement,
             // on joue son effet dédié et on s'arrête ; sinon on retombe sur l'archétype générique.

@@ -122,6 +122,10 @@ namespace Quantum
             if (GridHelpers.GetOccupant(f, x, y) != EntityRef.None) { Log.Warn($"[Trap] pose rejetee : case ({x},{y}) occupee par un combattant"); return; }
             if (ObstacleHelpers.HasObstacleAt(f, x, y)) { Log.Warn($"[Trap] pose rejetee : case ({x},{y}) porte un obstacle"); return; }
             if (DecoyHelpers.HasAnyDecoyAt(f, x, y)) { Log.Warn($"[Trap] pose rejetee : case ({x},{y}) porte un leurre"); return; }
+            // #12 (5 juin) — INTERDIT de poser sur une case qui porte DÉJÀ un piège (own ou adverse) :
+            //   plus d'écrasement (decision Lorenzo). Une case = un seul piège. Le Champ de Mines saute
+            //   simplement les cases déjà piégées (pose partielle, comme pour occupant/obstacle/leurre).
+            if (GetTrapKind(f, x, y) != TrapKind.None) { Log.Warn($"[Trap] pose rejetee : case ({x},{y}) porte deja un piege"); return; }
             var fog = f.Unsafe.GetPointerSingleton<FogSingleton>();
             int idx = GridHelpers.Index(x, y);
             fog->Tiles[idx].Trap = kind;

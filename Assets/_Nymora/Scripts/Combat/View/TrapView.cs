@@ -144,7 +144,11 @@ namespace Nymora.Combat.View
 
                     var sr = go.AddComponent<SpriteRenderer>();
                     sr.sortingLayerName = tile.SortingLayerName;
-                    sr.sortingOrder = tile.SortingOrder + _sortingOrderOffset;
+                    // #8 (5 juin) — les pièges rendent AU-DESSUS du surlignage de portée (highlight à
+                    //   +HighlightSortingOffset) pour rester visibles pendant le ciblage : sans ça le bleu
+                    //   castable recouvrait la rune et on ne voyait plus qu'il y a un piège sous la case.
+                    //   Reste largement sous les combattants (~700+). +_sortingOrderOffset = réglage fin.
+                    sr.sortingOrder = tile.SortingOrder + TileView.HighlightSortingOffset + _sortingOrderOffset;
                     sr.color = _filetColor;
 
                     var anim = go.AddComponent<SpriteAnimator>();

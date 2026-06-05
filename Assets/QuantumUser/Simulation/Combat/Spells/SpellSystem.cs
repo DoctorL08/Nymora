@@ -532,9 +532,10 @@ namespace Quantum
             {
                 if (GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY) != EntityRef.None
                     || ObstacleHelpers.HasObstacleAt(f, cmd.TargetX, cmd.TargetY)
-                    || DecoyHelpers.HasAnyDecoyAt(f, cmd.TargetX, cmd.TargetY))
+                    || DecoyHelpers.HasAnyDecoyAt(f, cmd.TargetX, cmd.TargetY)
+                    || FogHelpers.GetTrapKind(f, cmd.TargetX, cmd.TargetY) != TrapKind.None) // #12 (5 juin) : pas sur un piège existant
                 {
-                    Log.Warn($"[Spell] rejet : {cmd.Spell} sur ({cmd.TargetX},{cmd.TargetY}) impossible (case occupee : joueur, obstacle ou leurre). PA non consomme.");
+                    Log.Warn($"[Spell] rejet : {cmd.Spell} sur ({cmd.TargetX},{cmd.TargetY}) impossible (case occupee : joueur, obstacle, leurre ou piege). PA non consomme.");
                     return;
                 }
             }

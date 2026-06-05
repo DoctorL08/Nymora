@@ -109,6 +109,8 @@ namespace Nymora.Combat.View
             // PATCH 22 mai — grisage des cases hors ligne de vue (derriere un obstacle). Activé
             // uniquement pour les sorts qui requierent une LoS claire cote sim (meme liste).
             bool needsLineOfSight = false;
+            // #9 (5 juin) : Champ de Mines pose 3 mines précises -> preview dédié (pas le Square3x3).
+            bool isChampDeMines = false;
             if (_hudController != null && _hudController.ArmedSpell.HasValue
                 && SpellRegistry.TryGet(_hudController.ArmedSpell.Value, out SpellDef def))
             {
@@ -120,6 +122,7 @@ namespace Nymora.Combat.View
                 // se limite aux cases cardinalement alignees avec le caster.
                 isStraightLineSpell = SpellSystem.SpellIsStraightLine(_hudController.ArmedSpell.Value);
                 needsLineOfSight = SpellSystem.SpellNeedsLineOfSight(_hudController.ArmedSpell.Value);
+                isChampDeMines = _hudController.ArmedSpell.Value == SpellId.NightseerChampDeMines;
             }
             else if (_inputController != null && _inputController.DebugShowTargeting)
             {
@@ -152,6 +155,10 @@ namespace Nymora.Combat.View
                 {
                     casterX = combatant.GridX;
                     casterY = combatant.GridY;
+                    // Fix 5 juin (B5/#11) : applique le +1 portée du passif Nightseer P2+ au PREVIEW.
+                    //   Le sim l'applique déjà au cast (SpellSystem.effectiveRangeMax) ; sans ça la
+                    //   case gagnée en phase 2 n'apparaissait pas (bleu castable / rouge cible).
+                    rangeMax = NightseerPassif.RangeWithPhaseBonus(combatant.Class, combatant.Resource, rangeMax);
                     hasCaster = true;
                     break;
                 }
@@ -257,6 +264,30 @@ namespace Nymora.Combat.View
                             tile.ApplyHighlight(_effectColor);
                             _highlighted.Add(ry * GridConstants.Width + rx);
                         }
+                    }
+                }
+                else if (isChampDeMines)
+                {
+                    // #9 (5 juin) — Champ de Mines pose 3 mines : centre + cardinales (N,E,S,O) puis
+                    //   diagonales ; on garde les 3 PREMIÈRES dans la grille et != case du caster.
+                    //   MIROIR EXACT du handler sim (SpellSystem case NightseerChampDeMines) pour que
+                    //   le preview montre où les mines vont vraiment (au lieu du Square3x3 trompeur).
+                    int cmx = hoverGx, cmy = hoverGy;
+                    int[] candX = { cmx, cmx, cmx + 1, cmx, cmx - 1, cmx + 1, cmx + 1, cmx - 1, cmx - 1 };
+                    int[] candY = { cmy, cmy - 1, cmy, cmy + 1, cmy, cmy - 1, cmy + 1, cmy + 1, cmy - 1 };
+                    int placed = 0;
+                    for (int i = 0; i < 9 && placed < 3; i++)
+                    {
+                        int mx = candX[i], my = candY[i];
+                        if (mx < 0 || mx >= GridConstants.Width || my < 0 || my >= GridConstants.Height) continue;
+                        if (mx == casterX && my == casterY) continue;
+                        var tile = _gridRenderer.GetTileView(mx, my);
+                        if (tile != null)
+                        {
+                            tile.ApplyHighlight(_effectColor);
+                            _highlighted.Add(my * GridConstants.Width + mx);
+                        }
+                        placed++;
                     }
                 }
                 else

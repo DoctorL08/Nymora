@@ -174,7 +174,12 @@ namespace Nymora.Core.Data
         //                1x/tour (anti-spam marques/PT, complement du fix PT). (#6b Charge Brutale +1 HG :
         //                aucun changement, decision Lorenzo "garder tel quel".) Pure logique, aucun
         //                champ [Networked] touche.
-        public const int CombatRulesVersion = 109;
+        // 110 (B5 #12, 5 juin) : INTERDICTION de poser un piège Nightseer sur une case qui porte déjà
+        //                un piège (own ou adverse) — plus d'écrasement. Reject pré-PA pour Filet de Ronces
+        //                / Piège Bondissant (PA non consommé) + garde par-case dans FogHelpers.PlaceTrap
+        //                (le Champ de Mines saute les cases déjà piégées). Le reste de B5 (#8/#9/#11/#13)
+        //                est View-only. Pure logique, aucun champ [Networked] touche.
+        public const int CombatRulesVersion = 110;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

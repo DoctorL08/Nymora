@@ -59,6 +59,19 @@ namespace Quantum
         public static bool TraquenardUnlocked(int prescience)         => GetPhase(prescience) >= 3;
 
         /// <summary>
+        /// Portée EFFECTIVE d'un sort après le bonus de phase Nightseer (P2+ : +1 portée sur les
+        /// sorts à distance, RangeMax >= 1). MIROIR du garde sim (SpellSystem.effectiveRangeMax,
+        /// ligne ~337) pour que le PREVIEW View (TargetingPreviewView) affiche la même portée que
+        /// le cast. No-op pour les autres classes / les sorts self (rangeMax 0) / phases < 2.
+        /// </summary>
+        public static int RangeWithPhaseBonus(NymoraClass casterClass, int casterResource, int rangeMax)
+        {
+            if (casterClass == NymoraClass.Nightseer && rangeMax >= 1 && FlatDamageRangeBonusActive(casterResource))
+                return rangeMax + RangeBonus;
+            return rangeMax;
+        }
+
+        /// <summary>
         /// +1 PR sur le Nightseer de PlayerIndex `ownerPlayerIndex` (piège posé / déclenché / marque).
         /// Cappé à +3 PR par tour du Nightseer (PrescienceGainedThisTurn) ET au cap de ressource (5).
         /// No-op si pas de Nightseer vivant pour ce playerIndex.
