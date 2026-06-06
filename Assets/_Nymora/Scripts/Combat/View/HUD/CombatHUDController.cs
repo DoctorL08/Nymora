@@ -176,6 +176,22 @@ namespace Nymora.Combat.View.HUD
             }
 
             QuantumCallback.Subscribe(this, (CallbackUpdateView c) => OnUpdateView(c.Game));
+
+            // S5 spectateur : masque les éléments INTERACTIFS (barre de sorts, signature, Fin de
+            // tour) qui n'ont aucun sens pour un spectateur. On garde les panneaux d'info utiles
+            // (HP/PA/PM des 2 joueurs, timeline, passif).
+            if (Nymora.Combat.Spectate.LiveSpectateController.LiveSpectateActive)
+            {
+                HideInteractiveHudForSpectator();
+            }
+        }
+
+        private void HideInteractiveHudForSpectator()
+        {
+            if (_spellSlots != null)
+                foreach (var s in _spellSlots) if (s != null) s.gameObject.SetActive(false);
+            if (_signatureSlot != null) _signatureSlot.gameObject.SetActive(false);
+            if (_endTurnButton != null) _endTurnButton.gameObject.SetActive(false);
         }
 
         private SignatureSlotEnhancer _signatureEnhancer;

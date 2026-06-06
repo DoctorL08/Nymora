@@ -288,17 +288,26 @@ namespace Nymora.Hub.Menu
         }
 
         /// <summary>
-        /// S4 — Lance le visionnage live : pose le matchId dans LiveSpectateBridge puis charge la
-        /// scène du mode (le LiveSpectateController y prend la main en GameMode.Replay).
+        /// S4 — Lance le visionnage live : pose le matchId dans LiveSpectateBridge, COUPE le runner
+        /// Fusion du hub sous le voile (sinon avatar local doublé au retour, cf HubMenuReplays.Watch),
+        /// puis charge la scène du mode (le LiveSpectateController y prend la main en GameMode.Replay).
         /// </summary>
-        private void LaunchSpectate(string matchId, SpectateMatchInfo match)
+        private async void LaunchSpectate(string matchId, SpectateMatchInfo match)
         {
             CloseSpectatePopup();
             if (string.IsNullOrEmpty(matchId)) return;
 
             string scene = match != null && match.mode == "ranked" ? "40_CombatRanked1v1" : "33_CombatCasual";
             Nymora.Combat.Spectate.LiveSpectateBridge.RequestedMatchId = matchId;
-            Nymora.Core.SceneFlow.SceneTransition.Load(scene, waitForReady: true);
+            await Nymora.Core.SceneFlow.SceneTransition.LoadAsync(scene, async () =>
+            {
+                var runner = UnityEngine.Object.FindFirstObjectByType<Fusion.NetworkRunner>();
+                if (runner != null && runner.IsRunning)
+                {
+                    try { await runner.Shutdown(); }
+                    catch (System.Exception ex) { Debug.LogWarning($"[Spectate] Shutdown Fusion a throw : {ex.Message} — on continue."); }
+                }
+            }, waitForReady: false);
         }
     }
 }

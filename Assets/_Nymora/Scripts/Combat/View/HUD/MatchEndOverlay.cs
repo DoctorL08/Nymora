@@ -229,6 +229,27 @@ namespace Nymora.Combat.View.HUD
             _winnerPlayerIndex = winnerPlayerIndex;
             _isPvpMatch = isPvpMatch;
 
+            // S5 spectateur : pas de "local", donc pas de Victoire/Défaite. On nomme le gagnant.
+            if (Nymora.Combat.Spectate.LiveSpectateController.LiveSpectateActive)
+            {
+                string p0 = string.IsNullOrEmpty(PlayerProfileBridge.LocalPseudo) ? "Joueur 1" : PlayerProfileBridge.LocalPseudo;
+                string p1 = string.IsNullOrEmpty(PlayerProfileBridge.OpponentPseudo) ? "Joueur 2" : PlayerProfileBridge.OpponentPseudo;
+                if (_builtTitle != null)
+                {
+                    if (winnerPlayerIndex < 0) { _builtTitle.text = "MATCH NUL"; _builtTitle.color = _drawColor; }
+                    else
+                    {
+                        string winner = winnerPlayerIndex == 0 ? p0 : p1;
+                        _builtTitle.text = winner.ToUpperInvariant() + " L'EMPORTE";
+                        _builtTitle.color = _victoryColor;
+                    }
+                }
+                if (_builtInfo != null)
+                    _builtInfo.text = $"<color=#9A9BA2>{p0} vs {p1} · Round {turnNumber}</color>";
+                Show();
+                return;
+            }
+
             string title;
             Color titleColor;
             if (winnerPlayerIndex < 0) { title = "MATCH NUL"; titleColor = _drawColor; }
@@ -270,7 +291,9 @@ namespace Nymora.Combat.View.HUD
 
             // En mode replay (.nymrep) : pas de Retour hub (sortie via ReplayControlsPanel) ni de Save
             // (recorder force-disabled). Sinon : Retour hub toujours, Save si un recorder est présent.
-            bool replayMode = IsInReplayMode();
+            // Spectateur : pas de "Retour hub" ici (sortie via le bouton Quitter du LiveSpectateController),
+            // ni de Save (pas de recorder) — comme le mode replay.
+            bool replayMode = IsInReplayMode() || Nymora.Combat.Spectate.LiveSpectateController.LiveSpectateActive;
             if (_builtReturnBtn != null) _builtReturnBtn.gameObject.SetActive(!replayMode);
             if (_builtSaveBtn != null) _builtSaveBtn.gameObject.SetActive(!replayMode && _replayRecorder != null);
             RefreshSaveReplayButton();

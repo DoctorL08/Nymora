@@ -88,6 +88,11 @@ namespace Nymora.Combat.Spectate
 
         private bool TrySendHeader(QuantumGame game)
         {
+            // On attend que le PlayerRef local soit résolu pour mapper correctement les pseudos
+            // sur P0/P1 (sinon le spectateur démarrerait avec des noms génériques). < 1s en pratique.
+            int localSlot = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance?.LocalPlayerSlot ?? -1;
+            if (localSlot < 0) return false;
+
             QuantumReplayFile replay;
             try { replay = game.GetRecordedReplay(includeChecksums: false); }
             catch (Exception ex) { Debug.LogWarning("[SpectateRelay] GetRecordedReplay : " + ex.Message); return false; }
@@ -107,6 +112,13 @@ namespace Nymora.Combat.Spectate
                     : "",
                 localActorNumber = replay.LocalActorNumber,
             };
+
+            // Noms par PlayerIndex : on mappe les pseudos local/adverse (MatchBridge, renseigné par
+            // le hub) sur P0/P1 via le slot local résolu plus haut.
+            string localName = Nymora.Core.Data.MatchBridge.LocalDisplayName;
+            string oppName = Nymora.Core.Data.MatchBridge.OpponentDisplayName;
+            if (localSlot == 0) { header.p0Name = localName; header.p1Name = oppName; }
+            else { header.p0Name = oppName; header.p1Name = localName; }
 
             SpectateRelayBus.RaiseStart(_matchId, JsonUtility.ToJson(header));
             Debug.Log($"[SpectateRelay] Header envoyé (match {_matchId}, initialTick={header.initialTick}).");
@@ -179,5 +191,7 @@ namespace Nymora.Combat.Spectate
         public int initialTick;
         public string initialFrameDataB64;  // "" si null
         public int localActorNumber;
+        public string p0Name;               // pseudo du joueur PlayerIndex 0
+        public string p1Name;               // pseudo du joueur PlayerIndex 1
     }
 }

@@ -92,6 +92,12 @@ namespace Nymora.Combat.Spectate
 
         private void StartSpectate(SpectateHeader header)
         {
+            // Noms par PlayerIndex : le spectateur « joue » P0 (localPlayerIndex=0 via le garde HUD),
+            // donc local=P0, opponent=P1. Renseigne PlayerProfileBridge → tooltip + intro pile-ou-face
+            // affichent les vrais pseudos au lieu de « Joueur »/« Bot ».
+            PlayerProfileBridge.SetLocal(string.IsNullOrEmpty(header.p0Name) ? "Joueur 1" : header.p0Name, "");
+            PlayerProfileBridge.SetOpponent(string.IsNullOrEmpty(header.p1Name) ? "Joueur 2" : header.p1Name, "");
+
             var serializer = new QuantumUnityJsonSerializer();
             RuntimeConfig runtimeConfig;
             try
