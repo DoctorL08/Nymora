@@ -124,6 +124,11 @@ namespace Nymora.Editor.Tools
                 // pour horodater les fichiers .nymrep sauvegardes.
                 if (excludeViewSubfolder && normalized.Contains("/Scripts/Combat/Replay/")) continue;
 
+                // Spectate/ = pilote View-tier d'une session replay LOCALE (mode spectateur S4),
+                // meme tier que Replay/. Time.deltaTime y pilote la VITESSE de Service() (playback),
+                // sans impact sur le determinisme : les inputs viennent du flux reseau, pas du temps.
+                if (excludeViewSubfolder && normalized.Contains("/Scripts/Combat/Spectate/")) continue;
+
                 // Generated/ = code auto-genere par le DSL Quantum, pas pertinent a scanner.
                 if (normalized.Contains("/Generated/")) continue;
 

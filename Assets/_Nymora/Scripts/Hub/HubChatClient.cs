@@ -87,6 +87,11 @@ namespace Nymora.Hub
         public event Action<SpectateMatchInfo[]> OnMatchesList;
         public SpectateMatchInfo[] LatestMatches { get; private set; } = new SpectateMatchInfo[0];
 
+        // S4 spectateur — réception du flux (côté SPECTATEUR).
+        public event Action<string, string> OnSpectateInit;   // matchId, headerJson
+        public event Action<string, int, string> OnSpectateChunk; // matchId, seq, dataB64
+        public event Action<string> OnSpectateEnd;            // matchId
+
         public struct MmrUpdateData
         {
             public int Mmr;
@@ -160,7 +165,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, ClanBannerUpdated, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate, OnlineCount, MatchesList, ForceDisconnect }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, ClanBannerUpdated, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate, OnlineCount, MatchesList, SpectateInit, SpectateChunk, SpectateEnd, ForceDisconnect }
 
         private struct IncomingEvent
         {
@@ -228,6 +233,11 @@ namespace Nymora.Hub
             public int OnlineCountValue;
             // S2 spectateur — liste des matchs en cours (MATCHES_LIST)
             public SpectateMatchInfo[] Matches;
+            // S4 spectateur — flux live
+            public string SpecMatchId;
+            public string SpecHeader;
+            public int SpecSeq;
+            public string SpecData;
         }
 
         private void Awake()
@@ -251,6 +261,14 @@ namespace Nymora.Hub
             SpectateRelayBus.OnStart += HandleRelayStart;
             SpectateRelayBus.OnChunk += HandleRelayChunk;
             SpectateRelayBus.OnEnd += HandleRelayEnd;
+
+            // S4 spectateur — pont bidirectionnel avec LiveSpectateController (Nymora.Combat).
+            // Combat → Hub : demandes JOIN/LEAVE. Hub → Combat : flux INIT/CHUNK/END.
+            SpectateStreamBus.OnJoinRequested += SendSpectateJoin;
+            SpectateStreamBus.OnLeaveRequested += SendSpectateLeave;
+            OnSpectateInit += SpectateStreamBus.RaiseInit;
+            OnSpectateChunk += SpectateStreamBus.RaiseChunk;
+            OnSpectateEnd += SpectateStreamBus.RaiseEnd;
         }
 
         private void HandleRelayStart(string matchId, string headerJson) => SendSpectateStart(matchId, headerJson);
@@ -534,6 +552,30 @@ namespace Nymora.Hub
                         {
                             Kind = EventKind.MatchesList,
                             Matches = msg.payload?.matches ?? new SpectateMatchInfo[0],
+                        });
+                        break;
+                    case "SPECTATE_INIT":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.SpectateInit,
+                            SpecMatchId = msg.payload?.matchId ?? "",
+                            SpecHeader = msg.payload?.header ?? "",
+                        });
+                        break;
+                    case "SPECTATE_CHUNK":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.SpectateChunk,
+                            SpecMatchId = msg.payload?.matchId ?? "",
+                            SpecSeq = msg.payload?.seq ?? 0,
+                            SpecData = msg.payload?.data ?? "",
+                        });
+                        break;
+                    case "SPECTATE_END":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.SpectateEnd,
+                            SpecMatchId = msg.payload?.matchId ?? "",
                         });
                         break;
                     case "REPORT_SENT":
@@ -829,6 +871,12 @@ namespace Nymora.Hub
             public int count;
             // S2 spectateur — liste des matchs en cours (MATCHES_LIST)
             public SpectateMatchInfo[] matches;
+            // S4 spectateur — flux live (INIT/CHUNK/END). matchId réutilise le champ existant ci-dessus.
+            public string header;
+            public int seq;
+            public string data;
+            public int chunkCount;
+            public bool ended;
         }
 
         [Serializable]
@@ -934,6 +982,15 @@ namespace Nymora.Hub
                     case EventKind.MatchesList:
                         LatestMatches = ev.Matches ?? new SpectateMatchInfo[0];
                         OnMatchesList?.Invoke(LatestMatches);
+                        break;
+                    case EventKind.SpectateInit:
+                        OnSpectateInit?.Invoke(ev.SpecMatchId, ev.SpecHeader);
+                        break;
+                    case EventKind.SpectateChunk:
+                        OnSpectateChunk?.Invoke(ev.SpecMatchId, ev.SpecSeq, ev.SpecData);
+                        break;
+                    case EventKind.SpectateEnd:
+                        OnSpectateEnd?.Invoke(ev.SpecMatchId);
                         break;
                     case EventKind.ReportSent:
                         // POLISH-7 : param = toDisplayName au lieu de toEmail.
@@ -1121,6 +1178,24 @@ namespace Nymora.Hub
             await SendJsonAsync(json);
         }
 
+        // ====== Brique S4 — Spectateur : abonnement au flux (cote SPECTATEUR) ======
+
+        /// <summary>S'abonne au flux d'un match. Reponse : SPECTATE_INIT + chunks (rattrapage) puis live.</summary>
+        public async void SendSpectateJoin(string matchId)
+        {
+            if (!IsConnected || string.IsNullOrEmpty(matchId)) return;
+            string json = $"{{\"type\":\"SPECTATE_JOIN\",\"payload\":{{\"matchId\":\"{matchId}\"}}}}";
+            await SendJsonAsync(json);
+        }
+
+        /// <summary>Se desabonne du flux d'un match.</summary>
+        public async void SendSpectateLeave(string matchId)
+        {
+            if (!IsConnected || string.IsNullOrEmpty(matchId)) return;
+            string json = $"{{\"type\":\"SPECTATE_LEAVE\",\"payload\":{{\"matchId\":\"{matchId}\"}}}}";
+            await SendJsonAsync(json);
+        }
+
         public async void SendReport(string targetUser)
         {
             if (!IsConnected || string.IsNullOrWhiteSpace(targetUser)) return;
@@ -1202,6 +1277,11 @@ namespace Nymora.Hub
             SpectateRelayBus.OnStart -= HandleRelayStart;
             SpectateRelayBus.OnChunk -= HandleRelayChunk;
             SpectateRelayBus.OnEnd -= HandleRelayEnd;
+            SpectateStreamBus.OnJoinRequested -= SendSpectateJoin;
+            SpectateStreamBus.OnLeaveRequested -= SendSpectateLeave;
+            OnSpectateInit -= SpectateStreamBus.RaiseInit;
+            OnSpectateChunk -= SpectateStreamBus.RaiseChunk;
+            OnSpectateEnd -= SpectateStreamBus.RaiseEnd;
 
             if (Instance == this) Instance = null;
             try

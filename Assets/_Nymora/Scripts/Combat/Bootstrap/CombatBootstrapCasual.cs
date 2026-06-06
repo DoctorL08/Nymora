@@ -119,6 +119,14 @@ namespace Nymora.Combat.Bootstrap
                 return;
             }
 
+            // Garde S4 (spectateur) : si on visionne un combat live, le LiveSpectateController pilote
+            // la sim en GameMode.Replay -> le bootstrap s'abstient (sinon ShutdownAll tuerait le runner).
+            if (Nymora.Combat.Spectate.LiveSpectateController.LiveSpectateActive)
+            {
+                Log("Mode spectateur actif -> bootstrap Casual skip (le LiveSpectateController pilote la sim).");
+                return;
+            }
+
             // Garde par nom de scene en dur : ce bootstrap n'a de sens QUE dans
             // 33_CombatCasual. Si on est ailleurs (additif fantome ou autre), no-op.
             if (gameObject.scene.name != _expectedSceneName)

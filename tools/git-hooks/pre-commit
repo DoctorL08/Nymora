@@ -13,7 +13,7 @@
 # =============================================================================
 
 staged_sim=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^Assets/QuantumUser/Simulation/.*\.cs$' | grep -v '/Generated/' || true)
-staged_combat_logic=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^Assets/_Nymora/Scripts/Combat/.*\.cs$' | grep -v '^Assets/_Nymora/Scripts/Combat/View/' | grep -v '^Assets/_Nymora/Scripts/Combat/Replay/' || true)
+staged_combat_logic=$(git diff --cached --name-only --diff-filter=ACM | grep -E '^Assets/_Nymora/Scripts/Combat/.*\.cs$' | grep -v '^Assets/_Nymora/Scripts/Combat/View/' | grep -v '^Assets/_Nymora/Scripts/Combat/Replay/' | grep -v '^Assets/_Nymora/Scripts/Combat/Spectate/' || true)
 
 staged=$(printf "%s\n%s" "$staged_sim" "$staged_combat_logic" | sed '/^$/d')
 

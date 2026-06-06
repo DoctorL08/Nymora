@@ -246,6 +246,10 @@ namespace Nymora.Combat.View.HUD
         /// </summary>
         private void OnGameStartedResolveLocalSlot(Quantum.QuantumGame game)
         {
+            // Mode spectateur (S4) : pas de joueur local à résoudre (aucun CombatBootstrapCasual).
+            // Le QuantumCallback se déclenche même component désactivé → on bail explicitement.
+            if (Nymora.Combat.Spectate.LiveSpectateController.LiveSpectateActive) return;
+
             var frame = game?.Frames?.Verified;
             if (frame == null || frame.RuntimeConfig == null) return;
             bool isPvp = !frame.RuntimeConfig.IsBotMatch;

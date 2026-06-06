@@ -96,6 +96,10 @@ namespace Nymora.Combat.View
 
         private void OnGameStarted(QuantumGame game)
         {
+            // Mode spectateur (S4) : aucun joueur local, aucune saisie. Le QuantumCallback se
+            // déclenche même si ce component est désactivé → on bail explicitement.
+            if (Nymora.Combat.Spectate.LiveSpectateController.LiveSpectateActive) return;
+
             if (_gridSettings == null)
             {
                 Debug.LogError("[Nymora.CombatInput] GridSettings manquant — drag l'asset.", this);

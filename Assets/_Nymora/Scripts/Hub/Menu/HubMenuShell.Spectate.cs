@@ -288,16 +288,17 @@ namespace Nymora.Hub.Menu
         }
 
         /// <summary>
-        /// S2 — Placeholder : la scène spectateur live arrive en S4. Ce point d'accroche
-        /// (matchId connu) sera rebranché pour lancer le combat en direct.
+        /// S4 — Lance le visionnage live : pose le matchId dans LiveSpectateBridge puis charge la
+        /// scène du mode (le LiveSpectateController y prend la main en GameMode.Replay).
         /// </summary>
         private void LaunchSpectate(string matchId, SpectateMatchInfo match)
         {
             CloseSpectatePopup();
-            HubNoticePopup.Show(
-                "Mode spectateur",
-                "Le visionnage en direct des combats arrive très bientôt (brique S4).\n\nLa liste des combats et la sélection fonctionnent déjà.",
-                "Compris");
+            if (string.IsNullOrEmpty(matchId)) return;
+
+            string scene = match != null && match.mode == "ranked" ? "40_CombatRanked1v1" : "33_CombatCasual";
+            Nymora.Combat.Spectate.LiveSpectateBridge.RequestedMatchId = matchId;
+            Nymora.Core.SceneFlow.SceneTransition.Load(scene, waitForReady: true);
         }
     }
 }
