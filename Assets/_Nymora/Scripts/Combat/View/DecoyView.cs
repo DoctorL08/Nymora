@@ -46,6 +46,16 @@ namespace Nymora.Combat.View
         [Tooltip("Tint applique au sprite leurre COTE CASTER uniquement. Default cyan pale pour aider le caster a distinguer ses leurres. Cote adversaire le tint est force a blanc opaque (indiscernable du vrai Ghostra).")]
         [SerializeField] private Color _decoyTint = new Color(0.7f, 0.88f, 1.0f, 1.0f); // bleu pale spectral
 
+        [Header("Cooldown leurre (tours restants, CASTER uniquement)")]
+        [Tooltip("Offset Y monde du label de tours restants, au-dessus du sprite du leurre.")]
+        [SerializeField] private float _cooldownYOffset = 1.5f;
+        [Tooltip("characterSize du TextMesh du cooldown (taille monde par caractere). Tout petit.")]
+        [SerializeField] private float _cooldownCharacterSize = 0.028f;
+        [Tooltip("fontSize (resolution) du TextMesh du cooldown — haute pour rester net en tout petit.")]
+        [SerializeField] private int _cooldownFontSize = 72;
+        [Tooltip("Couleur du label de tours restants (visible uniquement par le caster).")]
+        [SerializeField] private Color _cooldownColor = new Color(0.7f, 0.92f, 1.0f, 0.95f);
+
         // Voile Spectral (TP des leurres autour de l'ennemi) : suit LastCastSequence de chaque
         // Ghostra pour déclencher un flash de téléportation sur ses leurres au moment du cast.
         private readonly Dictionary<EntityRef, int> _lastVoileCastSeq = new Dictionary<EntityRef, int>(2);
@@ -60,6 +70,10 @@ namespace Nymora.Combat.View
         // que _decoyVisuals -> la CombatPetView qui colle au leurre.
         private readonly Dictionary<(EntityRef ghostra, int slot), CombatPetView> _decoyPets
             = new Dictionary<(EntityRef, int), CombatPetView>(6);
+
+        // 6 juin — label "tours restants" au-dessus de chaque leurre, VISIBLE PAR LE CASTER UNIQUEMENT.
+        private readonly Dictionary<(EntityRef ghostra, int slot), TextMesh> _decoyCooldowns
+            = new Dictionary<(EntityRef, int), TextMesh>(6);
 
         private const string PetCatalogResourcePath = "Cosmetics/PetCatalog";
         private PetCatalog _petCatalog;
@@ -141,6 +155,9 @@ namespace Nymora.Combat.View
 
             // #23 — contour de case d'équipe : actif UNIQUEMENT en match miroir (Ghostra vs Ghostra).
             bool mirror = MatchViewHelpers.IsMirrorMatch(frame);
+
+            // 6 juin — tour courant pour le cooldown des leurres (tours restants = lifetime - âge).
+            int currentTurn = frame.TryGetSingleton<CombatState>(out var combatState) ? combatState.TurnNumber : 0;
 
             // Marquer les cles a supprimer (slots qui ne sont plus actifs cette frame).
             var seen = new HashSet<(EntityRef, int)>();
@@ -299,6 +316,9 @@ namespace Nymora.Combat.View
                         hoverProxy.SlotIndex = slot;
                         hoverProxy.SetHp(d.HP, DecoyHelpers.GetDecoyMaxHp(d.Kind));
                     }
+
+                    // 6 juin — cooldown (tours restants) au-dessus du leurre, CASTER uniquement.
+                    UpdateDecoyCooldown(key, go, d, currentTurn, localOwnsGhostra, world);
                 }
             }
 
@@ -324,6 +344,13 @@ namespace Nymora.Combat.View
                         Destroy(deadPet.gameObject);
                     }
                     _decoyPets.Remove(key);
+
+                    // Label cooldown supprime avec le leurre.
+                    if (_decoyCooldowns.TryGetValue(key, out var deadCd) && deadCd != null)
+                    {
+                        Destroy(deadCd.gameObject);
+                    }
+                    _decoyCooldowns.Remove(key);
                 }
             }
         }
@@ -517,6 +544,74 @@ namespace Nymora.Combat.View
             pet.SetTint(tint);
         }
 
+        /// <summary>
+        /// 6 juin — Affiche au-dessus du leurre le nombre de TOURS RESTANTS avant expiration, VISIBLE
+        /// UNIQUEMENT PAR LE CASTER (localOwns). Côté adversaire : aucun label (préserve le mindgame —
+        /// l'ennemi ne doit pas savoir combien de temps le leurre va durer). Tours restants =
+        /// lifetimeForKind - (currentTurn - SpawnedOnTurn), clampé à >= 1 tant que le leurre existe
+        /// (mirror DecoyHelpers.TickLifetimeAtSubTurnStart).
+        /// </summary>
+        private void UpdateDecoyCooldown((EntityRef ghostra, int slot) key, GameObject decoyGo, DecoySlot d,
+            int currentTurn, bool localOwns, Vector3 decoyWorld)
+        {
+            bool has = _decoyCooldowns.TryGetValue(key, out var tm) && tm != null;
+
+            if (!localOwns)
+            {
+                if (has && tm.gameObject.activeSelf) tm.gameObject.SetActive(false);
+                return;
+            }
+
+            if (!has)
+            {
+                tm = CreateCooldownLabel(decoyGo);
+                _decoyCooldowns[key] = tm;
+            }
+
+            int lifetime = d.Kind == DecoyKind.Protective
+                ? DecoyHelpers.ProtectiveLifetimeRounds
+                : DecoyHelpers.LifetimeRounds;
+            int remaining = lifetime - (currentTurn - d.SpawnedOnTurn);
+            if (remaining < 1) remaining = 1;
+
+            if (!tm.gameObject.activeSelf) tm.gameObject.SetActive(true);
+            string txt = remaining.ToString();
+            if (tm.text != txt) tm.text = txt;
+            tm.transform.position = decoyWorld + new Vector3(0f, _cooldownYOffset, 0f);
+
+            // Tri au-dessus du sprite leurre (et des combattants) pour rester lisible.
+            var decoySr = decoyGo.GetComponent<SpriteRenderer>();
+            var tmMr = tm.GetComponent<MeshRenderer>();
+            if (decoySr != null && tmMr != null)
+            {
+                tmMr.sortingLayerID = decoySr.sortingLayerID;
+                tmMr.sortingOrder = decoySr.sortingOrder + 1000;
+            }
+        }
+
+        private TextMesh CreateCooldownLabel(GameObject decoyGo)
+        {
+            var go = new GameObject($"DecoyCooldown_{decoyGo.name}");
+            go.transform.SetParent(transform, worldPositionStays: false);
+            var tm = go.AddComponent<TextMesh>();
+            tm.anchor = TextAnchor.MiddleCenter;
+            tm.alignment = TextAlignment.Center;
+            tm.characterSize = _cooldownCharacterSize;
+            tm.fontSize = _cooldownFontSize;
+            tm.color = _cooldownColor;
+            tm.richText = false;
+            // Police intégrée Unity (Arial renommé "LegacyRuntime.ttf" depuis Unity 2022) + son matériau,
+            //   sinon le TextMesh peut rester invisible (font/material non assignés par défaut).
+            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (font != null)
+            {
+                tm.font = font;
+                var mr = go.GetComponent<MeshRenderer>();
+                if (mr != null) mr.sharedMaterial = font.material;
+            }
+            return tm;
+        }
+
         private void ClearAll()
         {
             foreach (var kvp in _decoyVisuals)
@@ -530,6 +625,12 @@ namespace Nymora.Combat.View
                 if (kvp.Value != null) Destroy(kvp.Value.gameObject);
             }
             _decoyPets.Clear();
+
+            foreach (var kvp in _decoyCooldowns)
+            {
+                if (kvp.Value != null) Destroy(kvp.Value.gameObject);
+            }
+            _decoyCooldowns.Clear();
         }
 
         // Petit helper pour eviter d'allouer une nouvelle List a chaque cleanup.

@@ -40,10 +40,32 @@ namespace Nymora.Combat.View.HUD
         [Tooltip("Espacement vertical entre titre / cout / description. Applique seulement si le VerticalLayoutGroup est cree par ce script.")]
         [SerializeField] private float _panelSpacing = 6f;
 
+        [Header("Lisibilite")]
+        [Tooltip("Multiplicateur applique UNE fois (Awake) aux tailles de police du tooltip " +
+                 "(titre / cout / description) pour la lisibilite en combat. 1 = inchange.")]
+        [SerializeField, Min(1f)] private float _textSizeMultiplier = 1.12f;
+
+        private bool _fontSizesScaled;
+
         private void Awake()
         {
             EnsureLayoutWiring();
+            ApplyTextSize();
             Hide();
+        }
+
+        /// <summary>
+        /// Agrandit legerement les polices du tooltip (titre/cout/description) pour la lisibilite combat.
+        /// Applique UNE seule fois (garde _fontSizesScaled) : Awake ne tourne qu'au demarrage, donc pas
+        /// de compounding ; on capture la taille serialisee de la scene et on la multiplie.
+        /// </summary>
+        private void ApplyTextSize()
+        {
+            if (_fontSizesScaled || _textSizeMultiplier <= 1f) return;
+            if (_titleText != null) _titleText.fontSize *= _textSizeMultiplier;
+            if (_costText != null) _costText.fontSize *= _textSizeMultiplier;
+            if (_descriptionText != null) _descriptionText.fontSize *= _textSizeMultiplier;
+            _fontSizesScaled = true;
         }
 
         /// <summary>
@@ -92,18 +114,23 @@ namespace Nymora.Combat.View.HUD
             if (_descriptionText != null) _descriptionText.enableWordWrapping = true;
         }
 
-        public void Show(SpellId spell, RectTransform anchor) => Show(spell, anchor, -1);
+        public void Show(SpellId spell, RectTransform anchor) => Show(spell, anchor, -1, default, false);
+
+        public void Show(SpellId spell, RectTransform anchor, int effectivePaCost)
+            => Show(spell, anchor, effectivePaCost, default, false);
 
         // effectivePaCost >= 0 : coût PA réel (avec bonus -1 Soulrender/Ghostra/Effondrement,
         // Permutation gratuite) calculé par le HUD. -1 = afficher le coût de base du sort.
-        public void Show(SpellId spell, RectTransform anchor, int effectivePaCost)
+        // caster/hasCaster : combattant local pour résoudre les valeurs buffées (dégâts/portée en vert)
+        //   dans la description + ligne de coût. hasCaster=false -> valeurs de base (plain).
+        public void Show(SpellId spell, RectTransform anchor, int effectivePaCost, in Combatant caster, bool hasCaster)
         {
             if (_panel == null || spell == SpellId.None || anchor == null) return;
 
             if (_titleText != null) _titleText.text = SpellDisplayInfo.GetDisplayName(spell);
 
-            if (_costText != null) _costText.text = BuildCostLine(spell, effectivePaCost);
-            if (_descriptionText != null) _descriptionText.text = SpellDescriptions.Get(spell);
+            if (_costText != null) _costText.text = BuildCostLine(spell, effectivePaCost, caster, hasCaster);
+            if (_descriptionText != null) _descriptionText.text = SpellTooltipText.ResolveDescription(spell, caster, hasCaster);
 
             // Re-lock la largeur a chaque Show (au cas ou un layout pass tier l'aurait modifiee).
             // La hauteur reste ecrite par le ContentSizeFitter au rebuild ci-dessous.
@@ -151,7 +178,7 @@ namespace Nymora.Combat.View.HUD
             if (_panel != null) _panel.gameObject.SetActive(false);
         }
 
-        private static string BuildCostLine(SpellId spell, int effectivePaCost)
+        private static string BuildCostLine(SpellId spell, int effectivePaCost, in Combatant caster, bool hasCaster)
         {
             if (!SpellRegistry.TryGet(spell, out SpellDef def)) return string.Empty;
 
@@ -159,11 +186,18 @@ namespace Nymora.Combat.View.HUD
                              : def.Filter == TargetingFilter.Enemy ? "Cible ennemie"
                              : "Case";
 
+            // Portée effective (bonus de phase Nightseer +1) en vert si buffée par rapport au sort.
+            int rangeMaxEff = def.RangeMax;
+            bool rangeBuffed = false;
+            if (hasCaster && def.RangeMax > 0)
+                rangeMaxEff = SpellTooltipText.EffectiveRange(caster, def, out rangeBuffed);
+            string rangeMaxStr = rangeBuffed ? $"<color={SpellTooltipText.GreenHex}>{rangeMaxEff}</color>" : rangeMaxEff.ToString();
+
             string rangeBlock = def.RangeMax == 0
                 ? "(case caster)"
                 : (def.RangeMin == def.RangeMax
-                    ? $"Portee {def.RangeMax}"
-                    : $"Portee {def.RangeMin}-{def.RangeMax}");
+                    ? $"Portee {rangeMaxStr}"
+                    : $"Portee {def.RangeMin}-{rangeMaxStr}");
 
             string hgBlock = string.Empty;
             if (def.HGCostMandatory > 0 || def.HGCostMaxOptional > 0)

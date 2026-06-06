@@ -104,78 +104,78 @@ namespace Nymora.Combat.View.Tutorial
             _steps.Clear();
 
             _steps.Add(new Step(
-                "Bienvenue dans Nymora. Tu incarnes le SOULRENDER : un predateur en hemorragie qui " +
-                "raccourcit le combat. Le but d'un duel : amener les Points de Vie (PV) de l'adversaire a 0. " +
-                "On va apprendre, etape par etape, comment t'y prendre. Clique sur Continuer.",
+                "Bienvenue dans Nymora. Tu incarnes le SOULRENDER : un prédateur en hémorragie qui " +
+                "raccourcit le combat. Le but d'un duel : amener les Points de Vie (PV) de l'adversaire à 0. " +
+                "On va apprendre, étape par étape, comment t'y prendre. Clique sur Continuer.",
                 Gate.Continue, Coach.None));
 
             _steps.Add(new Step(
-                "TES PV. En haut a gauche, ton panneau affiche tes 1500 PV, tes PA et tes PM. " +
-                "Le mannequin en face a aussi 1500 PV. Tout part de la : protege tes PV, vide les siens.",
+                "TES PV. En haut à gauche, ton panneau affiche tes 1500 PV, tes PA et tes PM. " +
+                "Le mannequin en face a aussi 1500 PV. Tout part de là : protège tes PV, vide les siens.",
                 Gate.Continue, Coach.Resources));
 
             _steps.Add(new Step(
-                "LES PM (Points de Mouvement). Tu as 3 PM par tour. Chaque case parcourue coute 1 PM. " +
-                "Ils servent a te placer : approcher pour frapper, ou fuir le danger. " +
+                "LES PM (Points de Mouvement). Tu as 3 PM par tour. Chaque case parcourue coûte 1 PM. " +
+                "Ils servent à te placer : approcher pour frapper, ou fuir le danger. " +
                 "Essaie : clique une case libre pour te rapprocher du mannequin.",
                 Gate.Move, Coach.Resources));
 
             _steps.Add(new Step(
                 "LES PA (Points d'Action). Tu as 8 PA par tour. C'est ta ressource d'ACTION : " +
-                "chaque sort coute un certain nombre de PA. Plus de PA = plus de sorts par tour. " +
+                "chaque sort coûte un certain nombre de PA. Plus de PA = plus de sorts par tour. " +
                 "Quand tu n'as plus assez de PA, tu ne peux plus lancer le sort. Clique sur Continuer.",
                 Gate.Continue, Coach.Resources));
 
             _steps.Add(new Step(
-                "LE RUBIS DE PA. Au-dessus de CHAQUE sort, un RUBIS affiche son cout en PA (le CHIFFRE). " +
-                "Sa COULEUR indique la CATEGORIE du sort : ROUGE = offensif, BLEU = tactique, VERT = survie. " +
-                "Si tu n'as pas assez de PA, le sort est grise (injouable). Quand un cout est REDUIT (passif " +
-                "Appel du Sang -1 PA), le chiffre baisse et le tooltip du sort l'ecrit en vert. " +
+                "LE RUBIS DE PA. Au-dessus de CHAQUE sort, un RUBIS affiche son coût en PA (le CHIFFRE). " +
+                "Sa COULEUR indique la CATÉGORIE du sort : ROUGE = offensif, BLEU = tactique, VERT = survie. " +
+                "Si tu n'as pas assez de PA, le sort est grisé (injouable). Quand un coût est RÉDUIT (passif " +
+                "Appel du Sang -1 PA), le chiffre baisse et le tooltip du sort l'écrit en vert. " +
                 "Regarde les rubis de ta barre. Clique sur Continuer.",
                 Gate.Continue, Coach.PaGem));
 
             _steps.Add(new Step(
                 "LANCER UN SORT. Dans la barre du bas, clique un sort pour l'ARMER, puis clique le " +
-                "mannequin pour le frapper. Observe : tes PA baissent du cout du sort, le mannequin perd des PV. " +
+                "mannequin pour le frapper. Observe : tes PA baissent du coût du sort, le mannequin perd des PV. " +
                 "Lance ton premier sort maintenant.",
                 Gate.Cast, Coach.SpellBar));
 
             _steps.Add(new Step(
                 "LE PASSIF DE CLASSE : l'Appel du Sang. Chaque classe a un passif unique, gratuit et permanent. " +
-                "Celui du Soulrender se declenche selon les PV du mannequin : sous 70% il est MARQUE et ton " +
-                "PREMIER sort lance dans le tour coute -1 PA (uniquement le 1er) ; sous 20%, le sol autour de toi " +
-                "devient du Sang Coagule qui le blesse. Plus tu le blesses, plus tu deviens fort. Clique sur Continuer.",
+                "Celui du Soulrender se déclenche selon les PV du mannequin : sous 70% il est MARQUÉ et ton " +
+                "PREMIER sort lancé dans le tour coûte -1 PA (uniquement le 1er) ; sous 20%, le sol autour de toi " +
+                "devient du Sang Coagulé qui le blesse. Plus tu le blesses, plus tu deviens fort. Clique sur Continuer.",
                 Gate.Continue, Coach.None));
 
             _steps.Add(new Step(
-                "FIN DE TOUR. Tes PA et PM se rechargent a CHAQUE debut de ton tour. Quand tu as fini, " +
+                "FIN DE TOUR. Tes PA et PM se rechargent à CHAQUE début de ton tour. Quand tu as fini, " +
                 "clique Fin de tour pour passer la main. Le mannequin ne riposte pas : prends ton temps. " +
                 "Termine ton tour pour repartir avec 8 PA et 3 PM.",
                 Gate.EndTurn, Coach.EndTurn));
 
             _steps.Add(new Step(
-                "TA RESSOURCE DE CLASSE. Chaque classe possede SA propre ressource, qui se charge " +
-                "DIFFEREMMENT selon la classe (au combat, en infligeant des degats, en posant des pieges...). " +
-                "Pour le SOULRENDER, c'est l'HEMOGLYPHE (HG), de 0 a 5 : tu gagnes +1 HG chaque fois que tu " +
-                "INFLIGES des degats (et +1 si tu en subis). Les HG chargent ta SIGNATURE, ton sort ultime. " +
+                "TA RESSOURCE DE CLASSE. Chaque classe possède SA propre ressource, qui se charge " +
+                "DIFFÉREMMENT selon la classe (au combat, en infligeant des dégâts, en posant des pièges...). " +
+                "Pour le SOULRENDER, c'est l'HÉMOGLYPHE (HG), de 0 à 5 : tu gagnes +1 HG chaque fois que tu " +
+                "INFLIGES des dégâts (et +1 si tu en subis). Les HG chargent ta SIGNATURE, ton sort ultime. " +
                 "Regarde ta jauge d'HG sur ton panneau. Clique sur Continuer.",
                 Gate.Continue, Coach.Resources));
 
             _steps.Add(new Step(
                 "CHARGER LA SIGNATURE. Frappe le mannequin (relance des sorts, finis et reprends tes tours) " +
-                "jusqu'a atteindre 5 HG. Chaque sort qui touche = +1 HG. Continue de l'attaquer.",
+                "jusqu'à atteindre 5 HG. Chaque sort qui touche = +1 HG. Continue de l'attaquer.",
                 Gate.Charge, Coach.Resources));
 
             _steps.Add(new Step(
-                "AME LACEREE (ta SIGNATURE). A 5 HG, le slot signature (a droite de la barre) s'allume. " +
-                "Elle inflige 320 degats ET te soigne de la moitie des degats infliges : c'est ton execution. " +
+                "ÂME LACÉRÉE (ta SIGNATURE). À 5 HG, le slot signature (à droite de la barre) s'allume. " +
+                "Elle inflige 320 dégâts ET te soigne de la moitié des dégâts infligés : c'est ton exécution. " +
                 "Arme la signature et frappe le mannequin.",
                 Gate.Signature, Coach.Signature));
 
             _steps.Add(new Step(
-                "Parfait. Tu connais l'essentiel : PV, PM pour bouger, PA pour agir, le passif qui recompense " +
-                "l'agression, et l'Hemoglyphe qui charge ta signature. Le Soulrender gagne en mettant la " +
-                "pression tour apres tour. Clique sur Continuer pour terminer.",
+                "Parfait. Tu connais l'essentiel : PV, PM pour bouger, PA pour agir, le passif qui récompense " +
+                "l'agression, et l'Hémoglyphe qui charge ta signature. Le Soulrender gagne en mettant la " +
+                "pression tour après tour. Clique sur Continuer pour terminer.",
                 Gate.Continue, Coach.None));
         }
 
@@ -186,7 +186,7 @@ namespace Nymora.Combat.View.Tutorial
 
             var step = _steps[i];
             if (_instructionText != null) _instructionText.text = step.Text;
-            if (_statusText != null) _statusText.text = $"Etape {i + 1}/{_steps.Count}";
+            if (_statusText != null) _statusText.text = $"Étape {i + 1}/{_steps.Count}";
             if (_continueGo != null) _continueGo.SetActive(step.Gate == Gate.Continue);
             _currentCoach = step.Coach;
 
@@ -254,7 +254,7 @@ namespace Nymora.Combat.View.Tutorial
         private IEnumerator AdvanceAfterDelay(float delay)
         {
             _advancing = true;
-            if (_statusText != null) _statusText.text = "Valide !";
+            if (_statusText != null) _statusText.text = "Validé !";
             yield return new WaitForSeconds(delay);
             _advancing = false;
             ShowStep(_index + 1);
@@ -289,13 +289,13 @@ namespace Nymora.Combat.View.Tutorial
             var trt = title.rectTransform;
             trt.anchorMin = new Vector2(0f, 1f); trt.anchorMax = new Vector2(1f, 1f); trt.pivot = new Vector2(0.5f, 1f);
             trt.sizeDelta = new Vector2(-48f, 70f); trt.anchoredPosition = new Vector2(0f, -40f);
-            title.text = "Tutoriel termine !";
+            title.text = "Tutoriel terminé !";
 
             var body = NewText("Body", panel.transform, 26, CombatUiKit.TextSecondary, TextAlignmentOptions.Center);
             var brt = body.rectTransform;
             brt.anchorMin = new Vector2(0f, 0.5f); brt.anchorMax = new Vector2(1f, 0.5f); brt.pivot = new Vector2(0.5f, 0.5f);
             brt.sizeDelta = new Vector2(-80f, 90f); brt.anchoredPosition = new Vector2(0f, 6f);
-            body.text = "Tu connais les bases : deplacement, sorts et fin de tour.\nPret a affronter de vrais adversaires ?";
+            body.text = "Tu connais les bases : déplacement, sorts et fin de tour.\nPrêt à affronter de vrais adversaires ?";
 
             var btnImg = NewImage("ReturnButton", panel.transform, CombatUiKit.Accent, 10f);
             var rrt = btnImg.rectTransform;

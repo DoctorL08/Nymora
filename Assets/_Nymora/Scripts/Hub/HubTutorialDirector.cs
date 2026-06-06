@@ -74,23 +74,23 @@ namespace Nymora.Hub
         {
             _steps.Clear();
             _steps.Add(new Step(
-                "Bienvenue dans le HUB ! C'est ton camp de base : tu t'y deplaces, tu discutes dans le " +
-                "chat, et tu prepares tes combats. Ce menu s'ouvre avec Echap (ou le bouton en haut a gauche).",
+                "Bienvenue dans le HUB ! C'est ton camp de base : tu t'y déplaces, tu discutes dans le " +
+                "chat, et tu prépares tes combats. Ce menu s'ouvre avec Échap (ou le bouton en haut à gauche).",
                 null));
             _steps.Add(new Step(
-                "L'ARENE. C'est ici que tu lances tes combats : entrainement contre l'IA, ou classe contre " +
-                "de vrais joueurs. Quand tu veux te battre, c'est par la.",
+                "L'ARÈNE. C'est ici que tu lances tes combats : entraînement contre l'IA, ou classé contre " +
+                "de vrais joueurs. Quand tu veux te battre, c'est par là.",
                 "arena"));
             _steps.Add(new Step(
-                "PERSONNAGE. Choisis ta classe, construis ton deck de 6 sorts + ta signature, et equipe " +
+                "PERSONNAGE. Choisis ta classe, construis ton deck de 6 sorts + ta signature, et équipe " +
                 "tes skins et familiers. C'est ton atelier.",
                 "character"));
             _steps.Add(new Step(
-                "BOUTIQUE. Depense tes recompenses en skins et cosmetiques. Zero pay-to-win : tout est " +
-                "purement esthetique.",
+                "BOUTIQUE. Dépense tes récompenses en skins et cosmétiques. Zéro pay-to-win : tout est " +
+                "purement esthétique.",
                 "shop"));
             _steps.Add(new Step(
-                "Et voila, tu connais l'essentiel ! Ouvre l'ARENE quand tu te sens pret a combattre. " +
+                "Et voilà, tu connais l'essentiel ! Ouvre l'ARÈNE quand tu te sens prêt à combattre. " +
                 "Bon jeu sur Nymora !",
                 null));
         }

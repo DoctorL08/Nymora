@@ -62,7 +62,10 @@ namespace Nymora.Hub
         /// <summary>M4 — Snapshot online d'un ami (réutilisé par le nouveau menu hub
         /// HubMenuSocial). Le set est entretenu en continu via les events WS, même panel
         /// fermé, donc l'appel renvoie l'état courant. Renvoie false si userId inconnu/null.</summary>
-        public bool IsFriendOnline(string userId) => !string.IsNullOrEmpty(userId) && _onlineFriendIds.Contains(userId);
+        public bool IsFriendOnline(string userId)
+            => HubChatClient.Instance != null
+                ? HubChatClient.Instance.IsFriendOnline(userId)               // 6 juin : source de vérité (anti-timing)
+                : (!string.IsNullOrEmpty(userId) && _onlineFriendIds.Contains(userId)); // fallback
 
         private NymoraApiClient _api;
         private readonly List<GameObject> _spawnedItems = new List<GameObject>();
@@ -446,7 +449,7 @@ namespace Nymora.Hub
                 var dotGo = new GameObject("OnlineDot", typeof(RectTransform), typeof(Image), typeof(LayoutElement));
                 dotGo.transform.SetParent(go.transform, false);
                 var dotImg = dotGo.GetComponent<Image>();
-                bool online = _onlineFriendIds.Contains(onlineForUserId);
+                bool online = IsFriendOnline(onlineForUserId); // 6 juin : lit le cache autoritatif (HubChatClient)
                 dotImg.color = online ? _onlineColor : _offlineColor;
                 var dotLe = dotGo.GetComponent<LayoutElement>();
                 dotLe.preferredWidth = 14f;

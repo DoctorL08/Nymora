@@ -3,11 +3,14 @@ using System.Collections.Generic;
 using Nymora.Combat.Bootstrap;
 using Nymora.Combat.Replay;
 using Nymora.Combat.View;
+using Nymora.Combat.View.HUD;
 using Nymora.Core.Data;
 using Nymora.Core.SceneFlow;
 using Photon.Deterministic;
 using Quantum;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Nymora.Combat.Spectate
 {
@@ -43,6 +46,7 @@ namespace Nymora.Combat.Spectate
         private QuantumRunner _runner;
         private LiveStreamInputProvider _provider;
         private readonly List<byte[]> _pendingChunks = new List<byte[]>(); // chunks arrivés avant l'INIT
+        private GameObject _uiRoot; // canvas overlay du bouton Quitter (design UI du jeu)
 
         private void Awake()
         {
@@ -64,8 +68,62 @@ namespace Nymora.Combat.Spectate
         private void Start()
         {
             if (!LiveSpectateActive) return;
+            BuildQuitButton();
             Debug.Log($"[LiveSpectate] JOIN match {_matchId}.");
             SpectateStreamBus.RequestJoin(_matchId);
+        }
+
+        /// <summary>
+        /// Bouton « Quitter » au design UI du jeu (monochrome CombatUiKit, miroir du menu Échap),
+        /// ancré au CENTRE-DROITE de l'écran. Remplace l'ancien bouton IMGUI (OnGUI) brut.
+        /// </summary>
+        private void BuildQuitButton()
+        {
+            var canvasGo = new GameObject("SpectateQuitUI");
+            var canvas = canvasGo.AddComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 5000; // au-dessus du HUD combat
+            var scaler = canvasGo.AddComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1920f, 1080f);
+            scaler.matchWidthOrHeight = 0.5f;
+            canvasGo.AddComponent<GraphicRaycaster>();
+            _uiRoot = canvasGo;
+
+            var btnGo = new GameObject("QuitButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            btnGo.transform.SetParent(canvasGo.transform, false);
+            var rt = (RectTransform)btnGo.transform;
+            // Centre-droite : ancré au bord droit, centré verticalement, léger retrait du bord.
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(1f, 0.5f);
+            rt.sizeDelta = new Vector2(168f, 52f);
+            rt.anchoredPosition = new Vector2(-28f, 0f);
+
+            var img = btnGo.GetComponent<Image>();
+            img.color = CombatUiKit.CardBg;
+            CombatUiKit.ApplyRounded(img, 10f);
+
+            var btn = btnGo.GetComponent<Button>();
+            btn.targetGraphic = img;
+            var cb = btn.colors;
+            cb.normalColor = Color.white;                  // multiplie la couleur de l'Image (CardBg)
+            cb.highlightedColor = new Color(1.18f, 1.18f, 1.18f, 1f);
+            cb.pressedColor = new Color(0.85f, 0.85f, 0.85f, 1f);
+            cb.fadeDuration = 0.08f;
+            btn.colors = cb;
+            btn.onClick.AddListener(Quit);
+
+            var lblGo = new GameObject("Label", typeof(RectTransform));
+            lblGo.transform.SetParent(btnGo.transform, false);
+            var lrt = (RectTransform)lblGo.transform;
+            lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
+            lrt.offsetMin = Vector2.zero; lrt.offsetMax = Vector2.zero;
+            var tmp = lblGo.AddComponent<TextMeshProUGUI>();
+            tmp.text = "Quitter";
+            tmp.alignment = TextAlignmentOptions.Center;
+            tmp.fontSize = 22f;
+            tmp.color = CombatUiKit.TextPrimary;
+            var font = TMP_Settings.defaultFontAsset;
+            if (font != null) tmp.font = font;
         }
 
         private void DisableConflictingComponents()
@@ -214,6 +272,7 @@ namespace Nymora.Combat.Spectate
             SpectateStreamBus.OnInit -= OnInit;
             SpectateStreamBus.OnChunk -= OnChunk;
             SpectateStreamBus.OnEnd -= OnEnd;
+            if (_uiRoot != null) { Destroy(_uiRoot); _uiRoot = null; }
             LiveSpectateActive = false;
             if (_runner != null)
             {
@@ -223,7 +282,8 @@ namespace Nymora.Combat.Spectate
             }
         }
 
-        // HUD minimal (stopgap S4 — S5 intègrera un vrai bandeau « EN DIRECT » + retour propre).
+        // Bandeau d'état « EN DIRECT » (haut-centre). Le bouton Quitter est désormais un vrai bouton
+        // uGUI au design du jeu (cf BuildQuitButton), plus l'ancien bouton IMGUI.
         private void OnGUI()
         {
             if (!LiveSpectateActive) return;
@@ -232,7 +292,6 @@ namespace Nymora.Combat.Spectate
             string status = _error != null ? "Erreur : " + _error
                 : (_runner == null ? "Connexion…" : (_ended ? "● TERMINÉ" : "● EN DIRECT"));
             GUI.Label(new Rect(Screen.width / 2f - 90f, 8f, 220f, 30f), status, style);
-            if (GUI.Button(new Rect(Screen.width - 120f, 8f, 110f, 32f), "Quitter")) Quit();
         }
     }
 }

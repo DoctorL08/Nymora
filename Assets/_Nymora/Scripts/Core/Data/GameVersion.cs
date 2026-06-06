@@ -265,7 +265,31 @@ namespace Nymora.Core.Data
         //                lieu de le detruire d'office. HP de spawn centralise dans GetDecoyMaxHp.
         //                Descriptions deck builder (Replique Fantome / Protectrice) synchronisees.
         //                DecoySlot.HP existait deja -> aucun champ [Networked] ajoute, pas de regen.
-        public const int CombatRulesVersion = 121;
+        // 122 (Nightseer : clivage Detonation Onirique / Salve Mortelle + nettoyage Empreinte, 6 juin) :
+        //                decision Lorenzo. Identite "Piege vs Execution" :
+        //                DETONATION ONIRIQUE = setup/pression. Croix de 5, portee FIXE 5 (option "2 PR ->
+        //                  portee 10" RETIREE), 170 dmg, +80 si couvre un piege. DETONE tes pieges sous la
+        //                  croix : +30 PLAT par piege (ZoneTrapDetonationSurplusDmg) + TRAQUE aux ennemis
+        //                  de l'AoE (un ennemi n'est jamais pile sur une case-piege), et GENERE +1 PR par
+        //                  piege detone. Cout 0 PR.
+        //                SALVE MORTELLE = finisher d'execution. Croix de 5 -> CARRE PLEIN 3x3 (9 cases),
+        //                  160 centre / 90 autour (nerf : etaient 200/120). Bonus "cible Traque" RETIRE
+        //                  (choix Lorenzo) : le seul bonus est la zone des pieges -> chaque piege du caster
+        //                  sous la zone ajoute +40 dmg (nerf, etait 50 ; SalveMortelleTrapBonusDmg) SANS
+        //                  etre consomme (les pieges restent poses, cf ApplyZoneTrapBonusNoConsume). Ne
+        //                  genere pas de PR (corrige "Salve ne consomme pas les 3 PR" : avant, ses
+        //                  detonations remboursaient son cout). DEPENSE 3 PR. Relance 2 tours.
+        //                + Fix PREVIEW inexact : le bonus de phase Nightseer (+30 flat P2+) etait evalue
+        //                  sur la ressource AVANT la depense des 3 PR cote preview, mais la sim consomme
+        //                  AVANT d'appliquer le bonus (Resource post-depense). Salve a 3 PR retombe sous
+        //                  la phase 2 -> jamais de +30 ; le preview le reflete desormais (phaseResourceOverride
+        //                  dans SpellPreview.ComputeOffensiveBonusGeneric/TryComputeOffensiveSimple).
+        //                + Camouflage de Ronces (aura RoncesAura) applique TRAQUE au lieu d'Empreinte
+        //                  (legacy pre-refonte ; la refonte 29 mai a unifie les marques Nightseer sur
+        //                  TRAQUE). Tous les textes "empreinte" retires des descriptions Nightseer (spell
+        //                  + passif + ressource + lore). Enum MarkKind.Empreinte conserve (inutilise).
+        //                Aucun champ [Networked] ajoute, pas de regen.
+        public const int CombatRulesVersion = 122;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

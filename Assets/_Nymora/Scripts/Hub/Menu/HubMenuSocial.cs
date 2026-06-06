@@ -592,8 +592,10 @@ namespace Nymora.Hub.Menu
             var res = await _api.UpdateClanBannerAsync(_bEnd, _bFlourish, _bColorHex);
             _busy = false;
             if (!res.IsSuccess) { SetStatus($"Échec ({res.StatusCode}) : {res.ErrorMessage}"); return; }
-            // Invalide le cache du tooltip -> prochain survol = config à jour.
-            HubAvatarHoverTooltip.InvalidateClanBanner(_editingClanName);
+            // Write-through : écrit directement la config sauvegardée dans le cache du tooltip
+            //   (autoritatif, pas de re-fetch périmé) -> le ruban se met à jour dès le prochain survol,
+            //   y compris juste après la création du clan. Les autres membres reçoivent CLAN_BANNER_UPDATED.
+            HubAvatarHoverTooltip.SetClanBanner(_editingClanName, _bEnd, _bFlourish, _bColorHex);
             SetStatus("Bandeau sauvegardé !");
         }
 

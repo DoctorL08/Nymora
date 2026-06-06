@@ -877,7 +877,8 @@ namespace Nymora.Combat.View.HUD
             int pa = -1;
             if (_hasCachedLocal && SpellRegistry.TryGet(spell, out SpellDef def))
                 pa = ComputeDisplayPaCost(_cachedLocal, def, _cachedEnemyHpRatio, _cachedTurnNumber);
-            _tooltip.Show(spell, anchor, pa);
+            // Passe le combattant local -> le tooltip résout les valeurs buffées (dégâts/portée en vert).
+            _tooltip.Show(spell, anchor, pa, _cachedLocal, _hasCachedLocal);
         }
 
         public void HideTooltip()

@@ -454,10 +454,112 @@ namespace Quantum
                 }
                 else
                 {
-                    Log.Info($"[Trap] Détonation chaîne : {kind} ({x},{y}) détoné à vide (aucun ennemi) -> consommé.");
+                    // Patch 6 juin — un ennemi n'est quasi JAMAIS pile sur une case-piège (PlaceTrap
+                    //   refuse les cases occupées) : la détonation tombait donc « à vide » presque
+                    //   toujours -> aucun surplus de dégâts (bug remonté par Lorenzo). Décision Lorenzo
+                    //   « surplus aux ennemis de la zone » (équilibrage 6 juin : +30 PLAT par piège, pas les
+                    //   dégâts complets du piège qui étaient trop cheat) : un piège-DÉGÂTS (Filet/Mine) détoné
+                    //   par Salve Mortelle / Détonation Onirique inflige +30 + TRAQUÉ aux ennemis présents
+                    //   DANS l'AoE du sort (le buffer `cells`), même hors case-piège. Le Piège Bondissant
+                    //   (pas de dégâts directs, catapulte) reste consommé à vide sans cible dessus.
+                    if (kind == TrapKind.FiletRonces || kind == TrapKind.Mine)
+                    {
+                        ApplyZoneTrapDamageToEnemies(f, cells, count, ownerPlayerIndex, currentTurn);
+                    }
+                    else
+                    {
+                        Log.Info($"[Trap] Détonation chaîne : {kind} ({x},{y}) détoné à vide (aucun ennemi) -> consommé.");
+                    }
                     ClearTrap(f, x, y);
                     ClearVeil(f, x, y);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Équilibrage 6 juin — un piège-dégâts (Filet/Mine) détoné par Salve Mortelle / Détonation
+        /// Onirique inflige un SURPLUS PLAT de +30 (ZoneTrapDetonationSurplusDmg) + applique TRAQUÉ à
+        /// TOUS les ennemis vivants présents dans l'AoE du sort (`cells`), quand aucun ennemi ne se tient
+        /// pile sur la case-piège. Choix Lorenzo : +30 plat « par piège déclenché » au lieu des dégâts
+        /// complets du piège (trop cheat). Appelée une fois PAR piège -> N pièges = +30×N sur l'ennemi.
+        /// Pas de catapulte (Bondissant exclu en amont), pas de chaîne de mines. Génère +1 PR par piège
+        /// détoné (cappé +3/tour) : Détonation Onirique est le seul sort qui détone (depuis le 6 juin) et
+        /// c'est un GÉNÉRATEUR de PR. Salve Mortelle ne détone plus les pièges -> n'appelle plus cette voie.
+        /// </summary>
+        private static void ApplyZoneTrapDamageToEnemies(Frame f, int* cells, int count,
+            int ownerPlayerIndex, int currentTurn)
+        {
+            int dmg = Quantum.SpellRegistry.ZoneTrapDetonationSurplusDmg;
+            int markTurns = Quantum.SpellRegistry.ChampDeMinesEmpreinteTurns; // 2 tours (durée Traqué piège)
+
+            for (int i = 0; i < count; i++)
+            {
+                int idx = cells[i];
+                int x = idx % GridConstants.Width;
+                int y = idx / GridConstants.Width;
+                EntityRef occ = GridHelpers.GetOccupant(f, x, y);
+                if (occ == EntityRef.None) continue;
+                if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* victim)) continue;
+                if (victim->PlayerIndex == ownerPlayerIndex || victim->HP <= 0) continue;
+
+                int hpBefore = victim->HP;
+                victim->HP -= dmg;
+                if (victim->HP < 0) victim->HP = 0;
+                victim->DamageTakenThisRound += dmg;
+                MarkHelpers.ApplyMark(victim, MarkKind.Traque, markTurns, ownerPlayerIndex, currentTurn);
+                Log.Info($"[Trap] piège détoné (zone) sur P{victim->PlayerIndex} : surplus -{dmg} HP + Traqué ({hpBefore} -> {victim->HP})");
+            }
+
+            // Tracking LastTrapTriggeredOnTurn (Sève Sauvage bonus heal) — toujours.
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->PlayerIndex != ownerPlayerIndex) continue;
+                c->LastTrapTriggeredOnTurn = currentTurn;
+                break;
+            }
+            // +1 PR par piège détoné (cappé +3/tour) -> Détonation Onirique = générateur de PR.
+            NightseerPassif.GainPrescienceForPlayer(f, ownerPlayerIndex, currentTurn, "piège détoné (zone)");
+        }
+
+        /// <summary>
+        /// Salve Mortelle (6 juin) — BONUS de dégâts SANS consommation : chaque piège du caster
+        /// (Filet/Mine/Bondissant) présent sous l'AoE (`cells`) ajoute `perTrapBonus` dégâts DIRECTS
+        /// (bypass shield/réduction) à chaque ennemi vivant de la zone. Les pièges NE SONT PAS consommés
+        /// (≠ Détonation Onirique qui les détone). Pas de Traqué, pas de PR (Salve est un dépenseur).
+        /// </summary>
+        public static void ApplyZoneTrapBonusNoConsume(Frame f, int* cells, int count,
+            int ownerPlayerIndex, int perTrapBonus)
+        {
+            // Compte les pièges du caster sous la zone (sans les toucher).
+            int trapCount = 0;
+            for (int i = 0; i < count; i++)
+            {
+                int idx = cells[i];
+                int tx = idx % GridConstants.Width;
+                int ty = idx / GridConstants.Width;
+                if (GetTrapKind(f, tx, ty) == TrapKind.None) continue;
+                if (GetTrapOwner(f, tx, ty) != ownerPlayerIndex) continue;
+                trapCount++;
+            }
+            if (trapCount <= 0) return;
+            int bonus = trapCount * perTrapBonus;
+
+            for (int i = 0; i < count; i++)
+            {
+                int idx = cells[i];
+                int x = idx % GridConstants.Width;
+                int y = idx / GridConstants.Width;
+                EntityRef occ = GridHelpers.GetOccupant(f, x, y);
+                if (occ == EntityRef.None) continue;
+                if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* victim)) continue;
+                if (victim->PlayerIndex == ownerPlayerIndex || victim->HP <= 0) continue;
+
+                int hpBefore = victim->HP;
+                victim->HP -= bonus;
+                if (victim->HP < 0) victim->HP = 0;
+                victim->DamageTakenThisRound += bonus;
+                Log.Info($"[Trap] Salve : +{bonus} dgts ({trapCount} piege(s) x{perTrapBonus}, NON consommes) sur P{victim->PlayerIndex} ({hpBefore} -> {victim->HP})");
             }
         }
     }

@@ -148,7 +148,7 @@ namespace Nymora.Editor.Setup
             d.ResourceKind = ResourceType.Prescience;
             d.ResourceCap = 4;
             d.ResourceDescription =
-                "PRESCIENCE — generee par la pose et la consommation de marques (Traque, Voile, Empreinte). Cap 4.";
+                "PRESCIENCE — generee par la pose et la consommation de marques (Traque, Voile). Cap 4.";
 
             d.PassiveName = "L'Oeil qui n'est pas";
             d.PassiveDescription =

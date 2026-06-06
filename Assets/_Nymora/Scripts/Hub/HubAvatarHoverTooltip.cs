@@ -392,6 +392,18 @@ namespace Nymora.Hub
             _pendingFetch.Remove(clanName);
         }
 
+        /// <summary>Écrit DIRECTEMENT la config bandeau d'un clan en cache (write-through), appelé par
+        /// le chef juste après un PATCH réussi. Autoritatif : pas de re-fetch (évite la course / le
+        /// re-fetch périmé qui faisait que le ruban ne se mettait pas à jour, surtout juste après la
+        /// création du clan). Le prochain survol affiche la config exacte. Les autres membres passent,
+        /// eux, par CLAN_BANNER_UPDATED -> invalidation + re-fetch.</summary>
+        public static void SetClanBanner(string clanName, string end, string flourish, string colorHex)
+        {
+            if (string.IsNullOrEmpty(clanName)) return;
+            _bannerCache[clanName] = new BannerConfig { End = end, Flourish = flourish, ColorHex = colorHex };
+            _pendingFetch.Remove(clanName);
+        }
+
 
         /// <summary>Applique pièces (bout/fioriture) + couleur ornement selon la config du clan.
         /// Cache hit -> applique direct. Cache miss -> défauts maintenant + fetch async (re-applique

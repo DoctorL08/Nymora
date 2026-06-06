@@ -121,21 +121,26 @@ namespace Quantum
         public const int VoleeDEpinesDmg              = 130;  // dgts par cible touchee dans la ligne
         // Bible V7.1 (amendee) : Volee d'Epines pose le MEME Filet que le sort Filet de Ronces
         // (TrapKind.FiletRonces : 100 dgts / -2 PM / Empreinte 2 tours). Pas de constantes light dediees.
-        public const int DetonationOniriqueDmg        = 170;  // dgts AoE 2x2 base
-        public const int DetonationOniriqueDmgVoile   = 80;   // +80 dgts dans cases voilees + dechire le voile
-        public const int DetonationOniriqueRangeMaxBase    = 5;   // portee de base (Bible V7.1)
-        public const int DetonationOniriqueRangeMaxBoosted = 10;  // portee si option 2 PR (Bible : "x2 -> 10")
-        public const int DetonationOniriquePROptionCost    = 2;   // 2 PR (optionnel) pour bonus portee
+        public const int DetonationOniriqueDmg        = 170;  // dgts AoE croix de 5 (equilibrage 6 juin : etait carre 3x3)
+        public const int DetonationOniriqueDmgVoile   = 80;   // +80 dgts si la zone couvre un de tes pieges
+        public const int DetonationOniriqueRangeMaxBase    = 5;   // portee FIXE (option 2 PR -> 10 retiree, equilibrage 6 juin)
+        // Surplus de degats des pieges detones par Salve Mortelle / Detonation Onirique : +30 PLAT par
+        //   piege declenche (equilibrage 6 juin : remplace les degats complets du piege, trop cheat).
+        //   Applique aussi TRAQUE aux ennemis de la zone. cf FogHelpers.ApplyZoneTrapDamageToEnemies.
+        public const int ZoneTrapDetonationSurplusDmg = 30;
         // Refonte 29 mai : Frappe de l'Ombre 200 -> 160 + applique Traqué. Bonus +50 "si 3 PM
         //   dépensés au dernier tour" branché en Passe 3b (tracker PM dépensés).
         public const int FrappeDeLOmbreDmg            = 160;  // dgts base
         public const int FrappeDeLOmbreDmgBonusPM     = 50;   // +50 si 3 PM dépensés au dernier tour (Passe 3b)
         // Refonte 29 mai : Salve Mortelle 200/120 (était 220/130) + chaîne tes embûches (déclenche
         //   tes pièges sous la croix) ; bonus voile retiré (pièges ne voilent plus).
-        public const int SalveMortelleDmgCenter       = 200;  // centre de la croix
-        public const int SalveMortelleDmgSide         = 120;  // 4 cases cardinales
-        public const int SalveMortelleDmgIfTraque     = 60;   // +60 sur cibles Traque
+        public const int SalveMortelleDmgCenter       = 160;  // centre du carre 3x3 (nerf 6 juin : etait 200)
+        public const int SalveMortelleDmgSide         = 90;   // 8 cases autour (nerf 6 juin : etait 120)
+        // (6 juin) bonus "cible Traque" retire : Salve ne garde que le bonus de zone des pieges.
         public const int SalveMortelleHGCost          = 3;    // 3 PR mandatory (ressource Nightseer)
+        public const int SalveMortelleCooldownTurns   = 2;    // equilibrage 6 juin : relance 2 tours (finisher)
+        public const int SalveMortelleTrapBonusDmg    = 40;   // 6 juin : +40 dgts par piege du caster sous la zone
+                                                              //   (nerf, etait 50), SANS consommer les pieges
 
         // 2.15.b — Nightseer Tactiques + passif L'Œil qui n'est pas.
         public const int MarqueDuChasseurTurns        = 3;    // duree Traque applique
@@ -1106,23 +1111,24 @@ namespace Quantum
                     };
                     return true;
 
-                // Detonation Onirique (2.15.a + bonus 2 PR Bible V7.1) : 4 PA, range 5 (10 avec 2 PR),
-                // AoE 2x2, 170 dgts. Si case Voilee dans la zone : +80 dgts ET dechire le voile.
-                // Option 2 PR : portee passe de 5 a 10 (cf override dans SpellSystem range check).
+                // Detonation Onirique (2.15.a) : 4 PA, range 5 FIXE, AoE croix de 5, 170 dgts.
+                // Si la zone couvre un de tes pieges : +80 dgts. Declenche tes pieges sous la croix
+                // (+30 par piege + TRAQUE). Equilibrage 6 juin : AoE carre 3x3 -> croix de 5,
+                // option "2 PR -> portee 10" retiree (trop cheat).
                 case SpellId.NightseerDetonationOnirique:
                     def = new SpellDef
                     {
                         PACost = 4,
-                        // Patch 5 juin (choix Lorenzo) : vraie AoE carrée 3x3 (9 cases). Avant : SingleTile
-                        //   (mono-case) -> l'« AoE 2x2 » annoncée n'avait jamais été codée. Square3x3 est géré
+                        // Equilibrage 6 juin (choix Lorenzo) : croix de 5 (centre + 4 cardinales), comme
+                        //   Salve Mortelle. Avant : Square3x3 (9 cases, trop cheat). CrossSmall est géré
                         //   par TargetingResolver (sim) ET par le preview View (même resolver) -> AoE visible.
-                        Shape = TargetingShape.Square3x3,
+                        Shape = TargetingShape.CrossSmall,
                         Filter = TargetingFilter.AnyTile,
                         RangeMin = 1,
-                        RangeMax = DetonationOniriqueRangeMaxBase, // 5 ; override a 10 si hgSpend >= 2 (handler)
+                        RangeMax = DetonationOniriqueRangeMaxBase, // 5 FIXE (plus d'override portee)
                         DamageAmount = DetonationOniriqueDmg,
                         HGCostMandatory = 0,
-                        HGCostMaxOptional = (byte)DetonationOniriquePROptionCost, // 2 PR optionnel = bonus portee
+                        HGCostMaxOptional = 0, // option "2 PR -> portee 10" retiree (equilibrage 6 juin)
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
                     };
@@ -1146,20 +1152,22 @@ namespace Quantum
                     };
                     return true;
 
-                // Salve Mortelle (2.15.a) : 5 PA, range 6, AoE croix 5, 3 PR mandatory.
-                // 220 dgts au centre + 130 sur les 4 cardinales. +60 sur cibles Traque.
-                // Cases Voilees dans la zone : +50 dgts dans la case + dechirees.
+                // Salve Mortelle (2.15.a) : 5 PA, range 6, 3 PR mandatory. FINISHER d'execution.
+                // Equilibrage 6 juin (choix Lorenzo, distinction nette vs Detonation Onirique) :
+                //   AoE croix 5 -> CARRE PLEIN 3x3 (9 cases) ; 200 centre / 120 autour ; +90 sur Traque
+                //   (etait +60) ; NE detone PLUS les pieges (gere dans le switch d'effets) ; relance 2 tours.
                 case SpellId.NightseerSalveMortelle:
                     def = new SpellDef
                     {
                         PACost = 5,
-                        Shape = TargetingShape.CrossSmall, // 5 cases (centre + 4 cardinales)
+                        Shape = TargetingShape.Square3x3, // 9 cases (carre plein)
                         Filter = TargetingFilter.AnyTile,
                         RangeMin = 1,
                         RangeMax = 6,
-                        DamageAmount = 0, // calcule per-cell dans damage loop (220 centre / 130 cotes)
+                        DamageAmount = 0, // calcule per-cell dans damage loop (200 centre / 120 autour)
                         HGCostMandatory = (byte)SalveMortelleHGCost,
                         HGCostMaxOptional = 0,
+                        CooldownTurns = (byte)SalveMortelleCooldownTurns, // relance 2 tours (finisher)
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
                         MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour

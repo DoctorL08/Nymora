@@ -113,7 +113,9 @@ namespace Nymora.Editor.Tools
                 if (entry.Effects == null) entry.Effects = new List<SpellEffect>();
 
                 // Description / LoreFlavor : OVERWRITE depuis Bible V7.1 (source unique Nymora.Core).
-                entry.Description = bible.Description;
+                //   ResolvePlain : remplace les tokens dynamiques {DMG:N}/{HEAL:N} par leur valeur brute
+                //   (le deck builder affiche les valeurs de base, sans bonus de combat).
+                entry.Description = SpellBibleTexts.ResolvePlain(bible.Description);
                 entry.LoreFlavor = bible.LoreFlavor;
 
                 // IconSprite : auto-populate depuis le dossier icones de la classe (18 mai).

@@ -47,6 +47,10 @@ namespace Nymora.Combat.View.HUD
         // coût de sort normal).
         private readonly Dictionary<EntityRef, int> _lastPmMalus = new Dictionary<EntityRef, int>(4);
         private readonly Dictionary<EntityRef, int> _lastPaMalus = new Dictionary<EntityRef, int>(4);
+        // 6 juin — HP des LEURRES Ghostra (clé (Ghostra, slot)). Les leurres ne sont pas des entités
+        //   Combatant -> pas couverts par _lastHP. Sert au flottant de dégâts quand un leurre encaisse
+        //   (notamment la Réplique Protectrice qui absorbe les dégâts redirigés du Ghostra).
+        private readonly Dictionary<(EntityRef, int), int> _lastDecoyHP = new Dictionary<(EntityRef, int), int>(6);
         private Vector3 _centerOffset;
         private bool _gridReady;
 
@@ -63,6 +67,7 @@ namespace Nymora.Combat.View.HUD
             _lastCastSeq.Clear();
             _lastPmMalus.Clear();
             _lastPaMalus.Clear();
+            _lastDecoyHP.Clear();
             if (_gridSettings == null)
             {
                 Debug.LogWarning("[CombatantHPWatcher] GridSettings manquant — cable dans l'Inspector.", this);
@@ -182,6 +187,36 @@ namespace Nymora.Combat.View.HUD
                     _manager.SpawnResourceDelta(paPos, -(paMalus - prevPaMalus), isPm: false);
                 }
                 _lastPaMalus[entity] = paMalus;
+
+                // --- 6 juin : HP des LEURRES Ghostra (flottant de dégâts sur le leurre) ---
+                //   Couvre la Réplique Protectrice qui absorbe les dégâts redirigés du Ghostra, ET tout
+                //   leurre qui encaisse un hit direct. Le flottant apparaît sur la CASE du leurre. On ne
+                //   capture pas le coup létal (le slot passe à None le même tick) — un partiel suffit.
+                if (c.Class == NymoraClass.Ghostra)
+                {
+                    for (int slot = 0; slot < DecoyHelpers.MaxDecoys; slot++)
+                    {
+                        var dkey = (entity, slot);
+                        var d = c.Decoys[slot];
+                        if (d.Kind == DecoyKind.None) { _lastDecoyHP.Remove(dkey); continue; }
+                        int decoyHp = d.HP;
+                        if (_lastDecoyHP.TryGetValue(dkey, out int prevDecoyHp))
+                        {
+                            int dd = decoyHp - prevDecoyHp;
+                            if (dd < 0)
+                            {
+                                Vector3 dPos = IsoProjection.GridToWorld(
+                                    d.PosX, d.PosY,
+                                    _gridSettings.TileWorldWidth, _gridSettings.TileWorldHeight) + _centerOffset;
+                                dPos.y += _spawnYOffsetWorld;
+                                int maxHp = DecoyHelpers.GetDecoyMaxHp(d.Kind);
+                                float emphasis = maxHp > 0 ? Mathf.Clamp01((float)(-dd) / maxHp) : 0f;
+                                _manager.Spawn(dPos, dd, emphasis);
+                            }
+                        }
+                        _lastDecoyHP[dkey] = decoyHp;
+                    }
+                }
             }
         }
 

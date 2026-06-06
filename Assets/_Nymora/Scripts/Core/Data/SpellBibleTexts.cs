@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using Nymora.Core.Enums;
 
 namespace Nymora.Core.Data
@@ -43,6 +44,26 @@ namespace Nymora.Core.Data
         }
 
         // ------------------------------------------------------------------
+        // Tokens de valeurs dynamiques (chantier "valeurs buffees en combat", 6 juin).
+        // Une description encode son nombre de base PRIMAIRE de degats/soin via un token
+        // auto-porte : "{DMG:170}" / "{HEAL:150}" (la valeur de base est DANS le token, pas de
+        // champ separe). Deux resolutions :
+        //   - ResolvePlain (ci-dessous) : remplace le token par sa valeur brute -> deck builder,
+        //     PopulateSpellCatalog, et tout consommateur SANS contexte de caster.
+        //   - Cote combat (Nymora.Combat.View.HUD.SpellTooltipText) : remplace par la valeur
+        //     BUFFEE selon les bonus actifs du caster, coloree en vert si modifiee.
+        // Les sorts sans token gardent leur nombre en clair (retro-compatible, rollout par classe).
+        // ------------------------------------------------------------------
+        private static readonly Regex TokenRegex = new Regex(@"\{(?:DMG|HEAL):(\d+)\}", RegexOptions.Compiled);
+
+        /// <summary>Remplace les tokens {DMG:N}/{HEAL:N} par leur valeur brute N (texte sans couleur).</summary>
+        public static string ResolvePlain(string description)
+        {
+            if (string.IsNullOrEmpty(description) || description.IndexOf('{') < 0) return description;
+            return TokenRegex.Replace(description, m => m.Groups[1].Value);
+        }
+
+        // ------------------------------------------------------------------
         // 80 entries Bible V7.1 patchee 17 mai 2026 (amendements 16 mai integres :
         // Volte-Face 80 / Dague 40 / Replique Protectrice 4PA 30% 80HP 3r / Replique
         // Fantome 4 rounds). Tri par SpellIdValue numerique pour facilite lecture/audit.
@@ -51,19 +72,19 @@ namespace Nymora.Core.Data
         {
             // ===== SOULRENDER (10-25) : 5 offensifs / 5 tactiques / 5 survie / signature =====
             new Entry { SpellIdValue = 10, SpellIdTech = "soulrender_tranche_ame",          ClassId = NymoraClass.Soulrender, Category = SpellCategory.Offensive, DisplayName = "Tranche-Âme",
-                Description = "Inflige 220 dégâts. Si le coup tue, le Soulrender RECULE de 2 cases gratuitement (mouvement non-PM). Effet purement de mise en scène, mais bloque les contre-attaques zone post-kill.",
+                Description = "Inflige {DMG:220} dégâts. Si le coup tue, le Soulrender RECULE de 2 cases gratuitement (mouvement non-PM). Effet purement de mise en scène, mais bloque les contre-attaques zone post-kill.",
                 LoreFlavor  = "Le sort signature de base. Lent (3 PA), prévisible — et c'est ce qui le rend terrifiant. L'adversaire SAIT qu'il arrive. Il ne peut pas l'arrêter." },
             new Entry { SpellIdValue = 11, SpellIdTech = "soulrender_ouvre_plaie",          ClassId = NymoraClass.Soulrender, Category = SpellCategory.Offensive, DisplayName = "Ouvre-Plaie",
-                Description = "Inflige 110 dégâts. Si tu as au moins 1 HG (dépensé automatiquement) : 230 dégâts ET les soins et boucliers reçus par la cible sont réduits de moitié (÷2) pendant 1 tour. Cap : 2 fois par tour.",
+                Description = "Inflige {DMG:110} dégâts. Si tu as au moins 1 HG (dépensé automatiquement) : 230 dégâts ET les soins et boucliers reçus par la cible sont réduits de moitié (÷2) pendant 1 tour. Cap : 2 fois par tour.",
                 LoreFlavor  = "L'anti-sustain. La simple existence de ce sort dans le deck Soulrender suffit à interdire à l'adversaire de poser un Carapace ou Soin Lourd sans préparation." },
             new Entry { SpellIdValue = 12, SpellIdTech = "soulrender_charge_brutale",       ClassId = NymoraClass.Soulrender, Category = SpellCategory.Offensive, DisplayName = "Charge Brutale",
-                Description = "Le Soulrender fonce en LIGNE DROITE (portée 4, cardinale) jusqu'à la première unité ou case bloquante. Inflige 180 dégâts à la cible touchée. Toute case foulée pendant la charge devient Vapeur Carmin pendant 1 tour. Cap : 1 fois par tour.",
+                Description = "Le Soulrender fonce en LIGNE DROITE (portée 4, cardinale) jusqu'à la première unité ou case bloquante. Inflige {DMG:180} dégâts à la cible touchée. Toute case foulée pendant la charge devient Vapeur Carmin pendant 1 tour. Cap : 1 fois par tour.",
                 LoreFlavor  = "Le bélier. Charge Brutale ne fait pas seulement entrer le Soulrender — elle CRÉE un couloir de pression qui restera après son passage." },
             new Entry { SpellIdValue = 13, SpellIdTech = "soulrender_detonation_sanglante", ClassId = NymoraClass.Soulrender, Category = SpellCategory.Offensive, DisplayName = "Détonation Sanglante",
-                Description = "Centre AoE croix 3. Inflige 60 dégâts de base à toutes les cibles dans la zone, +40 par HG consommé (2 HG obligatoires + jusqu'à 3 de plus dépensés automatiquement). Avec 5 HG : 260 dégâts. Sang Coagulé créé sous le centre pendant 2 tours. ATTENTION : si 5 HG sont consommés ici, Âme Lacérée est interdite et son cooldown reset.",
+                Description = "Centre AoE croix 3. Inflige {DMG:60} dégâts de base à toutes les cibles dans la zone, +40 par HG consommé (2 HG obligatoires + jusqu'à 3 de plus dépensés automatiquement). Avec 5 HG : 260 dégâts. Sang Coagulé créé sous le centre pendant 2 tours. ATTENTION : si 5 HG sont consommés ici, Âme Lacérée est interdite et son cooldown reset.",
                 LoreFlavor  = "Le payoff total. Détoner 5 HG est un acte de FOI — le Soulrender renonce à son finisher pour un coup massif." },
             new Entry { SpellIdValue = 14, SpellIdTech = "soulrender_curee",                ClassId = NymoraClass.Soulrender, Category = SpellCategory.Offensive, DisplayName = "Éventration",
-                Description = "Inflige 220 dégâts et applique PLAIE OUVERTE : 50 dégâts par tour pendant 3 tours (DoT). Cap : 1 fois par tour.",
+                Description = "Inflige {DMG:220} dégâts et applique PLAIE OUVERTE : 50 dégâts par tour pendant 3 tours (DoT). Cap : 1 fois par tour.",
                 LoreFlavor  = "Le tout ou rien. Curée est une lecture pure : si tu calcules juste, le match s'enchaîne. Si tu calcules mal, tu donnes un tempo entier à l'adversaire." },
             new Entry { SpellIdValue = 15, SpellIdTech = "soulrender_pacte_de_sang",        ClassId = NymoraClass.Soulrender, Category = SpellCategory.Tactical,  DisplayName = "Pacte de Sang",
                 Description = "Le Soulrender s'inflige 80 dégâts à lui-même et gagne +3 HG immédiatement. Son prochain sort offensif ce tour gagne +50% de dégâts. UTILISABLE 1 FOIS PAR MATCH.",
@@ -96,24 +117,24 @@ namespace Nymora.Core.Data
                 Description = "Utilisable uniquement à <30% HP. Le Soulrender se soigne de 200 HP ET gagne 3 HG. UTILISABLE 1 FOIS PAR MATCH.",
                 LoreFlavor  = "L'ultime. Dernier Souffle n'est pas un heal — c'est une renaissance. Le Soulrender qui aurait dû mourir au tour 5 revient à 50% HP avec 3 HG en main, prêt pour un Âme Lacérée." },
             new Entry { SpellIdValue = 25, SpellIdTech = "soulrender_ame_laceree",          ClassId = NymoraClass.Soulrender, Category = SpellCategory.Signature, DisplayName = "Âme Lacérée",
-                Description = "Inflige 320 dégâts. Le Soulrender se soigne de 50% des dégâts qui ont passé (après bouclier). Si la cible meurt sur ce sort : le combat est marqué d'une explosion de sang qui crée du Sang Coagulé en croix 5 cases.",
+                Description = "Inflige {DMG:320} dégâts. Le Soulrender se soigne de 50% des dégâts qui ont passé (après bouclier). Si la cible meurt sur ce sort : le combat est marqué d'une explosion de sang qui crée du Sang Coagulé en croix 5 cases.",
                 LoreFlavor  = "L'exécution rituelle. Âme Lacérée n'est pas un simple finisher — c'est l'aboutissement d'un cycle. Le Soulrender a saigné, fait saigner, accumulé. Maintenant il récolte." },
 
             // ===== NIGHTSEER (30-45) =====
             new Entry { SpellIdValue = 30, SpellIdTech = "nightseer_tir_precis",            ClassId = NymoraClass.Nightseer, Category = SpellCategory.Offensive, DisplayName = "Tir Précis",
-                Description = "Inflige 150 dégâts. Si la cible est Traqué : 210 dégâts. Cap : 1 fois par tour.",
+                Description = "Inflige {DMG:150} dégâts. Si la cible est Traqué : 210 dégâts. Cap : 1 fois par tour.",
                 LoreFlavor  = "Le sniper. Tir Précis n'a pas besoin de surprendre — sa simple existence à 4 cases force l'adversaire à toujours regarder en l'air." },
             new Entry { SpellIdValue = 31, SpellIdTech = "nightseer_volee_epines",          ClassId = NymoraClass.Nightseer, Category = SpellCategory.Offensive, DisplayName = "Volée d'Épines",
-                Description = "Tir en ligne droite. Inflige 130 dégâts à toutes les cibles touchées. Pose un Filet de Ronces (100 dégâts, -1 PM, applique TRAQUÉ au déclenchement) une case DERRIÈRE la dernière cible touchée, dans le sens du tir. Cap : 1 fois par tour.",
+                Description = "Tir en ligne droite. Inflige {DMG:130} dégâts à toutes les cibles touchées. Pose un Filet de Ronces (100 dégâts, -1 PM, applique TRAQUÉ au déclenchement) une case DERRIÈRE la dernière cible touchée, dans le sens du tir. Cap : 1 fois par tour.",
                 LoreFlavor  = "Le double effet. Volée d'Épines fait des dégâts ET pose un piège. L'adversaire qui survit doit décider : foncer dans le filet ou contourner et perdre du tempo." },
             new Entry { SpellIdValue = 32, SpellIdTech = "nightseer_detonation_onirique",   ClassId = NymoraClass.Nightseer, Category = SpellCategory.Offensive, DisplayName = "Détonation Onirique",
-                Description = "AoE carrée 3x3 (9 cases), 170 dégâts. Si la zone couvre un de tes pièges : +80 dégâts. Déclenche aussi TOUS tes pièges sous la zone. Si tu as au moins 2 PR (dépensés automatiquement) : portée passe de 5 à 10.",
+                Description = "Croix de 5 cases (centre + 4 cardinales), {DMG:170} dégâts. Si la zone couvre un de tes pièges : +80 dégâts. Déclenche TOUS tes pièges sous la croix : chaque piège déclenché inflige +30 dégâts, applique TRAQUÉ aux ennemis de la zone et te rend 1 PR.",
                 LoreFlavor  = "L'œil qui frappe à travers le brouillard. Détonation Onirique punit la lecture. Si l'adversaire pensait être hors de portée, il ne l'était pas — le Nightseer voyait à travers." },
             new Entry { SpellIdValue = 33, SpellIdTech = "nightseer_frappe_ombre",          ClassId = NymoraClass.Nightseer, Category = SpellCategory.Offensive, DisplayName = "Frappe de l'Ombre",
-                Description = "Inflige 160 dégâts et applique TRAQUÉ. Si TU as dépensé 3 PM au dernier tour : +50 dégâts.",
+                Description = "Inflige {DMG:160} dégâts et applique TRAQUÉ. Si TU as dépensé 3 PM au dernier tour : +50 dégâts.",
                 LoreFlavor  = "L'archer mobile. Frappe de l'Ombre récompense le repositionnement : bouge à fond, puis frappe plus fort." },
             new Entry { SpellIdValue = 34, SpellIdTech = "nightseer_salve_mortelle",        ClassId = NymoraClass.Nightseer, Category = SpellCategory.Offensive, DisplayName = "Salve Mortelle",
-                Description = "Croix de 5 cases : 200 dégâts au centre, 120 sur les côtés. Toute cible Traqué dans la zone : +60 dégâts. Déclenche TOUS tes pièges situés sous la croix. Coûte 3 PR. Cap : 1 fois par tour.",
+                Description = "Carré plein 3x3 (9 cases) : {DMG:160} dégâts au centre, 90 sur les 8 cases autour. Chaque piège à toi sous la zone ajoute +40 dégâts SANS être consommé (tes pièges restent posés). Coûte 3 PR. Relance : 2 tours.",
                 LoreFlavor  = "Le moment où la map révèle sa vérité. Salve Mortelle déchire toutes les illusions du Nightseer en même temps." },
             new Entry { SpellIdValue = 35, SpellIdTech = "nightseer_marque_chasseur",       ClassId = NymoraClass.Nightseer, Category = SpellCategory.Tactical,  DisplayName = "Marque du Chasseur",
                 Description = "Applique TRAQUÉ à la cible pendant 3 tours (+1 PR). Sort très peu cher : le payoff est dans les autres sorts (bonus sur Traqué). Cap : 1 fois par tour.",
@@ -137,7 +158,7 @@ namespace Nymora.Core.Data
                 Description = "Téléporte le Nightseer jusqu'à 3 cases (coûte 4 PA). Si tu as au moins 1 PR (dépensée automatiquement) : pose un Filet de Ronces sur la case quittée. Cap : 1 fois par tour.",
                 LoreFlavor  = "Le coup le plus frustrant pour l'adversaire. Le Nightseer disparaît littéralement. L'adversaire doit deviner où il est." },
             new Entry { SpellIdValue = 42, SpellIdTech = "nightseer_camouflage_ronces",     ClassId = NymoraClass.Nightseer, Category = SpellCategory.Survival,  DisplayName = "Camouflage de Ronces",
-                Description = "Le Nightseer gagne un BOUCLIER de 130 HP pendant 2 tours. Pendant la durée, sa case est entourée d'un Filet de Ronces invisible : tout ennemi adjacent fin de tour subit 70 dégâts + EMPREINTÉ.",
+                Description = "Le Nightseer gagne un BOUCLIER de 130 HP pendant 2 tours. Pendant la durée, sa case est entourée d'un Filet de Ronces invisible : tout ennemi adjacent fin de tour subit 70 dégâts + TRAQUÉ.",
                 LoreFlavor  = "L'épine défensive. Camouflage Ronces dit à l'adversaire : 'Approche-toi, vois ce qui se passe.' Anti-engage parfait contre Soulrender et Ghostra mêlée." },
             new Entry { SpellIdValue = 43, SpellIdTech = "nightseer_seve_sauvage",          ClassId = NymoraClass.Nightseer, Category = SpellCategory.Survival,  DisplayName = "Sève Sauvage",
                 Description = "Le Nightseer se soigne de 130 HP. Si une de ses embûches a été déclenchée ce tour ou le tour précédent : +60 HP additionnels.",

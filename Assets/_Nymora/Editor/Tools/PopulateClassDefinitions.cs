@@ -35,7 +35,7 @@ namespace Nymora.Editor.Tools
             { NymoraClass.Nightseer,
                 "Tireur d'elite spectral. Voit ce que les autres ne voient pas, marque ce qu'ils ignorent. " +
                 "Sa Prescience se charge par lecture des futurs probables — chaque marque est un fil tendu. " +
-                "Quand sa cible est Traquee, Voilee ou Empreintee, elle est deja morte avant d'avoir leve son arme. " +
+                "Quand sa cible est Traquee ou Voilee, elle est deja morte avant d'avoir leve son arme. " +
                 "Sa signature Traquenard est l'execution finale du contrat invisible."
             },
             { NymoraClass.Colossar,

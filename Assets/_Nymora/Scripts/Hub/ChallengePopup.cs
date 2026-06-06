@@ -54,6 +54,10 @@ namespace Nymora.Hub
         private readonly List<MenuAction> _actions = new List<MenuAction>();
         private readonly List<GameObject> _spawnedButtons = new List<GameObject>();
 
+        // Frame d'ouverture : ignore le clic qui OUVRE le menu (sinon le close-au-clic-dehors
+        // ci-dessous le refermerait immédiatement, le clic sur l'avatar étant hors du panneau).
+        private int _openedFrame = -1;
+
         public bool IsOpen => _panel != null && _panel.activeSelf;
 
         private sealed class MenuAction
@@ -239,7 +243,32 @@ namespace Nymora.Hub
             BuildActions();
             RebuildButtonsUI();
             _panel.SetActive(true);
+            _openedFrame = Time.frameCount;
             PositionAtCursor();
+        }
+
+        // Ferme le menu contextuel quand on clique EN DEHORS de la boîte (comportement attendu Dofus-like).
+        //   - Garde _openedFrame : on saute la frame d'ouverture (le clic sur l'avatar est hors panneau).
+        //   - Clic DANS le panneau (titre ou bouton) -> ne ferme pas (les boutons gèrent leur action).
+        //   - Re-clic sur un autre avatar -> HubInputController rappelle Show() -> _openedFrame réactualisé.
+        private void Update()
+        {
+            if (!IsOpen || Time.frameCount <= _openedFrame) return;
+            if (Input.GetMouseButtonDown(0) || Input.GetMouseButtonDown(1))
+            {
+                if (!IsPointerOverPanel(Input.mousePosition)) Hide();
+            }
+        }
+
+        private bool IsPointerOverPanel(Vector2 screenPos)
+        {
+            if (_panel == null) return false;
+            var rt = (RectTransform)_panel.transform;
+            var canvas = _panel.GetComponentInParent<Canvas>();
+            Camera cam = (canvas != null && canvas.renderMode != RenderMode.ScreenSpaceOverlay)
+                ? canvas.worldCamera
+                : null;
+            return RectTransformUtility.RectangleContainsScreenPoint(rt, screenPos, cam);
         }
 
         /// <summary>Place la boîte du menu à la position de la souris (le clic vient d'avoir lieu),

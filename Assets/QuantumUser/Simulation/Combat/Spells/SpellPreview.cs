@@ -188,13 +188,16 @@ namespace Quantum
                 }
                 case SpellId.NightseerSalveMortelle:
                 {
-                    // Preview = centre de la croix (cas où on cible directement l'ennemi -> il est au
-                    //   centre, 200). Patch 5 juin : + dégâts de la détonation du piège sous la cible
-                    //   (bypass shield/réduction), désormais que Salve "détone tes embûches".
+                    // Preview = centre du carré 3x3 (cible directe -> elle est au centre). Bonus "cible
+                    //   Traqué" retiré (6 juin) ; seul bonus restant = +40 par piège du caster sous le
+                    //   carré 3x3 (non consommé). La phase Nightseer (+30 flat P2+) est évaluée sur la
+                    //   ressource APRÈS la dépense des 3 PR (la sim consomme avant d'appliquer le bonus) :
+                    //   Salve à 3 PR retombe sous la phase 2 -> jamais de +30 (fix preview inexact).
                     int dmg = SpellRegistry.SalveMortelleDmgCenter;
-                    if (MarkHelpers.HasMark(target, MarkKind.Traque)) dmg += SpellRegistry.SalveMortelleDmgIfTraque;
-                    if (!TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview)) return false;
-                    AddOwnTrapDetonationDamage(f, caster, target, ref preview);
+                    int phaseAfterCost = caster->Resource - SpellRegistry.SalveMortelleHGCost;
+                    if (phaseAfterCost < 0) phaseAfterCost = 0;
+                    if (!TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview, phaseAfterCost)) return false;
+                    AddSalveTrapBonus(f, caster, target, ref preview);
                     return true;
                 }
                 case SpellId.NightseerSouffleGlacial: // PIEGE BONDISSANT (refonte 29 mai)
@@ -331,10 +334,10 @@ namespace Quantum
         /// Calc generique d'un sort offensif : bonus offensifs (dorsal/Marque/Nightseer/Colossar) +
         /// pipeline final (buffs % + reduction + shield). Majorite des sorts offensifs.
         /// </summary>
-        private static bool TryComputeOffensiveSimple(Frame f, Combatant* caster, Combatant* target, int rawDamage, int rangeMax, out DamagePreviewResult p)
+        private static bool TryComputeOffensiveSimple(Frame f, Combatant* caster, Combatant* target, int rawDamage, int rangeMax, out DamagePreviewResult p, int phaseResourceOverride = -1)
         {
             p = default;
-            int offensiveBonus = ComputeOffensiveBonusGeneric(f, caster, target, rangeMax);
+            int offensiveBonus = ComputeOffensiveBonusGeneric(f, caster, target, rangeMax, phaseResourceOverride);
             FinalizeOffensive(f, caster, target, rawDamage, offensiveBonus, rangeMax, ref p);
             return true;
         }
@@ -437,15 +440,20 @@ namespace Quantum
         ///   - Colossar : Densite Inerte adjacence (+20 sorts portee 1-2 si adjacent obstacle own) — ~1085
         /// Les bonus sont mutuellement exclusifs par classe du caster (jamais 2 a la fois).
         /// </summary>
-        private static int ComputeOffensiveBonusGeneric(Frame f, Combatant* caster, Combatant* target, int rangeMax)
+        /// <param name="phaseResourceOverride">Prescience à utiliser pour évaluer la phase Nightseer.
+        ///   -1 = ressource actuelle. Les sorts qui DÉPENSENT du PR (ex : Salve Mortelle, 3 PR) passent
+        ///   (Resource - coût) : la sim consomme le PR AVANT d'appliquer le bonus de phase (SpellSystem
+        ///   ligne ~1066), donc le preview doit évaluer la phase POST-dépense pour ne pas sur-estimer.</param>
+        private static int ComputeOffensiveBonusGeneric(Frame f, Combatant* caster, Combatant* target, int rangeMax, int phaseResourceOverride = -1)
         {
+            int phaseResource = phaseResourceOverride >= 0 ? phaseResourceOverride : caster->Resource;
             int bonus = 0;
             // Ghostra.
             bonus += GhostraPassif.GetDorsalBonusIfApplicable(caster, target);
             bonus += StatusHelper.GetMagnitude(target, StatusKind.MarqueDeLOmbre, 0);
-            // Nightseer : +30 flat en phase >= 2 (PR 3-4+).
+            // Nightseer : +30 flat en phase >= 2 (PR 3-4+), évalué sur la ressource POST-dépense.
             if (caster->Class == NymoraClass.Nightseer
-                && NightseerPassif.FlatDamageRangeBonusActive(caster->Resource))
+                && NightseerPassif.FlatDamageRangeBonusActive(phaseResource))
             {
                 bonus += NightseerPassif.FlatDamageBonus;
             }
@@ -549,41 +557,76 @@ namespace Quantum
         }
 
         /// <summary>
-        /// Patch 5 juin — précision preview pour Salve Mortelle / Détonation Onirique qui "détonent tes
-        /// embûches" (cf FogHelpers.DetonateOwnTrapsInArea). Si la cible se tient sur un piège du CASTER,
-        /// le piège lui inflige ses dégâts DIRECTS (bypass shield + réduction, comme TryTriggerTrapOnEnter) :
-        ///   - Filet de Ronces / Champ de Mines : dégâts de base + 15% si le Nightseer est en phase >= 1 ;
-        ///   - Piège Bondissant : 0 (catapulte, pas de dégâts).
-        /// Ajouté APRÈS le pipeline du sort. Approximation assumée : la CHAÎNE des mines (+40/mine proche)
-        /// n'est pas chiffrée (dépend des mines voisines). On ne touche que les ennemis (les pièges ne
-        /// déclenchent pas sur le poseur).
+        /// Équilibrage 6 juin — précision preview pour Détonation Onirique qui "détone tes embûches"
+        /// (cf FogHelpers.DetonateOwnTrapsInArea). Chaque piège-DÉGÂTS (Filet / Mine) du CASTER présent
+        /// SOUS L'AoE croix de 5 (centrée sur la cible) ajoute un SURPLUS PLAT de +30
+        /// (ZoneTrapDetonationSurplusDmg) DIRECT (bypass shield + réduction) à la cible — même si elle
+        /// n'est pas pile sur la case-piège, vu qu'un ennemi n'occupe jamais une case-piège. Piège
+        /// Bondissant = 0 (catapulte). On ne touche que les ennemis (les pièges ne déclenchent pas sur
+        /// le poseur). Salve Mortelle ne détone plus les pièges -> n'appelle plus cette méthode.
         /// </summary>
-        private static void AddOwnTrapDetonationDamage(Frame f, Combatant* caster, Combatant* target, ref DamagePreviewResult p)
+        private static void AddOwnTrapDetonationDamage(Frame f, Combatant* caster, Combatant* target,
+            ref DamagePreviewResult p)
         {
             if (!p.Valid) return;
             if (target->PlayerIndex == caster->PlayerIndex) return;
-            if (FogHelpers.GetTrapOwner(f, target->GridX, target->GridY) != caster->PlayerIndex) return;
 
-            TrapKind kind = FogHelpers.GetTrapKind(f, target->GridX, target->GridY);
-            int trapDmg;
-            switch (kind)
+            int totalTrapDmg = 0;
+            // AoE croix de 5 centrée sur la cible (Détonation Onirique).
+            for (int dy = -1; dy <= 1; dy++)
             {
-                case TrapKind.FiletRonces: trapDmg = SpellRegistry.FiletDeRoncesDmg; break;
-                case TrapKind.Mine:        trapDmg = SpellRegistry.ChampDeMinesDmg; break;
-                default:                   trapDmg = 0; break; // Bondissant : catapulte sans dégâts
-            }
-            if (trapDmg <= 0) return;
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    if (dx != 0 && dy != 0) continue; // croix : exclut les diagonales
 
-            // +15% si le Nightseer propriétaire (= caster) est en phase >= 1 (mirror FogHelpers).
-            if (caster->Class == NymoraClass.Nightseer
-                && NightseerPassif.TrapDamageBonusActive(caster->Resource))
-            {
-                trapDmg += trapDmg * NightseerPassif.TrapDamageBonusPct / 100;
+                    int cx = target->GridX + dx, cy = target->GridY + dy;
+                    if (FogHelpers.GetTrapOwner(f, cx, cy) != caster->PlayerIndex) continue;
+
+                    switch (FogHelpers.GetTrapKind(f, cx, cy))
+                    {
+                        case TrapKind.FiletRonces:
+                        case TrapKind.Mine:
+                            totalTrapDmg += SpellRegistry.ZoneTrapDetonationSurplusDmg; // +30 plat/piège
+                            break;
+                        default: continue; // Bondissant / None : pas de surplus
+                    }
+                }
             }
+            if (totalTrapDmg <= 0) return;
 
             // Dégâts DIRECTS (ni shield ni réduction) -> ajout brut au total affiché et aux HP perdus.
-            p.FinalDamage += trapDmg;
-            p.HpLost += trapDmg;
+            p.FinalDamage += totalTrapDmg;
+            p.HpLost += totalTrapDmg;
+            if (p.HpLost > target->HP) p.HpLost = target->HP;
+        }
+
+        /// <summary>
+        /// Salve Mortelle (6 juin) — preview du bonus pièges SANS consommation : +50
+        /// (SalveMortelleTrapBonusDmg) par piège du CASTER présent sous le carré 3x3 centré sur la cible.
+        /// Dégâts DIRECTS (bypass shield/réduction). Les pièges ne sont pas consommés (mirror
+        /// FogHelpers.ApplyZoneTrapBonusNoConsume).
+        /// </summary>
+        private static void AddSalveTrapBonus(Frame f, Combatant* caster, Combatant* target, ref DamagePreviewResult p)
+        {
+            if (!p.Valid) return;
+            if (target->PlayerIndex == caster->PlayerIndex) return;
+
+            int trapCount = 0;
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                for (int dx = -1; dx <= 1; dx++)
+                {
+                    int cx = target->GridX + dx, cy = target->GridY + dy;
+                    if (FogHelpers.GetTrapOwner(f, cx, cy) != caster->PlayerIndex) continue;
+                    if (FogHelpers.GetTrapKind(f, cx, cy) == TrapKind.None) continue;
+                    trapCount++;
+                }
+            }
+            if (trapCount <= 0) return;
+
+            int bonus = trapCount * SpellRegistry.SalveMortelleTrapBonusDmg;
+            p.FinalDamage += bonus;
+            p.HpLost += bonus;
             if (p.HpLost > target->HP) p.HpLost = target->HP;
         }
 

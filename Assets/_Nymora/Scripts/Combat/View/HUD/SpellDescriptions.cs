@@ -15,11 +15,16 @@ namespace Nymora.Combat.View.HUD
     /// </summary>
     public static class SpellDescriptions
     {
+        /// <summary>
+        /// Description "plain" (valeurs de base) : les tokens dynamiques {DMG:N}/{HEAL:N} sont résolus
+        /// à leur valeur brute. Le tooltip combat passe désormais par <see cref="SpellTooltipText"/>
+        /// (valeurs buffées en vert) ; cette méthode reste un fallback sans contexte de caster.
+        /// </summary>
         public static string Get(SpellId id)
         {
             if (id == SpellId.None) return string.Empty;
             return SpellBibleTexts.TryGetByQuantumId((int)id, out var entry)
-                ? entry.Description
+                ? SpellBibleTexts.ResolvePlain(entry.Description)
                 : "(Description Bible non disponible)";
         }
     }

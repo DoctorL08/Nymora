@@ -537,8 +537,11 @@ namespace Quantum
         /// <summary>
         /// 2.15.c — Camouflage Ronces : tick fin de round. Pour chaque Combatant avec status
         /// RoncesAura (Magnitude > 0), inflige Magnitude dgts a tous les Combatants ENNEMIS
-        /// adjacents (Manhattan 1) ET applique Empreinte 2 tours (Bible V7.1 :
-        /// "70 degats + EMPREINTE"). Aussi increment DamageTakenThisRound pour le check Prescience.
+        /// adjacents (Manhattan 1) ET applique TRAQUE 2 tours. Aussi increment
+        /// DamageTakenThisRound pour le check Prescience.
+        /// Patch 6 juin : la marque etait Empreinte (legacy pre-refonte) ; la refonte 29 mai a
+        /// unifie toutes les marques Nightseer sur TRAQUE (Empreinte supprime). Migre ici pour
+        /// coller au design verrouille + a la description "70 degats + TRAQUE".
         ///
         /// Note shield : le status ShieldActive (Camouflage Ronces ou Peau de Fer) du PORTEUR
         /// de l'aura n'absorbe PAS les dgts d'aura (l'aura est offensive emise par lui-meme).
@@ -574,11 +577,11 @@ namespace Quantum
                     if (enemy->HP < 0) enemy->HP = 0;
                     enemy->DamageTakenThisRound += auraMag;
                     enemy->HitsTakenThisRound += 1; // 3.3.c : compte aussi pour Ressac Vital
-                    // Bible V7.1 : EMPREINTE 2 tours sur l'ennemi adjacent.
-                    MarkHelpers.ApplyMark(enemy, MarkKind.Empreinte,
+                    // Refonte 29 mai (migre 6 juin) : TRAQUE 2 tours sur l'ennemi adjacent.
+                    MarkHelpers.ApplyMark(enemy, MarkKind.Traque,
                         SpellRegistry.CamouflageRoncesAuraEmpreinteTurns,
                         aura->PlayerIndex, currentTurn);
-                    Log.Info($"[RoncesAura] -{auraMag} HP + Empreinte sur P{enemy->PlayerIndex} (aura P{aura->PlayerIndex}) : {hpBefore} -> {enemy->HP}");
+                    Log.Info($"[RoncesAura] -{auraMag} HP + Traque sur P{enemy->PlayerIndex} (aura P{aura->PlayerIndex}) : {hpBefore} -> {enemy->HP}");
                 }
             }
         }

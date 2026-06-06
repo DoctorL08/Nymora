@@ -111,6 +111,13 @@ namespace Nymora.Hub
         public event Action<string[]> OnFriendsOnlineList;                       // friendUserIds[] (au connect)
         public event Action<string> OnFriendOnline;                              // friendUserId (un ami vient online)
         public event Action<string> OnFriendOffline;                             // friendUserId (un ami passe offline)
+
+        // 6 juin — cache AUTORITATIF des amis en ligne, alimenté par les events ci-dessus dès qu'ils
+        //   arrivent (indépendant de l'abonnement des panneaux). Les UI (HubFriendsPanel / HubMenuSocial)
+        //   le lisent à la demande -> plus de dépendance au timing du FRIENDS_ONLINE_LIST one-shot.
+        private readonly HashSet<string> _onlineFriendIds = new HashSet<string>();
+        /// <summary>True si l'ami `userId` est connu en ligne (cache entretenu par les events WS).</summary>
+        public bool IsFriendOnline(string userId) => !string.IsNullOrEmpty(userId) && _onlineFriendIds.Contains(userId);
         // 4.11 — Clan events
         public event Action<string, string, string, string, string, string> OnIncomingClanInvite;
             // inviteId, clanId, clanName, clanBannerColor, fromUserId, fromDisplayName
@@ -1012,12 +1019,20 @@ namespace Nymora.Hub
                         OnFriendRemoved?.Invoke(ev.From, ev.FriendDisplayName);
                         break;
                     case EventKind.FriendsOnlineList:
+                        // Cache autoritatif mis à jour AVANT l'Invoke -> correct même si aucun panneau
+                        //   n'est encore abonné (corrige "amis toujours déconnectés" : le one-shot du
+                        //   connect était perdu si dispatché avant l'abonnement des panneaux).
+                        _onlineFriendIds.Clear();
+                        if (ev.FriendUserIds != null)
+                            foreach (var fid in ev.FriendUserIds) if (!string.IsNullOrEmpty(fid)) _onlineFriendIds.Add(fid);
                         OnFriendsOnlineList?.Invoke(ev.FriendUserIds ?? new string[0]);
                         break;
                     case EventKind.FriendOnline:
+                        if (!string.IsNullOrEmpty(ev.From)) _onlineFriendIds.Add(ev.From);
                         OnFriendOnline?.Invoke(ev.From);
                         break;
                     case EventKind.FriendOffline:
+                        if (!string.IsNullOrEmpty(ev.From)) _onlineFriendIds.Remove(ev.From);
                         OnFriendOffline?.Invoke(ev.From);
                         break;
                     case EventKind.IncomingClanInvite:

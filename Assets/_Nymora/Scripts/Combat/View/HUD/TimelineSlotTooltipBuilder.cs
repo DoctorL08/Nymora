@@ -96,7 +96,10 @@ namespace Nymora.Combat.View.HUD
             switch (k)
             {
                 case MarkKind.Traque:    return "Traqué (Marque du Chasseur)";
-                case MarkKind.Empreinte: return "Empreinté";
+                // MarkKind.Empreinte : marque legacy supprimee par la refonte 29 mai (plus jamais
+                //   appliquee). Mappee sur Traqué au cas improbable d'une marque residuelle -> aucun
+                //   texte "Empreinté" visible cote joueur.
+                case MarkKind.Empreinte: return "Traqué (Marque du Chasseur)";
                 default: return k.ToString();
             }
         }

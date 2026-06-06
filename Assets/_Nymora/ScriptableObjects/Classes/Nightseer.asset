@@ -18,7 +18,7 @@ MonoBehaviour:
   Tagline: Piegeur mid-range. Pose des marques sur la grille et l'adversaire.
   Lore: "Tireur d'elite spectral. Voit ce que les autres ne voient pas, marque ce
     qu'ils ignorent. Sa Prescience se charge par lecture des futurs probables \u2014
-    chaque marque est un fil tendu. Quand sa cible est Traquee, Voilee ou Empreintee,
+    chaque marque est un fil tendu. Quand sa cible est Traquee ou Voilee,
     elle est deja morte avant d'avoir leve son arme. Sa signature Traquenard est
     l'execution finale du contrat invisible."
   BaseHP: 1500
@@ -27,14 +27,14 @@ MonoBehaviour:
   ResourceKind: 2
   ResourceCap: 5
   ResourceDescription: "PRESCIENCE \u2014 generee par la pose et la consommation
-    de marques (Traque, Voile, Empreinte). Cap 4."
+    de marques (Traque, Voile). Cap 4."
   PassiveName: L'Oeil qui n'est pas
   PassiveDescription: 'Pas de palier de jauge : ta force vient des MARQUES posees
     (1 seule marque active par cible). TRAQUE (sur une unite) : tes sorts sur cette
     cible ignorent 30% de ses boucliers et tu la lis mieux. VOILE (sur une case)
     : la case devient du brouillard pour l''adversaire jusqu''a ce qu''une unite
-    y entre (toi, tu la vois). EMPREINTE (sur une unite) : tu vois son sillage pendant
-    1 tour. L''avantage est informationnel : vous ne voyez pas la meme grille.'
+    y entre (toi, tu la vois). L''avantage est informationnel : vous ne voyez pas
+    la meme grille.'
   SignatureName: Traquenard
   SignatureCooldownTurns: 4
   SignatureDescription: Sort signature debloque a 4 PR. Cooldown 4 tours apres usage.

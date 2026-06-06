@@ -323,15 +323,10 @@ namespace Quantum
             int absDy = dy < 0 ? -dy : dy;
             int dist = absDx + absDy;
 
-            // 2.15.a Detonation Onirique : option 2 PR -> portee passe de 5 a 10 (Bible V7.1).
-            // L'override de RangeMax est dynamique car HGCostMaxOptional cree juste la possibilite ;
-            // c'est ici qu'on materialise le bonus quand le joueur choisit effectivement 2 PR.
+            // Equilibrage 6 juin : option "2 PR -> portee 10" de Detonation Onirique RETIREE (trop cheat).
+            //   La portee reste fixe (RangeMax du SpellDef). Le bonus de phase P2+ ci-dessous s'applique
+            //   toujours normalement.
             int effectiveRangeMax = spellDef.RangeMax;
-            if (cmd.Spell == SpellId.NightseerDetonationOnirique
-                && hgSpend >= SpellRegistry.DetonationOniriquePROptionCost)
-            {
-                effectiveRangeMax = SpellRegistry.DetonationOniriqueRangeMaxBoosted;
-            }
             // Refonte 29 mai — Nightseer Passif phasé P2+ : +1 portée sur les sorts à distance
             //   (RangeMax >= 1, exclut self) si le Nightseer est en phase >= 2 (PR 3-4+).
             if (caster->Class == NymoraClass.Nightseer
@@ -937,16 +932,13 @@ namespace Quantum
                     }
                     else if (cmd.Spell == SpellId.NightseerSalveMortelle)
                     {
+                        // 6 juin — bonus "cible Traqué" RETIRÉ (choix Lorenzo). Salve = 200 centre /
+                        //   120 autour ; le seul bonus restant est la zone des pièges (+50/piège non
+                        //   consommé, géré dans le switch d'effets via ApplyZoneTrapBonusNoConsume).
                         bool isCenter = (cx == cmd.TargetX && cy == cmd.TargetY);
                         dmgThisTarget = isCenter
                             ? SpellRegistry.SalveMortelleDmgCenter
                             : SpellRegistry.SalveMortelleDmgSide;
-                        if (MarkHelpers.HasMark(targetC, MarkKind.Traque))
-                        {
-                            dmgThisTarget += SpellRegistry.SalveMortelleDmgIfTraque;
-                        }
-                        // Refonte 29 mai — bonus voile retiré. "Chaîne tes embûches" (déclenchement
-                        //   des pièges sous la croix) viendra en Passe 3b.
                     }
                     else if (cmd.Spell == SpellId.NightseerDetonationOnirique)
                     {
@@ -2271,12 +2263,21 @@ namespace Quantum
                 //   effet). Avant : Salve ne déclenchait que sur un ennemi occupant, Détonation rien du
                 //   tout. Les dégâts directs (Salve 200/120 + Traqué, Détonation 170 + 80 si pièges)
                 //   sont déjà appliqués par le damage loop ; ici on ne gère que la détonation des pièges.
+                // Distinction nette (6 juin, choix Lorenzo) :
+                //   - Détonation Onirique (croix de 5) = setup/pression : DÉTONE tes pièges sous la zone
+                //     (+30 + Traqué) et GÉNÈRE du PR (coût 0 PR).
+                //   - Salve Mortelle (carré 3x3) = finisher d'exécution : NE détone PAS les pièges,
+                //     DÉPENSE 3 PR, gros burst + bonus Traqué renforcé (+90), relance 2 tours. Ses
+                //     dégâts (200/120 + 90 Traqué) sont gérés dans le damage loop ; ici on ajoute le
+                //     bonus pièges : +50 par piège du caster sous la zone, SANS les consommer (ils
+                //     restent posés -> ≠ Détonation qui les détone).
                 case SpellId.NightseerSalveMortelle:
+                    FogHelpers.ApplyZoneTrapBonusNoConsume(f, effectBuffer, effectCount,
+                        caster->PlayerIndex, SpellRegistry.SalveMortelleTrapBonusDmg);
+                    break;
                 case SpellId.NightseerDetonationOnirique:
-                {
                     FogHelpers.DetonateOwnTrapsInArea(f, effectBuffer, effectCount, caster->PlayerIndex, currentTurn);
                     break;
-                }
 
                 // -------------------------------------------------------------
                 // NIGHTSEER 2.15.b — TACTIQUES
