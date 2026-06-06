@@ -156,14 +156,9 @@ namespace Quantum
                     return TryComputeOffensiveSimple(f, caster, target, SpellRegistry.VoleeDEpinesDmg, rangeMax, out preview);
                 case SpellId.NightseerDetonationOnirique:
                 {
-                    // Patch 5 juin — précision preview : +80 si la case de la cible couvre un de TES
-                    //   pièges (mirror SpellSystem damage loop, AVANT le pipeline de buffs) + dégâts de
-                    //   la détonation du piège sur la cible (bypass shield/réduction).
+                    // 170 base + le surplus +30 par piège détoné dans l'AoE (AddOwnTrapDetonationDamage).
+                    //   L'ancien "+80 si couvre un piège" a été retiré (6 juin).
                     int dmg = SpellRegistry.DetonationOniriqueDmg;
-                    if (FogHelpers.GetTrapOwner(f, target->GridX, target->GridY) == caster->PlayerIndex)
-                    {
-                        dmg += SpellRegistry.DetonationOniriqueDmgVoile;
-                    }
                     if (!TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview)) return false;
                     AddOwnTrapDetonationDamage(f, caster, target, ref preview);
                     return true;

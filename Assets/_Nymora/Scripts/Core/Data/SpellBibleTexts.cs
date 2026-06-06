@@ -128,7 +128,7 @@ namespace Nymora.Core.Data
                 Description = "Tir en ligne droite. Inflige {DMG:130} dégâts à toutes les cibles touchées. Pose un Filet de Ronces (100 dégâts, -1 PM, applique TRAQUÉ au déclenchement) une case DERRIÈRE la dernière cible touchée, dans le sens du tir. Cap : 1 fois par tour.",
                 LoreFlavor  = "Le double effet. Volée d'Épines fait des dégâts ET pose un piège. L'adversaire qui survit doit décider : foncer dans le filet ou contourner et perdre du tempo." },
             new Entry { SpellIdValue = 32, SpellIdTech = "nightseer_detonation_onirique",   ClassId = NymoraClass.Nightseer, Category = SpellCategory.Offensive, DisplayName = "Détonation Onirique",
-                Description = "Croix de 5 cases (centre + 4 cardinales), {DMG:170} dégâts. Si la zone couvre un de tes pièges : +80 dégâts. Déclenche TOUS tes pièges sous la croix : chaque piège déclenché inflige +30 dégâts, applique TRAQUÉ aux ennemis de la zone et te rend 1 PR.",
+                Description = "Croix de 5 cases (centre + 4 cardinales), {DMG:170} dégâts. Déclenche TOUS tes pièges sous la croix : chaque piège déclenché inflige +30 dégâts, applique TRAQUÉ aux ennemis de la zone et te rend 1 PR.",
                 LoreFlavor  = "L'œil qui frappe à travers le brouillard. Détonation Onirique punit la lecture. Si l'adversaire pensait être hors de portée, il ne l'était pas — le Nightseer voyait à travers." },
             new Entry { SpellIdValue = 33, SpellIdTech = "nightseer_frappe_ombre",          ClassId = NymoraClass.Nightseer, Category = SpellCategory.Offensive, DisplayName = "Frappe de l'Ombre",
                 Description = "Inflige {DMG:160} dégâts et applique TRAQUÉ. Si TU as dépensé 3 PM au dernier tour : +50 dégâts.",

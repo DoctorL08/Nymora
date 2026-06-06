@@ -430,9 +430,8 @@ MonoBehaviour:
     ClassId: 2
     Category: 1
     IconSprite: {fileID: 21300000, guid: 3fdd2beb90d66d84e8c14f745d334f4d, type: 3}
-    Description: "Croix de 5 cases (centre + 4 cardinales), 170 d\xE9g\xE2ts. Si
-      la zone couvre un de tes pi\xE8ges : +80 d\xE9g\xE2ts. D\xE9clenche TOUS tes
-      pi\xE8ges sous la croix : chaque pi\xE8ge d\xE9clench\xE9 inflige +30 d\xE9g\xE2ts,
+    Description: "Croix de 5 cases (centre + 4 cardinales), 170 d\xE9g\xE2ts. D\xE9clenche
+      TOUS tes pi\xE8ges sous la croix : chaque pi\xE8ge d\xE9clench\xE9 inflige +30 d\xE9g\xE2ts,
       applique TRAQU\xC9 aux ennemis de la zone et te rend 1 PR."
     LoreFlavor: "L'\u0153il qui frappe \xE0 travers le brouillard. D\xE9tonation
       Onirique punit la lecture. Si l'adversaire pensait \xEAtre hors de port\xE9e,

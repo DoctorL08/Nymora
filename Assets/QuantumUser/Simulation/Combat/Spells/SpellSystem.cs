@@ -940,15 +940,9 @@ namespace Quantum
                             ? SpellRegistry.SalveMortelleDmgCenter
                             : SpellRegistry.SalveMortelleDmgSide;
                     }
-                    else if (cmd.Spell == SpellId.NightseerDetonationOnirique)
-                    {
-                        // Refonte 29 mai — +80 si la zone couvre un de TES pièges (au lieu d'un voile).
-                        if (FogHelpers.GetTrapOwner(f, cx, cy) == caster->PlayerIndex)
-                        {
-                            dmgThisTarget += SpellRegistry.DetonationOniriqueDmgVoile;
-                            Log.Info($"[Spell] Détonation Onirique : +{SpellRegistry.DetonationOniriqueDmgVoile} (couvre un piège) sur ({cx},{cy})");
-                        }
-                    }
+                    // Détonation Onirique : 170 dgts de base (DamageAmount). Le SEUL bonus est +30 par
+                    //   piège détoné (FogHelpers.DetonateOwnTrapsInArea, dans le switch d'effets). L'ancien
+                    //   "+80 si la zone couvre un piège" a été RETIRÉ (6 juin, choix Lorenzo).
                     else if (cmd.Spell == SpellId.ColossarFrappeLourde)
                     {
                         // 3.3.a.i — Bible Frappe Lourde : 180 base, +100 si cible epinglee

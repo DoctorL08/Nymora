@@ -268,10 +268,10 @@ namespace Nymora.Core.Data
         // 122 (Nightseer : clivage Detonation Onirique / Salve Mortelle + nettoyage Empreinte, 6 juin) :
         //                decision Lorenzo. Identite "Piege vs Execution" :
         //                DETONATION ONIRIQUE = setup/pression. Croix de 5, portee FIXE 5 (option "2 PR ->
-        //                  portee 10" RETIREE), 170 dmg, +80 si couvre un piege. DETONE tes pieges sous la
-        //                  croix : +30 PLAT par piege (ZoneTrapDetonationSurplusDmg) + TRAQUE aux ennemis
-        //                  de l'AoE (un ennemi n'est jamais pile sur une case-piege), et GENERE +1 PR par
-        //                  piege detone. Cout 0 PR.
+        //                  portee 10" RETIREE), 170 dmg. SEUL bonus = DETONE tes pieges sous la croix :
+        //                  +30 PLAT par piege (ZoneTrapDetonationSurplusDmg) + TRAQUE aux ennemis de l'AoE
+        //                  (un ennemi n'est jamais pile sur une case-piege), et GENERE +1 PR par piege
+        //                  detone. Cout 0 PR. (Ancien "+80 si couvre un piege" RETIRE le 6 juin.)
         //                SALVE MORTELLE = finisher d'execution. Croix de 5 -> CARRE PLEIN 3x3 (9 cases),
         //                  160 centre / 90 autour (nerf : etaient 200/120). Bonus "cible Traque" RETIRE
         //                  (choix Lorenzo) : le seul bonus est la zone des pieges -> chaque piege du caster

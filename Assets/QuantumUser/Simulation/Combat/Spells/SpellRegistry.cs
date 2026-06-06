@@ -122,7 +122,7 @@ namespace Quantum
         // Bible V7.1 (amendee) : Volee d'Epines pose le MEME Filet que le sort Filet de Ronces
         // (TrapKind.FiletRonces : 100 dgts / -2 PM / Empreinte 2 tours). Pas de constantes light dediees.
         public const int DetonationOniriqueDmg        = 170;  // dgts AoE croix de 5 (equilibrage 6 juin : etait carre 3x3)
-        public const int DetonationOniriqueDmgVoile   = 80;   // +80 dgts si la zone couvre un de tes pieges
+        // (6 juin) "+80 si la zone couvre un piege" RETIRE : seul bonus = +30 par piege detone (ZoneTrapDetonationSurplusDmg).
         public const int DetonationOniriqueRangeMaxBase    = 5;   // portee FIXE (option 2 PR -> 10 retiree, equilibrage 6 juin)
         // Surplus de degats des pieges detones par Salve Mortelle / Detonation Onirique : +30 PLAT par
         //   piege declenche (equilibrage 6 juin : remplace les degats complets du piege, trop cheat).
@@ -1112,9 +1112,9 @@ namespace Quantum
                     return true;
 
                 // Detonation Onirique (2.15.a) : 4 PA, range 5 FIXE, AoE croix de 5, 170 dgts.
-                // Si la zone couvre un de tes pieges : +80 dgts. Declenche tes pieges sous la croix
-                // (+30 par piege + TRAQUE). Equilibrage 6 juin : AoE carre 3x3 -> croix de 5,
-                // option "2 PR -> portee 10" retiree (trop cheat).
+                // Declenche tes pieges sous la croix : +30 par piege detone + TRAQUE (SEUL bonus).
+                // Equilibrage 6 juin : AoE carre 3x3 -> croix de 5, option "2 PR -> portee 10" retiree,
+                // ancien "+80 si couvre un piege" retire.
                 case SpellId.NightseerDetonationOnirique:
                     def = new SpellDef
                     {
