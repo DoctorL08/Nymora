@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Nymora.Combat.Spectate;
 using Nymora.Combat.View.PreCombatLobby;
 using Nymora.Core.Data;
 using Nymora.Core.SceneFlow;
@@ -350,6 +351,16 @@ namespace Nymora.Combat.Bootstrap
             const int LOCAL_SPLITSCREEN_SLOT = 0;
             Runner.Game.AddPlayer(LOCAL_SPLITSCREEN_SLOT, localPlayer);
             Log($"AddPlayer class={localPlayer.ClassId} deck=[{string.Join(",", localPlayer.SpellIdValues)}] (nickname='{playerName}'). Awaiting Quantum PlayerRef assignment...");
+
+            // ===== 6.b Spectateur (S3) — relay du flux deterministe vers le backend =====
+            // Un seul relayer par match : le master client. L'autre client n'instancie rien.
+            // SpectateRelay capte le RecordInputStream (0 CCU spectateur car re-sim locale cote S4).
+            if (Client.LocalPlayer.IsMasterClient)
+            {
+                var relayGo = new GameObject("SpectateRelay");
+                relayGo.AddComponent<SpectateRelay>().Init(matchId, isRelayer: true);
+                Log($"SpectateRelay cree (master client) pour match {matchId}.");
+            }
 
             // ===== 7. Poll GetLocalPlayers pour recuperer le vrai PlayerRef attribue par Quantum =====
             // Compteur de Task.Yield (et non source de temps non-deterministe) car le HealthCheck

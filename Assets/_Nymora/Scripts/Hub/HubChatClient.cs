@@ -5,6 +5,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Fusion;
+using Nymora.Core.Data;
 using Nymora.Core.SceneFlow;
 using UnityEngine;
 
@@ -244,7 +245,17 @@ namespace Nymora.Hub
             // connexion WebSocket reste vivante, l'historique chat est conserve, et la
             // scene combat instancie son propre HubChatUI brancho sur ce singleton.
             DontDestroyOnLoad(gameObject);
+
+            // S3 spectateur — relaie au backend le flux capté par SpectateRelay (Nymora.Combat).
+            // Bus statique Core (Combat ne reference pas Hub). Persiste hub<->combat avec ce singleton.
+            SpectateRelayBus.OnStart += HandleRelayStart;
+            SpectateRelayBus.OnChunk += HandleRelayChunk;
+            SpectateRelayBus.OnEnd += HandleRelayEnd;
         }
+
+        private void HandleRelayStart(string matchId, string headerJson) => SendSpectateStart(matchId, headerJson);
+        private void HandleRelayChunk(string matchId, int seq, string dataB64) => SendSpectateChunk(matchId, seq, dataB64);
+        private void HandleRelayEnd(string matchId) => SendSpectateEnd(matchId);
 
         private async void Start()
         {
@@ -1083,6 +1094,33 @@ namespace Nymora.Hub
             await SendJsonAsync("{\"type\":\"LIST_MATCHES\"}");
         }
 
+        // ====== Brique S3 — Spectateur : relay du flux (cote RELAYER, depuis SpectateRelayBus) ======
+
+        /// <summary>Ouvre le flux spectateur + envoie le header (config Quantum). headerJson = JSON
+        /// deja serialise (injecte brut comme objet payload.header).</summary>
+        public async void SendSpectateStart(string matchId, string headerJson)
+        {
+            if (!IsConnected || string.IsNullOrEmpty(matchId) || string.IsNullOrEmpty(headerJson)) return;
+            string json = $"{{\"type\":\"SPECTATE_START\",\"payload\":{{\"matchId\":\"{matchId}\",\"header\":{headerJson}}}}}";
+            await SendJsonAsync(json);
+        }
+
+        /// <summary>Pousse un bloc d'octets (base64) du RecordInputStream.</summary>
+        public async void SendSpectateChunk(string matchId, int seq, string dataB64)
+        {
+            if (!IsConnected || string.IsNullOrEmpty(matchId) || string.IsNullOrEmpty(dataB64)) return;
+            string json = $"{{\"type\":\"SPECTATE_CHUNK\",\"payload\":{{\"matchId\":\"{matchId}\",\"seq\":{seq},\"data\":\"{dataB64}\"}}}}";
+            await SendJsonAsync(json);
+        }
+
+        /// <summary>Clot le flux spectateur (match termine / relayer detruit).</summary>
+        public async void SendSpectateEnd(string matchId)
+        {
+            if (!IsConnected || string.IsNullOrEmpty(matchId)) return;
+            string json = $"{{\"type\":\"SPECTATE_END\",\"payload\":{{\"matchId\":\"{matchId}\"}}}}";
+            await SendJsonAsync(json);
+        }
+
         public async void SendReport(string targetUser)
         {
             if (!IsConnected || string.IsNullOrWhiteSpace(targetUser)) return;
@@ -1159,6 +1197,12 @@ namespace Nymora.Hub
 
         private async void OnDestroy()
         {
+            // S3 spectateur — désabonnement du bus (handlers liés à CETTE instance ; pas d'impact
+            // sur l'instance survivante en cas de doublon, les délégués diffèrent par `this`).
+            SpectateRelayBus.OnStart -= HandleRelayStart;
+            SpectateRelayBus.OnChunk -= HandleRelayChunk;
+            SpectateRelayBus.OnEnd -= HandleRelayEnd;
+
             if (Instance == this) Instance = null;
             try
             {
