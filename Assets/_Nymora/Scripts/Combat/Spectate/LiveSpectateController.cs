@@ -90,7 +90,7 @@ namespace Nymora.Combat.Spectate
             canvasGo.AddComponent<GraphicRaycaster>();
             _uiRoot = canvasGo;
 
-            var btnGo = new GameObject("QuitButton", typeof(RectTransform), typeof(Image), typeof(Button));
+            var btnGo = new GameObject("QuitButton", typeof(RectTransform), typeof(Image), typeof(UnityEngine.UI.Button));
             btnGo.transform.SetParent(canvasGo.transform, false);
             var rt = (RectTransform)btnGo.transform;
             // Centre-droite : ancré au bord droit, centré verticalement, léger retrait du bord.
@@ -102,7 +102,7 @@ namespace Nymora.Combat.Spectate
             img.color = CombatUiKit.CardBg;
             CombatUiKit.ApplyRounded(img, 10f);
 
-            var btn = btnGo.GetComponent<Button>();
+            var btn = btnGo.GetComponent<UnityEngine.UI.Button>();
             btn.targetGraphic = img;
             var cb = btn.colors;
             cb.normalColor = Color.white;                  // multiplie la couleur de l'Image (CardBg)
