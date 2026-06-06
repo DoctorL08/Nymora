@@ -81,6 +81,11 @@ namespace Nymora.Hub
         public event Action<int> OnOnlineCountChanged;
         public int OnlineCount { get; private set; }
 
+        // S2 spectateur — liste des matchs 1v1 en cours (reponse a LIST_MATCHES). Cache la
+        // derniere liste recue (LatestMatches) pour les vues qui s'ouvrent avant le 1er push.
+        public event Action<SpectateMatchInfo[]> OnMatchesList;
+        public SpectateMatchInfo[] LatestMatches { get; private set; } = new SpectateMatchInfo[0];
+
         public struct MmrUpdateData
         {
             public int Mmr;
@@ -154,7 +159,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, ClanBannerUpdated, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate, OnlineCount, ForceDisconnect }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, ClanBannerUpdated, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate, OnlineCount, MatchesList, ForceDisconnect }
 
         private struct IncomingEvent
         {
@@ -220,6 +225,8 @@ namespace Nymora.Hub
             public int RankedLosses;
             // Joueurs en ligne
             public int OnlineCountValue;
+            // S2 spectateur — liste des matchs en cours (MATCHES_LIST)
+            public SpectateMatchInfo[] Matches;
         }
 
         private void Awake()
@@ -510,6 +517,13 @@ namespace Nymora.Hub
                         break;
                     case "ONLINE_COUNT":
                         _queue.Enqueue(new IncomingEvent { Kind = EventKind.OnlineCount, OnlineCountValue = msg.payload?.count ?? 0 });
+                        break;
+                    case "MATCHES_LIST":
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.MatchesList,
+                            Matches = msg.payload?.matches ?? new SpectateMatchInfo[0],
+                        });
                         break;
                     case "REPORT_SENT":
                         _queue.Enqueue(new IncomingEvent
@@ -802,6 +816,8 @@ namespace Nymora.Hub
             public int rankedLosses;
             // Joueurs en ligne
             public int count;
+            // S2 spectateur — liste des matchs en cours (MATCHES_LIST)
+            public SpectateMatchInfo[] matches;
         }
 
         [Serializable]
@@ -903,6 +919,10 @@ namespace Nymora.Hub
                     case EventKind.OnlineCount:
                         OnlineCount = ev.OnlineCountValue;
                         OnOnlineCountChanged?.Invoke(OnlineCount);
+                        break;
+                    case EventKind.MatchesList:
+                        LatestMatches = ev.Matches ?? new SpectateMatchInfo[0];
+                        OnMatchesList?.Invoke(LatestMatches);
                         break;
                     case EventKind.ReportSent:
                         // POLISH-7 : param = toDisplayName au lieu de toEmail.
@@ -1052,6 +1072,15 @@ namespace Nymora.Hub
         {
             if (!IsConnected) return;
             await SendJsonAsync("{\"type\":\"DEQUEUE_RANKED\"}");
+        }
+
+        // ====== Brique S2 — Spectateur : liste des matchs en cours ======
+
+        /// <summary>Demande la liste des matchs 1v1 en cours (casual + ranked). Reponse via OnMatchesList.</summary>
+        public async void SendListMatches()
+        {
+            if (!IsConnected) return;
+            await SendJsonAsync("{\"type\":\"LIST_MATCHES\"}");
         }
 
         public async void SendReport(string targetUser)

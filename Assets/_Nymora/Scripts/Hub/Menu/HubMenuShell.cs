@@ -180,6 +180,7 @@ namespace Nymora.Hub.Menu
                 chat.OnRankedMatchFound -= HandleMatchFound;
                 chat.OnRankedQueueLeft -= HandleQueueLeft;
                 chat.OnOnlineCountChanged -= HandleOnlineCount;
+                chat.OnMatchesList -= HandleMatchesList; // S2 spectateur (sub seulement si popup ouvert, mais safe)
             }
         }
 
@@ -311,6 +312,9 @@ namespace Nymora.Hub.Menu
             // E1 — Bouton émote (à droite du hamburger) + popup de sélection (hors MenuRoot,
             // visible dans le hub ; couvert par le voile quand le menu Échap est ouvert).
             BuildEmoteButton(canvasRT);
+
+            // S2 — Bouton œil (à droite de l'émote) + panneau des combats en cours (spectateur).
+            BuildSpectateButton(canvasRT);
 
             // Devise persistante (hors MenuRoot, sur le canvas menu = toujours visible, au-dessus
             // de tout y compris le voile). Icônes ash/blood + valeurs live.
