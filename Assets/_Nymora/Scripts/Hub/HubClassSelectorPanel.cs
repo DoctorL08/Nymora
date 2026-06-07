@@ -373,7 +373,7 @@ namespace Nymora.Hub
                            "<color=#b0b0c0><b>Phase 1</b></color> — <b>1-2 PR</b>\n" +
                            "  <i><color=#c0b0d0>+15% dégâts de tes pièges</color></i>\n\n" +
                            "<color=#a0a0c0><b>Phase 2</b></color> — <b>3-4 PR</b>\n" +
-                           "  <i><color=#c0b0d0>+ tes sorts gagnent +30 dégâts et +1 portée</color></i>\n\n" +
+                           "  <i><color=#c0b0d0>+ tes sorts gagnent +30 dégâts</color></i>\n\n" +
                            "<color=#9090d0><b>Phase 3</b></color> — <b>5 PR (cap)</b>\n" +
                            "  <i><color=#c0b0d0>+ ignore 50% des boucliers · pièges INVISIBLES · signature Traquenard prête</color></i>";
                     break;

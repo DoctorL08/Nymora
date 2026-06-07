@@ -9,7 +9,7 @@ namespace Quantum
     ///
     /// Paliers (cumulatifs) :
     ///   PR 1-2 (P1) : +15% dégâts des pièges.
-    ///   PR 3-4 (P2) : + (P1) + +30 dégâts flat sur les sorts ET +1 portée.
+    ///   PR 3-4 (P2) : + (P1) + +30 dégâts flat sur les sorts. (Le +1 portée a été retiré le 7 juin.)
     ///   PR 5   (P3) : + (P1,P2) + ignore 50% des boucliers + pièges INVISIBLES + signature Traquenard prête.
     ///
     /// Pas d'état caché : la phase est dérivée de Resource (PR) à la volée.
@@ -21,7 +21,7 @@ namespace Quantum
         // Paliers (valeurs refonte 29 mai).
         public const int TrapDamageBonusPct = 15;  // P1+ : +15% dégâts pièges
         public const int FlatDamageBonus    = 30;  // P2+ : +30 dégâts flat sorts
-        public const int RangeBonus         = 1;   // P2+ : +1 portée
+        public const int RangeBonus         = 0;   // patch 7 juin : +1 portée P2 RETIRÉ (legacy, conservé = 0)
         public const int ShieldIgnorePct    = 50;  // P3  : ignore 50% boucliers
 
         /// <summary>
@@ -53,21 +53,19 @@ namespace Quantum
         }
 
         public static bool TrapDamageBonusActive(int prescience)      => GetPhase(prescience) >= 1;
-        public static bool FlatDamageRangeBonusActive(int prescience) => GetPhase(prescience) >= 2;
+        // Patch 7 juin : ne gate plus QUE le +30 dégâts flat (le +1 portée P2 a été retiré).
+        public static bool FlatDamageBonusActive(int prescience)      => GetPhase(prescience) >= 2;
         public static bool ShieldIgnoreActive(int prescience)         => GetPhase(prescience) >= 3;
         public static bool TrapsInvisible(int prescience)             => GetPhase(prescience) >= 3;
         public static bool TraquenardUnlocked(int prescience)         => GetPhase(prescience) >= 3;
 
         /// <summary>
-        /// Portée EFFECTIVE d'un sort après le bonus de phase Nightseer (P2+ : +1 portée sur les
-        /// sorts à distance, RangeMax >= 1). MIROIR du garde sim (SpellSystem.effectiveRangeMax,
-        /// ligne ~337) pour que le PREVIEW View (TargetingPreviewView) affiche la même portée que
-        /// le cast. No-op pour les autres classes / les sorts self (rangeMax 0) / phases < 2.
+        /// Patch 7 juin — le +1 portée de la phase 2 a été RETIRÉ. Cette méthode est désormais un
+        /// pass-through (renvoie rangeMax inchangé). Conservée pour ne pas toucher ses appelants View
+        /// (TargetingPreviewView / SpellTooltipText) ; la portée de phase ne s'applique plus.
         /// </summary>
         public static int RangeWithPhaseBonus(NymoraClass casterClass, int casterResource, int rangeMax)
         {
-            if (casterClass == NymoraClass.Nightseer && rangeMax >= 1 && FlatDamageRangeBonusActive(casterResource))
-                return rangeMax + RangeBonus;
             return rangeMax;
         }
 

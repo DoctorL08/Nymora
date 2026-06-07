@@ -37,7 +37,7 @@ namespace Quantum
             {
                 int phaseRes = caster.Resource - def.HGCostMandatory;
                 if (phaseRes < 0) phaseRes = 0;
-                if (NightseerPassif.FlatDamageRangeBonusActive(phaseRes))
+                if (NightseerPassif.FlatDamageBonusActive(phaseRes))
                     total += NightseerPassif.FlatDamageBonus;
             }
 
@@ -52,6 +52,10 @@ namespace Quantum
             // 4. Frénésie : +% tant que RageInsatiableActive.
             if (StatusHelper.Has(c, StatusKind.RageInsatiableActive))
                 total += total * SpellRegistry.FrenesieDmgBonusPct / 100;
+
+            // 4b. Affût (patch 7 juin, Nightseer) : +% tant que AffutActive.
+            if (StatusHelper.Has(c, StatusKind.AffutActive))
+                total += total * SpellRegistry.AffutDmgBonusPct / 100;
 
             // 5. Sang Bouillant : +flat (prochaine frappe).
             int nextStrike = StatusHelper.GetMagnitude(c, StatusKind.NextStrikeBonus, 0);

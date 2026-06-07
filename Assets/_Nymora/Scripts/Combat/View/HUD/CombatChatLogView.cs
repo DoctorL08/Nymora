@@ -223,11 +223,24 @@ namespace Nymora.Combat.View.HUD
             if (state.CurrentPhase == CombatPhase.MatchEnd && !_matchEndLogged)
             {
                 _matchEndLogged = true;
-                int local = LocalPlayerResolver.Resolve();
                 string line;
-                if (state.WinnerPlayerIndex < 0) line = $"<color={TurnColor}>--- MATCH NUL ---</color>";
-                else if (state.WinnerPlayerIndex == local) line = $"<color={HealColor}>--- VICTOIRE ---</color>";
-                else line = $"<color={DamageColor}>--- DÉFAITE ---</color>";
+                if (state.WinnerPlayerIndex < 0)
+                {
+                    line = $"<color={TurnColor}>--- MATCH NUL ---</color>";
+                }
+                else if (Nymora.Combat.Spectate.LiveSpectateController.LiveSpectateActive)
+                {
+                    // Spectateur : pas de VICTOIRE/DÉFAITE (il n'est pas un joueur) -> nom du vainqueur.
+                    string winner = state.WinnerPlayerIndex == 0 ? LocalPseudo() : OppPseudo();
+                    line = $"<color={HealColor}>--- {winner} l'emporte ---</color>";
+                }
+                else
+                {
+                    int local = LocalPlayerResolver.Resolve();
+                    line = state.WinnerPlayerIndex == local
+                        ? $"<color={HealColor}>--- VICTOIRE ---</color>"
+                        : $"<color={DamageColor}>--- DÉFAITE ---</color>";
+                }
                 Push(line);
             }
         }
@@ -296,11 +309,15 @@ namespace Nymora.Combat.View.HUD
             }
         }
 
+        // Patch 7 juin — noms résolus via PlayerProfileBridge (indexé par slot joueur, rempli
+        //   pour PvP/IA par le hub ET pour le SPECTATEUR par LiveSpectateController avec p0Name/
+        //   p1Name). Avant : MatchBridge.Local/OpponentDisplayName = le compte du client courant,
+        //   ce qui affichait le nom du SPECTATEUR au lieu des 2 joueurs dans le chat spectateur.
         private static string LocalPseudo()
-            => string.IsNullOrEmpty(MatchBridge.LocalDisplayName) ? "Toi" : MatchBridge.LocalDisplayName;
+            => string.IsNullOrEmpty(PlayerProfileBridge.LocalPseudo) ? "Toi" : PlayerProfileBridge.LocalPseudo;
 
         private static string OppPseudo()
-            => string.IsNullOrEmpty(MatchBridge.OpponentDisplayName) ? "Adversaire" : MatchBridge.OpponentDisplayName;
+            => string.IsNullOrEmpty(PlayerProfileBridge.OpponentPseudo) ? "Adversaire" : PlayerProfileBridge.OpponentPseudo;
 
         private static void Push(string richLine) => CombatLogRelay.Push(richLine);
     }

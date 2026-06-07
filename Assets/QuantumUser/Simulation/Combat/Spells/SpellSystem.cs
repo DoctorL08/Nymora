@@ -80,36 +80,8 @@ namespace Quantum
             int turnForPACost = f.TryGetSingleton<CombatState>(out var statePA) ? statePA.TurnNumber : 0;
             int effectivePACost = EffectiveStats.GetPACost(spellDef, caster, targetHPRatio, turnForPACost);
 
-            // 3.3.b.iii — Provocation Bible : sorts non-ciblant le provocateur coutent +2 PA.
-            // Magnitude Provoked = PlayerIndex du provocateur. Lookup combatant correspondant, si la
-            // case ciblee != case du provocateur -> bump cost. Note : un sort Self du provoque (Pacte,
-            // Peau de Fer, etc.) compte aussi comme "non-ciblant" donc bump.
-            if (StatusHelper.Has(caster, StatusKind.Provoked))
-            {
-                int provocateurPi = StatusHelper.GetMagnitude(caster, StatusKind.Provoked, -1);
-                if (provocateurPi >= 0)
-                {
-                    bool targetIsProvocateur = false;
-                    var provLookup = f.Filter<Combatant>();
-                    while (provLookup.NextUnsafe(out EntityRef _, out Combatant* provLookupC))
-                    {
-                        if (provLookupC->PlayerIndex == provocateurPi)
-                        {
-                            if (provLookupC->GridX == cmd.TargetX && provLookupC->GridY == cmd.TargetY)
-                            {
-                                targetIsProvocateur = true;
-                            }
-                            break;
-                        }
-                    }
-                    if (!targetIsProvocateur)
-                    {
-                        int costBefore = effectivePACost;
-                        effectivePACost += SpellRegistry.ProvocationCostBumpNonCible;
-                        Log.Info($"[Provocation] +{SpellRegistry.ProvocationCostBumpNonCible} PA cost (target ({cmd.TargetX},{cmd.TargetY}) != provocateur P{provocateurPi}) : {costBefore} -> {effectivePACost}");
-                    }
-                }
-            }
+            // Patch 7 juin — Provocation : le surcout +1 PA (sur TOUS les sorts du provoque) est
+            //   desormais applique DANS EffectiveStats.GetPACost (centralise, plus d'exception cible).
 
             if (caster->PA < effectivePACost)
             {
@@ -209,6 +181,21 @@ namespace Quantum
                 if (caster->LastPasDansLOmbreOnTurn == currentTurnPDO)
                 {
                     Log.Warn($"[Spell] rejet : Pas dans l'Ombre deja utilise ce tour (round {currentTurnPDO}, cap 1x/tour)");
+                    return;
+                }
+            }
+
+            // Patch 7 juin — sorts INTERDITS au TOUR 1 (decision Lorenzo) : Pas dans l'Ombre (Ghostra),
+            //   Pas Furtif (Nightseer) + Affut (Marque du Chasseur, Nightseer). Reject AVANT consume PA
+            //   (le tour n'est pas gache). TurnNumber demarre a 1 au 1er round (cf TurnSystem).
+            if (cmd.Spell == SpellId.GhostraPasDansLOmbre
+                || cmd.Spell == SpellId.NightseerPasFurtif
+                || cmd.Spell == SpellId.NightseerMarqueDuChasseur)
+            {
+                int currentTurnT1 = f.TryGetSingleton<CombatState>(out var stateT1) ? stateT1.TurnNumber : 0;
+                if (currentTurnT1 <= 1)
+                {
+                    Log.Warn($"[Spell] rejet : {cmd.Spell} interdit au tour 1 (round {currentTurnT1})");
                     return;
                 }
             }
@@ -327,13 +314,13 @@ namespace Quantum
             //   La portee reste fixe (RangeMax du SpellDef). Le bonus de phase P2+ ci-dessous s'applique
             //   toujours normalement.
             int effectiveRangeMax = spellDef.RangeMax;
-            // Refonte 29 mai — Nightseer Passif phasé P2+ : +1 portée sur les sorts à distance
-            //   (RangeMax >= 1, exclut self) si le Nightseer est en phase >= 2 (PR 3-4+).
-            if (caster->Class == NymoraClass.Nightseer
-                && spellDef.RangeMax >= 1
-                && NightseerPassif.FlatDamageRangeBonusActive(caster->Resource))
+            // Patch 7 juin — le +1 portée de la phase 2 Nightseer a été RETIRÉ (décision Lorenzo).
+            //   La phase 2 ne donne plus que le +30 dégâts flat (cf NightseerPassif.FlatDamageBonusActive).
+            // Affut (patch 7 juin, ex-Marque du Chasseur) : +2 portee sur les sorts a distance tant
+            //   que le self-buff AffutActive est actif (RangeMax >= 1 exclut les sorts self).
+            if (spellDef.RangeMax >= 1 && StatusHelper.Has(caster, StatusKind.AffutActive))
             {
-                effectiveRangeMax += NightseerPassif.RangeBonus;
+                effectiveRangeMax += SpellRegistry.AffutRangeBonus;
             }
 
             if (dist < spellDef.RangeMin || dist > effectiveRangeMax)
@@ -696,36 +683,18 @@ namespace Quantum
             {
                 effectiveDmg += SpellRegistry.TraquenardDmgBonusIfMarked;
             }
-            // Pacte de Sang +50% : applique a tout sort OFFENSIF (DamageAmount > 0).
-            // Consume apres le damage loop (1 seul cast offensif).
+            // Patch 7 juin — FIX cast == preview : les buffs OFFENSIFS du caster (Pacte %, Peau de Fer
+            //   flat mêlée, Frénésie %, Affût %, Sang Bouillant flat) ne sont PLUS appliqués ici en
+            //   amont sur effectiveDmg. Ils étaient PERDUS par les sorts qui recalculent dmgThisTarget
+            //   par cible (Tir Précis Traqué -> 210, Frappe +120) ou à DamageAmount=0 (Salve), d'où
+            //   "Affût n'applique pas le +10% au cast" alors que le preview (FinalizeOffensive) l'affichait.
+            //   Ils sont désormais appliqués PAR CIBLE via ApplyOffensiveCasterBuffs (après les bonus flat
+            //   phase/Densité/Marque), exactement comme SpellPreview.FinalizeOffensive.
+            //   On garde ici les déclarations servant à la CONSOMMATION post-loop (Pacte / Sang Bouillant),
+            //   + une valeur buffée pour les cibles SANS bonus per-cellule (leurres / obstacles).
             int pacteBuffPct = StatusHelper.GetMagnitude(caster, StatusKind.BuffNextOffensiveDmgPercent, 0);
-            if (effectiveDmg > 0 && pacteBuffPct > 0)
-            {
-                effectiveDmg += effectiveDmg * pacteBuffPct / 100;
-            }
-            // Peau de Fer (2.10.b) : pendant la duree du shield, sorts melee du caster
-            // gagnent +30 dgts (Bible V7.1). spellDef.RangeMax == 1 = sort melee.
-            // Le bonus s'applique uniquement si le shield a encore des HP (Magnitude > 0).
-            if (effectiveDmg > 0
-                && spellDef.RangeMax == 1
-                && StatusHelper.GetMagnitude(caster, StatusKind.ShieldActive, 0) > 0)
-            {
-                effectiveDmg += SpellRegistry.PeauDeFerMeleeDmgBonus;
-            }
-            // Frenesie (ex-Rage Insatiable, refonte 29 mai) : +10% dgts sur les sorts offensifs
-            //   tant que RageInsatiableActive (= Frenesie) est actif. Le +1 HG/offensif est gere
-            //   apres le damage loop (hook ex-regen PA).
-            if (effectiveDmg > 0 && StatusHelper.Has(caster, StatusKind.RageInsatiableActive))
-            {
-                effectiveDmg += effectiveDmg * SpellRegistry.FrenesieDmgBonusPct / 100;
-            }
-            // Sang Bouillant : bonus FLAT "prochaine frappe +30" (NextStrikeBonus), consomme apres
-            //   le loop si le sort a inflige des degats. Applique apres les % (flat additif).
             int nextStrikeBonus = StatusHelper.GetMagnitude(caster, StatusKind.NextStrikeBonus, 0);
-            if (effectiveDmg > 0 && nextStrikeBonus > 0)
-            {
-                effectiveDmg += nextStrikeBonus;
-            }
+            int effectiveDmgBuffed = ApplyOffensiveCasterBuffs(caster, spellDef.RangeMax == 1, effectiveDmg);
 
             // ===== Resolution AoE =====
             // Cas special Rugissement : rayon 3 Manhattan autour du caster (TargetingResolver
@@ -865,8 +834,8 @@ namespace Quantum
                         if (DecoyHelpers.TryFindEnemyDecoyForCaster(f, caster->PlayerIndex, cx, cy,
                                 out Combatant* aoeDecoyG, out int aoeDecoySlot))
                         {
-                            bool aoeDecoyDestroyed = DecoyHelpers.HitDecoyByEnemyAction(aoeDecoyG, aoeDecoySlot, effectiveDmg);
-                            Log.Info($"[Spell] {cmd.Spell} touche leurre ennemi P{aoeDecoyG->PlayerIndex} en ({cx},{cy}) dmg={effectiveDmg} -> {(aoeDecoyDestroyed ? "DETRUIT" : "encaisse")}");
+                            bool aoeDecoyDestroyed = DecoyHelpers.HitDecoyByEnemyAction(aoeDecoyG, aoeDecoySlot, effectiveDmgBuffed);
+                            Log.Info($"[Spell] {cmd.Spell} touche leurre ennemi P{aoeDecoyG->PlayerIndex} en ({cx},{cy}) dmg={effectiveDmgBuffed} -> {(aoeDecoyDestroyed ? "DETRUIT" : "encaisse")}");
                             continue;
                         }
 
@@ -880,19 +849,19 @@ namespace Quantum
                         //     check excluait ses propres obstacles -> cast à vide (PA perdu, rien cassé).
                         // DamageAt est kind/owner-agnostique : il décrémente l'obstacle présent et le
                         // détruit à 0 HP (Densité Inerte se branche dans DestroyObstacle si Pilier own).
-                        if (effectiveDmg > 0 && ObstacleHelpers.HasObstacleAt(f, cx, cy))
+                        if (effectiveDmgBuffed > 0 && ObstacleHelpers.HasObstacleAt(f, cx, cy))
                         {
-                            ObstacleHelpers.DamageAt(f, cx, cy, effectiveDmg);
+                            ObstacleHelpers.DamageAt(f, cx, cy, effectiveDmgBuffed);
                         }
                         continue;
                     }
                     if (!f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC)) continue;
                     if (target == casterEntity) continue; // pas d'auto-damage offensif
 
-                    // 2.15.a — Nightseer per-cell damage variants (override effectiveDmg).
-                    // Pacte/Peau de Fer (Soulrender) restent appliques en amont sur effectiveDmg
-                    // donc en pratique sans effet pour les sorts Nightseer (caster Nightseer
-                    // n'a pas ces statuses normalement).
+                    // 2.15.a — Nightseer per-cell damage variants. dmgThisTarget part du BASE non buffé
+                    //   (effectiveDmg) ; les buffs offensifs du caster (Pacte/Peau de Fer/Frénésie/Affût/
+                    //   Sang Bouillant) sont appliqués PLUS BAS, après les bonus flat (phase/Densité/Marque),
+                    //   via ApplyOffensiveCasterBuffs (patch 7 juin, parité avec SpellPreview).
                     int dmgThisTarget = effectiveDmg;
                     if (cmd.Spell == SpellId.NightseerTirPrecis)
                     {
@@ -903,31 +872,17 @@ namespace Quantum
                     }
                     else if (cmd.Spell == SpellId.NightseerFrappeDeLOmbre)
                     {
-                        // Refonte 29 mai — base 160 + TRAQUÉ. Bonus +50 si le Nightseer a dépensé >= 3 PM
-                        //   au tour précédent (mobilité récompensée). +1 PR "marque".
-                        if (caster->PMSpentLastTurn >= 3)
-                        {
-                            dmgThisTarget += SpellRegistry.FrappeDeLOmbreDmgBonusPM;
-                        }
-                        MarkHelpers.ApplyMark(targetC, MarkKind.Traque,
-                            SpellRegistry.MarqueDuChasseurTurns, caster->PlayerIndex, currentTurn);
-                        NightseerPassif.GainPrescienceForPlayer(f, caster->PlayerIndex, currentTurn, "marque (Frappe de l'Ombre)");
-                        Log.Info($"[Spell] Frappe de l'Ombre : {dmgThisTarget} dgts (PM dépensés dernier tour {caster->PMSpentLastTurn}) + Traqué sur P{targetC->PlayerIndex}");
-                    }
-                    else if (cmd.Spell == SpellId.NightseerVoileDOmbre) // FLÈCHE TRAÇANTE (refonte 29 mai)
-                    {
-                        // 60 dégâts par PM dépensé au dernier tour (max 180), UNIQUEMENT si Traqué.
+                        // Patch 7 juin — EXECUTEUR : 160 base + 120 si la cible est TRAQUÉ (= 280),
+                        //   consomme Traqué. Ne pose PLUS Traqué, plus de bonus PM. Récompense le setup.
                         if (MarkHelpers.HasMark(targetC, MarkKind.Traque))
                         {
-                            int ft = caster->PMSpentLastTurn * SpellRegistry.FlecheTracanteDmgPerPM;
-                            if (ft > SpellRegistry.FlecheTracanteMaxDmg) ft = SpellRegistry.FlecheTracanteMaxDmg;
-                            dmgThisTarget = ft;
-                            Log.Info($"[Spell] Flèche Traçante : {ft} dgts sur P{targetC->PlayerIndex} (Traqué, {caster->PMSpentLastTurn} PM dépensés)");
+                            dmgThisTarget += SpellRegistry.FrappeDeLOmbreDmgBonusTraque;
+                            MarkHelpers.ConsumeMark(targetC);
+                            Log.Info($"[Spell] Frappe de l'Ombre : {dmgThisTarget} dgts (TRAQUÉ consommé, +{SpellRegistry.FrappeDeLOmbreDmgBonusTraque}) sur P{targetC->PlayerIndex}");
                         }
                         else
                         {
-                            dmgThisTarget = 0;
-                            Log.Info($"[Spell] Flèche Traçante : cible P{targetC->PlayerIndex} non Traqué -> 0 dégât");
+                            Log.Info($"[Spell] Frappe de l'Ombre : {dmgThisTarget} dgts (cible non Traqué) sur P{targetC->PlayerIndex}");
                         }
                     }
                     else if (cmd.Spell == SpellId.NightseerSalveMortelle)
@@ -1057,7 +1012,7 @@ namespace Quantum
                     //   offensifs si le Nightseer est en phase >= 2 (PR 3-4+). Avant les réductions.
                     if (caster->Class == NymoraClass.Nightseer
                         && dmgThisTarget > 0
-                        && NightseerPassif.FlatDamageRangeBonusActive(caster->Resource))
+                        && NightseerPassif.FlatDamageBonusActive(caster->Resource))
                     {
                         dmgThisTarget += NightseerPassif.FlatDamageBonus;
                     }
@@ -1075,6 +1030,16 @@ namespace Quantum
                     {
                         dmgThisTarget += SpellRegistry.DensiteInerteAdjacenceBonus;
                         Log.Info($"[Densite Inerte] +{SpellRegistry.DensiteInerteAdjacenceBonus} dmg adjacence sur P{caster->PlayerIndex} (sort {cmd.Spell}) -> {dmgThisTarget}");
+                    }
+
+                    // Patch 7 juin — buffs OFFENSIFS du caster (Pacte %, Peau de Fer flat mêlée, Frénésie %,
+                    //   Affût %, Sang Bouillant flat) appliqués PAR CIBLE sur le total per-cellule (base +
+                    //   bonus flat phase/Densité/Marque). Ordre identique à SpellPreview.FinalizeOffensive
+                    //   -> cast == preview, y compris pour Tir Précis Traqué / Frappe / Salve (qui
+                    //   recalculaient dmgThisTarget et perdaient le +10% Affût appliqué en amont).
+                    if (dmgThisTarget > 0)
+                    {
+                        dmgThisTarget = ApplyOffensiveCasterBuffs(caster, spellDef.RangeMax == 1, dmgThisTarget);
                     }
 
                     // 2.15.a — Volee d'Epines : on retient la derniere case touchee (pour pose
@@ -1703,20 +1668,20 @@ namespace Quantum
                     break;
 
                 case SpellId.SoulrenderPacteDeSang:
-                    // -80 HP self, +3 HG self (clampe au cap), buff +50% next offensif 1 tour.
+                    // Patch 7 juin : -80 HP self, +2 HG self (etait 3), buff +25% next offensif (etait 50%) 1 tour.
                     int hpBefore = caster->HP;
-                    caster->HP -= 80;
+                    caster->HP -= SpellRegistry.PacteDeSangSelfDamage;
                     if (caster->HP < 0) caster->HP = 0;
-                    Log.Info($"[Spell] Pacte de Sang : self-damage 80 (HP {hpBefore} -> {caster->HP})");
+                    Log.Info($"[Spell] Pacte de Sang : self-damage {SpellRegistry.PacteDeSangSelfDamage} (HP {hpBefore} -> {caster->HP})");
 
                     int maxRes = CombatantStats.GetMaxResource(caster->Class);
                     int resBefore = caster->Resource;
-                    caster->Resource += 3;
+                    caster->Resource += SpellRegistry.PacteDeSangHGGain;
                     if (caster->Resource > maxRes) caster->Resource = maxRes;
-                    Log.Info($"[Spell] Pacte de Sang : +3 HG (clamped, {resBefore} -> {caster->Resource})");
+                    Log.Info($"[Spell] Pacte de Sang : +{SpellRegistry.PacteDeSangHGGain} HG (clamped, {resBefore} -> {caster->Resource})");
 
-                    StatusHelper.Apply(caster, StatusKind.BuffNextOffensiveDmgPercent, magnitude: 50, turnsLeft: 1, currentTurn);
-                    Log.Info($"[Spell] Pacte de Sang : BuffNextOffensiveDmgPercent +50% (1 tour) sur P{caster->PlayerIndex}");
+                    StatusHelper.Apply(caster, StatusKind.BuffNextOffensiveDmgPercent, magnitude: SpellRegistry.PacteDeSangDmgPercent, turnsLeft: 1, currentTurn);
+                    Log.Info($"[Spell] Pacte de Sang : BuffNextOffensiveDmgPercent +{SpellRegistry.PacteDeSangDmgPercent}% (1 tour) sur P{caster->PlayerIndex}");
                     break;
 
                 case SpellId.SoulrenderRugissement:
@@ -2279,18 +2244,39 @@ namespace Quantum
 
                 case SpellId.NightseerMarqueDuChasseur:
                 {
-                    // Pose Traque sur la cible 3 tours.
-                    EntityRef target = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
-                    if (target != EntityRef.None
-                        && f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC)
-                        && targetC->PlayerIndex != caster->PlayerIndex)
+                    // AFFUT (patch 7 juin) : self-buff +2 portee / +10% dgts pendant 2 tours.
+                    //   Ne pose PLUS Traqué. Magnitude = % dgts (lu par tooltips/preview). Relance 3 tours
+                    //   (moteur generique). +1 PR (sort de setup, conserve l'economie de ressource).
+                    StatusHelper.Apply(caster, StatusKind.AffutActive,
+                        magnitude: SpellRegistry.AffutDmgBonusPct, turnsLeft: SpellRegistry.AffutTurns, currentTurn);
+                    Log.Info($"[Spell] Affût : +{SpellRegistry.AffutRangeBonus} portée / +{SpellRegistry.AffutDmgBonusPct}% dgts pendant {SpellRegistry.AffutTurns} tours sur P{caster->PlayerIndex}");
+                    NightseerPassif.GainPrescienceForPlayer(f, caster->PlayerIndex, currentTurn, "Affût (setup)");
+                    break;
+                }
+
+                case SpellId.NightseerVoileDOmbre:
+                {
+                    // REPLI ÉPINEUX (patch 7 juin) : repousse de 3 cases TOUS les ennemis adjacents
+                    //   (Manhattan 1) loin du Nightseer, puis heal 100. Survie / désengagement.
+                    int casterXRE = caster->GridX;
+                    int casterYRE = caster->GridY;
+                    int[] dxRE = { 1, -1, 0, 0 };
+                    int[] dyRE = { 0, 0, 1, -1 };
+                    for (int i = 0; i < 4; i++)
                     {
-                        MarkHelpers.ApplyMark(targetC, MarkKind.Traque,
-                            SpellRegistry.MarqueDuChasseurTurns, caster->PlayerIndex, currentTurn);
-                        Log.Info($"[Spell] Marque du Chasseur : Traque {SpellRegistry.MarqueDuChasseurTurns} tours sur P{targetC->PlayerIndex}");
-                        // Refonte 29 mai — économie PR : +1 PR (marque appliquée), cappé +3/tour.
-                        NightseerPassif.GainPrescienceForPlayer(f, caster->PlayerIndex, currentTurn, "marque appliquée");
+                        int nx = casterXRE + dxRE[i];
+                        int ny = casterYRE + dyRE[i];
+                        if (!GridHelpers.InBounds(nx, ny)) continue;
+                        EntityRef adjTarget = GridHelpers.GetOccupant(f, nx, ny);
+                        if (adjTarget == EntityRef.None || adjTarget == casterEntity) continue;
+                        if (!f.Unsafe.TryGetPointer<Combatant>(adjTarget, out Combatant* adjC)) continue;
+                        if (adjC->PlayerIndex == caster->PlayerIndex) continue; // skip alliés (1v1 = N/A)
+                        PushAndTrigger(f, adjC, adjTarget, casterXRE, casterYRE,
+                            SpellRegistry.RepliEpineuxPush, currentTurn, caster);
+                        Log.Info($"[Spell] Repli Épineux : push {SpellRegistry.RepliEpineuxPush} sur P{adjC->PlayerIndex}");
                     }
+                    int healedRE = HealHelper.ApplyHeal(caster, SpellRegistry.RepliEpineuxHeal);
+                    Log.Info($"[Spell] Repli Épineux : heal {healedRE} sur P{caster->PlayerIndex}");
                     break;
                 }
 
@@ -3622,7 +3608,7 @@ namespace Quantum
                     StatusHelper.Apply(provC, StatusKind.MovementMalus,
                         magnitude: SpellRegistry.ProvocationMovementMalusMag,
                         turnsLeft: SpellRegistry.ProvocationMovementMalusTurns, currentTurn);
-                    Log.Info($"[Spell] Provocation : P{provC->PlayerIndex} provoque par P{caster->PlayerIndex} pour {SpellRegistry.ProvocationTurns}T (-{SpellRegistry.ProvocationMovementMalusMag} PM, +{SpellRegistry.ProvocationCostBumpNonCible} PA cost sorts non-ciblant, {SpellRegistry.ProvocationAutoDamageNotAdj} dmg auto si pas adjacent fin tour)");
+                    Log.Info($"[Spell] Provocation : P{provC->PlayerIndex} provoque par P{caster->PlayerIndex} pour {SpellRegistry.ProvocationTurns}T (-{SpellRegistry.ProvocationMovementMalusMag} PM, +{SpellRegistry.ProvocationCostBump} PA cost TOUS sorts, {SpellRegistry.ProvocationAutoDamageNotAdj} dmg auto si pas adjacent fin tour)");
                     break;
                 }
 
@@ -3874,7 +3860,7 @@ namespace Quantum
                 case SpellId.NightseerFrappeDeLOmbre:      // range 3
                 case SpellId.NightseerDetonationOnirique:  // range 5, AoE 2x2
                 case SpellId.NightseerSalveMortelle:       // range 6, croix 5
-                case SpellId.NightseerMarqueDuChasseur:    // range 5
+                // NightseerMarqueDuChasseur -> AFFUT (patch 7 juin) : self-buff, plus de LoS requise.
                 case SpellId.NightseerFiletDeRonces:       // range 4, pose trap
                 case SpellId.NightseerChampDeMines:        // range 3, AoE 3x3
                 case SpellId.NightseerBourrasque:          // range 5, push
@@ -3924,6 +3910,9 @@ namespace Quantum
             // Frenesie : +% dgts offensifs tant que RageInsatiableActive.
             if (StatusHelper.Has(caster, StatusKind.RageInsatiableActive))
                 dmg += dmg * SpellRegistry.FrenesieDmgBonusPct / 100;
+            // Affut (patch 7 juin, Nightseer) : +% dgts offensifs tant que AffutActive.
+            if (StatusHelper.Has(caster, StatusKind.AffutActive))
+                dmg += dmg * SpellRegistry.AffutDmgBonusPct / 100;
             // Sang Bouillant : bonus FLAT "prochaine frappe +X" (NextStrikeBonus).
             int nextStrikeBonus = StatusHelper.GetMagnitude(caster, StatusKind.NextStrikeBonus, 0);
             if (nextStrikeBonus > 0) dmg += nextStrikeBonus;
@@ -3988,6 +3977,7 @@ namespace Quantum
                 case SpellId.ColossarChocSismique:     // ligne 4 (Shape SingleTile, handler custom)
                 case SpellId.SoulrenderChargeBrutale:  // ligne 4 (refonte 29 mai, Shape SingleTile, handler custom)
                 case SpellId.NightseerVoleeDEpines:    // ligne 5 (Shape Line, resolution generique)
+                case SpellId.SoulrenderEmpoignade:     // patch 7 juin : pull en LIGNE DROITE uniquement
                     return true;
                 default:
                     return false;

@@ -42,6 +42,7 @@ namespace Nymora.Combat.View.HUD
                 case StatusKind.BuffNextOffensiveDmgPercent: return $"+{magnitude}% prochain sort";
                 case StatusKind.NextStrikeBonus:             return $"+{magnitude} prochaine frappe";
                 case StatusKind.RageInsatiableActive:        return "rage";
+                case StatusKind.AffutActive:                 return $"affût (+2 portée, +{magnitude}%)";
                 case StatusKind.SangBouillantActive:         return "sang bouillant";
                 case StatusKind.EffondrementActive:          return "Effondrement (-1 PA, -30%)";
                 case StatusKind.SymbioseMorbide:             return "vol de vie venin";

@@ -165,22 +165,13 @@ namespace Quantum
                 }
                 case SpellId.NightseerFrappeDeLOmbre:
                 {
-                    // Refonte 29 mai : 160 (+50 si le Nightseer a depense >= 3 PM au dernier tour).
+                    // Patch 7 juin EXECUTEUR : 160 + 120 si la cible est TRAQUÉ (= 280, consommé).
                     int dmg = SpellRegistry.FrappeDeLOmbreDmg;
-                    if (caster->PMSpentLastTurn >= 3) dmg += SpellRegistry.FrappeDeLOmbreDmgBonusPM;
+                    if (MarkHelpers.HasMark(target, MarkKind.Traque)) dmg += SpellRegistry.FrappeDeLOmbreDmgBonusTraque;
                     return TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview);
                 }
-                case SpellId.NightseerVoileDOmbre: // FLECHE TRACANTE (refonte 29 mai)
-                {
-                    // 60/PM depense au dernier tour (max 180) si la cible est Traque, sinon 0.
-                    int dmg = 0;
-                    if (MarkHelpers.HasMark(target, MarkKind.Traque))
-                    {
-                        dmg = caster->PMSpentLastTurn * SpellRegistry.FlecheTracanteDmgPerPM;
-                        if (dmg > SpellRegistry.FlecheTracanteMaxDmg) dmg = SpellRegistry.FlecheTracanteMaxDmg;
-                    }
-                    return TryComputeOffensiveSimple(f, caster, target, dmg, rangeMax, out preview);
-                }
+                // NightseerVoileDOmbre -> REPLI ÉPINEUX (patch 7 juin) : sort SELF (push + heal), aucun
+                //   preview de dégâts offensif. Retiré du switch (tombe au défaut).
                 case SpellId.NightseerSalveMortelle:
                 {
                     // Preview = centre du carré 3x3 (cible directe -> elle est au centre). Bonus "cible
@@ -448,7 +439,7 @@ namespace Quantum
             bonus += StatusHelper.GetMagnitude(target, StatusKind.MarqueDeLOmbre, 0);
             // Nightseer : +30 flat en phase >= 2 (PR 3-4+), évalué sur la ressource POST-dépense.
             if (caster->Class == NymoraClass.Nightseer
-                && NightseerPassif.FlatDamageRangeBonusActive(phaseResource))
+                && NightseerPassif.FlatDamageBonusActive(phaseResource))
             {
                 bonus += NightseerPassif.FlatDamageBonus;
             }
@@ -495,6 +486,11 @@ namespace Quantum
             if (StatusHelper.Has(caster, StatusKind.RageInsatiableActive))
             {
                 totalBeforeMultipliers += totalBeforeMultipliers * SpellRegistry.FrenesieDmgBonusPct / 100;
+            }
+            // Affut (patch 7 juin, Nightseer) : +% dgts offensifs tant que AffutActive (mirror SpellSystem).
+            if (StatusHelper.Has(caster, StatusKind.AffutActive))
+            {
+                totalBeforeMultipliers += totalBeforeMultipliers * SpellRegistry.AffutDmgBonusPct / 100;
             }
             // Sang Bouillant : bonus FLAT "prochaine frappe +X" (NextStrikeBonus, mirror SpellSystem ~ligne 729).
             int nextStrikeBonus = StatusHelper.GetMagnitude(caster, StatusKind.NextStrikeBonus, 0);

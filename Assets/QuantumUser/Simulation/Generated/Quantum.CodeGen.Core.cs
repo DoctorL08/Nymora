@@ -214,6 +214,7 @@ namespace Quantum {
     HealReductionPercent = 29,
     SangBouillantActive = 30,
     NextStrikeBonus = 31,
+    AffutActive = 34,
     LinceulDOmbres = 26,
   }
   public enum TargetingFilter : byte {

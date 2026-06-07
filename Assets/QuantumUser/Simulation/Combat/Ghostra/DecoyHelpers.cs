@@ -26,8 +26,8 @@ namespace Quantum
         public const int ProtectiveLifetimeRounds = 4; // équilibrage 2 juin : 3->4 rounds (= leurre classique LifetimeRounds), en parallèle du passage à 3 PA
         // Patch 5 juin (Lorenzo) : les leurres ont désormais une RÉSERVE D'HP et encaissent les dégâts
         //   (détruits seulement à 0 HP), au lieu d'être détruits en 1 sort.
-        public const int StandardDecoyMaxHP = 200;   // leurre classique (Standard + Réplique Fantôme)
-        public const int ProtectiveDecoyMaxHP = 250;  // Réplique Protectrice (était 200)
+        public const int StandardDecoyMaxHP = 100;   // patch 7 juin : 200 -> 100 (leurre classique : Standard + Réplique Fantôme)
+        public const int ProtectiveDecoyMaxHP = 200;  // patch 7 juin : 250 -> 200 (Réplique Protectrice)
 
         // Heal Ghostra owner sur destruction d'un leurre (Bible V7.1 par sort) :
         //   - Réplique Fantôme  : +40 HP si detruit, +80 HP si survit la duree complete

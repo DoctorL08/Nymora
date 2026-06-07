@@ -289,7 +289,51 @@ namespace Nymora.Core.Data
         //                  TRAQUE). Tous les textes "empreinte" retires des descriptions Nightseer (spell
         //                  + passif + ressource + lore). Enum MarkKind.Empreinte conserve (inutilise).
         //                Aucun champ [Networked] ajoute, pas de regen.
-        public const int CombatRulesVersion = 122;
+        // v123-132 (7 juin 2026) — GROSSE PASSE PATCHS multi-classes (liste Lorenzo) :
+        //   v123 Soulrender Pacte de Sang : +3 HG -> +2 HG, +50% -> +25% dgts (nerf burst).
+        //   v124 Soulrender Ouvre-Plaie : cap 2x/tour -> 1x/tour.
+        //   v125 Soulrender Empoignade : LIGNE DROITE uniquement (ajout a SpellIsStraightLine).
+        //   v126 Colossar Stoicisme : anti-deplacement 2 tours -> 1 tour (bouclier reste 2 tours).
+        //   v127 Colossar Provocation : surcout +2 PA (sorts non-ciblant) -> +1 PA sur TOUS les sorts,
+        //        centralise dans EffectiveStats.GetPACost ; + relance 2 tours.
+        //   v128 Ghostra leurres : Standard/Fantome 200 -> 100 HP ; Protectrice 250 -> 200 HP.
+        //   v129 Nightseer Volee d'Epines : 4 PA -> 3 PA.
+        //   v130 Nightseer Frappe de l'Ombre : refonte EXECUTEUR (160 + 120 si TRAQUE = 280, consomme
+        //        Traque ; plus de +50 PM ni d'application de Traque).
+        //   v131 Nightseer Marque du Chasseur -> AFFUT : self-buff +2 portee / +10% dgts 2 tours,
+        //        relance 3 tours (ne pose PLUS Traque). Nouveau StatusKind.AffutActive (=34, enum Byte,
+        //        codegen Quantum mis a jour, PAS de regen prefab/scene).
+        //   v132 Nightseer Fleche Tracante (slot NightseerVoileDOmbre) -> REPLI EPINEUX : self,
+        //        2 PA, push 3 cases tous ennemis adjacents + heal 100, relance 1 tour.
+        // v133 (7 juin 2026, suite) — ajustements portee :
+        //   - Affut : le +2 portee s'affiche desormais aussi dans le PREVIEW View (la sim l'appliquait
+        //     deja au cast ; sans ca les cases gagnees n'etaient pas surlignees -> "Affut n'ajoute pas
+        //     la portee"). Fix View-only mais regroupe sous ce bump.
+        //   - Ghostra Replique Fantome : portee 4 -> 3.
+        //   - Ghostra Permutation : portee 4 -> 3.
+        //   - Nightseer Tir Precis : 3 PA -> 2 PA, portee 4 -> 5.
+        // v134 (7 juin 2026, suite) — FIX cast == preview pour les buffs offensifs du caster :
+        //   Pacte/Peau de Fer/Frenesie/AFFUT/Sang Bouillant etaient appliques en amont sur effectiveDmg
+        //   et donc PERDUS par les sorts qui recalculent les degats par cible (Tir Precis Traque -> 210,
+        //   Frappe +120) ou a DamageAmount=0 (Salve) -> "Affut +10% pas applique au cast". Desormais
+        //   appliques PAR CIBLE via ApplyOffensiveCasterBuffs (apres bonus flat phase/Densite/Marque),
+        //   meme ordre que SpellPreview.FinalizeOffensive.
+        // v135 (7 juin 2026, suite) — ajustements :
+        //   - Ghostra leurres HP : FIX oubli v128 (les constantes DecoyHelpers etaient restees 200/250 :
+        //     seules les descriptions avaient ete changees). Standard/Fantome 200 -> 100, Protectrice 250 -> 200.
+        //   - Ghostra Frappe Fantome : portee 4 -> 3.
+        //   - Nightseer Repli Epineux : push 3 -> 2, relance 1 -> 2 tours.
+        //   - Nightseer Tir Precis : portee 5 -> 4 (revert ; reste 2 PA).
+        // v136 (7 juin 2026) — Pas dans l'Ombre (Ghostra) + Pas Furtif (Nightseer) INTERDITS au tour 1
+        //   (TurnNumber <= 1) : reject pre-PA (tour non gache). Anti-kite d'ouverture.
+        // v137 (7 juin 2026) — Nightseer phase 2 : le +1 PORTEE est RETIRE (decision Lorenzo). La
+        //   phase 2 ne donne plus que le +30 degats flat. RangeWithPhaseBonus = pass-through ;
+        //   FlatDamageRangeBonusActive renomme FlatDamageBonusActive ; RangeBonus const = 0 (legacy).
+        // v138 (7 juin 2026) — portees : Ghostra Eveil Spectral 4 -> 3, Voile Spectral 4 -> 3 ;
+        //   Nightseer Detonation Onirique 5 -> 4.
+        // v139 (7 juin 2026) — Affut (Marque du Chasseur) ajoute aux sorts INTERDITS au tour 1
+        //   (gate sim + indicateur "1t" grise dans la barre + description).
+        public const int CombatRulesVersion = 139;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

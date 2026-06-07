@@ -119,7 +119,7 @@ namespace Nymora.Combat.View.HUD
                 case NymoraClass.Nightseer:
                     return "<color=#9090a0><b>Passif phasé sur la Prescience</b></color> (marque unique Traqué) :\n" +
                            "<color=#b0b0c0><b>Phase 1</b></color> (1-2 PR) : +15% dégâts des pièges\n\n" +
-                           "<color=#a0a0c0><b>Phase 2</b></color> (3-4 PR) : + tes sorts +30 dégâts et +1 portée\n\n" +
+                           "<color=#a0a0c0><b>Phase 2</b></color> (3-4 PR) : + tes sorts +30 dégâts\n\n" +
                            "<color=#9090d0><b>Phase 3</b></color> (5 PR) : + ignore 50% boucliers · pièges invisibles · Traquenard prête";
                 default: return "<i>(Phases non documentées)</i>";
             }

@@ -218,6 +218,16 @@ enum StatusKind : Byte
                                        //   du porteur (Sang Bouillant = 30). Consomme apres application sur
                                        //   le 1er sort offensif qui inflige des degats. Refresh (pas de stack).
 
+    AffutActive                  = 34, // Affut (patch 7 juin, ex-Marque du Chasseur Nightseer) : self-buff.
+                                       //   Magnitude = % bonus dgts (10). Duree 2 rounds. Hooks :
+                                       //   - cast validation (SpellSystem) : +AffutRangeBonus (2) portee
+                                       //     sur les sorts a distance (RangeMax >= 1) du porteur.
+                                       //   - damage loop + ApplyOffensiveCasterBuffs + SpellPreview :
+                                       //     +AffutDmgBonusPct (10)% dgts offensifs.
+                                       //   Pose par Marque du Chasseur (refondue). Relance 3 tours
+                                       //   (moteur generique CooldownTurns). Refresh-only.
+                                       //   Enum Byte -> codegen Quantum mis a jour, PAS de regen prefab/scene.
+
     LinceulDOmbres               = 26, // Bible V7.1 Ghostra ligne 1173 : flag bouclier epineux Ghostra.
                                        //   Magnitude = dgts riposte (40). Duree 2 rounds, applique en
                                        //   parallele de ShieldActive (130 HP).

@@ -17,6 +17,22 @@
 
 ---
 
+**SESSION 7 juin 2026 — 🩹 GROSSE PASSE ÉQUILIBRAGE MULTI-CLASSES + 2 REFONTES NIGHTSEER + ANTI-KITE T1 + FIX BUFFS CAST + SPECTATEUR/UI — COMMIT + PUSH GitHub :** session **Sim + View**. **`CombatRulesVersion` 122 → 139** (17 bumps). Ajout d'un `StatusKind.AffutActive` (=34, enum Byte) → **codegen Quantum à jour + rebuild standalone requis, PAS de régén prefab/scène**. **Populate Spell Catalog FAIT** (asset `SpellCatalog.asset` committé, en sync).
+
+- **⚔️ Soulrender :** Empoignade **ligne droite uniquement** (ajout à `SpellIsStraightLine`) · Ouvre-Plaie **1×/tour** (était 2×) · Pacte de Sang **+2 HG / +25 %** (était 3 / 50 %, constantes propres).
+- **🛡️ Colossar :** Stoïcisme anti-déplacement **1 tour** (bouclier reste 2t) · Provocation **+1 PA sur TOUS les sorts** (centralisé dans `EffectiveStats.GetPACost`, plus d'exception cible) **+ relance 2t**.
+- **👻 Ghostra :** leurres **100 HP** (Standard/Fantôme, FIX oubli : les constantes `DecoyHelpers` étaient restées 200) / Protectrice **200 HP** · portées **→ 3** : Réplique Fantôme, Permutation, Éveil Spectral, Voile Spectral · Frappe Fantôme **→ 3** · Pas dans l'Ombre **interdit T1**.
+- **🏹 Nightseer :** Tir Précis **2 PA** (portée 4) · Volée d'Épines **3 PA** · Détonation Onirique **portée 4** · **Frappe de l'Ombre → EXÉCUTEUR** (160 + 120 si Traqué = 280, consomme Traqué ; ne pose plus Traqué) · **Marque du Chasseur → « AFFÛT »** (self-buff +2 portée / +10 % dég. 2t, relance 3t, `StatusKind.AffutActive` ; ne pose plus Traqué) · **Flèche Traçante → « REPLI ÉPINEUX »** (self, 2 PA, push 2 ennemis adjacents + heal 100, relance 2t) · Pas Furtif & Affût **interdits T1** · **passif Phase 2 : +1 portée RETIRÉ** (garde +30 dég. ; `FlatDamageRangeBonusActive`→`FlatDamageBonusActive`, `RangeBonus=0`).
+- **🚫 Anti-kite Tour 1 :** Pas dans l'Ombre / Pas Furtif / Affût bloqués au round 1 (gate pré-PA `TurnNumber<=1`) + **grisés « 1t »** dans la barre (`ResolveCooldownTurnsLeft`).
+- **🐞 FIX MAJEUR cast == preview :** les buffs offensifs caster (Pacte/Peau de Fer/Frénésie/**Affût**/Sang Bouillant) étaient appliqués en amont sur `effectiveDmg` et **perdus** par les sorts à dégâts conditionnels (Tir Précis Traqué→210, Frappe +120, Salve `DamageAmount=0`). Désormais appliqués **PAR CIBLE** via `ApplyOffensiveCasterBuffs` (même ordre que `SpellPreview.FinalizeOffensive`).
+- **👁️ Spectateur :** chat combat affiche **les 2 noms des joueurs** (lecture `PlayerProfileBridge` au lieu de `MatchBridge` = compte du spectateur) + ligne de fin neutre « {vainqueur} l'emporte ».
+- **🎨 / ⏱️ UI :** nouvelle **icône Filet de Ronces** (PNG remplacé, meta conservé) · **Timer** réduit (échelle 0.62 + cadre resserré 210×92 + gap haut 38px anti-chevauchement « Tour N »), réglages exposés sur `TimerView` (`_uiScale`/`_frameSize`/`_digitsTopInset`).
+- **À RETENIR :** (1) **`CombatRulesVersion` 122 → 139** ⇒ ⚠️ **rebuild standalone** avant ranked. (2) **Codegen Quantum** committé (`AffutActive`=34, enum Byte) → **pas de régén prefab/scène**. (3) **`SpellCatalog.asset` committé** (Populate fait). (4) **Hors-commit habituel maintenu** (2 fonts TMP, 4 scènes, `ProjectSettings.asset`, dump `StackOverflowException`) — les réglages Timer s'appliquent par code (Awake), pas besoin des scènes. (5) **Push GitHub fait.**
+- **À VALIDER EN JEU :** burst Frappe exécuteur (280 sur Traqué) · Affût (+2 portée visible au preview + +10 % au cast) · leurres 100/200 HP · anti-kite T1 (grisé « 1t ») · noms spectateur · lisibilité timer.
+- **PROCHAINE ÉTAPE :** suite backlog `Patch à faire.txt` (replay rewind · gamma/contraste sans shader · signature/death panel) + tests en jeu de la fournée d'équilibrage.
+
+---
+
 **SESSION 6 juin 2026 (ter) — 🩹 PATCHS NIGHTSEER (Détonation/Salve) + TOOLTIPS BUFFÉS + LEURRES + UI + 3 ITEMS ADMIN BACKEND — COMMIT CLIENT (`35540b8`) + PUSH GitHub + BACKEND DÉPLOYÉ OVH :** session Sim + View + backend. **`CombatRulesVersion` 121 → 122** (1 bump, aucun champ `[Networked]`) → **rebuild standalone requis, PAS de régén prefab/scène**.
 
 - **⚖️ Nightseer (v122) — clivage net Détonation Onirique / Salve Mortelle (choix Lorenzo, plusieurs itérations) :**

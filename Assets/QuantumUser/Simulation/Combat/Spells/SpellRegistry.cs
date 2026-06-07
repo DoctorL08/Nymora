@@ -75,6 +75,11 @@ namespace Quantum
         public const int DernierSouffleHGGain         = 3;
         public const int DernierSouffleHPThresholdPct = 30;  // utilisable uniquement a < 30% HP
 
+        // Pacte de Sang (2.10.a) — patch 7 juin : nerf burst (+3 HG -> +2, +50% -> +25%).
+        public const int PacteDeSangSelfDamage        = 80;  // self-damage au cast (inchange)
+        public const int PacteDeSangHGGain            = 2;   // +2 HG (etait 3)
+        public const int PacteDeSangDmgPercent        = 25;  // +25% prochain sort offensif (etait 50)
+
         // 2.10.c constants
         // Refonte 29 mai : portee Charge Brutale 5 -> 4 (design "p4 ligne").
         public const int ChargeBrutaleRange           = 4;
@@ -123,15 +128,15 @@ namespace Quantum
         // (TrapKind.FiletRonces : 100 dgts / -2 PM / Empreinte 2 tours). Pas de constantes light dediees.
         public const int DetonationOniriqueDmg        = 170;  // dgts AoE croix de 5 (equilibrage 6 juin : etait carre 3x3)
         // (6 juin) "+80 si la zone couvre un piege" RETIRE : seul bonus = +30 par piege detone (ZoneTrapDetonationSurplusDmg).
-        public const int DetonationOniriqueRangeMaxBase    = 5;   // portee FIXE (option 2 PR -> 10 retiree, equilibrage 6 juin)
+        public const int DetonationOniriqueRangeMaxBase    = 4;   // patch 7 juin : 5 -> 4 (option 2 PR -> 10 retiree le 6 juin)
         // Surplus de degats des pieges detones par Salve Mortelle / Detonation Onirique : +30 PLAT par
         //   piege declenche (equilibrage 6 juin : remplace les degats complets du piege, trop cheat).
         //   Applique aussi TRAQUE aux ennemis de la zone. cf FogHelpers.ApplyZoneTrapDamageToEnemies.
         public const int ZoneTrapDetonationSurplusDmg = 30;
-        // Refonte 29 mai : Frappe de l'Ombre 200 -> 160 + applique Traqué. Bonus +50 "si 3 PM
-        //   dépensés au dernier tour" branché en Passe 3b (tracker PM dépensés).
+        // Patch 7 juin — Frappe de l'Ombre REFONTE EXECUTEUR : 160 base + 120 si la cible est TRAQUÉ
+        //   (= 280), consomme Traqué. Ne pose PLUS Traqué, plus de bonus PM. Récompense le setup de marque.
         public const int FrappeDeLOmbreDmg            = 160;  // dgts base
-        public const int FrappeDeLOmbreDmgBonusPM     = 50;   // +50 si 3 PM dépensés au dernier tour (Passe 3b)
+        public const int FrappeDeLOmbreDmgBonusTraque = 120;  // +120 si cible TRAQUÉ (consommé)
         // Refonte 29 mai : Salve Mortelle 200/120 (était 220/130) + chaîne tes embûches (déclenche
         //   tes pièges sous la croix) ; bonus voile retiré (pièges ne voilent plus).
         public const int SalveMortelleDmgCenter       = 160;  // centre du carre 3x3 (nerf 6 juin : etait 200)
@@ -143,7 +148,14 @@ namespace Quantum
                                                               //   (nerf, etait 50), SANS consommer les pieges
 
         // 2.15.b — Nightseer Tactiques + passif L'Œil qui n'est pas.
-        public const int MarqueDuChasseurTurns        = 3;    // duree Traque applique
+        public const int MarqueDuChasseurTurns        = 3;    // (legacy) duree Traque — plus applique depuis le patch 7 juin (Affut)
+        // Patch 7 juin — MARQUE DU CHASSEUR -> AFFUT : self-buff, ne pose plus Traqué.
+        //   +AffutRangeBonus portee sur les sorts a distance + +AffutDmgBonusPct% dgts offensifs,
+        //   pendant AffutTurns rounds. Relance MarqueDuChasseurCooldownTurns. StatusKind.AffutActive.
+        public const int AffutRangeBonus              = 2;    // +2 portee sur les sorts a distance pendant la duree
+        public const int AffutDmgBonusPct             = 10;   // +10% dgts offensifs pendant la duree
+        public const int AffutTurns                   = 2;    // 2 rounds actifs
+        public const int MarqueDuChasseurCooldownTurns = 3;   // relance 3 tours
         public const int FiletDeRoncesDmg             = 100;  // dgts au declenchement (ennemi entre)
         public const int FiletDeRoncesPMReduce        = 1;    // refonte 29 mai : -1 PM (était -2) après déclenchement
         public const int FiletDeRoncesEmpreinteTurns  = 2;    // duree Empreinte apres declenchement
@@ -170,10 +182,12 @@ namespace Quantum
         // Refonte 29 mai : pierce bouclier Nightseer déplacé en palier P3 (50%) -> NightseerPassif.ShieldIgnorePct.
 
         // 2.15.c — Nightseer Survie.
-        // Refonte 29 mai — FLÈCHE TRAÇANTE (ex-Voile d'Ombre) : 60 dégâts par PM dépensé au dernier
-        //   tour (max 180 = 3 PM), uniquement si la cible est Traqué.
-        public const int FlecheTracanteDmgPerPM       = 60;
-        public const int FlecheTracanteMaxDmg         = 180;
+        // Patch 7 juin — REPLI ÉPINEUX (ex-Flèche Traçante, ID NightseerVoileDOmbre conservé) :
+        //   2 PA self, repousse de RepliEpineuxPush cases TOUS les ennemis adjacents (Manhattan 1)
+        //   + heal RepliEpineuxHeal, relance RepliEpineuxCooldownTurns. Sort de survie/désengagement.
+        public const int RepliEpineuxPush             = 2;    // patch 7 juin : push 2 cases (etait 3) loin du Nightseer
+        public const int RepliEpineuxHeal             = 100;  // heal au cast
+        public const int RepliEpineuxCooldownTurns    = 2;    // patch 7 juin : relance 2 tours (etait 1)
         public const int PasFurtifRangeMax            = 3;    // teleport jusqu'a 3 cases (équilibrage 2 juin : 4->3, + PA 2->4)
         public const int PasFurtifVeilTurns           = 2;    // duree Voile bonus si 1 PR
         public const int CamouflageRoncesShieldHP     = 130;  // shield 130 HP
@@ -266,7 +280,10 @@ namespace Quantum
         public const int ProvocationTurns             = 1;    // 1 tour Bible (skip-decrement convention 1 round actif)
         public const int ProvocationMovementMalusMag  = 1;    // -1 PM
         public const int ProvocationMovementMalusTurns = 1;
-        public const int ProvocationCostBumpNonCible  = 2;    // +2 PA pour les sorts non-ciblant le provocateur
+        // Patch 7 juin : surcout +1 PA (etait 2) applique a TOUS les sorts du provoque (plus d'exception
+        //   "sort ciblant le provocateur") -> centralise dans EffectiveStats.GetPACost. + relance 2 tours.
+        public const int ProvocationCostBump          = 1;    // +1 PA sur TOUS les sorts tant que Provoked
+        public const int ProvocationCooldownTurns     = 2;    // relance 2 tours
         public const int ProvocationAutoDamageNotAdj  = 100;  // 100 dgts auto si pas adjacent fin tour
 
         // 3.3.b.iii — Brisure Bible-correct (Colossar) — anti-buff/bouclier — refacto rétroactif.
@@ -285,7 +302,7 @@ namespace Quantum
         // Si shield Magnitude > 0 a expiration : +80 HP heal (hook TurnSystem fin de round).
         public const int StoicismeShieldHP            = 200;
         public const int StoicismeShieldTurns         = 2;
-        public const int StoicismeImmuneTurns         = 2;    // immune push/pull/tp pendant toute la duree
+        public const int StoicismeImmuneTurns         = 1;    // patch 7 juin : anti-deplacement 1 tour (etait 2) ; le bouclier reste 2 tours
         public const int StoicismeHealIfSurvived      = 80;   // heal si shield Magnitude > 0 a expiration
 
         // Garde Protectrice : 2 PA self, -15% dmg subis / 2 tours (refonte 29 mai, etait -30%).
@@ -508,7 +525,7 @@ namespace Quantum
         //     - Survit 2 tours      -> +80 HP (Bible)
         //     - Detruit prematurement -> +40 HP (Bible)
         public const int RepliqueFantomePACost      = 2;  // refonte 30 mai (brique 2) : 3 -> 2 PA (eco leurre)
-        public const int RepliqueFantomeRangeMax    = 4;
+        public const int RepliqueFantomeRangeMax    = 3;  // patch 7 juin : 4 -> 3 (nerf portee leurre)
 
         // 3.7.b.ii — Pas dans l'Ombre (Bible V7.1 ligne 1134) :
         //   2 PA, range 5, case vide (teleport). Toute cible ennemie adjacente Manhattan <=1 a
@@ -529,7 +546,7 @@ namespace Quantum
         //   la cible = dorsal, même si la Ghostra est en face). Leurre NON consommé. Respecte
         //   boucliers/réductions (passe par le pipeline de dégâts standard).
         public const int EveilSpectralePACost         = 2;
-        public const int EveilSpectraleRangeMax       = 4;
+        public const int EveilSpectraleRangeMax       = 3;  // patch 7 juin : 4 -> 3
         public const int EveilSpectraleDamage         = 100;
         public const int EveilSpectraleMaxUsesPerTurn = 2;
 
@@ -551,7 +568,7 @@ namespace Quantum
         //   Si target.LastFacingForcedOnTurn == currentTurn -> applique PlaieOuverte (40/tour x 2t).
         //   Combo Bible "Volte-Face -> Frappe Fantome : 350+ HP shred en 1 tour".
         public const int FrappeFantomePACost        = 4;
-        public const int FrappeFantomeRangeMax      = 4;
+        public const int FrappeFantomeRangeMax      = 3;  // patch 7 juin : 4 -> 3
         public const int FrappeFantomeDmgBase       = 200;
 
         // 3.7.a.ii — Saigne-Ame (Bible V7.1 ligne 1109) :
@@ -601,7 +618,7 @@ namespace Quantum
         //   PERD son ancien cleanse anti-DoT + DotImmune (décision Lorenzo : la Ghostra n'a PLUS
         //   d'anti-DoT, matchups durs Necram/Soulrender voulus).
         public const int VoileSpectralPACost            = 2;
-        public const int VoileSpectralRangeMax          = 4;
+        public const int VoileSpectralRangeMax          = 3;  // patch 7 juin : 4 -> 3
         public const int VoileSpectraleMaxUsesPerTurn   = 1;
         public const int VoileSpectralDmgPerAdjacent    = 60;  // #21 (5 juin) : 60 dmg par leurre TP adjacent à la cible
         public const int VoileSpectralDmgMax            = 180; // #21 : cap 180 (= 3 leurres tous adjacents)
@@ -720,7 +737,7 @@ namespace Quantum
         //   (PO, nerf 30 mai — etait plateau entier). Remplace l'ancienne Permutation gratuite Angle 3
         //   (touche P) qui reste DORMANTE (non reactivee, decision Lorenzo "vrai spell uniquement").
         public const int PermutationPACost          = 1;
-        public const int PermutationRangeMax        = 4;   // refonte 30 mai : nerf portee (4 PO, etait plateau entier)
+        public const int PermutationRangeMax        = 3;   // patch 7 juin : 4 -> 3 ; (refonte 30 mai : etait plateau entier)
         public const int PermutationMaxUsesPerTurn  = 1;   // nerf 30 mai : 2x -> 1x/tour
 
         public static bool TryGet(SpellId id, out SpellDef def)
@@ -763,11 +780,11 @@ namespace Quantum
                         HGCostMaxOptional = 1,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 1,
-                        MaxUsesPerTurn = 2, // Refonte 29 mai : cap 2x/tour
+                        MaxUsesPerTurn = 1, // patch 7 juin : cap 1x/tour (etait 2)
                     };
                     return true;
 
-                // Pacte de Sang (2.10.a) : 1 PA, self, -80 HP self + +3 HG + BuffNextOffensiveDmgPercent.
+                // Pacte de Sang (2.10.a) : 1 PA, self, -80 HP self + +2 HG + BuffNextOffensiveDmgPercent.
                 // 1 fois par match.
                 case SpellId.SoulrenderPacteDeSang:
                     def = new SpellDef
@@ -1078,11 +1095,11 @@ namespace Quantum
                 case SpellId.NightseerTirPrecis:
                     def = new SpellDef
                     {
-                        PACost = 3,
+                        PACost = 2,                          // patch 7 juin : 3 -> 2 PA
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.Enemy,
                         RangeMin = 1,
-                        RangeMax = 4,                        // équilibrage 2 juin : 6->4
+                        RangeMax = 4,                        // patch 7 juin : reste 4 (PA passe a 2)
                         DamageAmount = TirPrecisDmg,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
@@ -1092,12 +1109,12 @@ namespace Quantum
                     };
                     return true;
 
-                // Volee d'Epines (2.15.a) : 4 PA, ligne range 5, 130 dgts par cible.
+                // Volee d'Epines (2.15.a) : 3 PA (patch 7 juin, etait 4), ligne range 5, 130 dgts par cible.
                 // Pose un Filet de Ronces (TrapKind) sur la DERNIERE case touchee.
                 case SpellId.NightseerVoleeDEpines:
                     def = new SpellDef
                     {
-                        PACost = 4,
+                        PACost = 3,
                         Shape = TargetingShape.Line,
                         Filter = TargetingFilter.AnyTile,
                         RangeMin = 1,
@@ -1178,22 +1195,23 @@ namespace Quantum
                 // NIGHTSEER 2.15.b — TACTIQUES
                 // -------------------------------------------------------------
 
-                // Marque du Chasseur (2.15.b) : 1 PA, range 5, applique Traque 3 tours sur cible.
-                // Pas de damage. Sort de setup.
+                // AFFUT (ex-Marque du Chasseur, patch 7 juin) : 1 PA self, self-buff +2 portee /
+                //   +10% dgts pendant 2 tours, relance 3 tours. Ne pose PLUS Traqué (StatusKind.AffutActive).
                 case SpellId.NightseerMarqueDuChasseur:
                     def = new SpellDef
                     {
                         PACost = 1,
                         Shape = TargetingShape.SingleTile,
-                        Filter = TargetingFilter.Enemy,
-                        RangeMin = 1,
-                        RangeMax = 5,
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
                         DamageAmount = 0,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
-                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
+                        MaxUsesPerTurn = 1,
+                        CooldownTurns = (byte)MarqueDuChasseurCooldownTurns, // relance 3 tours
                     };
                     return true;
 
@@ -1280,23 +1298,23 @@ namespace Quantum
                 // NIGHTSEER 2.15.c — SURVIE
                 // -------------------------------------------------------------
 
-                // FLÈCHE TRAÇANTE (ex-Voile d'Ombre, refonte 29 mai) : 3 PA, p5, ENEMY. Si la cible
-                //   est TRAQUÉ : inflige 60 dégâts par PM dépensé au dernier tour (max 180). Sinon 0.
-                //   Identifiant enum NightseerVoileDOmbre conservé (réutilisation d'ID).
+                // REPLI ÉPINEUX (ex-Flèche Traçante, ID NightseerVoileDOmbre conservé, patch 7 juin) :
+                //   2 PA self. Repousse de 3 cases TOUS les ennemis adjacents (Manhattan 1) + heal 100.
+                //   Relance 1 tour. Sort de survie / désengagement. Effet dans ApplySpellSpecificEffects.
                 case SpellId.NightseerVoileDOmbre:
                     def = new SpellDef
                     {
-                        PACost = 3,
+                        PACost = 2,
                         Shape = TargetingShape.SingleTile,
-                        Filter = TargetingFilter.Enemy,
-                        RangeMin = 1,
-                        RangeMax = 5,
-                        DamageAmount = 0, // calculé dans le damage override (60/PM, max 180, si Traqué)
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
-                        IsOffensive = 1,
-                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
+                        IsOffensive = 0,
+                        CooldownTurns = (byte)RepliEpineuxCooldownTurns, // relance 1 tour
                     };
                     return true;
 
@@ -1587,6 +1605,7 @@ namespace Quantum
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
                         MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
+                        CooldownTurns = (byte)ProvocationCooldownTurns, // patch 7 juin : relance 2 tours
                     };
                     return true;
 
@@ -2425,6 +2444,12 @@ namespace Quantum
             {
                 cost -= 1;
                 if (cost < 1) cost = 1;
+            }
+            // Provocation (patch 7 juin) : tant que provoque, TOUS les sorts coutent +1 PA (plus
+            //   d'exception "sort ciblant le provocateur"). Centralise ici -> badge + grise + sim coherents.
+            if (StatusHelper.Has(caster, StatusKind.Provoked))
+            {
+                cost += SpellRegistry.ProvocationCostBump;
             }
             return cost;
         }

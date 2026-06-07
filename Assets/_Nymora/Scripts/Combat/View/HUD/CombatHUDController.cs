@@ -674,24 +674,23 @@ namespace Nymora.Combat.View.HUD
             {
                 cost -= 1; if (cost < 1) cost = 1;
             }
+            // Provocation (patch 7 juin) : +1 PA sur TOUS les sorts tant que provoqué (miroir
+            //   EffectiveStats.GetPACost). Inclus ici -> badge ET grisé reflètent le surcoût.
+            if (HasStatus(c, StatusKind.Provoked))
+            {
+                cost += SpellRegistry.ProvocationCostBump;
+            }
             return cost;
         }
 
         /// <summary>
-        /// Coût PA À AFFICHER (badge rubis + tooltip) = coût effectif + surcoût Provocation (+2 PA
-        /// quand le combattant porte Provoked, cf SpellSystem.OnCast). On affiche le surcoût car
-        /// toutes les cibles SAUF le provocateur le paient. Le GRISÉ des slots, lui, reste calculé
-        /// sur ComputeEffectivePaCost (sans le +2) : viser le provocateur coûte le coût de base, donc
-        /// on ne bloque jamais la contre-attaque sur le Colossar. Décision Lorenzo 5 juin (option A).
+        /// Coût PA À AFFICHER (badge rubis + tooltip). Patch 7 juin : le surcoût Provocation (+1 PA)
+        /// est désormais inclus dans ComputeEffectivePaCost (s'applique à TOUS les sorts du provoqué,
+        /// plus d'exception "cible le provocateur") -> badge et grisé cohérents avec la sim.
         /// </summary>
         private int ComputeDisplayPaCost(in Combatant c, in SpellDef def, int enemyHpRatio, int turnNumber)
         {
-            int cost = ComputeEffectivePaCost(c, def, enemyHpRatio, turnNumber);
-            if (HasStatus(c, StatusKind.Provoked))
-            {
-                cost += SpellRegistry.ProvocationCostBumpNonCible;
-            }
-            return cost;
+            return ComputeEffectivePaCost(c, def, enemyHpRatio, turnNumber);
         }
 
         /// <summary>PA à afficher dans le badge rubis (-1 = pas de badge : slot vide).</summary>
@@ -746,6 +745,17 @@ namespace Nymora.Combat.View.HUD
         private static int ResolveCooldownTurnsLeft(SpellId spell, in Combatant c, bool valid, int turnNumber)
         {
             if (!valid || spell == SpellId.None) return 0;
+
+            // Patch 7 juin — Pas dans l'Ombre / Pas Furtif / Affût (Marque du Chasseur) INTERDITS au
+            //   tour 1 (miroir du gate sim SpellSystem.OnCast). On affiche "1t" + grisé pendant le
+            //   round 1 (dispo au tour 2).
+            if (turnNumber <= 1
+                && (spell == SpellId.GhostraPasDansLOmbre
+                    || spell == SpellId.NightseerPasFurtif
+                    || spell == SpellId.NightseerMarqueDuChasseur))
+            {
+                return 1;
+            }
 
             // Signatures a champ dedie (init -1000 -> jamais en cooldown au depart).
             switch (spell)

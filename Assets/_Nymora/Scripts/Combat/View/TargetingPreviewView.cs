@@ -160,7 +160,23 @@ namespace Nymora.Combat.View
                     // Fix 5 juin (B5/#11) : applique le +1 portée du passif Nightseer P2+ au PREVIEW.
                     //   Le sim l'applique déjà au cast (SpellSystem.effectiveRangeMax) ; sans ça la
                     //   case gagnée en phase 2 n'apparaissait pas (bleu castable / rouge cible).
+                    int baseRangeMax = rangeMax; // portée de base AVANT bonus (def ou debug), pour le gate Affût
                     rangeMax = NightseerPassif.RangeWithPhaseBonus(combatant.Class, combatant.Resource, rangeMax);
+                    // Affût (patch 7 juin) : +2 portée sur les sorts à distance tant que AffutActive.
+                    //   Miroir de SpellSystem (cast) -> sinon les cases gagnées n'apparaissent pas au
+                    //   preview (bleu castable / rouge cible) et la portée semble ne pas s'appliquer.
+                    if (baseRangeMax >= 1)
+                    {
+                        for (int si = 0; si < 8; si++)
+                        {
+                            var st = combatant.Statuses[si];
+                            if (st.Kind == StatusKind.AffutActive && st.TurnsLeft > 0)
+                            {
+                                rangeMax += SpellRegistry.AffutRangeBonus;
+                                break;
+                            }
+                        }
+                    }
                     hasCaster = true;
                     break;
                 }
