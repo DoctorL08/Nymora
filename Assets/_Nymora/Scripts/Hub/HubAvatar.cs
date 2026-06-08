@@ -93,6 +93,15 @@ namespace Nymora.Hub
         [SerializeField] private int _spawnGridX = 10;
         [SerializeField] private int _spawnGridY = 10;
 
+        // Item mineur G (8 juin) — Position de retour : quand le joueur LOCAL quitte le hub pour un
+        // combat/spectateur, on mémorise sa case (Despawned). Au retour dans le hub (Spawned), il
+        // réapparaît à cette case au lieu du spawn central -> évite l'entassement au centre.
+        // Static = survit au changement de scène, RAZ au prochain lancement du jeu (nouvelle session
+        // = login -> spawn central par défaut). Pas [Networked] : purement local au client.
+        private static bool _hasReturnPos;
+        private static int _returnGridX;
+        private static int _returnGridY;
+
         [Header("Remote interpolation (non-State Authority)")]
         // 4.10.polish v4 — interval estimé entre 2 snapshots reçus (auto-mesuré au runtime).
         // Default 0.05s = 20 Hz. Sera écrasé dynamiquement par la mesure réelle.
@@ -236,12 +245,16 @@ namespace Nymora.Hub
             if (Object.HasStateAuthority)
             {
                 Local = this;
-                NetGridX = _spawnGridX;
-                NetGridY = _spawnGridY;
+                // Item mineur G — au retour d'un combat/spectateur, réapparaît à la case mémorisée
+                // (cf Despawned). Première entrée de session : pas de position mémorisée -> spawn central.
+                int spawnX = _hasReturnPos ? _returnGridX : _spawnGridX;
+                int spawnY = _hasReturnPos ? _returnGridY : _spawnGridY;
+                NetGridX = spawnX;
+                NetGridY = spawnY;
                 // 4.8.b — push notre sub backend pour que les remotes puissent nous adresser.
                 // Race : si WELCOME backend pas encore recu, on bind OnWelcome pour push retardé.
                 AssignSubFromChatClient();
-                SetGridPosition(_spawnGridX, _spawnGridY);
+                SetGridPosition(spawnX, spawnY);
                 // 4.10.polish v3 — init NetWorldPos pour que les remotes se positionnent direct au bon endroit.
                 NetWorldPos = transform.position;
                 // 5.3.g.bis — push la classe choisie via PlayerPrefs (sync vers remotes pour leur sprite)
@@ -253,7 +266,7 @@ namespace Nymora.Hub
                 // via HubClanPanel.OnClanStateChanged si Lorenzo rejoint/quitte un clan en cours.
                 PushClanName();
                 if (HubClanPanel.Instance != null) HubClanPanel.Instance.OnClanStateChanged += PushClanName;
-                Debug.Log($"[HubAvatar] Local spawned at ({_spawnGridX},{_spawnGridY}) sub='{NetSub}' class='{NetClassId}' facing='{_currentFacing}' clan='{NetClanName}'");
+                Debug.Log($"[HubAvatar] Local spawned at ({spawnX},{spawnY}){(_hasReturnPos ? " [retour combat]" : "")} sub='{NetSub}' class='{NetClassId}' facing='{_currentFacing}' clan='{NetClanName}'");
             }
             else
             {
@@ -830,6 +843,14 @@ namespace Nymora.Hub
             if (HubChatClient.Instance != null) HubChatClient.Instance.OnWelcome -= HandleWelcomePostSpawn;
             if (HubClanPanel.Instance != null) HubClanPanel.Instance.OnClanStateChanged -= PushClanName;
             All.Remove(this);
+            // Item mineur G — mémorise la case courante de l'avatar LOCAL avant de quitter le hub
+            // (départ en combat/spectateur) pour réapparaître au même endroit au retour.
+            if (Local == this)
+            {
+                _returnGridX = _gridX;
+                _returnGridY = _gridY;
+                _hasReturnPos = true;
+            }
             if (Local == this) Local = null;
             // 5.10 (B4) — détruit la vue du familier (GameObject autonome non parenté).
             if (_petView != null) { Destroy(_petView.gameObject); _petView = null; }
