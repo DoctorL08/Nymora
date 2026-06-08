@@ -119,6 +119,11 @@ namespace Nymora.Hub
         private Volume _calibVolume;
         private ColorAdjustments _calibColor;
         private LiftGammaGain _calibGamma;
+        // Item mineur E (8 juin) — quand on force la passe post-process pour la calibration sur le
+        // profil "Sans effets", on neutralise les effets LOURDS (bloom = multi-passes flou ; vignette)
+        // via ces overrides (priorité 100 > scène) -> on garde l'esprit perf de "Sans effets".
+        private Bloom _calibBloom;
+        private Vignette _calibVignette;
 
         // GFX-1 — lumiere globale 2D de la scene + son intensite/couleur de BASE (valeurs serialisees
         // de la scene, capturees une fois par scene). Le profil applique un multiplicateur/teinte
@@ -284,6 +289,10 @@ namespace Nymora.Hub
             // transparents). On n'active QUE postExposure/contrast/gamma, et seulement quand réglés.
             _calibColor = profile.Add<ColorAdjustments>();
             _calibGamma = profile.Add<LiftGammaGain>();
+            // Neutraliseurs d'effets lourds (overrideState activé seulement quand on force la passe
+            // sur "Sans effets" — cf ApplyCalibration). Démarrent transparents.
+            _calibBloom = profile.Add<Bloom>();
+            _calibVignette = profile.Add<Vignette>();
         }
 
         /// <summary>Luminosité 0..1, 0.5 = neutre. Au-dessus éclaircit, en dessous assombrit
@@ -327,11 +336,35 @@ namespace Nymora.Hub
 
         private void ApplyCalibration()
         {
-            bool postOn = CurrentProfile.PostProcess;
+            // Item mineur E (8 juin) — la calibration (luminosité/contraste/gamma) doit marcher MÊME
+            // sur le profil "Sans effets" (post-process coupé). Si l'utilisateur a réglé quelque chose
+            // (≠ neutre) alors que le profil coupe le post-process, on FORCE la passe sur les caméras
+            // juste pour la calibration, et on neutralise les effets lourds (bloom/vignette) -> on
+            // garde l'esprit perf de "Sans effets". Aucun shader custom : passe couleur/gamma intégrée URP.
+            bool calibActive = Brightness != 0.5f || Contrast != 0.5f || Gamma != 0.5f;
+            bool profilePostOn = CurrentProfile.PostProcess;
+            bool forcedForCalib = !profilePostOn && calibActive;
+            bool postOn = profilePostOn || forcedForCalib;
+
+            // (Re)bascule la passe caméra selon le besoin réel (ne touche rien si le profil l'a déjà activée).
+            if (forcedForCalib) SetCamerasPostProcess(true);
+            else if (!profilePostOn) SetCamerasPostProcess(false); // calibration revenue au neutre -> on recoupe
+
+            // Neutralise bloom + vignette UNIQUEMENT quand on force la passe sur "Sans effets".
+            if (_calibBloom != null)
+            {
+                _calibBloom.intensity.overrideState = forcedForCalib;
+                if (forcedForCalib) _calibBloom.intensity.value = 0f;
+            }
+            if (_calibVignette != null)
+            {
+                _calibVignette.intensity.overrideState = forcedForCalib;
+                if (forcedForCalib) _calibVignette.intensity.value = 0f;
+            }
 
             // CHAQUE paramètre n'est OVERRIDÉ que si l'utilisateur l'a vraiment réglé (≠ neutre) ET que
-            // le post-process est actif. Au neutre, overrideState=false -> le Volume de calibration est
-            // transparent et laisse passer la colorimétrie artistique de la scène (WYSIWYG préservé).
+            // le post-process est actif (ou forcé). Au neutre, overrideState=false -> le Volume de
+            // calibration est transparent et laisse passer la colorimétrie artistique (WYSIWYG préservé).
             if (_calibColor != null)
             {
                 SetParam(_calibColor.postExposure, postOn && Brightness != 0.5f,
@@ -346,7 +379,8 @@ namespace Nymora.Hub
                 if (on) _calibGamma.gamma.value = new Vector4(1f, 1f, 1f, (Gamma - 0.5f) * 2f * GammaRange);
             }
 
-            // Repli "Sans effets" : pas de post-process -> seul un voile noir peut assombrir.
+            // Voile noir : repli ultime d'assombrissement si la passe ne tourne VRAIMENT pas (jamais
+            // le cas désormais quand la calibration est active, mais conservé par sécurité).
             if (_overlay != null)
             {
                 float alpha = (!postOn && Brightness < 0.5f) ? (0.5f - Brightness) * 2f * 0.55f : 0f;
