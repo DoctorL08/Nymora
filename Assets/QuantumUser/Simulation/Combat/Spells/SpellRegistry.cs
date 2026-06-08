@@ -270,7 +270,10 @@ namespace Quantum
 
         // 3.3.b.i — Mur de Pierre (sort tactique Colossar) — 4 PA / RANGE 4 / option 1 FD -> 5 segments.
         public const int MurDePierreSegmentHP         = 150;  // HP par segment de mur
-        public const int MurDePierreTurns             = 2;    // duree avant expiration auto
+        public const int MurDePierreTurns             = 2;    // (legacy) patch 8 juin : timer 2 tours RETIRÉ, mur persistant -> plus référencé
+        // Patch 8 juin (#16) — cap du nombre de cases d'obstacle (Piliers + segments de Mur, Failles EXCLUES)
+        //   par Colossar. Au-delà, EnforceObstacleCap détruit le plus ancien (par tour de pose).
+        public const int MaxObstaclesPerColossar      = 6;
         public const int MurDePierreSegmentsBase      = 3;    // segments de base (sans option ressource)
         public const int MurDePierreSegmentsBoosted   = 5;    // segments si option 1 FD depense
         public const int MurDePierreRangeMax          = 4;    // portee Bible

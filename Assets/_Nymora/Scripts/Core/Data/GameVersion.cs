@@ -381,7 +381,13 @@ namespace Nymora.Core.Data
         //   SOUS 50% HP (gate pre-validation), heal 200 (HealHelper) + petite riposte mêlée (RipostMelee 50,
         //   1 tour, cap 2). Plus de dégâts offensifs. Catégorie deck builder -> Survie. Comble le gros heal
         //   perdu (Soin Lourd -> Éboulement). UTILISABLE 1x/MATCH (OncePerMatchBit=6, champ Int32 existant).
-        public const int CombatRulesVersion = 152;
+        // v153 (8 juin 2026) — Colossar Piliers/Murs (#16) : cap 6 CASES d'obstacle par Colossar (Failles
+        //   EXCLUES) ; au 7e, EnforceObstacleCap detruit le plus ancien (silencieux, pas de heal Densite
+        //   Inerte). Mur de Pierre PERSISTANT (timer 2 tours RETIRE). ExpiresOnTurn reutilise comme TOUR DE
+        //   POSE pour Piliers/Murs (l'expiration-timer ne s'applique plus qu'aux Failles) -> AUCUN champ
+        //   networked ajoute. View : numero d'ordre STRICT 1->N au-dessus de chaque Pilier/Mur, CASTEUR-only
+        //   (du plus ancien au plus recent ; segments d'un mur numerotes gauche->droite via gx-gy).
+        public const int CombatRulesVersion = 153;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

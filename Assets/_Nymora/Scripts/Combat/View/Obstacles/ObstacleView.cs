@@ -225,5 +225,53 @@ namespace Nymora.Combat.View.Obstacles
         {
             if (_hpLabel != null) _hpLabel.gameObject.SetActive(visible);
         }
+
+        // Patch 8 juin (#16) — numéro d'ORDRE (rang 1->6 par ancienneté de pose) au-dessus de l'obstacle,
+        //   VISIBLE CASTEUR-only. Poussé par ObstacleRenderer (rank 0 = non possédé/Faille -> caché). Label
+        //   TextMesh créé au runtime (pas de modif prefab, cf HP label).
+        private TextMesh _rankLabel;
+
+        public void SetRank(int rank)
+        {
+            if (rank <= 0)
+            {
+                if (_rankLabel != null && _rankLabel.gameObject.activeSelf) _rankLabel.gameObject.SetActive(false);
+                return;
+            }
+            if (_rankLabel == null) _rankLabel = CreateRankLabel();
+            if (!_rankLabel.gameObject.activeSelf) _rankLabel.gameObject.SetActive(true);
+            string txt = rank.ToString();
+            if (_rankLabel.text != txt) _rankLabel.text = txt;
+        }
+
+        private TextMesh CreateRankLabel()
+        {
+            var go = new GameObject("ObstacleRankLabel");
+            go.transform.SetParent(transform, false);
+            go.transform.localPosition = new Vector3(0f, 0.7f, 0f); // au-dessus de l'obstacle
+            var tm = go.AddComponent<TextMesh>();
+            tm.anchor = TextAnchor.MiddleCenter;
+            tm.alignment = TextAlignment.Center;
+            tm.characterSize = 0.04f;
+            tm.fontSize = 72;
+            tm.color = new Color(1f, 0.85f, 0.4f, 0.95f);
+            tm.richText = false;
+            var font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            if (font != null)
+            {
+                tm.font = font;
+                var mr = go.GetComponent<MeshRenderer>();
+                if (mr != null)
+                {
+                    mr.sharedMaterial = font.material;
+                    if (_sprite != null)
+                    {
+                        mr.sortingLayerID = _sprite.sortingLayerID;
+                        mr.sortingOrder = _sprite.sortingOrder + 1000; // au-dessus de l'obstacle
+                    }
+                }
+            }
+            return tm;
+        }
     }
 }

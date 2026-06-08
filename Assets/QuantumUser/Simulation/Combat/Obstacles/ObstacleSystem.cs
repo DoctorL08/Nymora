@@ -108,8 +108,10 @@ namespace Quantum
             var filter = f.Filter<Obstacle>();
             while (filter.NextUnsafe(out EntityRef entity, out Obstacle* obs))
             {
-                // ExpiresOnTurn == 0 -> persistent (Pilier), jamais expire par timer.
-                if (obs->ExpiresOnTurn == 0) continue;
+                // Patch 8 juin (#16) — SEULES les Failles (Effondrement) expirent par timer. Les Piliers et
+                //   Murs sont désormais PERSISTANTS (le Mur a perdu sa durée 2 tours) et gérés par le cap 6 ;
+                //   pour eux, ExpiresOnTurn est réutilisé comme TOUR DE POSE (ordre du cap), pas une expiration.
+                if (obs->Kind != ObstacleKind.Faille) continue;
                 if (currentTurn >= obs->ExpiresOnTurn)
                 {
                     if (destroyCount < MaxDestroyPerTick)

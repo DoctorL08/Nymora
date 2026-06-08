@@ -149,7 +149,7 @@ namespace Quantum
         ///
         /// Idempotent : si l'entity n'est plus valide, no-op silencieux.
         /// </summary>
-        public static void DestroyObstacle(Frame f, EntityRef entity)
+        public static void DestroyObstacle(Frame f, EntityRef entity, bool triggerPassiveHeal = true)
         {
             if (entity == EntityRef.None) return;
             if (!f.Unsafe.TryGetPointer<Obstacle>(entity, out var obs))
@@ -179,7 +179,8 @@ namespace Quantum
             // 3. 3.2 Bible V7.1 Densite Inerte : "+30 HP au Colossar quand un de ses Piliers
             // est detruit". Bible specifique "Pilier" (pas Mur). Le owner peut etre detruit
             // entre temps (kill match Soulrender), defensif TryGetPointer.
-            if (kind == ObstacleKind.Pillar
+            if (triggerPassiveHeal
+                && kind == ObstacleKind.Pillar
                 && ownerEntity != EntityRef.None
                 && f.Unsafe.TryGetPointer<Combatant>(ownerEntity, out var ownerC)
                 && ownerC->Class == NymoraClass.Colossar
@@ -189,6 +190,48 @@ namespace Quantum
                 ownerC->HP = before + ColossarPassif.HpRestoredOnPillarDestroyed;
                 if (ownerC->HP > ownerC->MaxHP) ownerC->HP = ownerC->MaxHP;
                 Log.Info($"[Densite Inerte] Colossar P{ownerPlayerIndex} +{ownerC->HP - before} HP (Pilier detruit) : {before} -> {ownerC->HP}");
+            }
+        }
+
+        /// <summary>
+        /// Patch 8 juin (#16) — cap les Piliers/Murs d'un Colossar à MaxObstaclesPerColossar (6) cases.
+        /// Les Failles (Effondrement) sont EXCLUES. Tant que l'owner dépasse le cap, détruit son obstacle
+        /// le PLUS ANCIEN (ExpiresOnTurn réutilisé comme tour de pose ; tie-break = ordre de Filter
+        /// déterministe). Destruction SILENCIEUSE (pas de heal Densité Inerte : c'est un auto-cap, pas une
+        /// destruction adverse). Appelé après chaque pose de Pilier / Mur.
+        /// </summary>
+        public static void EnforceObstacleCap(Frame f, int ownerPlayerIndex)
+        {
+            while (true)
+            {
+                int count = 0;
+                EntityRef oldest = EntityRef.None;
+                // Clé d'ancienneté IDENTIQUE à la numérotation View (ObstacleRenderer) : tour de pose
+                //   (ExpiresOnTurn), puis position écran gx-gy (gauche->droite), puis gy. -> on détruit
+                //   bien l'obstacle affiché "n°1".
+                int oldestTurn = int.MaxValue, oldestScreenX = int.MaxValue, oldestGy = int.MaxValue;
+                var filter = f.Filter<Obstacle>();
+                while (filter.NextUnsafe(out EntityRef e, out Obstacle* o))
+                {
+                    if (o->OwnerPlayerIndex != ownerPlayerIndex) continue;
+                    if (o->Kind != ObstacleKind.Pillar && o->Kind != ObstacleKind.Wall) continue;
+                    count++;
+                    int screenX = o->GridX - o->GridY;
+                    bool isOlder = o->ExpiresOnTurn < oldestTurn
+                        || (o->ExpiresOnTurn == oldestTurn && (screenX < oldestScreenX
+                            || (screenX == oldestScreenX && o->GridY < oldestGy)));
+                    if (isOlder)
+                    {
+                        oldestTurn = o->ExpiresOnTurn;
+                        oldestScreenX = screenX;
+                        oldestGy = o->GridY;
+                        oldest = e;
+                    }
+                }
+                if (count <= SpellRegistry.MaxObstaclesPerColossar) break;
+                if (oldest == EntityRef.None) break; // garde-fou
+                Log.Info($"[Obstacle] Cap {SpellRegistry.MaxObstaclesPerColossar} dépassé pour P{ownerPlayerIndex} ({count}) -> détruit le n°1 (posé tour {oldestTurn})");
+                DestroyObstacle(f, oldest, triggerPassiveHeal: false);
             }
         }
 

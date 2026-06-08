@@ -29,6 +29,11 @@ namespace Nymora.Combat.View.Obstacles
         // Buffer reutilise pour eviter les allocations dans OnUpdateView.
         private readonly List<EntityRef> _seenThisFrame = new List<EntityRef>(8);
         private readonly List<EntityRef> _toDestroy = new List<EntityRef>(4);
+        // Patch 8 juin (#16) — buffer pour calculer le rang d'ancienneté des Piliers/Murs du joueur LOCAL.
+        //   Tri : tour de pose, puis position ÉCRAN (gx-gy = gauche->droite) pour numéroter les segments d'un
+        //   même mur 1>2>3, puis gy en dernier recours. Numérotage STRICT 1->N (chaque obstacle un numéro).
+        private readonly List<(EntityRef entity, int spawnTurn, int screenX, int gy)> _rankBuffer
+            = new List<(EntityRef, int, int, int)>(8);
 
         private Vector3 _centerOffset;
         private bool _gridReady;
@@ -70,6 +75,10 @@ namespace Nymora.Combat.View.Obstacles
             // #23 — contour de case d'équipe (uniquement en match miroir). Constant sur le match.
             bool mirror = MatchViewHelpers.IsMirrorMatch(frame);
 
+            // Patch 8 juin (#16) — numéro d'ordre des Piliers/Murs : CASTEUR-only (joueur local).
+            int localPlayer = LocalPlayerResolver.Resolve();
+            _rankBuffer.Clear();
+
             // 1. Iterate tous les Obstacle de la frame, spawn / update les vues.
             var filter = frame.Filter<Obstacle>();
             while (filter.Next(out EntityRef entity, out Obstacle data))
@@ -90,6 +99,14 @@ namespace Nymora.Combat.View.Obstacles
 
                 view.UpdateData(data, worldPos);
 
+                // Patch 8 juin (#16) — collecte les Piliers/Murs du joueur LOCAL pour le rang d'ancienneté.
+                //   Les obstacles adverses ET les Failles n'affichent aucun numéro (caster-only, cap exclut Failles).
+                if (data.OwnerPlayerIndex == localPlayer
+                    && (data.Kind == ObstacleKind.Pillar || data.Kind == ObstacleKind.Wall))
+                    _rankBuffer.Add((entity, data.ExpiresOnTurn, data.GridX - data.GridY, data.GridY));
+                else
+                    view.SetRank(0);
+
                 // #23 — contour de CASE en couleur d'équipe sous l'obstacle (Pilier / Mur / Faille).
                 //   Attaché à l'obstacle (comme les combattants), rendu JUSTE DERRIÈRE son sprite
                 //   (sprite-1) : l'OBSTACLE reste au premier plan, le losange de case dépasse au sol
@@ -102,6 +119,23 @@ namespace Nymora.Combat.View.Obstacles
                         mirror, data.OwnerPlayerIndex,
                         view.Sprite.sortingLayerID, view.Sprite.sortingOrder - 1);
                 }
+            }
+
+            // Patch 8 juin (#16) — numérotage STRICT 1->N du plus ANCIEN au plus récent. Tri : tour de pose,
+            //   puis position écran (gx-gy) gauche->droite (segments d'un mur 1>2>3), puis gy. Chaque obstacle
+            //   reçoit un numéro UNIQUE consécutif.
+            _rankBuffer.Sort((a, b) =>
+            {
+                int c = a.spawnTurn.CompareTo(b.spawnTurn);
+                if (c != 0) return c;
+                c = a.screenX.CompareTo(b.screenX);
+                if (c != 0) return c;
+                return a.gy.CompareTo(b.gy);
+            });
+            for (int i = 0; i < _rankBuffer.Count; i++)
+            {
+                if (_views.TryGetValue(_rankBuffer[i].entity, out var rankView) && rankView != null)
+                    rankView.SetRank(i + 1);
             }
 
             // 2. Despawn les vues dont l'entity n'existe plus dans la frame (destroyed).

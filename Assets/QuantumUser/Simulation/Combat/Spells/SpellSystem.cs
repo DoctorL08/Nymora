@@ -3552,10 +3552,15 @@ namespace Quantum
                         ObstacleKind.Pillar, SpellRegistry.PilierHP,
                         cmd.TargetX, cmd.TargetY,
                         owner: casterEntity, ownerPlayerIndex: caster->PlayerIndex,
-                        expiresOnTurn: 0); // 0 = persistent (Bible : reste jusqu'a destruction)
+                        expiresOnTurn: currentTurn); // patch 8 juin (#16) : ExpiresOnTurn = TOUR DE POSE (persistant, ordre du cap)
                     if (pillarEntity == EntityRef.None)
                     {
                         Log.Warn($"[Spell] Pilier : SpawnObstacle a echoue sur ({cmd.TargetX},{cmd.TargetY})");
+                    }
+                    else
+                    {
+                        // patch 8 juin (#16) : cap 6 Piliers/Murs -> détruit le plus ancien si dépassement.
+                        ObstacleHelpers.EnforceObstacleCap(f, caster->PlayerIndex);
                     }
                     break;
                 }
@@ -3605,7 +3610,7 @@ namespace Quantum
                             ObstacleKind.Wall, SpellRegistry.MurDePierreSegmentHP,
                             wx, wy,
                             owner: casterEntity, ownerPlayerIndex: caster->PlayerIndex,
-                            expiresOnTurn: currentTurn + SpellRegistry.MurDePierreTurns,
+                            expiresOnTurn: currentTurn, // patch 8 juin (#16) : plus de timer 2 tours -> ExpiresOnTurn = TOUR DE POSE (persistant, ordre du cap)
                             gainFondation: false); // equilibrage juin : pas de +1 FD/segment, grant +2 flat plus bas
                         if (wallEntity != EntityRef.None) segmentsSpawned++;
                     }
@@ -3614,6 +3619,8 @@ namespace Quantum
                     if (segmentsSpawned > 0)
                     {
                         ColossarPassif.GainFondation(caster, "Mur de Pierre (pose)", SpellRegistry.MurDePierreFondationGain);
+                        // patch 8 juin (#16) : cap 6 Piliers/Murs (cases) -> détruit le(s) plus ancien(s) après la pose complète du mur.
+                        ObstacleHelpers.EnforceObstacleCap(f, caster->PlayerIndex);
                     }
                     break;
                 }
