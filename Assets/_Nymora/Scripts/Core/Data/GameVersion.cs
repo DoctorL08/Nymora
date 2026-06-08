@@ -333,7 +333,9 @@ namespace Nymora.Core.Data
         //   Nightseer Detonation Onirique 5 -> 4.
         // v139 (7 juin 2026) — Affut (Marque du Chasseur) ajoute aux sorts INTERDITS au tour 1
         //   (gate sim + indicateur "1t" grise dans la barre + description).
-        public const int CombatRulesVersion = 139;
+        // v140 (7 juin 2026 bis) — Nerf buffs Soulrender : Peau de Fer bonus melee 30 -> 10,
+        //   Sang Bouillant prochaine frappe 30 -> 15, Frenesie +10% -> +5% dgts.
+        public const int CombatRulesVersion = 140;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

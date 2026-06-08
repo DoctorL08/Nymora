@@ -64,7 +64,7 @@ namespace Quantum
         // Constantes Bible V7.1 partagees par plusieurs sorts / systemes.
         public const int PeauDeFerShieldHP            = 200;
         public const int PeauDeFerShieldTurns         = 2;
-        public const int PeauDeFerMeleeDmgBonus       = 30;
+        public const int PeauDeFerMeleeDmgBonus       = 10;   // patch 7 juin (bis) : nerf buff 30 -> 10
         // Refonte 29 mai : Ouvre-Plaie (1 HG) reduit les soins/boucliers RECUS par la cible de 50% (÷2) 1 tour.
         public const int OuvrePlaieHealReductionPct   = 50;
         public const int MarqueDeCarnageTurns         = 3;
@@ -97,7 +97,7 @@ namespace Quantum
         //   prochaine frappe +30. Plus d'anti-DoT cleanse.
         public const int SangBouillantTurns           = 2;    // duree (rounds)
         public const int SangBouillantHGPerHit        = 1;    // +1 HG par fois ou le porteur subit des degats
-        public const int SangBouillantNextStrikeBonus = 30;   // bonus dgts flat sur la prochaine frappe
+        public const int SangBouillantNextStrikeBonus = 15;   // bonus dgts flat sur la prochaine frappe (patch 7 juin bis : 30 -> 15)
         public const int TrancheAmeKillRecul          = 2;    // 2 cases de recul si kill
 
         // Refonte 29 mai — EMPOIGNADE devient offensive : pull CaC + 90 dgts + -2 PM.
@@ -106,7 +106,7 @@ namespace Quantum
 
         // Refonte 29 mai — FRENESIE (ex-Rage Insatiable) : 2t, chaque offensif +1 HG + +10% dgts.
         //   Reutilise StatusKind.RageInsatiableActive (renomme semantiquement). Plus de +1 PA cost.
-        public const int FrenesieDmgBonusPct          = 10;
+        public const int FrenesieDmgBonusPct          = 5;    // patch 7 juin (bis) : nerf buff 10% -> 5%
         public const int FrenesieHGPerOffensive       = 1;
 
         // 2.11 — Signature Ame Laceree + Passif Appel du Sang.

@@ -228,7 +228,7 @@ MonoBehaviour:
     Category: 2
     IconSprite: {fileID: 21300000, guid: 58e5fba93e4941e49932955b16078bae, type: 3}
     Description: "Pendant 2 tours, chaque sort OFFENSIF lanc\xE9 par le Soulrender
-      gagne +10% de d\xE9g\xE2ts ET g\xE9n\xE8re +1 HG. (Recast = rafra\xEEchit la
+      gagne +5% de d\xE9g\xE2ts ET g\xE9n\xE8re +1 HG. (Recast = rafra\xEEchit la
       dur\xE9e, pas de cumul.)"
     LoreFlavor: "L'emballement. Fr\xE9n\xE9sie transforme chaque coup en carburant
       : plus le Soulrender frappe, plus sa jauge monte, plus \xE7a fait mal."
@@ -272,7 +272,7 @@ MonoBehaviour:
     Category: 3
     IconSprite: {fileID: 21300000, guid: 1bfd4be4ee92f464e9c0e27f54f68805, type: 3}
     Description: "Pendant 2 tours, chaque fois que le Soulrender SUBIT des d\xE9g\xE2ts
-      : il gagne +1 HG et sa prochaine frappe inflige +30 d\xE9g\xE2ts. (Recast =
+      : il gagne +1 HG et sa prochaine frappe inflige +15 d\xE9g\xE2ts. (Recast =
       rafra\xEEchit, pas de cumul.)"
     LoreFlavor: "Le sang qui bout. Plus on le frappe, plus il accumule de rage et
       de h\xE9moglyphe \u2014 chaque coup re\xE7u nourrit le prochain coup rendu."
@@ -294,7 +294,7 @@ MonoBehaviour:
     Category: 3
     IconSprite: {fileID: 21300000, guid: c950ce5e96a73b544b8bdbd9513b3f20, type: 3}
     Description: "Le Soulrender gagne un BOUCLIER de 200 HP pendant 2 tours. Pendant
-      la dur\xE9e du bouclier, ses sorts \xE0 port\xE9e 1 (m\xEAl\xE9e) gagnent +30
+      la dur\xE9e du bouclier, ses sorts \xE0 port\xE9e 1 (m\xEAl\xE9e) gagnent +10
       d\xE9g\xE2ts. Le bouclier se vide normalement aux d\xE9g\xE2ts subis. Relance
       : 2 tours."
     LoreFlavor: "Le mur viandard. Peau de Fer ne fait pas que prot\xE9ger \u2014
