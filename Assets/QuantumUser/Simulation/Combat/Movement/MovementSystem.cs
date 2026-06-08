@@ -272,11 +272,12 @@ namespace Quantum
                 FogHelpers.TryTriggerTrapOnEnter(f, entity, combatant, targetX, targetY, currentTurn);
             }
 
-            // Refonte 29 mai — Brume Toxique entry SIMPLIFIÉE : plus de dégâts d'entrée. Entrer
-            // sur une case BrumeToxique pose juste +1 marque venin. Skip Necram (immunisé).
+            // Refonte 29 mai — Brume Toxique entry SIMPLIFIÉE : plus de dégâts d'entrée. Entrer sur
+            // une case BrumeToxique ADVERSE pose +1 marque venin. Patch 8 juin : owner-based (immunise
+            // a SA propre Brume seulement ; un Necram qui entre dans la Brume ennemie est marque).
             if (combatant->HP > 0
-                && combatant->Class != NymoraClass.Necram
-                && GridHelpers.GetTerrainKind(f, targetX, targetY) == TerrainKind.BrumeToxique)
+                && GridHelpers.GetTerrainKind(f, targetX, targetY) == TerrainKind.BrumeToxique
+                && FogHelpers.IsEnemyTerrainAt(f, targetX, targetY, combatant->PlayerIndex))
             {
                 VeninHelpers.ApplyMark(f, combatant, SpellRegistry.BrumeToxiqueMarksOnHit, currentTurn);
                 Log.Info($"[Movement] Brume Toxique entry : +{SpellRegistry.BrumeToxiqueMarksOnHit} marque venin sur P{combatant->PlayerIndex} ({targetX},{targetY})");

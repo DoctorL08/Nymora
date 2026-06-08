@@ -161,18 +161,36 @@ namespace Nymora.Combat.View.Animation
                 {
                     int idx = y * _width + x;
                     TerrainKind kind = GridHelpers.GetTerrainKind(frame, x, y);
-                    if (_currentKind[idx] == kind) continue;
 
-                    ApplyTerrain(idx, kind);
-                    _currentKind[idx] = kind;
+                    // Le SPRITE de terrain (coûteux) n'est ré-appliqué qu'au changement de kind.
+                    if (_currentKind[idx] != kind)
+                    {
+                        ApplyTerrain(idx, kind);
+                        _currentKind[idx] = kind;
+                    }
 
-                    // #23 — contour de CASE en couleur d'équipe sous le terrain (aligné TrapView).
-                    //   Mis à jour au changement de terrain ; l'owner est stable le temps de vie du
-                    //   terrain. kind None -> show=false -> cache le contour quand le terrain expire.
-                    int owner = kind != TerrainKind.None ? FogHelpers.GetTerrainOwner(frame, x, y) : -1;
-                    MirrorOutlineHelper.Refresh(_gridRenderer.GetTileView(x, y),
-                        _gridRenderer.TileWorldWidth, _gridRenderer.TileWorldHeight,
-                        kind != TerrainKind.None && mirror, owner);
+                    // #23 — contour de CASE en couleur d'équipe (aligné TrapView). Patch 8 juin :
+                    //   rafraîchi CHAQUE frame (et non plus seulement au changement de terrain) pour
+                    //   GARANTIR qu'il reste visible sur la Brume — y compris si un autre système le
+                    //   masque, ou en superposition de brumes adverses. Cheap : hide pour les cases
+                    //   vides (owner -1), losange pour les cases terrain. Owner relu en direct.
+                    if (mirror && kind != TerrainKind.None)
+                    {
+                        // Patch 8 juin — masque 2 bits : 1=P0, 2=P1, 3=case contestée (owner 2 = violet).
+                        byte mask = FogHelpers.GetTerrainOwnerMask(frame, x, y);
+                        int owner = mask == 3 ? 2 : (mask == 1 ? 0 : (mask == 2 ? 1 : -1));
+                        MirrorOutlineHelper.Refresh(_gridRenderer.GetTileView(x, y),
+                            _gridRenderer.TileWorldWidth, _gridRenderer.TileWorldHeight,
+                            owner >= 0, owner, MirrorOutlineHelper.ChannelTerrain);
+                    }
+                    else
+                    {
+                        // Pas de terrain (ou pas miroir) : cache le contour DU CANAL TERRAIN (sans toucher
+                        // au contour des pièges, qui vit sur son propre enfant).
+                        MirrorOutlineHelper.Refresh(_gridRenderer.GetTileView(x, y),
+                            _gridRenderer.TileWorldWidth, _gridRenderer.TileWorldHeight,
+                            false, -1, MirrorOutlineHelper.ChannelTerrain);
+                    }
                 }
             }
         }

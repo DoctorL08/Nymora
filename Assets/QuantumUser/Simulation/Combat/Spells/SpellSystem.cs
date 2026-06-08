@@ -424,31 +424,10 @@ namespace Quantum
                 }
             }
 
-            // 3.5.a.iii — Brume Toxique : pre-validation chevauchement. Refuse le cast si AU
-            // MOINS UNE des 9 cases du AoE 3x3 cible chevauche une Brume existante. PA NON
-            // consomme (decision design Lorenzo 2026-05-15 : pas de stack/refresh).
-            if (cmd.Spell == SpellId.NecramBrumeToxique)
-            {
-                bool brumeOverlap = false;
-                for (int bdx = -1; bdx <= 1 && !brumeOverlap; bdx++)
-                {
-                    for (int bdy = -1; bdy <= 1 && !brumeOverlap; bdy++)
-                    {
-                        int btx = cmd.TargetX + bdx;
-                        int bty = cmd.TargetY + bdy;
-                        if (!GridHelpers.InBounds(btx, bty)) continue;
-                        if (GridHelpers.GetTerrainKind(f, btx, bty) == TerrainKind.BrumeToxique)
-                        {
-                            brumeOverlap = true;
-                        }
-                    }
-                }
-                if (brumeOverlap)
-                {
-                    Log.Warn($"[Spell] rejet : Brume Toxique chevauche une Brume existante sur AoE 3x3 centree ({cmd.TargetX},{cmd.TargetY}). PA non consomme.");
-                    return;
-                }
-            }
+            // 3.5.a.iii — Brume Toxique : patch 8 juin — les Brumes sont desormais SUPERPOSABLES
+            // (l'ancien rejet de chevauchement du 2026-05-15 est retire). Pas de cumul : une case
+            // est BrumeToxique ou non (binaire) ; un re-cast qui chevauche ne fait que rafraichir la
+            // duree des cases couvertes, sans empiler d'effet.
 
             // Sorts en LIGNE DROITE cardinale : la cible doit etre alignee avec le caster (meme
             // ligne OU meme colonne). Couvre Choc Sismique, Charge Brutale ET Volée d'Épines
@@ -763,13 +742,25 @@ namespace Quantum
                     int bcx = bidx % GridConstants.Width;
                     int bcy = bidx / GridConstants.Width;
 
+                    // Patch 8 juin — superposition : on OR le bit owner du caster au masque existant
+                    //   (si la case avait deja une brume adverse, elle devient "contestee" = 3) au lieu
+                    //   de l'ecraser. On n'herite des bits que d'une brume preexistante (pas d'un autre
+                    //   terrain) pour ne pas trainer un owner fantome.
+                    TerrainKind brumePrevKind = GridHelpers.GetTerrainKind(f, bcx, bcy);
+                    byte brumePrevMask = brumePrevKind == TerrainKind.BrumeToxique
+                        ? FogHelpers.GetTerrainOwnerMask(f, bcx, bcy) : (byte)0;
                     GridHelpers.SetTerrain(f, bcx, bcy, TerrainKind.BrumeToxique,
-                        SpellRegistry.BrumeToxiqueTurns, currentTurn, caster->PlayerIndex);
+                        SpellRegistry.BrumeToxiqueTurns, currentTurn, ownerPlayerIndex: -1);
+                    FogHelpers.SetTerrainOwnerMask(f, bcx, bcy,
+                        (byte)(brumePrevMask | (1 << caster->PlayerIndex)));
 
                     EntityRef bocc = GridHelpers.GetOccupant(f, bcx, bcy);
                     if (bocc == EntityRef.None || bocc == casterEntity) continue;
                     if (!f.Unsafe.TryGetPointer<Combatant>(bocc, out Combatant* boccC)) continue;
-                    if (boccC->Class == NymoraClass.Necram || boccC->HP <= 0) continue;
+                    if (boccC->HP <= 0) continue;
+                    // Patch 8 juin — owner-based : on marque tout occupant qui n'est PAS du camp du
+                    // caster (= proprietaire de la Brume). Un Necram adverse est donc marque aussi.
+                    if (boccC->PlayerIndex == caster->PlayerIndex) continue;
                     VeninHelpers.ApplyMark(f, boccC, SpellRegistry.BrumeToxiqueMarksOnHit, currentTurn);
                 }
                 Log.Info($"[Spell] Brume Toxique posée centrée ({cmd.TargetX},{cmd.TargetY}), 9 cases, {SpellRegistry.BrumeToxiqueTurns} rounds (zone marques + tick majoré, sans dégâts directs)");

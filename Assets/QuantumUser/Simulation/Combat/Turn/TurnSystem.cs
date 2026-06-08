@@ -270,6 +270,17 @@ namespace Quantum
                         Log.Info($"[TurnSystem] MovementMalus -{pmMalus} PM applique sur P{combatant->PlayerIndex} (PM={combatant->PM}/{combatant->MaxPM})");
                     }
 
+                    // Patch 8 juin — Brume Toxique : -1 PM si le combattant actif DEMARRE son tour sur
+                    // une case BrumeToxique ADVERSE (owner != lui). Immunise uniquement a SA PROPRE Brume :
+                    // un Necram qui se tient dans la Brume ENNEMIE se fait kicker aussi (decision Lorenzo).
+                    if (GridHelpers.GetTerrainKind(f, combatant->GridX, combatant->GridY) == TerrainKind.BrumeToxique
+                        && FogHelpers.IsEnemyTerrainAt(f, combatant->GridX, combatant->GridY, combatant->PlayerIndex))
+                    {
+                        combatant->PM -= SpellRegistry.BrumeToxiquePmKick;
+                        if (combatant->PM < 0) combatant->PM = 0;
+                        Log.Info($"[Brume Toxique] -{SpellRegistry.BrumeToxiquePmKick} PM (debut de tour dans Brume adverse) sur P{combatant->PlayerIndex} (PM={combatant->PM}/{combatant->MaxPM})");
+                    }
+
                     // 2.16 : ActionMalus (Traquenard Paralysie -2 PA) reduit les PA pour CE tour.
                     // Pattern miroir de MovementMalus.
                     int paMalus = StatusHelper.GetMagnitude(combatant, StatusKind.ActionMalus, 0);
@@ -395,8 +406,10 @@ namespace Quantum
                 {
                     if (actBrume->PlayerIndex != state->ActivePlayerIndex) continue;
                     if (actBrume->HP <= 0) break; // mort, skip
-                    if (actBrume->Class == NymoraClass.Necram) break;
                     if (GridHelpers.GetTerrainKind(f, actBrume->GridX, actBrume->GridY) != TerrainKind.BrumeToxique) break;
+                    // Patch 8 juin — owner-based : affecte si une brume ADVERSE est presente (y compris
+                    //   case contestee 3) ; sa propre brume seule = aucun effet.
+                    if (!FogHelpers.IsEnemyTerrainAt(f, actBrume->GridX, actBrume->GridY, actBrume->PlayerIndex)) break;
                     VeninHelpers.ApplyMark(f, actBrume, SpellRegistry.BrumeToxiqueMarksOnHit, state->TurnNumber);
                     Log.Info($"[TurnSystem] Brume Toxique fin de tour : +1 marque sur P{actBrume->PlayerIndex} ({actBrume->GridX},{actBrume->GridY})");
                     break;

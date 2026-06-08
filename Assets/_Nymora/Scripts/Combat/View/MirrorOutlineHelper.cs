@@ -22,6 +22,10 @@ namespace Nymora.Combat.View
     public static class MirrorOutlineHelper
     {
         private const string OutlineRootName = "MirrorTileOutline";
+        // Patch 8 juin — CANAL dédié pour le terrain (Brume/Sang Coagulé/Vapeur). TrapView et
+        //   TerrainView parentent tous deux leur contour à la MÊME tile : sans canal séparé, TrapView
+        //   (Refresh show=false sur une case sans piège) cachait le contour de terrain. Chacun son enfant.
+        public const string ChannelTerrain = "MirrorTileOutline_Terrain";
 
         // Le contour des objets de map rend AU-DESSUS du surlignage de portée (HighlightSortingOffset)
         // et des overlays au sol (pièges/terrain à +1) -> visible pendant le ciblage, frame le glyphe.
@@ -29,6 +33,8 @@ namespace Nymora.Combat.View
 
         private static Color _teamP0 = new Color(0.32f, 0.66f, 1f, 1f);   // bleu
         private static Color _teamP1 = new Color(1f, 0.55f, 0.16f, 1f);   // orange
+        // Patch 8 juin — owner 2 = case CONTESTÉE (2 brumes adverses superposées) : violet distinct.
+        private static Color _teamBoth = new Color(0.78f, 0.5f, 1f, 1f);  // violet (contesté)
         private static float _widthWorld = 0.06f;                         // épaisseur du trait (unités monde)
 
         private static Material _lineMat;
@@ -36,7 +42,7 @@ namespace Nymora.Combat.View
         public static void SetPalette(Color p0, Color p1) { _teamP0 = p0; _teamP1 = p1; }
         public static void SetWidth(float widthWorld) { _widthWorld = Mathf.Max(0.005f, widthWorld); }
 
-        public static Color ColorForOwner(int owner) => owner == 0 ? _teamP0 : _teamP1;
+        public static Color ColorForOwner(int owner) => owner == 0 ? _teamP0 : owner == 1 ? _teamP1 : _teamBoth;
 
         // Matériau partagé du trait : Sprites/Default (built-in, jamais strippé, URP 2D OK). Respecte
         // la vertex color donnée par LineRenderer.startColor/endColor -> une seule instance pour les
@@ -59,12 +65,12 @@ namespace Nymora.Combat.View
         // -----------------------------------------------------------------------------------------
         // OBJETS DE MAP STATIQUES — contour enfant de la TILE (centre = position de la tile, scale 1).
         // -----------------------------------------------------------------------------------------
-        public static void Refresh(TileView tile, float tileW, float tileH, bool show, int owner)
+        public static void Refresh(TileView tile, float tileW, float tileH, bool show, int owner, string childName = OutlineRootName)
         {
             if (tile == null) return;
-            if (!ShouldShow(show, owner, tileW, tileH)) { HideIfPresent(tile.transform); return; }
+            if (!ShouldShow(show, owner, tileW, tileH)) { HideIfPresent(tile.transform, childName); return; }
 
-            var lr = GetOrCreate(tile.transform);
+            var lr = GetOrCreate(tile.transform, childName);
             var t = lr.transform;
             t.localPosition = Vector3.zero;
             t.localScale = Vector3.one;
@@ -84,9 +90,9 @@ namespace Nymora.Combat.View
                                          bool show, int owner, int sortingLayerId, int sortingOrder)
         {
             if (parent == null) return;
-            if (!ShouldShow(show, owner, tileW, tileH)) { HideIfPresent(parent); return; }
+            if (!ShouldShow(show, owner, tileW, tileH)) { HideIfPresent(parent, OutlineRootName); return; }
 
-            var lr = GetOrCreate(parent);
+            var lr = GetOrCreate(parent, OutlineRootName);
             var t = lr.transform;
             t.localPosition = parent.InverseTransformPoint(groundWorld);
             Vector3 ls = parent.lossyScale;
@@ -100,18 +106,18 @@ namespace Nymora.Combat.View
         }
 
         private static bool ShouldShow(bool show, int owner, float tw, float th)
-            => show && owner >= 0 && owner <= 1 && tw > 0f && th > 0f;
+            => show && owner >= 0 && owner <= 2 && tw > 0f && th > 0f; // 2 = case contestee (violet)
 
-        private static void HideIfPresent(Transform parent)
+        private static void HideIfPresent(Transform parent, string childName)
         {
-            var existing = parent.Find(OutlineRootName);
+            var existing = parent.Find(childName);
             if (existing != null && existing.gameObject.activeSelf) existing.gameObject.SetActive(false);
         }
 
-        private static LineRenderer GetOrCreate(Transform parent)
+        private static LineRenderer GetOrCreate(Transform parent, string childName)
         {
-            var existing = parent.Find(OutlineRootName);
-            LineRenderer lr = existing != null ? existing.GetComponent<LineRenderer>() : Create(parent);
+            var existing = parent.Find(childName);
+            LineRenderer lr = existing != null ? existing.GetComponent<LineRenderer>() : Create(parent, childName);
             if (!lr.gameObject.activeSelf) lr.gameObject.SetActive(true);
             return lr;
         }
@@ -134,9 +140,9 @@ namespace Nymora.Combat.View
             lr.endWidth = _widthWorld;
         }
 
-        private static LineRenderer Create(Transform parent)
+        private static LineRenderer Create(Transform parent, string childName)
         {
-            var go = new GameObject(OutlineRootName);
+            var go = new GameObject(childName);
             go.transform.SetParent(parent, false);
             go.transform.localPosition = Vector3.zero;
             go.transform.localRotation = Quaternion.identity;

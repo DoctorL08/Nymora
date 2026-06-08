@@ -306,8 +306,10 @@ namespace Quantum
 
             // Refonte 29 mai — Brume Toxique : tick MAJORÉ si le porteur se tient dans la zone
             // (+BrumeToxiqueTickBonusPerMark par marque). Bypass shield/réduction comme le tick.
+            // Patch 8 juin — owner-based : le tick n'est majoré que dans une Brume ADVERSE (pas la sienne).
             int brumeBonus = 0;
-            if (GridHelpers.GetTerrainKind(f, target->GridX, target->GridY) == TerrainKind.BrumeToxique)
+            if (GridHelpers.GetTerrainKind(f, target->GridX, target->GridY) == TerrainKind.BrumeToxique
+                && FogHelpers.IsEnemyTerrainAt(f, target->GridX, target->GridY, target->PlayerIndex))
             {
                 brumeBonus = target->VeninStacks * SpellRegistry.BrumeToxiqueTickBonusPerMark;
                 totalDmg += brumeBonus;

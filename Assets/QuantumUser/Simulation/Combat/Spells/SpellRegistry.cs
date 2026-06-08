@@ -371,9 +371,10 @@ namespace Quantum
         //   MAJORÉ dans la zone : +BrumeToxiqueTickBonusPerMark par marque (valeur tunable choisie).
         public const int BrumeToxiqueMarksOnHit         = 1;   // marque appliquee a chaque trigger
         public const int BrumeToxiqueRangeMax           = 4;   // portee Manhattan caster -> centre zone
-        public const int BrumeToxiqueTurns              = 3;   // refonte : 3 tours (etait 2)
-        public const int BrumeToxiquePACost             = 4;
+        public const int BrumeToxiqueTurns              = 2;   // patch 8 juin : 3 -> 2 tours
+        public const int BrumeToxiquePACost             = 2;   // patch 8 juin : 4 -> 2
         public const int BrumeToxiqueTickBonusPerMark   = 10;  // tick majoré dans la zone (tunable)
+        public const int BrumeToxiquePmKick             = 1;   // patch 8 juin : -1 PM en debut de tour dans la zone
 
         // 3.5.b.i — Inoculation : setup, 1 PA range 5, 2 marques cap 4 (Bible V7.1).
         // Patch 8 juin : ajoute 30 dgts directs (n'est plus 100% silent).

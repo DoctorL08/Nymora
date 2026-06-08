@@ -343,7 +343,15 @@ namespace Nymora.Core.Data
         // v142 (8 juin 2026) — Patchs Necram degats directs (patch list) : Crachat Acide 90 -> 100,
         //   Morsure Putride base 110 -> 120 + bonus/marque 22 -> 10 (cap +40, max 160), Inoculation passe
         //   offensif + 30 dgts (etait 0).
-        public const int CombatRulesVersion = 142;
+        // v143 (8 juin 2026) — Brume Toxique (patch list) : cout 4 -> 2 PA, duree 3 -> 2 tours, Brumes
+        //   SUPERPOSABLES (retrait du rejet de chevauchement, sans cumul), -1 PM si un combattant DEMARRE
+        //   son tour dans une Brume ADVERSE. TOUS les effets Brume (marques cast/entree/fin de tour +
+        //   tick majore + kick PM) passent OWNER-BASED : immunise a SA propre Brume uniquement -> un
+        //   Necram adverse est bien marque + ralenti par la Brume ennemie (fix Necram vs Necram).
+        //   L'owner de terrain devient un MASQUE 2 bits (1=P0,2=P1,3=case CONTESTEE) -> 2 brumes adverses
+        //   superposees affectent les DEUX (chacun par celle de l'autre) + chacun genere son PT ; aucun
+        //   champ networked ajoute (reutilise le byte existant). Contour terrain : violet si contestee.
+        public const int CombatRulesVersion = 143;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

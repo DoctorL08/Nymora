@@ -192,7 +192,41 @@ namespace Quantum
             if (!GridHelpers.InBounds(x, y)) return -1;
             var fog = f.Unsafe.GetPointerSingleton<FogSingleton>();
             byte raw = fog->Tiles[GridHelpers.Index(x, y)].TerrainOwner;
-            return raw == 0 ? -1 : raw - 1;
+            // Patch 8 juin — le byte est devenu un MASQUE 2 bits (P0=bit0=1, P1=bit1=2). Un seul bit
+            //   -> proprietaire unique (legacy). Deux bits (3) = case contestee (2 brumes adverses)
+            //   -> pas de "owner unique" : retourne -1 (l'outline/effets passent par les helpers masque).
+            if (raw == 1) return 0;
+            if (raw == 2) return 1;
+            return -1; // 0 (aucun) ou 3 (contestee)
+        }
+
+        // ===== Patch 8 juin — Brume Toxique superposable : masque d'owners (bits 1<<playerIndex) =====
+        //   Permet a DEUX brumes adverses de cohabiter sur une case sans s'ecraser (case "contestee" = 3).
+        //   Reutilise le byte TerrainOwner (deja 1=P0 / 2=P1 = des bits), donc AUCUN champ networked ajoute.
+
+        /// <summary>Masque brut des owners de terrain sur la case (0 = aucun, 1 = P0, 2 = P1, 3 = les deux).</summary>
+        public static byte GetTerrainOwnerMask(Frame f, int x, int y)
+        {
+            if (!GridHelpers.InBounds(x, y)) return 0;
+            var fog = f.Unsafe.GetPointerSingleton<FogSingleton>();
+            return fog->Tiles[GridHelpers.Index(x, y)].TerrainOwner;
+        }
+
+        public static void SetTerrainOwnerMask(Frame f, int x, int y, byte mask)
+        {
+            if (!GridHelpers.InBounds(x, y)) return;
+            var fog = f.Unsafe.GetPointerSingleton<FogSingleton>();
+            fog->Tiles[GridHelpers.Index(x, y)].TerrainOwner = mask;
+        }
+
+        /// <summary>True s'il existe un terrain (brume) appartenant a un ENNEMI de `playerIndex` sur la
+        /// case — y compris sur une case contestee (3). Sert aux effets Brume owner-based en miroir.</summary>
+        public static bool IsEnemyTerrainAt(Frame f, int x, int y, int playerIndex)
+        {
+            if (playerIndex < 0) return false;
+            int mask = GetTerrainOwnerMask(f, x, y);
+            int enemyBits = mask & ~(1 << playerIndex) & 0x3;
+            return enemyBits != 0;
         }
 
         // ====================================================================
