@@ -272,7 +272,7 @@ namespace Nymora.Core.Data
 
             // ===== GHOSTRA (86-101). Volte-Face (90) reste class Tactique malgre amendement offensif 16 mai. =====
             new Entry { SpellIdValue = 86, SpellIdTech = "ghostra_lame_spectrale",          ClassId = NymoraClass.Ghostra, Category = SpellCategory.Offensive, DisplayName = "Lame Spectrale",
-                Description = "Inflige 170 dégâts. Si dorsal : +50 dégâts (Angle 2) ou +80 (Angle 3) du passif. Si la cible a PLAIE OUVERTE : +60 dégâts.",
+                Description = "Inflige 130 dégâts. Si dorsal : +50 dégâts (Angle 2) ou +80 (Angle 3) du passif. Retourne la cible DOS à la Ghostra (prépare un dorsal pour la suite).",
                 LoreFlavor  = "La frappe la plus banale du jeu — sauf que personne ne sait d'où elle vient. La banalité du sort est sa force : il sort de partout, depuis n'importe quel leurre." },
             new Entry { SpellIdValue = 87, SpellIdTech = "ghostra_lame_vorace_spectrale",   ClassId = NymoraClass.Ghostra, Category = SpellCategory.Offensive, DisplayName = "Lame Vorace Spectrale",
                 Description = "Frappe bon marché et répétable. Inflige 110 dégâts + 60 si la cible a PLAIE OUVERTE. Si dorsal : +bonus passif. La Plaie Ouverte n'est PAS consommée. Cap : 2 fois par tour.",
@@ -281,7 +281,7 @@ namespace Nymora.Core.Data
                 Description = "Pose un Leurre (100 HP) sur une case vide à 3 cases. Le Leurre est visuellement identique à la Ghostra ; il encaisse les dégâts et n'est détruit qu'à 0 HP. Dure 4 rounds. Si le Leurre survit la durée complète, la Ghostra regagne 80 HP. Si le Leurre est détruit par l'adversaire, la Ghostra regagne 40 HP. UTILISABLE 1 FOIS PAR TOUR.",
                 LoreFlavor  = "Le clone qui paye les frais. Réplique Fantôme FORCE l'adversaire à choisir : 'je frappe ce qui ressemble à la Ghostra ?' Toute lecture coûte. La Ghostra gagne quoi qu'il arrive." },
             new Entry { SpellIdValue = 89, SpellIdTech = "ghostra_pas_dans_ombre",          ClassId = NymoraClass.Ghostra, Category = SpellCategory.Tactical,  DisplayName = "Pas dans l'Ombre",
-                Description = "Téléporte la Ghostra jusqu'à 4 cases. Si une case adjacente à l'arrivée contient une cible ennemie : la cible PIVOTE pour faire face à la Ghostra. Laisse aussi automatiquement un leurre sur la case quittée si ta jauge le permet (compte dans le cap 3 leurres). UTILISABLE 1 FOIS PAR TOUR, RELANCE 2 TOURS. INDISPONIBLE AU TOUR 1.",
+                Description = "Téléporte la Ghostra jusqu'à 4 cases. Toute cible ennemie adjacente à l'arrivée PIVOTE pour tourner le DOS à la Ghostra (prépare un dorsal). Laisse aussi automatiquement un leurre sur la case quittée si ta jauge le permet (compte dans le cap 3 leurres). UTILISABLE 1 FOIS PAR TOUR, RELANCE 2 TOURS. INDISPONIBLE AU TOUR 1.",
                 LoreFlavor  = "Le saut de l'absent. Pas dans l'Ombre n'est pas seulement une mobilité — c'est un GÉNÉRATEUR de leurre." },
             new Entry { SpellIdValue = 90, SpellIdTech = "ghostra_permutation",            ClassId = NymoraClass.Ghostra, Category = SpellCategory.Tactical,  DisplayName = "Permutation",
                 Description = "Échange instantanément la position de la Ghostra avec un de ses leurres ciblé (jusqu'à 3 cases), dès 1 leurre actif. Aucun dégât. Échange invisible côté adversaire (silhouettes identiques). À 3 leurres actifs (Angle 3), son coût tombe à 0 PA. UTILISABLE 1 FOIS PAR TOUR.",

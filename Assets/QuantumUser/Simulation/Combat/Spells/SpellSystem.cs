@@ -931,16 +931,8 @@ namespace Quantum
                     // Refonte 29 mai — Détonation Virulente : retirée de la boucle standard. C'est
                     //   désormais un TICK VENIN complet instantané (bypass shield + réduction, sans
                     //   consommer les marques), appliqué dans son handler dédié (ApplySpellSpecificEffects).
-                    else if (cmd.Spell == SpellId.GhostraLameSpectrale)
-                    {
-                        // 3.7.a.i.2 — Bible Lame Spectrale : 170 base + 60 si target a PlaieOuverte (NON consommee).
-                        // Bonus dorsal applique generiquement plus bas (bloc Ghostra).
-                        if (StatusHelper.Has(targetC, StatusKind.PlaieOuverte))
-                        {
-                            dmgThisTarget += SpellRegistry.LameSpectralePlaieBonus;
-                            Log.Info($"[Spell] Lame Spectrale +{SpellRegistry.LameSpectralePlaieBonus} dgts (PlaieOuverte sur P{targetC->PlayerIndex})");
-                        }
-                    }
+                    // Patch 8 juin — Lame Spectrale : bonus +60 Plaie Ouverte RETIRÉ (130 dgts base + dorsal
+                    //   seulement). Remplacé par "retourne la cible dos", appliqué après le calcul dorsal ci-dessous.
                     else if (cmd.Spell == SpellId.GhostraLameVoraceSpectrale)
                     {
                         // 3.7.a.i.2 — Bible Lame Vorace : 130 base + 60 si PlaieOuverte (NON consommee).
@@ -997,6 +989,15 @@ namespace Quantum
                             dmgThisTarget += markBonus;
                             Log.Info($"[Marque de l'Ombre] +{markBonus} dmg sur P{targetC->PlayerIndex} (sort {cmd.Spell}) -> total {dmgThisTarget}");
                         }
+                    }
+
+                    // Patch 8 juin — Lame Spectrale : APRÈS le calcul du dorsal (qui utilise le facing
+                    //   d'avant), retourne la cible DOS à la Ghostra (regarde dans la direction opposée au
+                    //   caster) pour préparer un backstab. Si déjà dos = no-op (jamais remise de face).
+                    if (cmd.Spell == SpellId.GhostraLameSpectrale)
+                    {
+                        targetC->Facing = FacingHelpers.FacingFromGridDelta(
+                            targetC->GridX - caster->GridX, targetC->GridY - caster->GridY);
                     }
 
                     // Refonte 29 mai — Nightseer Passif phasé P2+ : +30 dégâts flat sur les sorts
@@ -2890,10 +2891,11 @@ namespace Quantum
                         if (!f.Unsafe.TryGetPointer<Combatant>(adjOcc, out Combatant* adjC)) continue;
                         if (adjC->PlayerIndex == caster->PlayerIndex) continue; // skip allies/self
                         if (adjC->HP <= 0) continue;
-                        // Facing target = direction qui pointe vers Ghostra (caster).
-                        IsoFacing newFacing = FacingHelpers.FacingFromGridDelta(cmd.TargetX - ax, cmd.TargetY - ay);
+                        // Patch 8 juin — DOS à la Ghostra (au lieu de face) : la cible pivote pour tourner
+                        //   le dos au caster (= regarde dans la direction OPPOSÉE), préparant un backstab.
+                        IsoFacing newFacing = FacingHelpers.FacingFromGridDelta(ax - cmd.TargetX, ay - cmd.TargetY);
                         adjC->Facing = newFacing;
-                        Log.Info($"[Spell] Pas dans l'Ombre : P{adjC->PlayerIndex} pivot -> {newFacing} (face Ghostra en {cmd.TargetX},{cmd.TargetY})");
+                        Log.Info($"[Spell] Pas dans l'Ombre : P{adjC->PlayerIndex} pivot -> {newFacing} (DOS à la Ghostra en {cmd.TargetX},{cmd.TargetY})");
                         pivoted++;
                     }
                     if (pivoted == 0)

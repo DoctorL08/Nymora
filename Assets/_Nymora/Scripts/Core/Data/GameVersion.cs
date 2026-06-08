@@ -358,7 +358,10 @@ namespace Nymora.Core.Data
         //   (2) Vapeur Carmin (trainee de Charge Brutale) OWNER-IMMUNE : ne coute plus +1 PM au Soulrender
         //   qui l'a posee, seule la Vapeur ADVERSE ralentit (MovementSystem). (Le 'sang coagule' de la
         //   patch list visait en fait cette trainee de Vapeur.) Reliquat mineur : meme exemption cote IA.
-        public const int CombatRulesVersion = 145;
+        // v146 (8 juin 2026) — Ghostra (bloc patch, partiel) : Pas dans l'Ombre pivote les ennemis adjacents
+        //   DOS a la Ghostra (au lieu de face). Lame Spectrale 170 -> 130, retire le +60 Plaie Ouverte,
+        //   remplace par "retourne la cible dos au caster" (apres le dorsal). Suite du bloc Ghostra a venir.
+        public const int CombatRulesVersion = 146;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

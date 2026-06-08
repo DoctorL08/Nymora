@@ -355,8 +355,9 @@ namespace Quantum
 
         private static bool TryComputeLameSpectrale(Frame f, Combatant* caster, Combatant* target, int rangeMax, out DamagePreviewResult p)
         {
+            // Patch 8 juin — Lame Spectrale : 130 base + dorsal seulement (le +60 Plaie Ouverte a ete
+            //   retire, remplace par "retourne la cible dos" cote sim).
             int raw = SpellRegistry.LameSpectraleDmgBase;
-            if (StatusHelper.Has(target, StatusKind.PlaieOuverte)) raw += SpellRegistry.LameSpectralePlaieBonus;
             int offensiveBonus = ComputeOffensiveBonusGeneric(f, caster, target, rangeMax);
             p = default;
             FinalizeOffensive(f, caster, target, raw, offensiveBonus, rangeMax, ref p);

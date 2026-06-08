@@ -509,8 +509,8 @@ namespace Quantum
         //   a PlaieOuverte (non consommee). Cf GhostraPassif.GetDorsalBonusIfApplicable.
         public const int LameSpectralePACost        = 3;
         public const int LameSpectraleRangeMax      = 1;
-        public const int LameSpectraleDmgBase       = 170;
-        public const int LameSpectralePlaieBonus    = 60;
+        public const int LameSpectraleDmgBase       = 130;   // patch 8 juin : 170 -> 130
+        public const int LameSpectralePlaieBonus    = 60;    // patch 8 juin : bonus Plaie RETIRE de Lame Spectrale (legacy, plus reference) — remplace par "retourne la cible dos"
 
         // 3.7.a.i.2 — Lame Vorace Spectrale (Bible V7.1) :
         //   3 PA, melee 1, 130 dgts base + 60 si PlaieOuverte (NON consommee) + bonus dorsal.
