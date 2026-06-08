@@ -49,6 +49,10 @@ namespace Nymora.Combat.View.HUD
         [Header("Widgets")]
         [SerializeField] private ResourcePanelView _p0Panel;
         [SerializeField] private ResourcePanelView _p1Panel;
+        [Tooltip("Patch UI combat 8 juin — les anciens panneaux d'infos haut-gauche/droite sont " +
+                 "remplacés par les HP affichés sous les portraits de la timeline + le tooltip au survol. " +
+                 "Laisser DÉCOCHÉ. Cocher uniquement pour réafficher les vieux panneaux (debug).")]
+        [SerializeField] private bool _showLegacyResourcePanels = false;
         [SerializeField] private TimerView _timer;
         [SerializeField] private PassivePanelView _passive;
         [SerializeField] private TimelineView _timeline;
@@ -160,6 +164,14 @@ namespace Nymora.Combat.View.HUD
             // 2.13.e : portrait dans les ResourcePanels.
             if (_p0Panel != null) _p0Panel.Init(_iconRegistry);
             if (_p1Panel != null) _p1Panel.Init(_iconRegistry);
+            // Patch UI combat 8 juin — masque les 2 panneaux haut G/D (infos relocalisées dans la
+            // timeline : HP sous le portrait + tooltip au survol). Robuste sur les 2 scènes combat
+            // sans édition manuelle. Recochable via _showLegacyResourcePanels.
+            if (!_showLegacyResourcePanels)
+            {
+                if (_p0Panel != null) _p0Panel.gameObject.SetActive(false);
+                if (_p1Panel != null) _p1Panel.gameObject.SetActive(false);
+            }
             // 19 mai : timeline avec sprites idle animes (necessite NymoraClassDefinition).
             if (_timeline != null) _timeline.Init(_classDefinitions);
 
@@ -399,9 +411,12 @@ namespace Nymora.Combat.View.HUD
             _cachedLocal = local; _hasCachedLocal = hasLocal;
             _cachedEnemyHpRatio = enemyHpRatio; _cachedTurnNumber = state.TurnNumber;
 
-            // ResourcePanel
-            if (_p0Panel != null) { if (hasP0) _p0Panel.Refresh(p0, activePlayer == 0); else _p0Panel.Clear(); }
-            if (_p1Panel != null) { if (hasP1) _p1Panel.Refresh(p1, activePlayer == 1); else _p1Panel.Clear(); }
+            // ResourcePanel (legacy — masqués par défaut depuis le patch UI combat 8 juin).
+            if (_showLegacyResourcePanels)
+            {
+                if (_p0Panel != null) { if (hasP0) _p0Panel.Refresh(p0, activePlayer == 0); else _p0Panel.Clear(); }
+                if (_p1Panel != null) { if (hasP1) _p1Panel.Refresh(p1, activePlayer == 1); else _p1Panel.Clear(); }
+            }
 
             // Timer
             if (_timer != null)

@@ -33,16 +33,24 @@ namespace Nymora.Combat.View.HUD
         [SerializeField] private TMP_Text _legacyLabel; // ancien texte P0/P1, hide si auto-spawn
 
         [Header("Style (re-skin DA hub : monochrome)")]
-        [SerializeField] private Vector2 _slotSize = new Vector2(96f, 112f);
-        [SerializeField] private float _slotSpacing = 10f;
+        [SerializeField] private Vector2 _slotSize = new Vector2(124f, 144f);
+        [SerializeField] private float _slotSpacing = 12f;
         [SerializeField] private Color _frameActive = new Color(0.93f, 0.94f, 0.96f, 1f);   // accent clair = actif
         [SerializeField] private Color _frameInactive = new Color(0.16f, 0.165f, 0.185f, 1f); // surface carte
         [SerializeField] private Color _portraitActive = Color.white;
         [SerializeField] private Color _portraitInactive = new Color(0.55f, 0.55f, 0.58f, 1f);
         [SerializeField] private int _frameBorderPx = 4;
 
+        [Tooltip("Patch UI combat 8 juin — hauteur (px) de la bande HP affichée sous chaque portrait " +
+                 "de la timeline (remplace les panneaux d'infos haut-gauche/droite). Mets 0 pour ne pas " +
+                 "afficher de bande HP.")]
+        [SerializeField] private float _hpStripHeight = 30f;
+
         private CombatUISpriteAnimator _animator0;
         private CombatUISpriteAnimator _animator1;
+        // Patch UI combat 8 juin — libellés HP/MaxHP sous chaque portrait (lecture d'un coup d'œil).
+        private TMP_Text _hp0;
+        private TMP_Text _hp1;
         private Dictionary<NymoraClass, NymoraClassDefinition> _classByEnum;
 
         // Skins combat : catalogue charge a la demande (meme chemin Resources que CombatantRenderer).
@@ -127,6 +135,31 @@ namespace Nymora.Combat.View.HUD
             NymoraClass p0Cls = hasP0 ? p0.Class : NymoraClass.None;
             NymoraClass p1Cls = hasP1 ? p1.Class : NymoraClass.None;
             Refresh(activePlayerIndex, p0Cls, p1Cls);
+
+            // Patch UI combat 8 juin — HP/MaxHP sous chaque portrait (remplace les panneaux haut G/D).
+            SetHpLabel(_hp0, hasP0, p0, activePlayerIndex == 0);
+            SetHpLabel(_hp1, hasP1, p1, activePlayerIndex == 1);
+        }
+
+        private static void SetHpLabel(TMP_Text label, bool has, in Combatant c, bool isActive)
+        {
+            if (label == null) return;
+            if (!has) { label.text = ""; return; }
+            label.text = $"{c.HP} / {c.MaxHP}";
+            label.color = HpColor(c.HP, c.MaxHP, isActive);
+        }
+
+        // Vert > 50%, ambre 25-50%, rouge < 25%, gris si mort. Légèrement estompé hors tour actif.
+        // (float toléré : code View, pas la simulation Quantum.)
+        private static Color HpColor(int hp, int maxHp, bool isActive)
+        {
+            if (maxHp <= 0 || hp <= 0) return new Color(0.5f, 0.5f, 0.5f, 1f);
+            float ratio = hp / (float)maxHp;
+            Color col = ratio > 0.5f ? new Color(0.55f, 0.85f, 0.55f, 1f)
+                      : ratio > 0.25f ? new Color(1f, 0.82f, 0.38f, 1f)
+                      : new Color(1f, 0.40f, 0.40f, 1f);
+            if (!isActive) col.a = 0.72f;
+            return col;
         }
 
         internal void OnSlotHoverEnter(int slotIndex)
@@ -237,36 +270,71 @@ namespace Nymora.Combat.View.HUD
             fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
 
-            _slot0Root = BuildSlot(container.transform, "Slot_P0", 0, out _slot0Frame, out _portrait0, out _animator0);
-            _slot1Root = BuildSlot(container.transform, "Slot_P1", 1, out _slot1Frame, out _portrait1, out _animator1);
+            _slot0Root = BuildSlot(container.transform, "Slot_P0", 0, out _slot0Frame, out _portrait0, out _animator0, out _hp0);
+            _slot1Root = BuildSlot(container.transform, "Slot_P1", 1, out _slot1Frame, out _portrait1, out _animator1, out _hp1);
         }
 
-        private RectTransform BuildSlot(Transform parent, string name, int slotIndex, out Image frame, out Image portrait, out CombatUISpriteAnimator anim)
+        private RectTransform BuildSlot(Transform parent, string name, int slotIndex, out Image frame, out Image portrait, out CombatUISpriteAnimator anim, out TMP_Text hpLabel)
         {
+            // Patch UI combat 8 juin — le slot est plus haut : portrait en haut, bande HP en bas.
+            float totalHeight = _slotSize.y + Mathf.Max(0f, _hpStripHeight);
+
             var slotGo = new GameObject(name, typeof(RectTransform), typeof(LayoutElement), typeof(Image));
             slotGo.transform.SetParent(parent, false);
             var slotRt = (RectTransform)slotGo.transform;
-            slotRt.sizeDelta = _slotSize;
+            slotRt.sizeDelta = new Vector2(_slotSize.x, totalHeight);
             var le = slotGo.GetComponent<LayoutElement>();
             le.preferredWidth = _slotSize.x;
-            le.preferredHeight = _slotSize.y;
+            le.preferredHeight = totalHeight;
             frame = slotGo.GetComponent<Image>();
             frame.color = _frameInactive;
             frame.raycastTarget = true;
             var hoverProxy = slotGo.AddComponent<TimelineSlotHoverProxy>();
             hoverProxy.Bind(this, slotIndex);
 
+            // Portrait : occupe la partie HAUTE du slot, laisse une bande en bas pour les HP.
             var portraitGo = new GameObject("Portrait", typeof(RectTransform), typeof(Image), typeof(CombatUISpriteAnimator));
             portraitGo.transform.SetParent(slotGo.transform, false);
             var pRt = (RectTransform)portraitGo.transform;
             pRt.anchorMin = Vector2.zero;
             pRt.anchorMax = Vector2.one;
-            pRt.offsetMin = new Vector2(_frameBorderPx, _frameBorderPx);
+            pRt.offsetMin = new Vector2(_frameBorderPx, _frameBorderPx + Mathf.Max(0f, _hpStripHeight));
             pRt.offsetMax = new Vector2(-_frameBorderPx, -_frameBorderPx);
             portrait = portraitGo.GetComponent<Image>();
             portrait.preserveAspect = true;
             portrait.raycastTarget = false;
             anim = portraitGo.GetComponent<CombatUISpriteAnimator>();
+
+            hpLabel = null;
+            if (_hpStripHeight > 0f)
+            {
+                // Bande HP : fond sombre arrondi (lisible sur cadre clair = actif) + chiffre centré.
+                var hpBgGo = new GameObject("HpStrip", typeof(RectTransform), typeof(Image));
+                hpBgGo.transform.SetParent(slotGo.transform, false);
+                var hpBgRt = (RectTransform)hpBgGo.transform;
+                hpBgRt.anchorMin = new Vector2(0f, 0f);
+                hpBgRt.anchorMax = new Vector2(1f, 0f);
+                hpBgRt.pivot = new Vector2(0.5f, 0f);
+                hpBgRt.offsetMin = new Vector2(_frameBorderPx, _frameBorderPx);
+                hpBgRt.offsetMax = new Vector2(-_frameBorderPx, _frameBorderPx + _hpStripHeight);
+                var hpBg = hpBgGo.GetComponent<Image>();
+                CombatUiKit.ApplyRounded(hpBg, 6f);
+                hpBg.color = new Color(0.06f, 0.06f, 0.08f, 0.85f);
+                hpBg.raycastTarget = false;
+
+                var hpTextGo = new GameObject("HpValue", typeof(RectTransform));
+                hpTextGo.transform.SetParent(hpBgGo.transform, false);
+                var hpTRt = (RectTransform)hpTextGo.transform;
+                hpTRt.anchorMin = Vector2.zero; hpTRt.anchorMax = Vector2.one;
+                hpTRt.offsetMin = Vector2.zero; hpTRt.offsetMax = Vector2.zero;
+                hpLabel = hpTextGo.AddComponent<TextMeshProUGUI>();
+                hpLabel.alignment = TextAlignmentOptions.Center;
+                hpLabel.fontSize = 17f;
+                hpLabel.fontStyle = FontStyles.Bold;
+                hpLabel.color = Color.white;
+                hpLabel.raycastTarget = false;
+                hpLabel.enableWordWrapping = false;
+            }
 
             return slotRt;
         }
