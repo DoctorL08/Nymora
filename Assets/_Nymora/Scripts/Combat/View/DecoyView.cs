@@ -35,6 +35,12 @@ namespace Nymora.Combat.View
         [Tooltip("AnimatorController stage 2 (Bible Angle 3 : 3 leurres actifs = au cap). Default = GhostraStage2_SE.controller. " +
                  "Si null, fallback sur _decoyStage1Controller puis _decoyIdleController.")]
         [SerializeField] private RuntimeAnimatorController _decoyStage2Controller;
+        [Header("Controllers NE (facing nord — drag GhostraStage0/1/2_NE.controller)")]
+        [Tooltip("AnimatorController stage 0 facing NORD (NE). Sert au facing parfait : un leurre qui attaque " +
+                 "vers une cible 'au nord' utilise le sprite NE (au lieu de rester en SE). Si null, fallback SE.")]
+        [SerializeField] private RuntimeAnimatorController _decoyStage0ControllerNE;
+        [SerializeField] private RuntimeAnimatorController _decoyStage1ControllerNE;
+        [SerializeField] private RuntimeAnimatorController _decoyStage2ControllerNE;
         [Tooltip("Scale appliquee au GameObject leurre. Default 1.16 (calibre Lorenzo, aligne avec RestructureGhostraPrefabTool).")]
         [SerializeField] private Vector3 _decoyScale = new Vector3(1.16f, 1.16f, 1f);
         [Tooltip("Y offset applique au sprite leurre (aligne avec le Visual.LocalPosition.y du prefab Ghostra : -0.22).")]
@@ -61,6 +67,14 @@ namespace Nymora.Combat.View
         private readonly Dictionary<EntityRef, int> _lastVoileCastSeq = new Dictionary<EntityRef, int>(2);
         // Couleur cyan spectral du flash de TP des leurres (aligné GhostraVfx).
         private static readonly Color DecoyTpColor = new Color(0.40f, 0.78f, 0.94f, 1f);
+        // Patch 8 juin — anim d'ATTAQUE des leurres quand un sort où ils frappent est casté
+        //   (Voile Spectrale / Nuée Spectrale = tous ; Éveil Spectral = seul le leurre adjacent).
+        //   Les controllers des leurres (GhostraStage*_SE) ont déjà l'état Attack (mêmes que le vrai
+        //   combattant) : on déclenche le trigger + on oriente le leurre vers la cible (flip X persistant).
+        private static readonly int ParamAttackHash = Animator.StringToHash("Attack");
+        // Facing parfait 4 directions par leurre : flipX (NW/SW = ouest) + useNE (NE/NW = nord -> controller NE).
+        private readonly Dictionary<(EntityRef ghostra, int slot), bool> _decoyFaceFlip = new Dictionary<(EntityRef, int), bool>(6);
+        private readonly Dictionary<(EntityRef ghostra, int slot), bool> _decoyUseNE = new Dictionary<(EntityRef, int), bool>(6);
 
         // Cle composite (ghostraEntity, slotIndex) -> GameObject leurre actif.
         private readonly Dictionary<(EntityRef ghostra, int slot), GameObject> _decoyVisuals
@@ -206,16 +220,22 @@ namespace Nymora.Combat.View
                     decoyScaleMul = ghostraDef != null ? ghostraDef.DecoyCombatScale : 1f;
                 }
 
-                // Voile Spectral : si la Ghostra vient de le caster ce tick, ses leurres ont été
-                // téléportés autour de l'ennemi → on joue un flash spectral sur chacun (anim de TP).
+                // Détecte un cast CE tick (LastCastSequence change) : Voile -> flash TP + tous les leurres
+                //   attaquent ; Nuée -> tous attaquent ; Éveil -> seul le leurre adjacent à la cible attaque.
                 bool voileThisFrame = false;
+                SpellId decoyAtkSpell = SpellId.None;
                 {
-                    int prevVoile = _lastVoileCastSeq.TryGetValue(ghostraEntity, out var vv) ? vv : ghostra.LastCastSequence;
-                    if (ghostra.LastCastSequence != prevVoile)
+                    // FIX 8 juin — il FAUT seeder le dict à chaque frame (hors du if). Sinon il n'est écrit
+                    //   que sur changement, donc prevSeq défaute toujours à la valeur COURANTE -> aucun
+                    //   changement n'est jamais détecté (le flash TP + les attaques de leurres ne sortaient pas).
+                    bool decoSeen = _lastVoileCastSeq.TryGetValue(ghostraEntity, out int prevSeq);
+                    if (decoSeen && ghostra.LastCastSequence != prevSeq)
                     {
-                        _lastVoileCastSeq[ghostraEntity] = ghostra.LastCastSequence;
-                        if (ghostra.LastCastSpellId == SpellId.GhostraVoileSpectral) voileThisFrame = true;
+                        var sp = ghostra.LastCastSpellId;
+                        if (sp == SpellId.GhostraVoileSpectral) { voileThisFrame = true; decoyAtkSpell = sp; }
+                        else if (sp == SpellId.GhostraNueeSpectrale || sp == SpellId.GhostraEveilSpectral) decoyAtkSpell = sp;
                     }
+                    _lastVoileCastSeq[ghostraEntity] = ghostra.LastCastSequence; // toujours -> détecte au frame suivant
                 }
 
                 // PATCH — materiau du SpriteRenderer de la vraie Ghostra (materiau 2D Lit) : on le
@@ -251,6 +271,27 @@ namespace Nymora.Combat.View
                     world.y += _decoyYOffset + decoyExtraY;
                     go.transform.position = world;
 
+                    // Patch 8 juin — ANIM D'ATTAQUE du leurre : Voile/Nuée = tous ; Éveil = seul le leurre
+                    //   ADJACENT (Manhattan 1) à la cible. On oriente le leurre vers la cible (flip X si elle
+                    //   est à gauche à l'écran) puis on déclenche le trigger Attack de son Animator (one-shot).
+                    if (decoyAtkSpell != SpellId.None)
+                    {
+                        bool thisDecoyAttacks = decoyAtkSpell != SpellId.GhostraEveilSpectral
+                            || (Mathf.Abs(d.PosX - ghostra.LastCastTargetX) + Mathf.Abs(d.PosY - ghostra.LastCastTargetY) == 1);
+                        if (thisDecoyAttacks)
+                        {
+                            // Facing parfait (convention combattant) depuis le delta leurre -> cible :
+                            //   useNE = NORD (dxWorld nord : dx+dy >= 0 -> controller NE) ;
+                            //   flipX = OUEST (dxWorld < 0 : dx-dy < 0 -> miroir horizontal).
+                            int fdx = ghostra.LastCastTargetX - d.PosX;
+                            int fdy = ghostra.LastCastTargetY - d.PosY;
+                            _decoyUseNE[key] = (fdx + fdy) >= 0;
+                            _decoyFaceFlip[key] = (fdx - fdy) < 0;
+                            var atkAnim = go.GetComponent<Animator>();
+                            if (atkAnim != null) atkAnim.SetTrigger(ParamAttackHash);
+                        }
+                    }
+
                     // Échelle de base du leurre × multiplicateur (skin OU classe de base, réglable en live
                     // via F10, persisté sur l'asset → toutes scènes). Réappliqué chaque frame (idempotent)
                     // pour que le tuner prenne effet immédiatement et que les leurres skinnés suivent.
@@ -268,6 +309,9 @@ namespace Nymora.Combat.View
                         // Meme materiau que la vraie Ghostra (2D Lit) -> rendu identique sous les lights.
                         if (ghostraMat != null && decoySr.sharedMaterial != ghostraMat)
                             decoySr.sharedMaterial = ghostraMat;
+                        // Facing parfait : miroir horizontal (NW/SW) via flipX (comme le combattant, sans
+                        //   flipper le familier/enfants). Default false (SE/NE).
+                        decoySr.flipX = _decoyFaceFlip.TryGetValue(key, out var dFlip) && dFlip;
                     }
 
                     // #23 — contour de CASE d'équipe sous le leurre, centré sur la CASE (sans l'offset
@@ -302,7 +346,8 @@ namespace Nymora.Combat.View
                     // (0/1/2 = Angle 1/2/3 Bible V7.1, base sur nb leurres actifs). Le leurre
                     // suit visuellement le stage du parent (cohenrence indiscernable Bible).
                     // ownerSkin != null -> le leurre utilise les controllers du SKIN equipe.
-                    SyncStageFromGhostra(go, ghostra, ownerSkin);
+                    //   useNE : facing nord -> controller NE (sinon SE), pour le facing parfait des attaques.
+                    SyncStageFromGhostra(go, ghostra, ownerSkin, _decoyUseNE.TryGetValue(key, out var dUseNE) && dUseNE);
 
                     // PATCH #6/#7 — familier colle au leurre (meme pet que la Ghostra), teinte
                     // comme le leurre. Indiscernable cote adverse (la vraie Ghostra a aussi le sien).
@@ -351,6 +396,8 @@ namespace Nymora.Combat.View
                         Destroy(deadCd.gameObject);
                     }
                     _decoyCooldowns.Remove(key);
+                    _decoyFaceFlip.Remove(key);
+                    _decoyUseNE.Remove(key);
                 }
             }
         }
@@ -397,7 +444,7 @@ namespace Nymora.Combat.View
         /// Fallback descendant si le controller stage demande est null (stage 2 -> stage 1 ->
         /// stage 0 / idle).
         /// </summary>
-        private void SyncStageFromGhostra(GameObject decoyGo, Combatant ghostra, CosmeticSkinDefinition skin)
+        private void SyncStageFromGhostra(GameObject decoyGo, Combatant ghostra, CosmeticSkinDefinition skin, bool useNE)
         {
             var anim = decoyGo.GetComponent<Animator>();
             if (anim == null) return; // mode fallback sprite statique : pas de stage swap
@@ -409,23 +456,29 @@ namespace Nymora.Combat.View
             }
             int stage = active >= 3 ? 2 : active >= 1 ? 1 : 0;
 
-            RuntimeAnimatorController target;
+            // Controllers SE (toujours présents) ET NE (facing nord) — skin équipé OU base. Fallback
+            //   descendant de stage. NE absent -> on retombe sur SE (facing horizontal seul).
+            RuntimeAnimatorController se, ne;
             if (skin != null && skin.HasCombatControllers)
             {
-                // PATCH — la Ghostra a un SKIN equipe : le leurre doit l'avoir aussi (indiscernable
-                // cote adverse). Les leurres sont SE -> controllers SE du skin par stage (fallback
-                // descendant si un stage du skin manque).
-                target = stage == 2 ? (skin.Stage2ControllerSE ?? skin.Stage1ControllerSE ?? skin.Stage0ControllerSE)
-                       : stage == 1 ? (skin.Stage1ControllerSE ?? skin.Stage0ControllerSE)
-                       :              skin.Stage0ControllerSE;
+                se = stage == 2 ? (skin.Stage2ControllerSE ?? skin.Stage1ControllerSE ?? skin.Stage0ControllerSE)
+                   : stage == 1 ? (skin.Stage1ControllerSE ?? skin.Stage0ControllerSE)
+                   :              skin.Stage0ControllerSE;
+                ne = stage == 2 ? (skin.Stage2ControllerNE ?? skin.Stage1ControllerNE ?? skin.Stage0ControllerNE)
+                   : stage == 1 ? (skin.Stage1ControllerNE ?? skin.Stage0ControllerNE)
+                   :              skin.Stage0ControllerNE;
             }
             else
             {
-                target = stage == 2 ? (_decoyStage2Controller ?? _decoyStage1Controller ?? _decoyIdleController)
-                       : stage == 1 ? (_decoyStage1Controller ?? _decoyIdleController)
-                       :              _decoyIdleController;
+                se = stage == 2 ? (_decoyStage2Controller ?? _decoyStage1Controller ?? _decoyIdleController)
+                   : stage == 1 ? (_decoyStage1Controller ?? _decoyIdleController)
+                   :              _decoyIdleController;
+                ne = stage == 2 ? (_decoyStage2ControllerNE ?? _decoyStage1ControllerNE ?? _decoyStage0ControllerNE)
+                   : stage == 1 ? (_decoyStage1ControllerNE ?? _decoyStage0ControllerNE)
+                   :              _decoyStage0ControllerNE;
             }
 
+            RuntimeAnimatorController target = (useNE && ne != null) ? ne : se;
             if (target != null && !ReferenceEquals(anim.runtimeAnimatorController, target))
             {
                 anim.runtimeAnimatorController = target;
@@ -631,6 +684,8 @@ namespace Nymora.Combat.View
                 if (kvp.Value != null) Destroy(kvp.Value.gameObject);
             }
             _decoyCooldowns.Clear();
+            _decoyFaceFlip.Clear();
+            _decoyUseNE.Clear();
         }
 
         // Petit helper pour eviter d'allouer une nouvelle List a chaque cleanup.
