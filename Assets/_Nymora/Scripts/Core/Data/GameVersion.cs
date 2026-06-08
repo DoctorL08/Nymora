@@ -368,7 +368,10 @@ namespace Nymora.Core.Data
         //   ANNULÉS : les leurres restent tués par sorts directs, le poison ne les touche pas.)
         // v148 (8 juin 2026) — Nightseer (partiel) : Filet de Ronces cap 2 -> 1x/tour ; Pas Furtif 4 -> 3 PA
         //   + relance 1 tour (CooldownTurns=1, systeme generique -> AUCUN champ networked). Suite a venir.
-        public const int CombatRulesVersion = 148;
+        // v149 (8 juin 2026) — Nightseer pièges : expirent au bout de 6 tours (FogHelpers.ClearExpiredTraps en
+        //   fin de round, reutilise TrapAppliedOnTurn -> aucun champ networked) + compteur de tours restants
+        //   au-dessus de chaque piège, VISIBLE CASTEUR-only (TrapView).
+        public const int CombatRulesVersion = 149;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

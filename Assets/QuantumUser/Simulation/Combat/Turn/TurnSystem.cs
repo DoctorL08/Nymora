@@ -500,6 +500,8 @@ namespace Quantum
                 GridHelpers.DecrementAllTerrainsOnTurnEnd(f, state->TurnNumber);
                 FogHelpers.DecrementAllVeilsOnTurnEnd(f, state->TurnNumber);
                 MarkHelpers.DecrementAllMarksOnTurnEnd(f, state->TurnNumber);
+                // Patch 8 juin — pièges Nightseer : expirent au bout de 6 tours (réutilise TrapAppliedOnTurn).
+                FogHelpers.ClearExpiredTraps(f, state->TurnNumber, SpellRegistry.NightseerTrapLifetimeTurns);
 
                 // Patch 5 juin — « les poisons durent 2 tours max » : apres le decrement (qui a expire
                 // les minuteurs VeninDecay echus), on vide les marques venin des porteurs dont le

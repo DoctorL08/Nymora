@@ -103,6 +103,8 @@ namespace Nymora.Combat.View
         // créé inactif, activé/orienté dans LateUpdate quand un Bondissant du viewer est posé.
         private GameObject[] _arrowGOs;
         private SpriteRenderer[] _arrowRenderers;
+        // Patch 8 juin — compteur de tours restants au-dessus de chaque piège (CASTER-only).
+        private TextMesh[] _counterTMs;
         private static Sprite _arrowSpriteCache;
         private static bool _arrowSpriteLoaded;
 
@@ -175,6 +177,7 @@ namespace Nymora.Combat.View
             _emergeCos = new Coroutine[count];
             _arrowGOs = new GameObject[count];
             _arrowRenderers = new SpriteRenderer[count];
+            _counterTMs = new TextMesh[count];
             Sprite arrowSprite = GetArrowSprite();
             // Scale calculé depuis les bounds RÉELS du sprite (taille monde SVG imprévisible) pour
             // atteindre _arrowWorldSize units, peu importe l'import. Évite la flèche géante.
@@ -229,6 +232,33 @@ namespace Nymora.Combat.View
                     arrowGo.SetActive(false);
                     _arrowGOs[idx] = arrowGo;
                     _arrowRenderers[idx] = asr;
+
+                    // Patch 8 juin — compteur de tours restants (CASTER-only), au TOP de la case (au-dessus
+                    //   de la rune ET de la flèche du Bondissant, qui sont centrées -> évite la superposition).
+                    var cntGo = new GameObject($"TrapCounter_{x}_{y}");
+                    cntGo.transform.SetParent(tile.transform, false);
+                    cntGo.transform.localPosition = new Vector3(0f, 0.2f, 0f); // top de la case
+                    var tm = cntGo.AddComponent<TextMesh>();
+                    tm.anchor = TextAnchor.MiddleCenter;
+                    tm.alignment = TextAlignment.Center;
+                    tm.characterSize = 0.035f;
+                    tm.fontSize = 72;
+                    tm.color = new Color(0.75f, 1f, 0.6f, 0.95f);
+                    tm.richText = false;
+                    var cntFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                    if (cntFont != null)
+                    {
+                        tm.font = cntFont;
+                        var cmr = cntGo.GetComponent<MeshRenderer>();
+                        if (cmr != null)
+                        {
+                            cmr.sharedMaterial = cntFont.material;
+                            cmr.sortingLayerName = tile.SortingLayerName;
+                            cmr.sortingOrder = sr.sortingOrder + 1000; // au-dessus de la rune et du highlight
+                        }
+                    }
+                    cntGo.SetActive(false);
+                    _counterTMs[idx] = tm;
                 }
             }
 
@@ -355,6 +385,27 @@ namespace Nymora.Combat.View
                         else if (arrowGo.activeSelf)
                         {
                             arrowGo.SetActive(false);
+                        }
+                    }
+
+                    // Patch 8 juin — compteur de tours restants au-dessus du piège, CASTER-only (owner == viewer).
+                    //   remaining = NightseerTrapLifetimeTurns - (tour courant - tour de pose), clampé >= 1.
+                    var cntTm = _counterTMs[idx];
+                    if (cntTm != null)
+                    {
+                        bool showCnt = show && kind != TrapKind.None && owner == viewer;
+                        if (showCnt)
+                        {
+                            int placed = FogHelpers.GetTrapAppliedOnTurn(frame, x, y);
+                            int remaining = SpellRegistry.NightseerTrapLifetimeTurns - (state.TurnNumber - placed);
+                            if (remaining < 1) remaining = 1;
+                            string txt = remaining.ToString();
+                            if (cntTm.text != txt) cntTm.text = txt;
+                            if (!cntTm.gameObject.activeSelf) cntTm.gameObject.SetActive(true);
+                        }
+                        else if (cntTm.gameObject.activeSelf)
+                        {
+                            cntTm.gameObject.SetActive(false);
                         }
                     }
 

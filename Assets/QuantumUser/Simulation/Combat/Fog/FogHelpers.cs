@@ -174,6 +174,32 @@ namespace Quantum
             return tile.Trap == TrapKind.None ? -1 : tile.TrapOwner;
         }
 
+        /// <summary>Patch 8 juin — round de POSE du piège sur la case (pour le compteur de tours restants
+        /// côté View, casteur-only). -1 si pas de piège. Réutilise TrapAppliedOnTurn (aucun champ ajouté).</summary>
+        public static int GetTrapAppliedOnTurn(Frame f, int x, int y)
+        {
+            if (!GridHelpers.InBounds(x, y)) return -1;
+            var fog = f.Unsafe.GetPointerSingleton<FogSingleton>();
+            var tile = fog->Tiles[GridHelpers.Index(x, y)];
+            return tile.Trap == TrapKind.None ? -1 : tile.TrapAppliedOnTurn;
+        }
+
+        /// <summary>Patch 8 juin — expire les pièges posés depuis >= lifetimeTurns rounds (Nightseer :
+        /// les embûches disparaissent au bout de 6 tours). Appelé en fin de round (TurnSystem).</summary>
+        public static void ClearExpiredTraps(Frame f, int currentTurn, int lifetimeTurns)
+        {
+            var fog = f.Unsafe.GetPointerSingleton<FogSingleton>();
+            for (int i = 0; i < GridConstants.Count; i++)
+            {
+                if (fog->Tiles[i].Trap == TrapKind.None) continue;
+                if (currentTurn - fog->Tiles[i].TrapAppliedOnTurn < lifetimeTurns) continue;
+                int x = i % GridConstants.Width;
+                int y = i / GridConstants.Width;
+                Log.Info($"[Trap] expire (>= {lifetimeTurns} tours) sur ({x},{y}) kind={fog->Tiles[i].Trap}");
+                ClearTrap(f, x, y);
+            }
+        }
+
         // #23 (5 juin) — Owner du TERRAIN (Vapeur Carmin / Sang Coagulé / Brume Toxique) pour
         //   l'affichage (outline d'équipe en match miroir). Convention PlayerIndex+1 (0 = aucun),
         //   comme VeiledByPlayer. Écrit par GridHelpers.SetTerrain ; la sim ne lit jamais ce champ.

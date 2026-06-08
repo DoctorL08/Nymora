@@ -133,6 +133,10 @@ namespace Quantum
         //   piege declenche (equilibrage 6 juin : remplace les degats complets du piege, trop cheat).
         //   Applique aussi TRAQUE aux ennemis de la zone. cf FogHelpers.ApplyZoneTrapDamageToEnemies.
         public const int ZoneTrapDetonationSurplusDmg = 30;
+        // Patch 8 juin — durée de vie des pièges Nightseer (Filet/Mine/Bondissant) : ils disparaissent au
+        //   bout de 6 tours (compteur de tours restants visible CASTEUR-only côté View). Pas de champ ajouté
+        //   (réutilise FogSingleton.Tiles.TrapAppliedOnTurn). Expiration en fin de round (TurnSystem).
+        public const int NightseerTrapLifetimeTurns = 6;
         // Patch 7 juin — Frappe de l'Ombre REFONTE EXECUTEUR : 160 base + 120 si la cible est TRAQUÉ
         //   (= 280), consomme Traqué. Ne pose PLUS Traqué, plus de bonus PM. Récompense le setup de marque.
         public const int FrappeDeLOmbreDmg            = 160;  // dgts base
