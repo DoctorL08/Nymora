@@ -137805,7 +137805,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   _backendSettings: {fileID: 11400000, guid: 25da4a90aebea7c4d94a2359f25209d2, type: 2}
-  _theme: {fileID: 0}
+  _theme: {fileID: 11400000, guid: f44b5bce0fc2f9f44979421971e77fdc, type: 2}
 --- !u!4 &1397454552
 Transform:
   m_ObjectHideFlags: 0
