@@ -371,7 +371,11 @@ namespace Nymora.Core.Data
         // v149 (8 juin 2026) — Nightseer pièges : expirent au bout de 6 tours (FogHelpers.ClearExpiredTraps en
         //   fin de round, reutilise TrapAppliedOnTurn -> aucun champ networked) + compteur de tours restants
         //   au-dessus de chaque piège, VISIBLE CASTEUR-only (TrapView).
-        public const int CombatRulesVersion = 149;
+        // v150 (8 juin 2026) — Nightseer SIGNATURE Traquenard (refonte) : ciblage 2 clics (1er=cible, 2e=
+        //   direction). 280 dgts (inchanges) + POUSSE la cible 2 cases dans la direction + le NS prend la CASE
+        //   D'ORIGINE de la cible (libérée par la poussée ; fallback case adjacente libre). Paralysie + marque/
+        //   voile inchanges. Si la cible meurt des degats : ni poussee ni TP. Traquenard ajoute a IsDirectionalSpell (View).
+        public const int CombatRulesVersion = 150;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

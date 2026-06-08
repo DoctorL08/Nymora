@@ -217,6 +217,7 @@ namespace Quantum
         public const int TraquenardPRCost             = 5;    // refonte 29 mai : 5/5 PR (cap plein, phase 3)
         public const int TraquenardPRGainOnConsumeMark = 2;   // +2 PR au caster si bonus marque declenche
         public const int TraquenardRangeMax           = 5;    // portee Manhattan caster -> cible
+        public const int TraquenardPushDist           = 2;    // patch 8 juin : pousse la cible 2 cases (2e clic = direction)
 
         // 3.3.a.i — Colossar Offensifs (Bible V7.1).
         public const int FrappeLourdeDmgBase          = 180;  // base mêlée

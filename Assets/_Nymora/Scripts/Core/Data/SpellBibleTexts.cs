@@ -167,7 +167,7 @@ namespace Nymora.Core.Data
                 Description = "Utilisable uniquement à <30% HP. Le Nightseer se téléporte jusqu'à 7 cases, se soigne de 150 HP ET pose un Filet de Ronces sur la case quittée (disparaît au bout de 6 tours). UTILISABLE 1 FOIS PAR MATCH.",
                 LoreFlavor  = "L'évasion totale. Évanescence permet au Nightseer de quitter complètement le combat le temps d'un tour." },
             new Entry { SpellIdValue = 45, SpellIdTech = "nightseer_traquenard",            ClassId = NymoraClass.Nightseer, Category = SpellCategory.Signature, DisplayName = "Traquenard",
-                Description = "Coûte 5 PR (jauge pleine, phase 3). Le Nightseer se téléporte à 1 case de la cible. Inflige 280 dégâts. Applique PARALYSIE (-2 PM, -2 PA) au prochain tour de la cible. Si la cible est TRAQUÉ : +80 dégâts.",
+                Description = "Coûte 5 PR (jauge pleine, phase 3). Inflige 280 dégâts, POUSSE la cible de 2 cases dans la direction choisie (2e clic) et le Nightseer prend la case que la cible vient de quitter. Applique PARALYSIE (-2 PM, -2 PA) au prochain tour de la cible. Si la cible est TRAQUÉ : +80 dégâts et le Nightseer regagne 2 PR.",
                 LoreFlavor  = "L'embuscade pure. Traquenard n'est pas un finisher de DPS — c'est l'aboutissement d'un piège mental. La paralysie verrouille le tour adverse, le Nightseer peut décrocher ou enchaîner." },
 
             // ===== COLOSSAR (50-65) =====

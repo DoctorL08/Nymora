@@ -408,18 +408,16 @@ namespace Quantum
                 }
             }
 
-            // 2.16 — Traquenard : cooldown 4 tours + pre-validation case adjacente libre.
+            // 2.16 — Traquenard : cooldown 4 tours. Patch 8 juin (refonte signature) — le NS ne se téléporte
+            //   plus à une case adjacente fixe mais DERRIÈRE la cible poussée (case dynamique calculée au cast,
+            //   avec fallback) -> on ne pré-valide PLUS une case adjacente libre (le sort reste utile même si le
+            //   TP échoue : dégâts + poussée + paralysie). Seul le cooldown gate ici.
             if (cmd.Spell == SpellId.NightseerTraquenard)
             {
                 int turnsSinceUse = currentTurnForCooldown - caster->LastTraquenardUsedOnTurn;
                 if (turnsSinceUse < SpellRegistry.TraquenardCooldownTurns)
                 {
                     Log.Warn($"[Spell] rejet : Traquenard en cooldown ({turnsSinceUse}/{SpellRegistry.TraquenardCooldownTurns} tours depuis dernier usage tour {caster->LastTraquenardUsedOnTurn})");
-                    return;
-                }
-                if (!TryFindTraquenardLandingCell(f, caster, cmd.TargetX, cmd.TargetY, out _, out _))
-                {
-                    Log.Warn($"[Spell] rejet : Traquenard pas de case adjacente libre autour de ({cmd.TargetX},{cmd.TargetY})");
                     return;
                 }
             }
@@ -3262,44 +3260,87 @@ namespace Quantum
 
                 case SpellId.NightseerTraquenard:
                 {
-                    // Capture le bonus AVANT consume marque (la lecture est faite ici, le bonus dgts
-                    // a deja ete applique dans le pipeline damage calc en amont).
+                    // Patch 8 juin (refonte signature) — 2 clics : 1er = cible, 2e = direction. Les 280 dgts
+                    //   sont déjà appliqués en amont (pipeline). Ici : on POUSSE la cible de 2 cases dans la
+                    //   direction choisie, puis le NS se téléporte sur la CASE D'ORIGINE de la cible (celle
+                    //   qu'elle vient de libérer). Si la cible est morte des dégâts : ni poussée ni TP.
+                    //   Capture le bonus marque/voile AVANT la poussée (lecture sur la case d'origine).
                     bool hasBonus = TraquenardHasMarkOrOwnVeil(f, cmd.TargetX, cmd.TargetY, caster->PlayerIndex);
 
-                    // Teleport caster sur case adjacente cible cote caster (axe principal Manhattan).
-                    // La pre-validation TryCastSpell garantit qu'au moins 1 case est libre.
-                    if (TryFindTraquenardLandingCell(f, caster, cmd.TargetX, cmd.TargetY, out int landX, out int landY))
-                    {
-                        int oldX = caster->GridX, oldY = caster->GridY;
-                        GridHelpers.SetOccupant(f, oldX, oldY, EntityRef.None);
-                        caster->GridX = landX;
-                        caster->GridY = landY;
-                        caster->Facing = FacingHelpers.FacingFromGridDelta(landX - oldX, landY - oldY); // 3.7.a.i.0
-                        GridHelpers.SetOccupant(f, landX, landY, casterEntity);
-                        Log.Info($"[Spell] Traquenard : P{caster->PlayerIndex} teleport ({oldX},{oldY}) -> ({landX},{landY}) adjacent cible ({cmd.TargetX},{cmd.TargetY})");
-                        // Fix #5 — le teleport declenche un piege ennemi sur la case d'arrivee (owner-filtre).
-                        FogHelpers.TryTriggerTrapOnEnter(f, casterEntity, caster, landX, landY, currentTurn);
-                    }
-
-                    // Apply Paralysie (-3 PM, -2 PA prochain tour) + consume marque + +2 PR si bonus.
                     EntityRef trqTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
                     if (trqTarget != EntityRef.None
-                        && f.Unsafe.TryGetPointer<Combatant>(trqTarget, out Combatant* trqC))
+                        && f.Unsafe.TryGetPointer<Combatant>(trqTarget, out Combatant* trqC)
+                        && trqC->HP > 0)
                     {
+                        // Direction cardinale de poussée : 2e clic (cmd.DirX/DirY). Fallback = loin du caster.
+                        int sx = 0, sy = 0;
+                        int dirDX = cmd.DirX - cmd.TargetX;
+                        int dirDY = cmd.DirY - cmd.TargetY;
+                        if (cmd.DirX >= 0 && cmd.DirY >= 0 && (dirDX != 0 || dirDY != 0))
+                        {
+                            int adx = dirDX < 0 ? -dirDX : dirDX;
+                            int ady = dirDY < 0 ? -dirDY : dirDY;
+                            if (adx >= ady) sx = dirDX > 0 ? 1 : -1;
+                            else            sy = dirDY > 0 ? 1 : -1;
+                        }
+                        else
+                        {
+                            int ddx = cmd.TargetX - caster->GridX;
+                            int ddy = cmd.TargetY - caster->GridY;
+                            int adx = ddx < 0 ? -ddx : ddx;
+                            int ady = ddy < 0 ? -ddy : ddy;
+                            if (adx >= ady) sx = ddx >= 0 ? 1 : -1;
+                            else            sy = ddy >= 0 ? 1 : -1;
+                        }
+
+                        // Pousse la cible de TraquenardPushDist cases dans (sx,sy) : "from" = case opposée.
+                        PushAndTrigger(f, trqC, trqTarget, cmd.TargetX - sx, cmd.TargetY - sy,
+                            SpellRegistry.TraquenardPushDist, currentTurn, caster);
+
+                        // Le NS se téléporte sur la case d'ORIGINE de la cible (là où elle était avant la
+                        //   poussée) — libérée par la poussée. Si la cible n'a pas bougé (push bloqué), la
+                        //   case est encore occupée -> fallback case adjacente libre.
+                        int landX = cmd.TargetX;
+                        int landY = cmd.TargetY;
+                        bool landOk = GridHelpers.InBounds(landX, landY)
+                                      && GridHelpers.IsWalkable(f, landX, landY)
+                                      && GridHelpers.GetOccupant(f, landX, landY) == EntityRef.None
+                                      && !ObstacleHelpers.HasObstacleAt(f, landX, landY)
+                                      && !DecoyHelpers.HasAnyDecoyAt(f, landX, landY);
+                        // Fallback : 1ère case adjacente libre autour de la cible déplacée (côté caster).
+                        if (!landOk)
+                            landOk = TryFindTraquenardLandingCell(f, caster, trqC->GridX, trqC->GridY, out landX, out landY);
+
+                        if (landOk)
+                        {
+                            int oldX = caster->GridX, oldY = caster->GridY;
+                            GridHelpers.SetOccupant(f, oldX, oldY, EntityRef.None);
+                            caster->GridX = landX;
+                            caster->GridY = landY;
+                            caster->Facing = FacingHelpers.FacingFromGridDelta(trqC->GridX - landX, trqC->GridY - landY); // face la cible
+                            GridHelpers.SetOccupant(f, landX, landY, casterEntity);
+                            Log.Info($"[Spell] Traquenard : P{caster->PlayerIndex} TP ({oldX},{oldY}) -> ({landX},{landY}) case d'origine de la cible (poussée en ({trqC->GridX},{trqC->GridY}))");
+                            // Le teleport declenche un piege ennemi sur la case d'arrivee (owner-filtre).
+                            FogHelpers.TryTriggerTrapOnEnter(f, casterEntity, caster, landX, landY, currentTurn);
+                        }
+                        else
+                        {
+                            Log.Info($"[Spell] Traquenard : aucune case libre derrière la cible -> NS reste en place");
+                        }
+
+                        // Paralysie (-PM/-PA prochain tour) + consommation marque/voile (sur la cible déplacée).
                         StatusHelper.Apply(trqC, StatusKind.MovementMalus,
                             magnitude: SpellRegistry.TraquenardParalysiePMMalus,
-                            turnsLeft: SpellRegistry.TraquenardParalysieTurns,
-                            currentTurn);
+                            turnsLeft: SpellRegistry.TraquenardParalysieTurns, currentTurn);
                         StatusHelper.Apply(trqC, StatusKind.ActionMalus,
                             magnitude: SpellRegistry.TraquenardParalysieAPMalus,
-                            turnsLeft: SpellRegistry.TraquenardParalysieTurns,
-                            currentTurn);
+                            turnsLeft: SpellRegistry.TraquenardParalysieTurns, currentTurn);
                         Log.Info($"[Spell] Traquenard : Paralysie -{SpellRegistry.TraquenardParalysiePMMalus} PM / -{SpellRegistry.TraquenardParalysieAPMalus} PA sur P{trqC->PlayerIndex} (1 tour)");
 
                         if (hasBonus)
                         {
                             MarkHelpers.ConsumeMark(trqC);
-                            FogHelpers.ClearVeil(f, cmd.TargetX, cmd.TargetY);
+                            FogHelpers.ClearVeil(f, cmd.TargetX, cmd.TargetY); // le voile reste sur la case d'origine
                             int trqMaxRes = CombatantStats.GetMaxResource(caster->Class);
                             int trqBeforeRes = caster->Resource;
                             int trqGain = SpellRegistry.TraquenardPRGainOnConsumeMark;

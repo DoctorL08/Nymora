@@ -85,7 +85,8 @@ namespace Nymora.Combat.View
         private static bool IsDirectionalSpell(SpellId spell)
         {
             return spell == SpellId.NightseerBourrasque
-                || spell == SpellId.NightseerSouffleGlacial; // Piège Bondissant (pose + sens d'éjection)
+                || spell == SpellId.NightseerSouffleGlacial  // Piège Bondissant (pose + sens d'éjection)
+                || spell == SpellId.NightseerTraquenard;     // patch 8 juin : signature pousse la cible 2 cases (2e clic)
         }
 
         private void Awake()
