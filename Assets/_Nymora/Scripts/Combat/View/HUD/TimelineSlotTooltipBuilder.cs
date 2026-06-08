@@ -1,64 +1,85 @@
+using System.Text;
 using Quantum;
 
 namespace Nymora.Combat.View.HUD
 {
     /// <summary>
-    /// Build le rich text affiche au survol d'un slot de la timeline combat. Resume des
-    /// infos critiques d'un combatant : phase actuelle, HP, ressource, marque Nightseer
-    /// active, statuses temporises actifs (top 4 max pour eviter overflow tooltip).
+    /// Build le rich text affiche au survol d'un slot de la timeline combat (ou de ses chips de
+    /// statuts, qui remontent au slot par bubbling). Patch UI combat 8 juin : tooltip MÉGA-COMPLET
+    /// — toutes les infos d'état du combattant maintenant que les panneaux haut G/D sont supprimés :
+    /// classe + stage, HP, PA, PM, ressource (ou leurres Ghostra), venin (xN + durée), marque
+    /// Nightseer, et TOUS les statuses actifs (plus de cap à 4) avec leur magnitude.
     /// </summary>
     public static class TimelineSlotTooltipBuilder
     {
         public static string Build(Combatant c, int turnNumber)
         {
-            // Stage actuel + ressource
-            string className = c.Class.ToString();
-            string stageLine = $"<size=18><color=#ffe28a><b>{className}</b></color>  <color=#aaa><size=14>(Stage {ComputeStage(c)})</size></color></size>";
+            var sb = new StringBuilder(320);
 
-            // HP + Ressource (pas d'emoji ❤ ⚡ : font asset combat ne les supporte pas)
-            string hpLine = $"<size=15><color=#ffd060>HP : {c.HP} / {c.MaxHP}</color></size>";
-            int maxRes = CombatantStats.GetMaxResource(c.Class);
-            string resLine = maxRes > 0
-                ? $"<size=14><color=#c8b8ff>{ResourceTag(c.Class)} : {c.Resource} / {maxRes}</color></size>"
-                : "";
+            // En-tête : classe + stage.
+            sb.Append($"<size=18><color=#ffe28a><b>{c.Class}</b></color>  <color=#aaa><size=14>(Stage {ComputeStage(c)})</size></color></size>");
 
-            // Marque Nightseer (si presente)
-            string markLine = "";
-            if (c.CurrentMark != MarkKind.None && c.MarkTurnsLeft > 0)
+            // HP.
+            sb.Append($"\n<size=15><color=#ffd060>HP : {c.HP} / {c.MaxHP}</color></size>");
+
+            // PA / PM (réintroduits ici — n'étaient plus visibles depuis la suppression des panneaux).
+            sb.Append($"\n<size=14><color=#e0d0a0>PA : {c.PA} / {c.MaxPA}    PM : {c.PM} / {c.MaxPM}</color></size>");
+
+            // Ressource de classe (ou leurres actifs pour Ghostra dont la ressource = RÉMANENCE).
+            if (c.Class == NymoraClass.Ghostra)
             {
-                markLine = $"\n<size=14><color=#ff8060>{MarkLabel(c.CurrentMark)} ({c.MarkTurnsLeft} tour{(c.MarkTurnsLeft > 1 ? "s" : "")})</color></size>";
+                int decoys = 0;
+                for (int i = 0; i < 3; i++)
+                    if (c.Decoys[i].Kind != DecoyKind.None) decoys++;
+                sb.Append($"\n<size=14><color=#c8b8ff>Leurres : {decoys} / 3</color></size>");
+            }
+            else
+            {
+                int maxRes = CombatantStats.GetMaxResource(c.Class);
+                if (maxRes > 0)
+                    sb.Append($"\n<size=14><color=#c8b8ff>{ResourceTag(c.Class)} : {c.Resource} / {maxRes}</color></size>");
             }
 
-            // Statuses actifs (top 4 max)
-            string statusBlock = BuildStatusBlock(c, turnNumber);
+            // Venin Necram (champ dédié VeninStacks + minuteur caché VeninDecay). Affiche le NOMBRE.
+            if (c.VeninStacks > 0)
+            {
+                int t = VeninTurnsLeft(c);
+                string tt = t > 0 ? $" ({t}t)" : "";
+                sb.Append($"\n<size=14><color=#9fd36a>Venin : x{c.VeninStacks}{tt}</color></size>");
+            }
 
-            return stageLine + "\n" + hpLine + (string.IsNullOrEmpty(resLine) ? "" : "\n" + resLine) + markLine + statusBlock;
-        }
+            // Marque Nightseer (champ dédié CurrentMark).
+            if (c.CurrentMark != MarkKind.None && c.MarkTurnsLeft > 0)
+            {
+                sb.Append($"\n<size=14><color=#ff8060>{MarkLabel(c.CurrentMark)} ({c.MarkTurnsLeft} tour{(c.MarkTurnsLeft > 1 ? "s" : "")})</color></size>");
+            }
 
-        private static string BuildStatusBlock(Combatant c, int turnNumber)
-        {
-            int count = 0;
+            // TOUS les statuses actifs (plus de cap). Les statuts cachés (VeninDecay, réservés)
+            // renvoient "" via StatusEffectLabel et sont sautés.
             string body = "";
             for (int i = 0; i < 8; i++)
             {
                 var s = c.Statuses[i];
-                if (s.Kind == StatusKind.None) continue;
-                // Patch 5 juin — affiche l'EFFET (« -1 PM »...) au lieu du nom enum. Cf StatusEffectLabel.
-                //   Statuts cachés (minuteur venin, réservés) renvoient "" et sont sautés.
+                if (s.Kind == StatusKind.None || s.TurnsLeft <= 0) continue;
                 string label = StatusEffectLabel.Describe(s.Kind, s.Magnitude);
                 if (string.IsNullOrEmpty(label)) continue;
-                if (count >= 4)
-                {
-                    body += "\n<size=12><i><color=#888>... et plus</color></i></size>";
-                    return "\n\n<size=13><b><color=#c8b8ff>Effets :</color></b></size>" + body;
-                }
-                int turnsLeft = s.TurnsLeft;
-                string turnsStr = turnsLeft > 0 ? $" ({turnsLeft}t)" : "";
-                body += $"\n<size=13>• {label}{turnsStr}</size>";
-                count++;
+                body += $"\n<size=13>• {label} ({s.TurnsLeft}t)</size>";
             }
-            if (count == 0) return "";
-            return "\n\n<size=13><b><color=#c8b8ff>Effets :</color></b></size>" + body;
+            if (body.Length > 0)
+                sb.Append("\n\n<size=13><b><color=#c8b8ff>Effets :</color></b></size>").Append(body);
+
+            return sb.ToString();
+        }
+
+        // Durée restante du venin = minuteur caché StatusKind.VeninDecay (refresh à chaque marque).
+        private static int VeninTurnsLeft(Combatant c)
+        {
+            for (int i = 0; i < 8; i++)
+            {
+                var s = c.Statuses[i];
+                if (s.Kind == StatusKind.VeninDecay && s.TurnsLeft > 0) return s.TurnsLeft;
+            }
+            return 0;
         }
 
         private static int ComputeStage(Combatant c)
@@ -97,8 +118,7 @@ namespace Nymora.Combat.View.HUD
             {
                 case MarkKind.Traque:    return "Traqué (Marque du Chasseur)";
                 // MarkKind.Empreinte : marque legacy supprimee par la refonte 29 mai (plus jamais
-                //   appliquee). Mappee sur Traqué au cas improbable d'une marque residuelle -> aucun
-                //   texte "Empreinté" visible cote joueur.
+                //   appliquee). Mappee sur Traqué au cas improbable d'une marque residuelle.
                 case MarkKind.Empreinte: return "Traqué (Marque du Chasseur)";
                 default: return k.ToString();
             }

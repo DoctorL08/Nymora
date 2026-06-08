@@ -46,11 +46,21 @@ namespace Nymora.Combat.View.HUD
                  "afficher de bande HP.")]
         [SerializeField] private float _hpStripHeight = 30f;
 
+        [Tooltip("Patch UI combat 8 juin (3b) — hauteur (px) des chips de statuts affichées au-dessus " +
+                 "de chaque portrait. Mets 0 pour désactiver les chips.")]
+        [SerializeField] private float _chipHeight = 28f;
+
         private CombatUISpriteAnimator _animator0;
         private CombatUISpriteAnimator _animator1;
         // Patch UI combat 8 juin — libellés HP/MaxHP sous chaque portrait (lecture d'un coup d'œil).
         private TMP_Text _hp0;
         private TMP_Text _hp1;
+        // Patch UI combat 8 juin (3b) — rangées de chips de statuts (pool réutilisé chaque frame, 0 GC).
+        private const int MaxChips = 10;
+        private RectTransform _chipRow0;
+        private RectTransform _chipRow1;
+        private readonly List<StatusChip> _chips0 = new List<StatusChip>(MaxChips);
+        private readonly List<StatusChip> _chips1 = new List<StatusChip>(MaxChips);
         private Dictionary<NymoraClass, NymoraClassDefinition> _classByEnum;
 
         // Skins combat : catalogue charge a la demande (meme chemin Resources que CombatantRenderer).
@@ -139,6 +149,104 @@ namespace Nymora.Combat.View.HUD
             // Patch UI combat 8 juin — HP/MaxHP sous chaque portrait (remplace les panneaux haut G/D).
             SetHpLabel(_hp0, hasP0, p0, activePlayerIndex == 0);
             SetHpLabel(_hp1, hasP1, p1, activePlayerIndex == 1);
+
+            // Patch UI combat 8 juin (3b) — chips de statuts (malus/bonus) au-dessus de chaque portrait.
+            RefreshChips(_chipRow0, _chips0, hasP0, p0);
+            RefreshChips(_chipRow1, _chips1, hasP1, p1);
+        }
+
+        private void RefreshChips(RectTransform row, List<StatusChip> pool, bool has, in Combatant c)
+        {
+            if (row == null) return;
+            int used = 0;
+            if (has)
+            {
+                // 1) VENIN Necram — champ dédié VeninStacks (PAS dans Statuses[]). C'était l'état manquant.
+                if (c.VeninStacks > 0)
+                {
+                    EmitChip(row, pool, ref used, $"VENx{c.VeninStacks}", StatusIconInfo.Polarity.Malus);
+                }
+
+                // 2) MARQUE Nightseer — champ dédié CurrentMark (PAS dans Statuses[]).
+                if (c.CurrentMark != MarkKind.None && c.MarkTurnsLeft > 0)
+                {
+                    EmitChip(row, pool, ref used, "TRAQ", StatusIconInfo.Polarity.Malus);
+                }
+
+                // 3) STATUSES temporisés (buffs/debuffs du tableau Statuses[8]).
+                for (int i = 0; i < 8; i++)
+                {
+                    var s = c.Statuses[i];
+                    if (s.Kind == StatusKind.None || s.TurnsLeft <= 0) continue;
+                    if (!StatusIconInfo.TryGet(s.Kind, s.Magnitude, out string code, out var pol)) continue;
+                    EmitChip(row, pool, ref used, code, pol);
+                }
+            }
+            // Désactive les chips du pool non utilisées ce frame.
+            for (int i = used; i < pool.Count; i++)
+            {
+                if (pool[i] != null) pool[i].gameObject.SetActive(false);
+            }
+        }
+
+        // Émet une chip (code + couleur). No-op si le cap MaxChips est atteint. La description détaillée
+        // est dans le tooltip du slot (survol du portrait/chips), pas par chip.
+        private void EmitChip(RectTransform row, List<StatusChip> pool, ref int used, string code, StatusIconInfo.Polarity pol)
+        {
+            if (used >= MaxChips) return;
+            var chip = GetChip(row, pool, used);
+            chip.gameObject.SetActive(true);
+            chip.Label.text = code;
+            chip.Bg.color = PolarityColor(pol);
+            chip.Layout.preferredWidth = Mathf.Clamp(code.Length * 10f + 16f, 34f, 110f);
+            chip.Layout.preferredHeight = _chipHeight;
+            used++;
+        }
+
+        private StatusChip GetChip(RectTransform row, List<StatusChip> pool, int index)
+        {
+            while (pool.Count <= index) pool.Add(CreateChip(row));
+            return pool[index];
+        }
+
+        private StatusChip CreateChip(RectTransform row)
+        {
+            var go = new GameObject("Chip", typeof(RectTransform), typeof(LayoutElement), typeof(Image));
+            go.transform.SetParent(row, false);
+            var img = go.GetComponent<Image>();
+            CombatUiKit.ApplyRounded(img, 5f);
+            img.raycastTarget = true;
+            var chip = go.AddComponent<StatusChip>();
+
+            var txtGo = new GameObject("Code", typeof(RectTransform));
+            txtGo.transform.SetParent(go.transform, false);
+            var trt = (RectTransform)txtGo.transform;
+            trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
+            trt.offsetMin = Vector2.zero; trt.offsetMax = Vector2.zero;
+            var txt = txtGo.AddComponent<TextMeshProUGUI>();
+            txt.alignment = TextAlignmentOptions.Center;
+            txt.fontSize = 14f;
+            txt.fontStyle = FontStyles.Bold;
+            txt.color = Color.white;
+            txt.raycastTarget = false;
+            txt.enableWordWrapping = false;
+
+            chip.Rect = (RectTransform)go.transform;
+            chip.Layout = go.GetComponent<LayoutElement>();
+            chip.Bg = img;
+            chip.Label = txt;
+            return chip;
+        }
+
+        private static Color PolarityColor(StatusIconInfo.Polarity p)
+        {
+            switch (p)
+            {
+                case StatusIconInfo.Polarity.Malus:   return new Color(0.84f, 0.20f, 0.22f, 0.95f); // rouge
+                case StatusIconInfo.Polarity.Buff:    return new Color(0.82f, 0.64f, 0.24f, 0.95f); // ambre
+                case StatusIconInfo.Polarity.Defense: return new Color(0.25f, 0.48f, 0.82f, 0.95f); // bleu
+                default:                              return new Color(0.40f, 0.40f, 0.45f, 0.95f); // gris
+            }
         }
 
         private static void SetHpLabel(TMP_Text label, bool has, in Combatant c, bool isActive)
@@ -272,6 +380,39 @@ namespace Nymora.Combat.View.HUD
 
             _slot0Root = BuildSlot(container.transform, "Slot_P0", 0, out _slot0Frame, out _portrait0, out _animator0, out _hp0);
             _slot1Root = BuildSlot(container.transform, "Slot_P1", 1, out _slot1Frame, out _portrait1, out _animator1, out _hp1);
+
+            // Patch UI combat 8 juin (3b) — rangée de chips de statuts au-dessus de chaque portrait.
+            if (_chipHeight > 0f)
+            {
+                _chipRow0 = BuildChipRow(_slot0Root, "Chips_P0");
+                _chipRow1 = BuildChipRow(_slot1Root, "Chips_P1");
+            }
+        }
+
+        // Rangée horizontale (au-dessus du slot, débordant vers le haut/droite) qui héberge le pool
+        // de chips de statuts. ContentSizeFitter -> se dimensionne à son contenu.
+        private RectTransform BuildChipRow(RectTransform slotRoot, string name)
+        {
+            var go = new GameObject(name, typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
+            go.transform.SetParent(slotRoot, false);
+            var rt = (RectTransform)go.transform;
+            rt.anchorMin = new Vector2(0f, 1f);   // coin haut-gauche du slot
+            rt.anchorMax = new Vector2(0f, 1f);
+            rt.pivot = new Vector2(0f, 0f);        // grandit vers le haut + la droite
+            rt.anchoredPosition = new Vector2(0f, 4f);
+
+            var hlg = go.GetComponent<HorizontalLayoutGroup>();
+            hlg.spacing = 3f;
+            hlg.childAlignment = TextAnchor.LowerLeft;
+            hlg.childControlWidth = true;
+            hlg.childControlHeight = true;
+            hlg.childForceExpandWidth = false;
+            hlg.childForceExpandHeight = false;
+
+            var fitter = go.GetComponent<ContentSizeFitter>();
+            fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            return rt;
         }
 
         private RectTransform BuildSlot(Transform parent, string name, int slotIndex, out Image frame, out Image portrait, out CombatUISpriteAnimator anim, out TMP_Text hpLabel)
@@ -357,5 +498,20 @@ namespace Nymora.Combat.View.HUD
 
         public void OnPointerEnter(PointerEventData _) => _timeline?.OnSlotHoverEnter(_slotIndex);
         public void OnPointerExit(PointerEventData _) => _timeline?.OnSlotHoverExit();
+    }
+
+    /// <summary>
+    /// Patch UI combat 8 juin (3b) — Chip de statut au-dessus d'un portrait timeline. Simple holder
+    /// de refs UI réutilisé via pool. Pas de handler de survol propre : la chip est enfant du slot,
+    /// donc survoler une chip déclenche le tooltip du SLOT (méga-complet, TimelineSlotTooltipBuilder)
+    /// par bubbling. Ça évite le conflit "chip vs slot" et le flicker. raycastTarget reste true pour
+    /// que le survol des chips remonte bien au proxy du slot.
+    /// </summary>
+    internal sealed class StatusChip : MonoBehaviour
+    {
+        public RectTransform Rect;
+        public LayoutElement Layout;
+        public Image Bg;
+        public TMP_Text Label;
     }
 }

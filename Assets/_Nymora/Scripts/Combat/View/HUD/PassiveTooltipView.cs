@@ -85,6 +85,11 @@ namespace Nymora.Combat.View.HUD
             var panelImg = panelGo.GetComponent<Image>();
             panelImg.color = _bgColor;
             CombatUiKit.ApplyRounded(panelImg, CombatUiKit.CornerRadius); // coins arrondis DA hub
+            // Patch UI combat 8 juin — le tooltip ne doit JAMAIS intercepter la souris : sinon, quand
+            // il s'ouvre sous le curseur (cas des chips de statuts), il vole le focus -> l'élément
+            // survolé perd le hover -> tooltip se ferme -> re-survol -> flicker infini. raycastTarget
+            // false = la souris le traverse, le hover reste sur la chip/slot dessous.
+            panelImg.raycastTarget = false;
 
             var vlg = panelGo.GetComponent<VerticalLayoutGroup>();
             vlg.padding = new RectOffset(_panelPadding, _panelPadding, _panelPadding, _panelPadding);
