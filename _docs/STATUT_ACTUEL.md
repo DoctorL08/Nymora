@@ -41,12 +41,13 @@ Toute la liste MINEUR (`Desktop/Patch à faire.txt`) traitée. **Pur View** (auc
 ### ⏳ Reliquat à TESTER (cf mémoire `project_tests_reliquat`) — me rappeler chaque session
 - **B Spectateur** : ne voit plus PA/PM, prévisu PM, bouton Abandonner, pièges Nightseer.
 - **I deck ranked** : après un match ranked, l'admin « sorts/decks les plus joués » se remplit.
-- **F overlay signature** : kill via signature → le floating text « SMASH!! » finit AVANT l'écran victoire/défaite.
+- ~~**F overlay signature**~~ ✅ testé et fonctionnel (9 juin).
+
+> Note workflow : Lorenzo connaît les rebuild standalone — **ne plus les lui demander** sauf si tu veux qu'il teste un truc précis sur le moment.
 
 ## ⚠️ En attente / à faire
 
-- **Côté Lorenzo (avant test/publish)** : re-**Populate Spell Catalog** (pour les nouvelles descriptions + valeurs) et **rebuild standalone** (CombatRulesVersion 154) avant ranked.
-- **Assigner les 3 controllers NE des leurres** dans le DecoyView des scènes combat (33_CombatCasual / 40_CombatRanked1v1) — sinon facing leurres en SE seul (cf commit `176d280`).
+- ✅ Populate Spell Catalog **fait** + controllers NE des leurres **assignés** (9 juin).
 - Reliquat mineur : exemption Vapeur Carmin owner-immune aussi côté IA (`AISystem`) ; IA traite encore Représailles comme une attaque (à réajuster).
 - **Patch list MINEUR : TERMINÉE** (cf section 9 juin) ; reste juste 3 tests reliquat ci-dessus.
 
