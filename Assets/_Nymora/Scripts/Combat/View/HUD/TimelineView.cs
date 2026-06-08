@@ -198,8 +198,6 @@ namespace Nymora.Combat.View.HUD
             chip.gameObject.SetActive(true);
             chip.Label.text = code;
             chip.Bg.color = PolarityColor(pol);
-            chip.Layout.preferredWidth = Mathf.Clamp(code.Length * 10f + 16f, 34f, 110f);
-            chip.Layout.preferredHeight = _chipHeight;
             used++;
         }
 
@@ -211,7 +209,7 @@ namespace Nymora.Combat.View.HUD
 
         private StatusChip CreateChip(RectTransform row)
         {
-            var go = new GameObject("Chip", typeof(RectTransform), typeof(LayoutElement), typeof(Image));
+            var go = new GameObject("Chip", typeof(RectTransform), typeof(Image));
             go.transform.SetParent(row, false);
             var img = go.GetComponent<Image>();
             CombatUiKit.ApplyRounded(img, 5f);
@@ -231,8 +229,6 @@ namespace Nymora.Combat.View.HUD
             txt.raycastTarget = false;
             txt.enableWordWrapping = false;
 
-            chip.Rect = (RectTransform)go.transform;
-            chip.Layout = go.GetComponent<LayoutElement>();
             chip.Bg = img;
             chip.Label = txt;
             return chip;
@@ -389,25 +385,27 @@ namespace Nymora.Combat.View.HUD
             }
         }
 
-        // Rangée horizontale (au-dessus du slot, débordant vers le haut/droite) qui héberge le pool
-        // de chips de statuts. ContentSizeFitter -> se dimensionne à son contenu.
+        // Grille de chips au-dessus du slot : 2 chips par étage, étages empilés VERS LE HAUT
+        // (1ère paire en bas près du portrait, le 3e+ ouvre un nouvel étage au-dessus). startCorner
+        // LowerLeft + pivot bas -> la grille grandit vers le haut. ContentSizeFitter la dimensionne.
         private RectTransform BuildChipRow(RectTransform slotRoot, string name)
         {
-            var go = new GameObject(name, typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
+            var go = new GameObject(name, typeof(RectTransform), typeof(GridLayoutGroup), typeof(ContentSizeFitter));
             go.transform.SetParent(slotRoot, false);
             var rt = (RectTransform)go.transform;
             rt.anchorMin = new Vector2(0f, 1f);   // coin haut-gauche du slot
             rt.anchorMax = new Vector2(0f, 1f);
-            rt.pivot = new Vector2(0f, 0f);        // grandit vers le haut + la droite
+            rt.pivot = new Vector2(0f, 0f);        // grandit vers le haut
             rt.anchoredPosition = new Vector2(0f, 4f);
 
-            var hlg = go.GetComponent<HorizontalLayoutGroup>();
-            hlg.spacing = 3f;
-            hlg.childAlignment = TextAnchor.LowerLeft;
-            hlg.childControlWidth = true;
-            hlg.childControlHeight = true;
-            hlg.childForceExpandWidth = false;
-            hlg.childForceExpandHeight = false;
+            var grid = go.GetComponent<GridLayoutGroup>();
+            grid.cellSize = new Vector2(56f, _chipHeight);
+            grid.spacing = new Vector2(4f, 4f);
+            grid.startCorner = GridLayoutGroup.Corner.LowerLeft; // 1ère chip en bas, étages au-dessus
+            grid.startAxis = GridLayoutGroup.Axis.Horizontal;
+            grid.childAlignment = TextAnchor.LowerLeft;
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = 2; // 2 chips par étage
 
             var fitter = go.GetComponent<ContentSizeFitter>();
             fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
@@ -509,8 +507,6 @@ namespace Nymora.Combat.View.HUD
     /// </summary>
     internal sealed class StatusChip : MonoBehaviour
     {
-        public RectTransform Rect;
-        public LayoutElement Layout;
         public Image Bg;
         public TMP_Text Label;
     }
