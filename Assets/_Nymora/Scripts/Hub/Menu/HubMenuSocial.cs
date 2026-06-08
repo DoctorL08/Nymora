@@ -746,7 +746,13 @@ namespace Nymora.Hub.Menu
 
         private bool IsOnline(string userId)
         {
-            // Snapshot initial via le tracking persistant de HubFriendsPanel (entretenu même panel fermé).
+            if (string.IsNullOrEmpty(userId)) return false;
+            // Fix 8 juin (bug "amis toujours déconnecté") : la source persistante est HubChatClient
+            // (maintient _onlineFriendIds via les events WS FRIENDS_ONLINE_LIST/FRIEND_ONLINE/OFFLINE,
+            // même menu fermé, et le client WS est toujours présent dans le hub). Avant on lisait
+            // HubFriendsPanel.Instance, qui peut être NULL dans le nouveau menu hub (panneau legacy
+            // non instancié) -> IsOnline renvoyait toujours false -> tous les amis hors-ligne.
+            if (HubChatClient.Instance != null) return HubChatClient.Instance.IsFriendOnline(userId);
             return HubFriendsPanel.Instance != null && HubFriendsPanel.Instance.IsFriendOnline(userId);
         }
 
