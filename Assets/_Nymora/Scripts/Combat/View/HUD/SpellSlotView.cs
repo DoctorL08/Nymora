@@ -216,7 +216,12 @@ namespace Nymora.Combat.View.HUD
                 case SlotState.Disabled:
                     if (_frameImage != null) _frameImage.color = FrameDisabled;
                     if (_iconImage  != null) _iconImage.color  = IconDisabled;
-                    if (_button     != null) _button.interactable = false;
+                    // Patch UI combat 8 juin (3d) — on GARDE le bouton cliquable même grisé : sinon
+                    // le clic est silencieusement avalé et le joueur ne comprend pas pourquoi il ne
+                    // peut pas cast. OnSlotClicked refuse l'armement ET explique la raison dans le chat.
+                    // (Le visuel grisé est réasserté chaque frame par RefreshSlots, donc le tint de
+                    // survol du bouton ne persiste pas.)
+                    if (_button     != null) _button.interactable = true;
                     break;
                 case SlotState.Armed:
                     if (_frameImage != null) _frameImage.color = FrameArmed;

@@ -653,6 +653,83 @@ namespace Nymora.Combat.View.HUD
             return SpellSlotView.SlotState.Normal;
         }
 
+        /// <summary>
+        /// Patch UI combat 8 juin (3d) — Si le sort n'est PAS castable maintenant (combattant local,
+        /// ce tour), renvoie true + une raison FR lisible pour le chat. Sinon false. Miroir exact des
+        /// conditions de grisage de <see cref="ResolveSlotState"/>. Si l'état local n'est pas encore
+        /// caché (début de match), renvoie false (on laisse la sim trancher).
+        /// </summary>
+        private bool TryGetUncastableReason(SpellId spell, out string reason)
+        {
+            reason = null;
+            if (spell == SpellId.None) return false;
+            if (!_hasCachedLocal) return false;
+            if (!SpellRegistry.TryGet(spell, out SpellDef def)) return false;
+
+            Combatant c = _cachedLocal;
+            int turnNumber = _cachedTurnNumber;
+            int enemyHpRatio = _cachedEnemyHpRatio;
+
+            // Interdits au tour 1 (miroir ResolveCooldownTurnsLeft).
+            if (turnNumber <= 1
+                && (spell == SpellId.GhostraPasDansLOmbre
+                    || spell == SpellId.NightseerPasFurtif
+                    || spell == SpellId.NightseerMarqueDuChasseur))
+            {
+                reason = "Indisponible au tour 1";
+                return true;
+            }
+
+            int paCost = ComputeEffectivePaCost(c, def, enemyHpRatio, turnNumber);
+            if (c.PA < paCost)
+            {
+                reason = $"PA insuffisants ({paCost} requis, {c.PA} dispo)";
+                return true;
+            }
+
+            if (c.Resource < def.HGCostMandatory)
+            {
+                reason = $"{ResourceFullName(c.Class)} insuffisant ({def.HGCostMandatory} requis)";
+                return true;
+            }
+
+            int cd = ResolveCooldownTurnsLeft(spell, c, valid: true, turnNumber);
+            if (cd > 0)
+            {
+                reason = $"En relance ({cd} tour{(cd > 1 ? "s" : "")})";
+                return true;
+            }
+
+            if (def.OncePerMatchBit != SpellRegistry.OncePerMatchBitNone
+                && (c.OncePerMatchUsedFlags & (1 << def.OncePerMatchBit)) != 0)
+            {
+                reason = "Déjà utilisé ce match";
+                return true;
+            }
+
+            if (def.MaxUsesPerTurn > 0
+                && SpellLimitsHelper.UsesThisTurn(c, spell, turnNumber) >= def.MaxUsesPerTurn)
+            {
+                reason = $"Limite atteinte ce tour ({def.MaxUsesPerTurn}x max)";
+                return true;
+            }
+
+            return false;
+        }
+
+        private static string ResourceFullName(NymoraClass cls)
+        {
+            switch (cls)
+            {
+                case NymoraClass.Soulrender: return "Hémoglyphe";
+                case NymoraClass.Nightseer:  return "Prescience";
+                case NymoraClass.Colossar:   return "Fondation";
+                case NymoraClass.Necram:     return "Putréfaction";
+                case NymoraClass.Ghostra:    return "Rémanence";
+                default: return "Ressource";
+            }
+        }
+
         // ---- Coût PA effectif (badge rubis + grisage + tooltip) ----
 
         // Cache du dernier état (rempli par OnUpdateView) pour calculer le PA effectif au survol
@@ -825,11 +902,24 @@ namespace Nymora.Combat.View.HUD
             if (spell == SpellId.None) return;
             // J10 — pas d'armement hors de son tour (ex : on ne pilote pas le sort du bot en IA
             // pendant son tour). La barre est de toute facon grisee, mais on bloque aussi le clic.
-            if (!_isLocalTurn) return;
+            // Patch 3d — on le DIT dans le chat (throttlé) pour les nouveaux joueurs.
+            if (!_isLocalTurn)
+            {
+                CombatCastFeedback.Notify("Ce n'est pas ton tour");
+                return;
+            }
 
             if (_armedSpell.HasValue && _armedSpell.Value == spell)
             {
                 Disarm();
+                return;
+            }
+
+            // Patch UI combat 8 juin (3d) — sort non castable : on n'arme pas et on explique pourquoi
+            // dans le chat de combat (PA, relance, ressource, 1/match, cap, tour 1).
+            if (TryGetUncastableReason(spell, out string reason))
+            {
+                CombatCastFeedback.Notify(reason);
                 return;
             }
 

@@ -376,6 +376,7 @@ namespace Nymora.Combat.View
                         && TileHoverView.FilterTargetsUnitSprite(def.Filter))
                     {
                         Debug.Log($"[Nymora.CombatInput] {armedSpell} : clic hors de toute unité — cast annulé (pas de misfire sol).");
+                        HUD.CombatCastFeedback.Notify("Vise un combattant pour ce sort");
                         return;
                     }
 
@@ -387,6 +388,7 @@ namespace Nymora.Combat.View
                         if (!(TryGetCasterCell(game, senderPlayer, out int cx, out int cy) && tx == cx && ty == cy))
                         {
                             Debug.Log($"[Nymora.CombatInput] {armedSpell} (self) : clic hors du caster ({tx},{ty}) — cast annule.");
+                            HUD.CombatCastFeedback.Notify("Clique sur toi-même pour ce sort");
                             return;
                         }
                     }
