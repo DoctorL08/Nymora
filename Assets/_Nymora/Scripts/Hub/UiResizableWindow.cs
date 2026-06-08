@@ -87,8 +87,14 @@ namespace Nymora.Hub
             grt.sizeDelta = new Vector2(_gripSize, _gripSize);
             grt.anchoredPosition = new Vector2(-2f, -2f);
             var img = go.GetComponent<Image>();
-            img.color = new Color(1f, 1f, 1f, 0.22f);
-            img.sprite = HubMenuUiRoundedHelper.Corner();
+            // Patch UI combat 8 juin (3e) — vraie icône SVG de redimension (3 diagonales propres)
+            // au lieu de l'ancien sprite procédural (une seule diagonale). Fallback sur le procédural
+            // si le SVG n'est pas (encore) importé en Sprite.
+            var gripSprite = Resources.Load<Sprite>("UI/Icons/ui_icon_resize");
+            bool hasSvg = gripSprite != null;
+            img.sprite = hasSvg ? gripSprite : HubMenuUiRoundedHelper.Corner();
+            img.color = new Color(1f, 1f, 1f, hasSvg ? 0.5f : 0.22f);
+            img.preserveAspect = true;
             go.GetComponent<ResizeGripHandler>().Init(this);
         }
 
