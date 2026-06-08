@@ -387,7 +387,10 @@ namespace Nymora.Core.Data
         //   POSE pour Piliers/Murs (l'expiration-timer ne s'applique plus qu'aux Failles) -> AUCUN champ
         //   networked ajoute. View : numero d'ordre STRICT 1->N au-dessus de chaque Pilier/Mur, CASTEUR-only
         //   (du plus ancien au plus recent ; segments d'un mur numerotes gauche->droite via gx-gy).
-        public const int CombatRulesVersion = 153;
+        // v154 (8 juin 2026) — patch list ligne 7 : les sorts panic "low-HP" 1x/match de chaque classe passent
+        //   de <30% HP / 4 PA a <50% HP / 2 PA : Dernier Souffle (Soulrender), Evanescence (Nightseer), Dernier
+        //   Pas (Ghostra), Cocon Putride (Necram, signature). Represailles (Colossar) etait deja a <50% / 2 PA.
+        public const int CombatRulesVersion = 154;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

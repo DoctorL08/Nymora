@@ -74,7 +74,7 @@ namespace Quantum
         public const int SeveViveHealBonusBleed       = 50;  // +50 si BleedDoT actif
         public const int DernierSouffleHealAmount     = 200;
         public const int DernierSouffleHGGain         = 3;
-        public const int DernierSouffleHPThresholdPct = 30;  // utilisable uniquement a < 30% HP
+        public const int DernierSouffleHPThresholdPct = 50;  // patch 8 juin (ligne 7) : 30 -> 50% HP
 
         // Pacte de Sang (2.10.a) — patch 7 juin : nerf burst (+3 HG -> +2, +50% -> +25%).
         public const int PacteDeSangSelfDamage        = 80;  // self-damage au cast (inchange)
@@ -203,7 +203,7 @@ namespace Quantum
         public const int SeveSauvageHealBase          = 130;  // heal de base
         public const int SeveSauvageHealBonusTrap     = 60;   // +60 si trap declenche dans les 2 derniers rounds
         public const int SeveSauvageHealBonusVeil     = 30;   // +30 si au moins 1 voile actif sur la map (owner caster)
-        public const int EvanescenceHpThresholdPct    = 30;   // HP < 30% requis
+        public const int EvanescenceHpThresholdPct    = 50;   // patch 8 juin (ligne 7) : 30 -> 50% HP
         public const int EvanescenceHeal              = 150;  // heal au cast
         public const int EvanescenceRangeMax          = 7;    // teleport jusqu'a 7 cases
         public const int EvanescenceVeilTurns         = 2;    // duree Voile sur case quittee
@@ -485,8 +485,8 @@ namespace Quantum
         // Applique +CoconPutrideMarksPerEnemy (1) marque venin sur tous ennemis vivants Manhattan
         // <= CoconPutrideMarksRange (4) du caster. Cap 4/cible respecte par ApplyMark.
         // Cap +2 PT/tour Necram via marques appliquees respecte. Pas de status durable.
-        public const int CoconPutridePACost          = 4;
-        public const int CoconPutrideHpThresholdPct  = 30;
+        public const int CoconPutridePACost          = 2;    // patch 8 juin (ligne 7) : 4 -> 2 PA
+        public const int CoconPutrideHpThresholdPct  = 50;   // patch 8 juin (ligne 7) : 30 -> 50% HP
         public const int CoconPutrideHealAmount      = 220;
         public const int CoconPutrideMarksRange      = 4;
         public const int CoconPutrideMarksPerEnemy   = 1;
@@ -689,10 +689,10 @@ namespace Quantum
         //         Decision Lorenzo : le panic-button doit toujours poser son leurre, on
         //         sacrifie le plus vieux. Cohérent avec gameplay panic-button "remix les leurres".
         //   Bible "Panic button mobile : se soigne + s'echappe + laisse leurre derriere."
-        public const int DernierPasPACost            = 4;
+        public const int DernierPasPACost            = 2;    // patch 8 juin (ligne 7) : 4 -> 2 PA
         public const int DernierPasRangeMax          = 5;
         public const int DernierPasHealAmount        = 200;
-        public const int DernierPasHpThresholdPct    = 30;
+        public const int DernierPasHpThresholdPct    = 50;   // patch 8 juin (ligne 7) : 30 -> 50% HP
 
         // 3.7.c.v — Pas de l'Au-Dela (Bible V7.1 ligne 1180) :
         //   2 PA self. Pas de range (Filter=Self). Pas de gate HP, pas de 1x/match.
@@ -974,7 +974,7 @@ namespace Quantum
                 case SpellId.SoulrenderDernierSouffle:
                     def = new SpellDef
                     {
-                        PACost = 4,
+                        PACost = 2,                          // patch 8 juin (ligne 7) : 4 -> 2 PA
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.Self,
                         RangeMin = 0,
@@ -1396,7 +1396,7 @@ namespace Quantum
                 case SpellId.NightseerEvanescence:
                     def = new SpellDef
                     {
-                        PACost = 4,
+                        PACost = 2,                          // patch 8 juin (ligne 7) : 4 -> 2 PA
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.EmptyTile,
                         RangeMin = 1,
