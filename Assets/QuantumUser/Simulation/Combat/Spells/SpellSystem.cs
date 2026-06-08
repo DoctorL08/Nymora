@@ -391,6 +391,16 @@ namespace Quantum
                 }
             }
 
+            // Patch 8 juin — Représailles (refonte survie) : utilisable seulement sous 50% HP.
+            if (cmd.Spell == SpellId.ColossarRepresailles)
+            {
+                if (caster->HP * 100 >= caster->MaxHP * SpellRegistry.RepresaillesHpThresholdPct)
+                {
+                    Log.Warn($"[Spell] rejet : Représailles requiert HP < {SpellRegistry.RepresaillesHpThresholdPct}% (actuel {caster->HP}/{caster->MaxHP})");
+                    return;
+                }
+            }
+
             // 3.3.b.i — Line of Sight check : Bible V7.1 "Pilier/Mur bloque lignes de vue/tir".
             // Pour les sorts directs a distance (range >= 2), on verifie qu'aucun obstacle non-OWN
             // ne se trouve sur la ligne caster -> case ciblee. Les obstacles du caster lui-meme
@@ -3362,16 +3372,18 @@ namespace Quantum
                 // -------------------------------------------------------------
 
                 case SpellId.ColossarRepresailles:
-                    // 3.3.a.i — Bible : 100 dgts immediat (deja inflige par damage loop standard,
-                    // + bonus adjacence Densite Inerte si applicable). Apres : applique RipostMelee
-                    // 80 dgts pendant 2 tours sur le CASTER (reflect sur attaques melee subies).
-                    // Bible V7.1 : CAP 4 RETOURS -> RepresaillesReflectsLeft = 4.
-                    StatusHelper.Apply(caster, StatusKind.RipostMelee,
-                        magnitude: SpellRegistry.RepresaillesReflectDmg,
-                        turnsLeft: SpellRegistry.RepresaillesReflectTurns,
-                        currentTurn);
-                    caster->RepresaillesReflectsLeft = SpellRegistry.RepresaillesReflectMaxTriggers;
-                    Log.Info($"[Spell] Represailles : RipostMelee {SpellRegistry.RepresaillesReflectDmg} dgts ({SpellRegistry.RepresaillesReflectTurns} tours, cap {SpellRegistry.RepresaillesReflectMaxTriggers} retours) sur P{caster->PlayerIndex}");
+                    // Patch 8 juin (refonte SURVIE) — heal d'urgence 200 (via HealHelper : respecte
+                    //   AntiHealShield + réduction de soin) + petite riposte mêlée (50 dgts, 1 tour, cap 2).
+                    //   Gate <50% HP en pré-validation. Plus aucun dégât offensif.
+                    {
+                        int reprHealed = HealHelper.ApplyHeal(caster, SpellRegistry.RepresaillesHeal);
+                        StatusHelper.Apply(caster, StatusKind.RipostMelee,
+                            magnitude: SpellRegistry.RepresaillesReflectDmg,
+                            turnsLeft: SpellRegistry.RepresaillesReflectTurns,
+                            currentTurn);
+                        caster->RepresaillesReflectsLeft = SpellRegistry.RepresaillesReflectMaxTriggers;
+                        Log.Info($"[Spell] Représailles (survie) : heal {reprHealed}/{SpellRegistry.RepresaillesHeal} + RipostMelee {SpellRegistry.RepresaillesReflectDmg} ({SpellRegistry.RepresaillesReflectTurns}T, cap {SpellRegistry.RepresaillesReflectMaxTriggers}) sur P{caster->PlayerIndex}");
+                    }
                     break;
 
                 // -------------------------------------------------------------
@@ -3646,10 +3658,8 @@ namespace Quantum
                     StatusHelper.Apply(provC, StatusKind.Provoked,
                         magnitude: caster->PlayerIndex,     // PlayerIndex provocateur (lookup dans hooks)
                         turnsLeft: SpellRegistry.ProvocationTurns, currentTurn);
-                    StatusHelper.Apply(provC, StatusKind.MovementMalus,
-                        magnitude: SpellRegistry.ProvocationMovementMalusMag,
-                        turnsLeft: SpellRegistry.ProvocationMovementMalusTurns, currentTurn);
-                    Log.Info($"[Spell] Provocation : P{provC->PlayerIndex} provoque par P{caster->PlayerIndex} pour {SpellRegistry.ProvocationTurns}T (-{SpellRegistry.ProvocationMovementMalusMag} PM, +{SpellRegistry.ProvocationCostBump} PA cost TOUS sorts, {SpellRegistry.ProvocationAutoDamageNotAdj} dmg auto si pas adjacent fin tour)");
+                    // Patch 8 juin — le -1 PM (MovementMalus) est RETIRÉ de Provocation (decision Lorenzo).
+                    Log.Info($"[Spell] Provocation : P{provC->PlayerIndex} provoque par P{caster->PlayerIndex} pour {SpellRegistry.ProvocationTurns}T (+{SpellRegistry.ProvocationCostBump} PA cost TOUS sorts, {SpellRegistry.ProvocationAutoDamageNotAdj} dmg auto si pas adjacent fin tour)");
                     break;
                 }
 

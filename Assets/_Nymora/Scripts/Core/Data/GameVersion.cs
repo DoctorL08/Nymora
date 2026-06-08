@@ -375,7 +375,13 @@ namespace Nymora.Core.Data
         //   direction). 280 dgts (inchanges) + POUSSE la cible 2 cases dans la direction + le NS prend la CASE
         //   D'ORIGINE de la cible (libérée par la poussée ; fallback case adjacente libre). Paralysie + marque/
         //   voile inchanges. Si la cible meurt des degats : ni poussee ni TP. Traquenard ajoute a IsDirectionalSpell (View).
-        public const int CombatRulesVersion = 150;
+        // v151 (8 juin 2026) — Colossar (partiel) : Provocation ne pose PLUS -1 PM (garde +2 PA cost + 100 dmg
+        //   si pas adjacent). Renvoi du Bouclier 3 -> 2 PA + relance 1 tour (CooldownTurns=1) + cap retours 4 -> 2.
+        // v152 (8 juin 2026) — Colossar Représailles REFONTE en survie (heal d'urgence) : self, 2 PA, utilisable
+        //   SOUS 50% HP (gate pre-validation), heal 200 (HealHelper) + petite riposte mêlée (RipostMelee 50,
+        //   1 tour, cap 2). Plus de dégâts offensifs. Catégorie deck builder -> Survie. Comble le gros heal
+        //   perdu (Soin Lourd -> Éboulement). UTILISABLE 1x/MATCH (OncePerMatchBit=6, champ Int32 existant).
+        public const int CombatRulesVersion = 152;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

@@ -60,6 +60,7 @@ namespace Quantum
         public const byte OncePerMatchBitNecramCoconPutride = 3;
         public const byte OncePerMatchBitGhostraVoileSpectral = 4;
         public const byte OncePerMatchBitGhostraDernierPas    = 5;
+        public const byte OncePerMatchBitColossarRepresailles = 6;   // patch 8 juin : Représailles 1x/match
 
         // Constantes Bible V7.1 partagees par plusieurs sorts / systemes.
         public const int PeauDeFerShieldHP            = 200;
@@ -223,9 +224,14 @@ namespace Quantum
         public const int FrappeLourdeDmgBase          = 180;  // base mêlée
         public const int FrappeLourdeDmgIfPinned      = 280;  // 180+100 si cible epinglee (case opposee au caster bloquee)
         public const int RepresaillesDmgImmediate     = 100;  // dgts directs au cast
-        public const int RepresaillesReflectDmg       = 80;   // dgts reflectes sur attaque melee subie
-        public const int RepresaillesReflectTurns     = 2;    // 2 tours de reflect actif
-        public const int RepresaillesReflectMaxTriggers = 4;  // Bible V7.1 : cap 4 retours (vs Riposte Carmin = no cap)
+        // Patch 8 juin — Représailles REFONTE en sort de SURVIE (heal d'urgence) : Survie, utilisable sous
+        //   50% HP, 2 PA, heal 200 + petite riposte mêlée (50 dgts, 1 tour, cap 2). Comble le trou de gros
+        //   heal laissé par Soin Lourd (devenu Éboulement).
+        public const int RepresaillesHpThresholdPct   = 50;   // utilisable seulement si HP < 50%
+        public const int RepresaillesHeal             = 200;  // heal d'urgence au cast
+        public const int RepresaillesReflectDmg       = 50;   // patch 8 juin : 80 -> 50 (renvoi sur attaque mêlée subie)
+        public const int RepresaillesReflectTurns     = 1;    // patch 8 juin : 2 -> 1 tour
+        public const int RepresaillesReflectMaxTriggers = 2;  // patch 8 juin : cap 4 -> 2 retours
 
         // 3.3.a.i — Passif Densite Inerte bonus adjacence (Bible V7.1).
         // Branche dans le damage compute des sorts Colossar : si caster Colossar adjacent
@@ -324,7 +330,7 @@ namespace Quantum
         // Renvoi du Bouclier : 3 PA self, RipostAll 60 dgts (melee + distance) / 1 tour / cap 4 retours.
         public const int RenvoiBouclierReflectDmg     = 60;
         public const int RenvoiBouclierTurns          = 1;
-        public const int RenvoiBouclierMaxTriggers    = 4;    // cap reflects (reuse RepresaillesReflectsLeft)
+        public const int RenvoiBouclierMaxTriggers    = 2;    // patch 8 juin : cap reflects 4 -> 2 (reuse RepresaillesReflectsLeft)
 
         // Refonte 29 mai — EBOULEMENT (ex-Soin Lourd) : 3 PA, p3, détruis un de tes Piliers ->
         //   AoE 150 (rayon 1) + push autour. Le +30 HP vient du passif (destruction de pilier).
@@ -1456,19 +1462,21 @@ namespace Quantum
                 // RipostMelee 80 dmg sur le CASTER pour 2 tours (reflect sur attaque melee subie).
                 // Bible cap 4 retours non implemente (edge case, TODO 3.3.a.iii ou Phase 6).
                 // Bonus passif Densite Inerte adjacence : +20 dmg sur les 100 dgts immediats si caster adjacent.
+                // Patch 8 juin — REFONTE en survie (heal d'urgence) : self, 2 PA, sous 50% HP (gate en
+                //   pre-validation). Plus de dégâts/portée mêlée. Heal 200 + petite riposte mêlée en handler.
                 case SpellId.ColossarRepresailles:
                     def = new SpellDef
                     {
-                        PACost = 3,
+                        PACost = 2,
                         Shape = TargetingShape.SingleTile,
-                        Filter = TargetingFilter.Enemy,
-                        RangeMin = 1,
-                        RangeMax = 1,
-                        DamageAmount = RepresaillesDmgImmediate, // 100, +20 adjacence en handler
+                        Filter = TargetingFilter.Self,
+                        RangeMin = 0,
+                        RangeMax = 0,
+                        DamageAmount = 0,
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
-                        OncePerMatchBit = OncePerMatchBitNone,
-                        IsOffensive = 1,
+                        OncePerMatchBit = OncePerMatchBitColossarRepresailles, // patch 8 juin : 1x/match
+                        IsOffensive = 0,
                     };
                     return true;
 
@@ -1703,7 +1711,7 @@ namespace Quantum
                 case SpellId.ColossarRenvoiDuBouclier:
                     def = new SpellDef
                     {
-                        PACost = 3,
+                        PACost = 2,                          // patch 8 juin : 3 -> 2 PA
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.Self,
                         RangeMin = 0,
@@ -1713,6 +1721,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
+                        CooldownTurns = 1,                   // patch 8 juin : relance 1 tour
                     };
                     return true;
 
