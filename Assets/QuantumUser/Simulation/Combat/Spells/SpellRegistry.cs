@@ -340,16 +340,16 @@ namespace Quantum
 
         // 3.5.a.i — Necram Offensifs base (Bible V7.1).
         // Crachat Acide : sort de base "80% utilisation early-game". Combine dgts directs + setup marques.
-        public const int CrachatAcideDmg              = 90;    // dgts directs
+        public const int CrachatAcideDmg              = 100;   // dgts directs (patch 8 juin : 90 -> 100)
         public const int CrachatAcideMarksApplied     = 2;     // applique 2 marques venin (cap 4/cible)
         public const int CrachatAcideRangeMax         = 4;     // portee Manhattan
         public const int CrachatAcidePACost           = 3;
 
         // Morsure Putride : finisher melee qui scale avec marques + transfere les marques au kill.
         // Bible : 110 dgts + 22/marque (max +90 = 200 total max). Si target meurt -> marques sur ennemi le plus proche.
-        public const int MorsurePutrideDmgBase        = 110;   // dgts base
-        public const int MorsurePutrideDmgPerMark     = 22;    // bonus dgts par marque venin sur la cible
-        public const int MorsurePutrideDmgBonusCap    = 90;    // cap bonus marques (= 22 * 4 = 88, arrondi 90 Bible)
+        public const int MorsurePutrideDmgBase        = 120;   // dgts base (patch 8 juin : 110 -> 120)
+        public const int MorsurePutrideDmgPerMark     = 10;    // bonus dgts par marque (patch 8 juin : 22 -> 10)
+        public const int MorsurePutrideDmgBonusCap    = 40;    // cap bonus marques (= 10 * 4 = 40)
         public const int MorsurePutridePACost         = 4;
 
         // 3.5.a.ii — Necram Offensifs burst/AoE (Bible V7.1).
@@ -375,10 +375,12 @@ namespace Quantum
         public const int BrumeToxiquePACost             = 4;
         public const int BrumeToxiqueTickBonusPerMark   = 10;  // tick majoré dans la zone (tunable)
 
-        // 3.5.b.i — Inoculation : setup pur, 1 PA range 5, 2 marques cap 4 (Bible V7.1).
+        // 3.5.b.i — Inoculation : setup, 1 PA range 5, 2 marques cap 4 (Bible V7.1).
+        // Patch 8 juin : ajoute 30 dgts directs (n'est plus 100% silent).
         public const int InoculationPACost            = 1;
         public const int InoculationRangeMax          = 5;
         public const int InoculationMarksApplied      = 2;
+        public const int InoculationDmg               = 30;   // patch 8 juin : dgts directs (etait 0)
 
         // 3.5.b.i — Marque Sacrificielle : buff DoT, 2 PA range 5, +20 dmg flat par tick venin sur la cible pendant 3 rounds (Bible V7.1).
         // Effet neutre si pas de marques actives au cast (le bonus declenchera des qu'une marque sera posee).
@@ -1850,9 +1852,9 @@ namespace Quantum
                     };
                     return true;
 
-                // 3.5.b.i — Inoculation : setup pur. 1 PA, range 5, applique 2 marques venin sur
-                // une cible ennemie (cap 4 gere par VeninHelpers.ApplyMark). Pas de damage. Handler
-                // custom dans SpellSystem pour le ApplyMark (IsOffensive=0 -> skip damage loop).
+                // 3.5.b.i — Inoculation : setup. 1 PA, range 5, applique 2 marques venin sur une cible
+                // ennemie (cap 4 gere par VeninHelpers.ApplyMark). Patch 8 juin : IsOffensive=1 +
+                // DamageAmount=30 -> 30 dgts directs via le pipeline ; le ApplyMark reste dans le handler.
                 case SpellId.NecramInoculation:
                     def = new SpellDef
                     {
@@ -1861,11 +1863,11 @@ namespace Quantum
                         Filter = TargetingFilter.Enemy,
                         RangeMin = 1,
                         RangeMax = InoculationRangeMax,
-                        DamageAmount = 0,
+                        DamageAmount = InoculationDmg, // patch 8 juin : 30 dgts (etait 0)
                         HGCostMandatory = 0,
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
-                        IsOffensive = 0,
+                        IsOffensive = 1, // patch 8 juin : passe offensif pour appliquer les 30 dgts
                         MaxUsesPerTurn = 1, // equilibrage 5 juin (B4) : cap 1x/tour (anti-spam marques/PT)
                     };
                     return true;

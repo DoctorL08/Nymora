@@ -2281,8 +2281,9 @@ namespace Quantum
                 }
 
                 // 3.5.b.i — Inoculation : applique 2 marques venin sur la cible ennemie (cap 4
-                // gere par VeninHelpers.ApplyMark). Pas de damage. Filter Enemy + LoS check deja
-                // appliques en amont. Putrefaction Necram +1 PT (gere dans ApplyMark via hook).
+                // gere par VeninHelpers.ApplyMark). Patch 8 juin : les 30 dgts directs sont appliques
+                // par le pipeline generique (IsOffensive=1 / DamageAmount=30) ; ici on ajoute les marques.
+                // Filter Enemy + LoS check deja appliques en amont. Putrefaction Necram +1 PT (hook ApplyMark).
                 case SpellId.NecramInoculation:
                 {
                     EntityRef target = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
@@ -2292,7 +2293,7 @@ namespace Quantum
                         && targetInoc->HP > 0)
                     {
                         VeninHelpers.ApplyMark(f, targetInoc, SpellRegistry.InoculationMarksApplied, currentTurn);
-                        Log.Info($"[Spell] Inoculation : +{SpellRegistry.InoculationMarksApplied} marques venin sur P{targetInoc->PlayerIndex} (silent, no damage)");
+                        Log.Info($"[Spell] Inoculation : +{SpellRegistry.InoculationMarksApplied} marques venin sur P{targetInoc->PlayerIndex} (+{SpellRegistry.InoculationDmg} dgts via pipeline)");
                     }
                     break;
                 }

@@ -340,7 +340,10 @@ namespace Nymora.Core.Data
         //   lisent le pool du bon Necram ; heal Symbiose Morbide scopé au proprietaire du venin (x3 sites).
         //   En 1v1 non-miroir : comportement identique. Le tier 3 (densite 7+) n'est plus atteignable en
         //   1v1 (c'etait un artefact du pooling miroir). Virus Fatal reste gate sur 6 PT, pas la densite.
-        public const int CombatRulesVersion = 141;
+        // v142 (8 juin 2026) — Patchs Necram degats directs (patch list) : Crachat Acide 90 -> 100,
+        //   Morsure Putride base 110 -> 120 + bonus/marque 22 -> 10 (cap +40, max 160), Inoculation passe
+        //   offensif + 30 dgts (etait 0).
+        public const int CombatRulesVersion = 142;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

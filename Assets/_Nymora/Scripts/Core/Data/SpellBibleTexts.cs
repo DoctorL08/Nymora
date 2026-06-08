@@ -222,10 +222,10 @@ namespace Nymora.Core.Data
 
             // ===== NECRAM (70-85) =====
             new Entry { SpellIdValue = 70, SpellIdTech = "necram_crachat_acide",            ClassId = NymoraClass.Necram, Category = SpellCategory.Offensive, DisplayName = "Crachat Acide",
-                Description = "Inflige 90 dégâts ET applique 2 marques de venin (au lieu de 1). Cap à 4 marques par cible.",
+                Description = "Inflige 100 dégâts ET applique 2 marques de venin (au lieu de 1). Cap à 4 marques par cible.",
                 LoreFlavor  = "Le sort de base, mais redoutable. Crachat Acide combine dégâts directs et setup en 1 PA-efficace. C'est l'arme à 80% de l'utilisation Necram en early." },
             new Entry { SpellIdValue = 71, SpellIdTech = "necram_morsure_putride",          ClassId = NymoraClass.Necram, Category = SpellCategory.Offensive, DisplayName = "Morsure Putride",
-                Description = "Inflige 110 dégâts + 22 par marque sur la cible (max +90, donc 200 dégâts max). Si la cible meurt : toutes ses marques sont transférées sur l'unité ennemie la plus proche.",
+                Description = "Inflige 120 dégâts + 10 par marque sur la cible (max +40, donc 160 dégâts max). Si la cible meurt : toutes ses marques sont transférées sur l'unité ennemie la plus proche.",
                 LoreFlavor  = "L'embrasement. Morsure Putride est le finisher qui propage. Tuer une cible avec elle ne stoppe pas le DoT — elle migre. Anti-team, mais aussi outil pour cycler en 1v1." },
             new Entry { SpellIdValue = 72, SpellIdTech = "necram_detonation_virulente",     ClassId = NymoraClass.Necram, Category = SpellCategory.Offensive, DisplayName = "Détonation Virulente",
                 Description = "Inflige instantanément tous les dégâts de venin de la cible (marques × dégâts de Floraison + bonus Marque Sacrificielle), en ignorant boucliers ET réductions. Les marques NE sont PAS consommées — rejouable chaque tour. Cap : 1 fois par tour.",
@@ -237,8 +237,8 @@ namespace Nymora.Core.Data
                 Description = "Pose une zone toxique 3x3 pendant 3 tours. Toute unité ennemie qui se trouve dans la zone (à la pose, en entrant, ou en finissant son tour) prend +1 marque de venin. Tant qu'une unité tient dans la Brume, ses dégâts de venin par tour sont MAJORÉS (+10 par marque). Pas de dégâts directs. Cap : 1×/tour, relance 2 tours.",
                 LoreFlavor  = "L'air vicié. Brume Toxique ne tue pas — elle CONDAMNE : rester dedans, c'est accélérer sa propre pourriture." },
             new Entry { SpellIdValue = 75, SpellIdTech = "necram_inoculation",              ClassId = NymoraClass.Necram, Category = SpellCategory.Tactical,  DisplayName = "Inoculation",
-                Description = "Applique 2 marques de venin sur la cible (sans dégâts directs). Cap à 4 marques par cible. Utilisable 1 fois par tour.",
-                LoreFlavor  = "Le baiser de la mort. Inoculation ne fait rien d'immédiat. L'adversaire qui prend 2 marques sait que les 3 prochains tours vont être un compte à rebours. La pression vient du SILENCE." },
+                Description = "Inflige 30 dégâts et applique 2 marques de venin sur la cible. Cap à 4 marques par cible. Utilisable 1 fois par tour.",
+                LoreFlavor  = "Le baiser de la mort. Une morsure légère, puis le venin s'installe : l'adversaire qui prend 2 marques sait que les 3 prochains tours vont être un compte à rebours." },
             new Entry { SpellIdValue = 76, SpellIdTech = "necram_marque_sacrificielle",     ClassId = NymoraClass.Necram, Category = SpellCategory.Tactical,  DisplayName = "Marque Sacrificielle",
                 Description = "Pendant 3 tours, les marques de venin sur la cible infligent +20 dégâts par tour. La cible peut recevoir Marque Sacrificielle même si elle n'a pas encore de marques (mais sans marques actives, l'effet est neutre).",
                 LoreFlavor  = "L'engrais. Marque Sacrificielle force l'adversaire à se soigner CONSTAMMENT. 70 dégâts de venin par tour ne pardonnent aucun délai." },
