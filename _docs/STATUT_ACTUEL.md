@@ -29,17 +29,31 @@ Phase 0 housekeeping → **Phase 1 patchs perso (équilibre parfait)** → Phase
 - **v154 ligne 7** : les 5 sorts panic low-HP (Dernier Souffle/Évanescence/Dernier Pas/Cocon Putride/Représailles) uniformisés à **<50% PV + 2 PA**.
 - **Descriptions minimalistes** : les **80 sorts** réécrits (1 effet/ligne, `\n`, sans PA/portée, limites en dernière ligne). Source unique `SpellBibleTexts` → deck builder + tooltip combat.
 
+## Travaux 9 juin — Phase 3 « patchs MINEUR » TERMINÉE
+
+Toute la liste MINEUR (`Desktop/Patch à faire.txt`) traitée. **Pur View** (aucun bump CombatRulesVersion) sauf backend.
+
+**Combat (client, validé) :** panneaux haut G/D → HP sous portraits timeline + chips de statuts (tous états, venins inclus) + tooltip méga-complet ; bouton Fin de tour milieu-droit ; chat indique pourquoi un sort n'est pas castable ; handle de resize chat en SVG.
+**Backend (déployé prod + validé) :** succès Explorateur retiré (100→99) ; admin = matrice winrate matchups + résumé hebdo auto (dimanche soir) + sorts/decks les plus joués (deck enregistré par match) ; lien Discord éditable depuis l'admin → **source unique site nymora.fr (live) + jeu**.
+**Validés en jeu :** amis online (fix HubChatClient), retour hub à la position d'avant combat, replay rewind (scrubber), Discord en jeu.
+**Décision :** replay cross-version = **on garde le verrou CombatRulesVersion** (pas de replay « état », gros chantier non justifié).
+
+### ⏳ Reliquat à TESTER (cf mémoire `project_tests_reliquat`) — me rappeler chaque session
+- **B Spectateur** : ne voit plus PA/PM, prévisu PM, bouton Abandonner, pièges Nightseer.
+- **I deck ranked** : après un match ranked, l'admin « sorts/decks les plus joués » se remplit.
+- **F overlay signature** : kill via signature → le floating text « SMASH!! » finit AVANT l'écran victoire/défaite.
+
 ## ⚠️ En attente / à faire
 
 - **Côté Lorenzo (avant test/publish)** : re-**Populate Spell Catalog** (pour les nouvelles descriptions + valeurs) et **rebuild standalone** (CombatRulesVersion 154) avant ranked.
 - **Assigner les 3 controllers NE des leurres** dans le DecoyView des scènes combat (33_CombatCasual / 40_CombatRanked1v1) — sinon facing leurres en SE seul (cf commit `176d280`).
 - Reliquat mineur : exemption Vapeur Carmin owner-immune aussi côté IA (`AISystem`) ; IA traite encore Représailles comme une attaque (à réajuster).
-- Patch list restante : **items MINEUR** (UI combat, spectateur, replay rewind, stats admin par classe).
+- **Patch list MINEUR : TERMINÉE** (cf section 9 juin) ; reste juste 3 tests reliquat ci-dessus.
 
 ## Prochaine action
 
-Au choix Lorenzo : **Phase 2 — mort subite tour 25**, ou les **patchs mineurs UI**, ou 2v2/3v3.
+Phase 1 ✅ et Phase 3 (patchs mineurs) ✅. **Prochaine étape : Phase 2 — mort subite tour 25** (ou directement 2v2/3v3 si Lorenzo préfère).
 
 ---
 
-*Dernière mise à jour : 8 juin 2026.*
+*Dernière mise à jour : 9 juin 2026.*
