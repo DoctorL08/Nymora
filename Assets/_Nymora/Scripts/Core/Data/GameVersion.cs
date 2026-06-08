@@ -361,7 +361,12 @@ namespace Nymora.Core.Data
         // v146 (8 juin 2026) — Ghostra (bloc patch, partiel) : Pas dans l'Ombre pivote les ennemis adjacents
         //   DOS a la Ghostra (au lieu de face). Lame Spectrale 170 -> 130, retire le +60 Plaie Ouverte,
         //   remplace par "retourne la cible dos au caster" (apres le dorsal). Suite du bloc Ghostra a venir.
-        public const int CombatRulesVersion = 146;
+        // v147 (8 juin 2026) — Ghostra (2/2) leurres : Éveil Spectral priorise un leurre DÉJÀ adjacent en
+        //   position DORSALE (au lieu de prendre le 1er slot et finir non-dorsal). Voile Spectrale : un leurre
+        //   déjà sur une cardinale ne se déplace plus inutilement (autorise sa propre case) -> le 3e leurre ne
+        //   part plus en corner quand le Ghostra + 2 leurres occupent les cardinales. (#1 ciblage + #3 poison
+        //   ANNULÉS : les leurres restent tués par sorts directs, le poison ne les touche pas.)
+        public const int CombatRulesVersion = 147;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

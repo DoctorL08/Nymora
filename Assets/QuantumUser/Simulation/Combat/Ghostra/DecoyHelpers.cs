@@ -234,12 +234,31 @@ namespace Quantum
         {
             outSlot = -1; outX = -1; outY = -1; outDorsal = false;
             if (ghostra == null || target == null) return false;
+
+            int tx = target->GridX, ty = target->GridY;
+
+            // Patch 8 juin (#4) — PRIORITÉ : si un leurre est DÉJÀ adjacent à la cible en position DORSALE,
+            //   on l'utilise tel quel (pas de TP). Corrige le cas "plusieurs leurres au contact" : l'ancien
+            //   code prenait le 1er slot puis finissait NON-dorsal si la case dorsale était occupée par CET
+            //   autre leurre déjà dorsal -> le bonus dorsal était perdu.
+            for (int i = 0; i < MaxDecoys; i++)
+            {
+                if (ghostra->Decoys[i].Kind == DecoyKind.None) continue;
+                int lx = ghostra->Decoys[i].PosX, ly = ghostra->Decoys[i].PosY;
+                int dist = (lx >= tx ? lx - tx : tx - lx) + (ly >= ty ? ly - ty : ty - ly);
+                if (dist != 1) continue; // pas adjacent à la cible
+                if (FacingHelpers.IsDorsalFromPosition(lx, ly, target))
+                {
+                    outSlot = i; outX = lx; outY = ly; outDorsal = true; return true; // leurre déjà dorsal
+                }
+            }
+
+            // Sinon : on téléporte un leurre sur une case adjacente libre (dorsale prioritaire).
             int slot = -1;
             for (int i = 0; i < MaxDecoys; i++)
                 if (ghostra->Decoys[i].Kind != DecoyKind.None) { slot = i; break; }
             if (slot < 0) return false; // aucun leurre à téléporter
 
-            int tx = target->GridX, ty = target->GridY;
             int* candX = stackalloc int[4] { tx + 1, tx - 1, tx,     tx     };
             int* candY = stackalloc int[4] { ty,     ty,     ty + 1, ty - 1 };
             int fallbackX = -1, fallbackY = -1;
@@ -412,7 +431,13 @@ namespace Quantum
                     if (!GridHelpers.IsWalkable(f, nx, ny)) continue;
                     if (ObstacleHelpers.HasObstacleAt(f, nx, ny)) continue;
                     if (GridHelpers.GetOccupant(f, nx, ny) != EntityRef.None) continue;
-                    if (FindSlotAtPosition(ghostra, nx, ny) >= 0) continue; // case déjà prise par un leurre
+                    // Patch 8 juin (#2) — autorise la PROPRE case du leurre (occSlot == s) : sinon un leurre
+                    //   déjà sur une cardinale adjacente skippait sa case et se déplaçait, faisant déborder
+                    //   le 3e leurre sur une diagonale (corner) quand le Ghostra + 2 leurres occupent déjà
+                    //   les cardinales. Comme les cardinales (0-3) sont scannées avant les diagonales (4-7),
+                    //   un leurre sur un corner est aussi ramené sur une cardinale libre si possible.
+                    int occSlot = FindSlotAtPosition(ghostra, nx, ny);
+                    if (occSlot >= 0 && occSlot != s) continue; // case prise par un AUTRE leurre
                     ghostra->Decoys[s].PosX = nx;
                     ghostra->Decoys[s].PosY = ny;
                     moved++;
