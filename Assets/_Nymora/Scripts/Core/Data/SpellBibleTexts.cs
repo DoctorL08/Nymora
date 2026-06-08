@@ -248,7 +248,7 @@ namespace Nymora.Core.Data
             new Entry { SpellIdValue = 78, SpellIdTech = "necram_contagion",                ClassId = NymoraClass.Necram, Category = SpellCategory.Tactical,  DisplayName = "Contagion",
                 Description = "Rend une unité ennemie CONTAGIEUSE pendant 2 tours : à la fin de chacun de ses tours, elle prend +1 marque de venin automatiquement (auto-propagation). Cap : 1 fois par tour.",
                 LoreFlavor  = "L'épidémie. La cible devient son propre foyer d'infection : chaque tour qui passe la gangrène un peu plus, sans que le Necram lève le petit doigt." },
-            new Entry { SpellIdValue = 79, SpellIdTech = "necram_pas_spectral",             ClassId = NymoraClass.Necram, Category = SpellCategory.Offensive, DisplayName = "Échange Spectral",
+            new Entry { SpellIdValue = 79, SpellIdTech = "necram_pas_spectral",             ClassId = NymoraClass.Necram, Category = SpellCategory.Survival, DisplayName = "Échange Spectral",
                 Description = "Le Necram échange instantanément sa place avec une unité ennemie (portée 5) et lui inflige 80 dégâts. Cap : 1 fois par tour.",
                 LoreFlavor  = "Le pacte d'os. Le Necram et sa proie permutent dans un éclair spectral : il quitte le danger, elle le subit." },
             new Entry { SpellIdValue = 80, SpellIdTech = "necram_voile_pestilence",         ClassId = NymoraClass.Necram, Category = SpellCategory.Tactical,  DisplayName = "Nuée de Spores",
