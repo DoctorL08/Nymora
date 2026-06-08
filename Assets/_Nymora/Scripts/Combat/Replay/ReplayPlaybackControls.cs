@@ -3,6 +3,7 @@ using Nymora.Combat.View.HUD;
 using Nymora.Core.SceneFlow;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Button = UnityEngine.UI.Button;
 using Image = UnityEngine.UI.Image;
@@ -39,6 +40,11 @@ namespace Nymora.Combat.Replay
 
         private GameObject _escapeMenu;
         private bool _wasPlayingBeforeMenu;
+
+        // Item mineur C.1 (rewind) — barre de progression scrubbable. _userScrubbing = vrai pendant
+        // que le joueur tient le curseur (on ne seek qu'au relâchement, pas à chaque pixel).
+        private Slider _seekSlider;
+        private bool _userScrubbing;
 
         private bool _cinematicHidden;
         private readonly List<Canvas> _canvasesHidden = new List<Canvas>();
@@ -91,6 +97,13 @@ namespace Nymora.Combat.Replay
             {
                 if (_controller.IsReplayFinished) _playPauseLabel.text = "Fin";
                 else _playPauseLabel.text = _controller.IsPaused ? "Play" : "Pause";
+            }
+
+            // Item mineur C.1 — synchronise la position du scrubber sur le tick courant, SAUF quand le
+            // joueur le manipule (sinon il « saute » sous le doigt) ou pendant un seek en cours.
+            if (_seekSlider != null && !_userScrubbing && !_controller.IsSeeking && _controller.LastTick > 0)
+            {
+                _seekSlider.SetValueWithoutNotify(_controller.CurrentTick / (float)_controller.LastTick);
             }
         }
 
@@ -158,11 +171,15 @@ namespace Nymora.Combat.Replay
             MakeButton(bar, ">>", new Vector2(36f, -24f), new Vector2(90f, 50f), OnForward);
             MakeButton(bar, "Cacher", new Vector2(160f, -24f), new Vector2(120f, 50f), ToggleCinematic);
 
-            // Erreur / desync (sous la barre), caché par défaut. Sous la barre -> masqué en cinématique.
+            // Item mineur C.1 (rewind) — barre de progression scrubbable, juste SOUS la barre (enfant
+            // -> masquée en cinématique avec le reste). Glisser = aller à n'importe quel tick (SeekTo).
+            BuildSeekSlider(bar);
+
+            // Erreur / desync (sous la barre + le scrubber), caché par défaut. Masqué en cinématique.
             _errorLabel = MakeText(bar, "ReplayError", "", 18f, new Color(0.86f, 0.36f, 0.33f, 1f), TextAlignmentOptions.Center);
             var er = _errorLabel.rectTransform;
             er.anchorMin = new Vector2(0.5f, 0f); er.anchorMax = new Vector2(0.5f, 0f); er.pivot = new Vector2(0.5f, 1f);
-            er.anchoredPosition = new Vector2(0f, -6f);
+            er.anchoredPosition = new Vector2(0f, -42f);
             er.sizeDelta = new Vector2(760f, 28f);
             _errorLabel.gameObject.SetActive(false);
         }
@@ -226,6 +243,71 @@ namespace Nymora.Combat.Replay
             if (_controller == null) return;
             _controller.CycleSpeedBack();
             _controller.Resume();
+        }
+
+        // ============================ Scrubber (rewind, C.1) ============================
+
+        // Barre de progression cliquable/glissable. value 0..1 = tick 0..LastTick. On seek au
+        // RELÂCHEMENT (PointerUp) : SeekTo re-simule depuis 0, inutile de le faire à chaque frame de drag.
+        private void BuildSeekSlider(RectTransform bar)
+        {
+            var rt = NewRect("SeekBar", bar);
+            rt.anchorMin = new Vector2(0.5f, 0f); rt.anchorMax = new Vector2(0.5f, 0f); rt.pivot = new Vector2(0.5f, 1f);
+            rt.anchoredPosition = new Vector2(0f, -8f);
+            rt.sizeDelta = new Vector2(520f, 22f);
+
+            _seekSlider = rt.gameObject.AddComponent<Slider>();
+            _seekSlider.minValue = 0f; _seekSlider.maxValue = 1f; _seekSlider.wholeNumbers = false;
+            _seekSlider.navigation = new Navigation { mode = Navigation.Mode.None };
+
+            var track = NewRect("Track", rt);
+            track.anchorMin = new Vector2(0f, 0.5f); track.anchorMax = new Vector2(1f, 0.5f); track.pivot = new Vector2(0.5f, 0.5f);
+            track.offsetMin = new Vector2(0f, -4f); track.offsetMax = new Vector2(0f, 4f);
+            var trackImg = track.gameObject.AddComponent<Image>();
+            trackImg.color = new Color(1f, 1f, 1f, 0.14f);
+            CombatUiKit.ApplyRounded(trackImg, 4f);
+
+            var fillArea = NewRect("Fill Area", rt);
+            fillArea.anchorMin = new Vector2(0f, 0.5f); fillArea.anchorMax = new Vector2(1f, 0.5f); fillArea.pivot = new Vector2(0.5f, 0.5f);
+            fillArea.offsetMin = new Vector2(0f, -4f); fillArea.offsetMax = new Vector2(0f, 4f);
+            var fill = NewRect("Fill", fillArea);
+            fill.anchorMin = new Vector2(0f, 0f); fill.anchorMax = new Vector2(1f, 1f); fill.offsetMin = Vector2.zero; fill.offsetMax = Vector2.zero;
+            var fillImg = fill.gameObject.AddComponent<Image>();
+            fillImg.color = CombatUiKit.Accent;
+            CombatUiKit.ApplyRounded(fillImg, 4f);
+            fillImg.raycastTarget = false;
+
+            var handleArea = NewRect("Handle Slide Area", rt);
+            handleArea.anchorMin = new Vector2(0f, 0f); handleArea.anchorMax = new Vector2(1f, 1f);
+            handleArea.offsetMin = new Vector2(8f, 0f); handleArea.offsetMax = new Vector2(-8f, 0f);
+            var handle = NewRect("Handle", handleArea);
+            handle.anchorMin = new Vector2(0f, 0.5f); handle.anchorMax = new Vector2(0f, 0.5f); handle.pivot = new Vector2(0.5f, 0.5f);
+            handle.sizeDelta = new Vector2(16f, 16f);
+            var handleImg = handle.gameObject.AddComponent<Image>();
+            handleImg.color = Color.white;
+            CombatUiKit.ApplyRounded(handleImg, 8f);
+
+            _seekSlider.fillRect = fill;
+            _seekSlider.handleRect = handle;
+            _seekSlider.targetGraphic = handleImg;
+            _seekSlider.direction = Slider.Direction.LeftToRight;
+
+            // Pointer down = on commence à scruber (pause visuelle, on fige la sync) ; up = on seek.
+            var et = rt.gameObject.AddComponent<EventTrigger>();
+            var down = new EventTrigger.Entry { eventID = EventTriggerType.PointerDown };
+            down.callback.AddListener(_ => { _userScrubbing = true; });
+            et.triggers.Add(down);
+            var up = new EventTrigger.Entry { eventID = EventTriggerType.PointerUp };
+            up.callback.AddListener(_ => OnSeekRelease());
+            et.triggers.Add(up);
+        }
+
+        private void OnSeekRelease()
+        {
+            if (_controller == null || _seekSlider == null) { _userScrubbing = false; return; }
+            int target = Mathf.RoundToInt(_seekSlider.value * _controller.LastTick);
+            _userScrubbing = false;
+            _controller.SeekTo(target);
         }
 
         // ============================ Menu Échap ============================
