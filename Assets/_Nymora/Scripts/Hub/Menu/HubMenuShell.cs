@@ -43,6 +43,10 @@ namespace Nymora.Hub.Menu
 
         // M8 — Lien Discord Nymora (section report de bug), ouvert dans le navigateur.
         private const string BugReportUrl = "https://discord.gg/3Nm3q2DX";
+        // Item mineur J (8 juin) — liens éditables depuis l'admin (GET /links), avec fallback hardcodé
+        // si l'API est injoignable. Static : récupérés une fois, partagés entre ouvertures du menu.
+        private static string _discordUrl = BugReportUrl;
+        private static string _websiteUrl = "https://nymora.fr";
 
         // Scène de connexion (retour sur Déconnexion).
         private const string LoginSceneName = "00_Login";
@@ -145,7 +149,20 @@ namespace Nymora.Hub.Menu
             MenuFont = _theme.Font;
             MenuTheme = _theme;
             if (_backendSettings != null) _api = new NymoraApiClient(_backendSettings);
+            FetchLinksAsync();
             BuildUI();
+        }
+
+        // Item mineur J — récupère les liens Discord/site depuis le backend (override les défauts).
+        private async void FetchLinksAsync()
+        {
+            if (_api == null) return;
+            var res = await _api.GetLinksAsync();
+            if (res.IsSuccess && res.Data != null)
+            {
+                if (!string.IsNullOrEmpty(res.Data.discord)) _discordUrl = res.Data.discord;
+                if (!string.IsNullOrEmpty(res.Data.website)) _websiteUrl = res.Data.website;
+            }
         }
 
         private void Start()
@@ -1862,7 +1879,7 @@ namespace Nymora.Hub.Menu
 
         private void BuildReport()
         {
-            Application.OpenURL(BugReportUrl);
+            Application.OpenURL(_discordUrl);
             var panel = BuildCenterDialog("Report bug",
                 "Le Discord de Nymora s'ouvre dans ton navigateur.\nPoste ton bug dans la section dédiée — merci !");
 
@@ -1870,7 +1887,7 @@ namespace Nymora.Hub.Menu
             var brt = (RectTransform)btn.transform;
             brt.anchorMin = new Vector2(0.5f, 0f); brt.anchorMax = new Vector2(0.5f, 0f); brt.pivot = new Vector2(0.5f, 0f);
             brt.sizeDelta = new Vector2(240f, 46f); brt.anchoredPosition = new Vector2(0f, 34f);
-            btn.onClick.AddListener(() => Application.OpenURL(BugReportUrl));
+            btn.onClick.AddListener(() => Application.OpenURL(_discordUrl));
         }
 
         private void BuildLogout()

@@ -317,6 +317,11 @@ namespace Nymora.Network.Backend
                 new RankedReportBodyWithStats { matchId = matchId, opponentUserId = opponentUserId, classId = classId, result = result, stats = stats, deck = deck },
                 requireAuth: true, ct);
 
+        /// <summary>Item mineur J — GET /links : liens externes (Discord / site web) éditables depuis
+        /// l'admin. Public (pas d'auth). Le client retombe sur ses défauts si l'appel échoue.</summary>
+        public UniTask<ApiResult<LinksResponse>> GetLinksAsync(CancellationToken ct = default)
+            => GetJsonAsync<LinksResponse>("/links", requireAuth: false, ct);
+
         /// <summary>GET /ranked/season — saison ranked courante (numero + jours restants).</summary>
         public UniTask<ApiResult<SeasonResponse>> GetSeasonAsync(CancellationToken ct = default)
             => GetJsonAsync<SeasonResponse>("/ranked/season", requireAuth: true, ct);

@@ -530,6 +530,13 @@ namespace Nymora.Network.Backend
     }
 
     [Serializable]
+    public class LinksResponse
+    {
+        public string discord;
+        public string website;
+    }
+
+    [Serializable]
     public class RankedReportResponse
     {
         public string status;         // "pending" | "settled" | "already_settled" | "conflict"
