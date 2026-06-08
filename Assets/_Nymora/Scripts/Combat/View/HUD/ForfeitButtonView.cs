@@ -122,6 +122,18 @@ namespace Nymora.Combat.View.HUD
 
         private void Update()
         {
+            // Spectateur (B, 8 juin) : jamais de bouton Abandonner (le spectateur n'est pas un joueur).
+            if (Nymora.Combat.Spectate.LiveSpectateController.LiveSpectateActive)
+            {
+                if (_rootGroup != null)
+                {
+                    _rootGroup.alpha = 0f;
+                    _rootGroup.interactable = false;
+                    _rootGroup.blocksRaycasts = false;
+                }
+                return;
+            }
+
             // Masque l'UI hors phase de jeu active (intro pile ou face + fin de match).
             var game = QuantumRunner.Default?.Game;
             bool show = false;

@@ -282,6 +282,9 @@ namespace Nymora.Combat.View
             if (!frame.TryGetSingleton<FogSingleton>(out _)) return;
 
             int viewer = _forcedViewerPlayer >= 0 ? _forcedViewerPlayer : LocalPlayerResolver.Resolve();
+            // Spectateur (B, 8 juin) : ne voit JAMAIS les pièges Nightseer (ni rune, ni flèche, ni
+            // compteur, ni contour) -> show forcé false sur toutes les cases.
+            bool spectating = Nymora.Combat.Spectate.LiveSpectateController.LiveSpectateActive;
             // #23 — liseré d'équipe (silhouette) sur les pièges UNIQUEMENT en match miroir.
             bool mirror = MatchViewHelpers.IsMirrorMatch(frame);
 
@@ -299,7 +302,8 @@ namespace Nymora.Combat.View
                     //   Nightseer propriétaire est ACTUELLEMENT en phase 3 (PR 5) -> tous ses pièges
                     //   (même posés avant 5/5) disparaissent totalement, et réapparaissent s'il redescend.
                     //   Le filtre ne tourne que sur les cases à piège ennemi (rares).
-                    bool show = kind != TrapKind.None
+                    bool show = !spectating
+                                && kind != TrapKind.None
                                 && (owner == viewer || !NightseerPassif.TrapsInvisibleForOwner(frame, owner));
 
                     bool wasActive = _overlayGOs[idx].activeSelf;

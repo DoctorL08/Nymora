@@ -522,6 +522,14 @@ namespace Nymora.Combat.View.HUD
         private void RefreshResourceGems(in Combatant c, bool valid)
         {
             if (!_showResourceGems) return;
+            // Spectateur (B, 8 juin) : pas de gems PA/PM — le spectateur ne doit pas voir les
+            // ressources du joueur actif « comme s'il jouait le tour ».
+            if (Nymora.Combat.Spectate.LiveSpectateController.LiveSpectateActive)
+            {
+                if (_resourceGemsRoot != null && _resourceGemsRoot.gameObject.activeSelf)
+                    _resourceGemsRoot.gameObject.SetActive(false);
+                return;
+            }
             EnsureResourceGems();
             if (_resourceGemsRoot == null) return; // barre pas encore prête
 

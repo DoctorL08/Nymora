@@ -113,6 +113,8 @@ namespace Nymora.Combat.View.HUD
             _hasActiveCaster = false;
             _spellArmedThisFrame = false;
             if (!_gridReady) return;
+            // Spectateur (B, 8 juin) : aucune prévisu de portée PM (le spectateur ne joue pas).
+            if (Nymora.Combat.Spectate.LiveSpectateController.LiveSpectateActive) return;
 
             // Priorite spell preview : si un sort est arme, on cache la preview movement.
             if (_hudController != null && _hudController.ArmedSpell.HasValue)
