@@ -353,7 +353,12 @@ namespace Nymora.Core.Data
         //   champ networked ajoute (reutilise le byte existant). Contour terrain : violet si contestee.
         // v144 (8 juin 2026) — Toutes classes 1500 -> 2000 HP (CombatantStats.BaseMaxHP). Degats INCHANGES
         //   (marge pour temporiser). SO de classe (BaseHP) synchronises pour l'affichage hub.
-        public const int CombatRulesVersion = 144;
+        // v145 (8 juin 2026) — Soulrender : (1) Sang Bouillant declenche desormais aussi sur les ticks de
+        //   POISON (venin), pas seulement les degats de sort -> +1 HG + prochaine frappe (VeninHelpers.TryTick).
+        //   (2) Vapeur Carmin (trainee de Charge Brutale) OWNER-IMMUNE : ne coute plus +1 PM au Soulrender
+        //   qui l'a posee, seule la Vapeur ADVERSE ralentit (MovementSystem). (Le 'sang coagule' de la
+        //   patch list visait en fait cette trainee de Vapeur.) Reliquat mineur : meme exemption cote IA.
+        public const int CombatRulesVersion = 145;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

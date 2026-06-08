@@ -324,6 +324,21 @@ namespace Quantum
             // Prescience Nightseer + Ressac Vital tracking).
             target->DamageTakenThisRound += totalDmg;
 
+            // Patch 8 juin — SANG BOUILLANT : un tick de poison compte comme "subir des degats".
+            //   Si le porteur (Soulrender) survit ET porte SangBouillantActive -> +1 HG + prochaine
+            //   frappe +bonus (meme effet que le hook degats de sort dans SpellSystem, qui ne couvrait
+            //   pas les DoT). Corrige "Sang Bouillant : je prends les degats de poison mais pas de HG".
+            if (target->HP > 0 && StatusHelper.Has(target, StatusKind.SangBouillantActive))
+            {
+                int maxResSB = CombatantStats.GetMaxResource(target->Class);
+                int hgBeforeSB = target->Resource;
+                target->Resource += SpellRegistry.SangBouillantHGPerHit;
+                if (target->Resource > maxResSB) target->Resource = maxResSB;
+                StatusHelper.Apply(target, StatusKind.NextStrikeBonus,
+                    magnitude: SpellRegistry.SangBouillantNextStrikeBonus, turnsLeft: 99, currentTurn);
+                Log.Info($"[Sang Bouillant] Tick poison sur P{target->PlayerIndex} -> +{target->Resource - hgBeforeSB} HG + prochaine frappe +{SpellRegistry.SangBouillantNextStrikeBonus}");
+            }
+
             // Gain Putrefaction Necram : +1 PT par tick global (Bible "tour ou une unite
             // ennemie subit du DoT venin"). NON cape par PutrefactionMarksGainedThisTurn
             // (ce cap concerne uniquement les gains "par marque appliquee"). Owner = le Necram

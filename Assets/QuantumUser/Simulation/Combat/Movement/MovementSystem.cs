@@ -105,8 +105,11 @@ namespace Quantum
 
             // 2.10.c : Vapeur Carmin sur la case d'arrivee coute +1 PM (simplification du Bible
             // "traversee" — verifie uniquement la destination, vraie traversee multi-case = Phase 7).
+            // Patch 8 juin — owner-immune : la Vapeur laissee par SA propre Charge Brutale ne coute
+            // PAS de PM au Soulrender qui l'a posee (seule la Vapeur ADVERSE ralentit).
             int extraCostVapeur = 0;
-            if (GridHelpers.GetTerrainKind(f, targetX, targetY) == TerrainKind.VapeurCarmin)
+            if (GridHelpers.GetTerrainKind(f, targetX, targetY) == TerrainKind.VapeurCarmin
+                && FogHelpers.IsEnemyTerrainAt(f, targetX, targetY, combatant->PlayerIndex))
             {
                 extraCostVapeur = 1;
             }

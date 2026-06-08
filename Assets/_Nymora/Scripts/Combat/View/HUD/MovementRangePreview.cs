@@ -223,7 +223,11 @@ namespace Nymora.Combat.View.HUD
                     // traverser. Coherent avec ViewPathfinder.IsBlocked.
                     if (!ignoreEnemyOccupants && DecoyHelpers.HasAnyDecoyAt(frame, nx, ny)) continue;
 
-                    int extra = GridHelpers.GetTerrainKind(frame, nx, ny) == TerrainKind.VapeurCarmin ? 1 : 0;
+                    // Patch 8 juin — owner-immune (aligne sur la sim) : SA propre Vapeur Carmin ne coute
+                    //   pas +1 PM, seule la Vapeur ADVERSE ralentit. Sans ça la portée verte sous-estimait
+                    //   (on devait avancer case par case sur sa propre traînée de Charge Brutale).
+                    int extra = (GridHelpers.GetTerrainKind(frame, nx, ny) == TerrainKind.VapeurCarmin
+                                 && FogHelpers.IsEnemyTerrainAt(frame, nx, ny, casterPlayerIndex)) ? 1 : 0;
                     int newCost = curCost + 1 + extra;
                     if (newCost > casterPM) continue;
 
