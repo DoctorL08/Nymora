@@ -21,7 +21,7 @@ MonoBehaviour:
     plus virulente \u2014 une mort lente devient un effondrement immediat. Sa signature
     Virus Fatal consume toute sa ressource pour un triplement instantane des ticks
     venin."
-  BaseHP: 1500
+  BaseHP: 2000
   BaseActionPoints: 8
   BaseMovementPoints: 3
   ResourceKind: 4

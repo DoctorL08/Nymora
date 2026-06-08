@@ -21,7 +21,7 @@ MonoBehaviour:
     obstacle est une promesse de retour de coup. Quand le poids du monde l'entoure,
     il declenche Effondrement et tout cede en cascade. Densite Inerte le rend plus
     immuable a chaque pas."
-  BaseHP: 1500
+  BaseHP: 2000
   BaseActionPoints: 8
   BaseMovementPoints: 2
   ResourceKind: 3

@@ -351,7 +351,9 @@ namespace Nymora.Core.Data
         //   L'owner de terrain devient un MASQUE 2 bits (1=P0,2=P1,3=case CONTESTEE) -> 2 brumes adverses
         //   superposees affectent les DEUX (chacun par celle de l'autre) + chacun genere son PT ; aucun
         //   champ networked ajoute (reutilise le byte existant). Contour terrain : violet si contestee.
-        public const int CombatRulesVersion = 143;
+        // v144 (8 juin 2026) — Toutes classes 1500 -> 2000 HP (CombatantStats.BaseMaxHP). Degats INCHANGES
+        //   (marge pour temporiser). SO de classe (BaseHP) synchronises pour l'affichage hub.
+        public const int CombatRulesVersion = 144;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

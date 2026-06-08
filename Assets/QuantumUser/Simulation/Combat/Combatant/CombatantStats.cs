@@ -7,7 +7,7 @@ namespace Quantum
     /// </summary>
     public static class CombatantStats
     {
-        public const int BaseMaxHP = 1500;
+        public const int BaseMaxHP = 2000;   // patch 8 juin : 1500 -> 2000 (marge pour temporiser, degats inchanges)
         public const int BaseMaxPA = 8;
         public const int DefaultMaxPM = 3;
         // Refonte 29 mai : Colossar passe a 3 PM (plus aucune classe a 2 PM).

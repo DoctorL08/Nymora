@@ -20,7 +20,7 @@ MonoBehaviour:
     ressource Hemoglyphe se nourrit de la douleur \u2014 la sienne, celle qu'il inflige.
     Au seuil de la mort, il devient une lame qu'aucun bouclier n'arrete. Sa signature
     Ame Laceree consume tout son sang pour un coup definitif."
-  BaseHP: 1500
+  BaseHP: 2000
   BaseActionPoints: 8
   BaseMovementPoints: 3
   ResourceKind: 1

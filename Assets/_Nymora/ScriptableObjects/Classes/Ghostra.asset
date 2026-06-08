@@ -22,7 +22,7 @@ MonoBehaviour:
     letaux. Frappe Fantome, Saigne-Ame, Danse des Lames : ses combos exigent une
     lecture parfaite du regard adverse. Sa signature Execution Spectrale, dorsale
     obligatoire, peut finir un match en un seul tour."
-  BaseHP: 1500
+  BaseHP: 2000
   BaseActionPoints: 8
   BaseMovementPoints: 3
   ResourceKind: 5
