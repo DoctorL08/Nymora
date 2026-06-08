@@ -47,6 +47,10 @@ namespace Nymora.Combat.View.HUD
         // coût de sort normal).
         private readonly Dictionary<EntityRef, int> _lastPmMalus = new Dictionary<EntityRef, int>(4);
         private readonly Dictionary<EntityRef, int> _lastPaMalus = new Dictionary<EntityRef, int>(4);
+        // Patch 8 juin — suit LastVeninTickOnTurn par entite pour detecter un tick venin CE frame.
+        //   En miroir Necram, le tick (-X) et la regen Floraison (+Y) tombent dans la MEME frame :
+        //   sans ce split, le poll HP fusionnerait en un net trompeur (-160 = -200 venin +40 regen).
+        private readonly Dictionary<EntityRef, int> _lastVeninTickTurn = new Dictionary<EntityRef, int>(4);
         // 6 juin — HP des LEURRES Ghostra (clé (Ghostra, slot)). Les leurres ne sont pas des entités
         //   Combatant -> pas couverts par _lastHP. Sert au flottant de dégâts quand un leurre encaisse
         //   (notamment la Réplique Protectrice qui absorbe les dégâts redirigés du Ghostra).
@@ -67,6 +71,7 @@ namespace Nymora.Combat.View.HUD
             _lastCastSeq.Clear();
             _lastPmMalus.Clear();
             _lastPaMalus.Clear();
+            _lastVeninTickTurn.Clear();
             _lastDecoyHP.Clear();
             if (_gridSettings == null)
             {
@@ -119,16 +124,43 @@ namespace Nymora.Combat.View.HUD
 
                 // --- HP : degats / soin ---
                 int currentHP = c.HP;
+
+                // Patch 8 juin — detecte un tick venin CE frame (LastVeninTickOnTurn a avance). En miroir
+                // Necram, tick (-X) et regen Floraison (+Y) tombent dans la meme frame -> on les separe en
+                // 2 flottants au lieu d'un net fusionne trompeur (sinon "-160" pour "-200 venin +40 regen").
+                bool veninTickedThisFrame = false;
+                if (_lastVeninTickTurn.TryGetValue(entity, out int prevTickTurn))
+                {
+                    if (c.LastVeninTickOnTurn != prevTickTurn && c.LastVeninTickOnTurn > 0)
+                        veninTickedThisFrame = true;
+                }
+                _lastVeninTickTurn[entity] = c.LastVeninTickOnTurn;
+
                 if (_lastHP.TryGetValue(entity, out int prevHP))
                 {
                     int delta = currentHP - prevHP;
                     if (delta != 0)
                     {
+                        int veninTick = veninTickedThisFrame ? ComputeVeninTickAmount(frame, c) : 0;
+                        if (veninTick > 0)
+                        {
+                            // Flottant venin dedie ("-X" rouge), recalcule comme la sim, puis le RESIDU
+                            // (regen Floraison "+Y" vert, ou tout autre HP de la frame) en flottant separe.
+                            float vEmph = c.MaxHP > 0 ? Mathf.Clamp01((float)veninTick / c.MaxHP) : 0f;
+                            _manager.Spawn(baseWorldPos, -veninTick, vEmph);
+                            int residual = delta + veninTick; // ex : -160 + 200 = +40 (regen Floraison)
+                            if (residual != 0)
+                            {
+                                Vector3 resPos = baseWorldPos;
+                                resPos.y += _shieldExtraYOffsetWorld; // decale pour ne pas chevaucher le venin
+                                _manager.Spawn(resPos, residual, 0f);
+                            }
+                        }
                         // 19 mai POLISH-6h — Si un sort signature vient d'etre cast (dans la fenetre
                         // SignatureCastBridge ~1.5s), spawn le texte EPIQUE (gros or bounce). Sinon
                         // texte standard rouge/vert. Limite aux degats (delta < 0) — un signature ne
                         // soigne jamais en l'etat actuel mais defensif.
-                        if (delta < 0 && SignatureCastBridge.IsSignatureRecent())
+                        else if (delta < 0 && SignatureCastBridge.IsSignatureRecent())
                         {
                             _manager.SpawnSignatureHit(baseWorldPos, delta);
                         }
@@ -218,6 +250,27 @@ namespace Nymora.Combat.View.HUD
                     }
                 }
             }
+        }
+
+        /// <summary>
+        /// Patch 8 juin — recompute EXACT du montant d'un tick venin, formule identique a
+        /// <see cref="VeninHelpers.TryTick"/> (stacks * clock Floraison + Marque Sacrificielle +
+        /// bonus Brume Toxique). Sert a afficher un flottant venin dedie en miroir Necram, ou le
+        /// tick et la regen Floraison tombent dans la meme frame. La frame Verified est l'etat
+        /// post-tick, mais le tick ne consomme PAS les marques et ne change pas la densite -> les
+        /// valeurs lues sont celles du tick. Densite PAR-EQUIPE (fix miroir v141).
+        /// </summary>
+        private static int ComputeVeninTickAmount(Frame frame, in Combatant c)
+        {
+            if (c.VeninStacks <= 0) return 0;
+            int density = VeninHelpers.GetDensityOnTeam(frame, c.PlayerIndex);
+            int dmgPerMark = VeninHelpers.GetTickDmgPerMark(density);
+            if (dmgPerMark <= 0) return 0;
+            int total = c.VeninStacks * dmgPerMark;
+            total += ReadStatusMagnitude(c, StatusKind.MarqueSacrificielle); // bonus flat sur le tick
+            if (GridHelpers.GetTerrainKind(frame, c.GridX, c.GridY) == TerrainKind.BrumeToxique)
+                total += c.VeninStacks * SpellRegistry.BrumeToxiqueTickBonusPerMark;
+            return total;
         }
 
         /// <summary>
