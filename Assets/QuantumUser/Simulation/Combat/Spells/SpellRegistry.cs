@@ -1233,7 +1233,7 @@ namespace Quantum
                         HGCostMaxOptional = 0,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
-                        MaxUsesPerTurn = 2, // Refonte 29 mai : cap 2x/tour
+                        MaxUsesPerTurn = 1, // patch 8 juin : 2 -> 1 (cap 1x/tour)
                     };
                     return true;
 
@@ -1326,7 +1326,7 @@ namespace Quantum
                 case SpellId.NightseerPasFurtif:
                     def = new SpellDef
                     {
-                        PACost = 4,                          // équilibrage 2 juin : 2->4 PA (+ portée 4->3)
+                        PACost = 3,                          // patch 8 juin : 4 -> 3 PA
                         Shape = TargetingShape.SingleTile,
                         Filter = TargetingFilter.EmptyTile,
                         RangeMin = 1,
@@ -1336,7 +1336,8 @@ namespace Quantum
                         HGCostMaxOptional = 1,
                         OncePerMatchBit = OncePerMatchBitNone,
                         IsOffensive = 0,
-                        MaxUsesPerTurn = 1, // Refonte 29 mai : cap 1x/tour
+                        MaxUsesPerTurn = 1,  // cap 1x/tour
+                        CooldownTurns = 1,   // patch 8 juin : relance 1 tour (recast interdit le tour suivant)
                     };
                     return true;
 

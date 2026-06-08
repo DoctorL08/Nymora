@@ -366,7 +366,9 @@ namespace Nymora.Core.Data
         //   déjà sur une cardinale ne se déplace plus inutilement (autorise sa propre case) -> le 3e leurre ne
         //   part plus en corner quand le Ghostra + 2 leurres occupent les cardinales. (#1 ciblage + #3 poison
         //   ANNULÉS : les leurres restent tués par sorts directs, le poison ne les touche pas.)
-        public const int CombatRulesVersion = 147;
+        // v148 (8 juin 2026) — Nightseer (partiel) : Filet de Ronces cap 2 -> 1x/tour ; Pas Furtif 4 -> 3 PA
+        //   + relance 1 tour (CooldownTurns=1, systeme generique -> AUCUN champ networked). Suite a venir.
+        public const int CombatRulesVersion = 148;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";
