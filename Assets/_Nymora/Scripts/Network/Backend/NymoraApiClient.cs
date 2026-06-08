@@ -303,18 +303,18 @@ namespace Nymora.Network.Backend
         /// <summary>POST /ranked/report-result — reporte le resultat d'un match classe.
         /// Le backend settle quand les 2 joueurs ont reporte (double-accord) : MMR + XP + Nymos.</summary>
         public UniTask<ApiResult<RankedReportResponse>> ReportRankedResultAsync(
-            string matchId, string opponentUserId, string classId, string result, CancellationToken ct = default)
+            string matchId, string opponentUserId, string classId, string result, string[] deck = null, CancellationToken ct = default)
             => PostJsonAsync<RankedReportResponse>("/ranked/report-result",
-                new RankedReportBody { matchId = matchId, opponentUserId = opponentUserId, classId = classId, result = result },
+                new RankedReportBody { matchId = matchId, opponentUserId = opponentUserId, classId = classId, result = result, deck = deck },
                 requireAuth: true, ct);
 
         /// <summary>S-STATS.b — variante avec stats de combat (degats/sorts/tours) pour les
         /// succes de combat. N'utiliser que si les stats ont ete reellement collectees
         /// (sinon damageTaken=0 par defaut debloquerait faussement les succes 'sans degat').</summary>
         public UniTask<ApiResult<RankedReportResponse>> ReportRankedResultAsync(
-            string matchId, string opponentUserId, string classId, string result, RankedReportStats stats, CancellationToken ct = default)
+            string matchId, string opponentUserId, string classId, string result, RankedReportStats stats, string[] deck = null, CancellationToken ct = default)
             => PostJsonAsync<RankedReportResponse>("/ranked/report-result",
-                new RankedReportBodyWithStats { matchId = matchId, opponentUserId = opponentUserId, classId = classId, result = result, stats = stats },
+                new RankedReportBodyWithStats { matchId = matchId, opponentUserId = opponentUserId, classId = classId, result = result, stats = stats, deck = deck },
                 requireAuth: true, ct);
 
         /// <summary>GET /ranked/season — saison ranked courante (numero + jours restants).</summary>

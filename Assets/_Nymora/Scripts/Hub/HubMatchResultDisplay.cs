@@ -128,11 +128,17 @@ namespace Nymora.Hub
             return !string.IsNullOrEmpty(sel) ? sel : _fallbackClassId;
         }
 
+        // Item mineur I (8 juin) — deck joué (6 spellIds tech) pour les stats sorts/decks les plus
+        // joués. Source = DeckBridge (deck envoyé au combat). Null si pas de deck valide -> backend OK.
+        private static string[] ResolveDeck()
+            => DeckBridge.HasPending ? DeckBridge.PendingSpellIds : null;
+
         private async UniTask ReportRankedAsync(string matchId, string opponentSub, string classId, string result)
         {
             string token = HubChatClient.Instance?.DevToken;
             if (string.IsNullOrEmpty(token)) return;
             _api.SetBearerToken(token);
+            string[] deck = ResolveDeck();
 
             // S-STATS.b — joint les stats de combat (View-observed via CombatStatsCollector)
             // si elles ont ete collectees. Sinon report classique (pas de stats -> pas de
@@ -148,11 +154,11 @@ namespace Nymora.Hub
                     turns = MatchBridge.StatTurns,
                 };
                 Debug.Log($"[HubMatchResultDisplay] Report ranked AVEC stats : dealt={stats.damageDealt} taken={stats.damageTaken} spells={stats.spellsCast} tours={stats.turns}");
-                res = await _api.ReportRankedResultAsync(matchId, opponentSub, classId, result, stats);
+                res = await _api.ReportRankedResultAsync(matchId, opponentSub, classId, result, stats, deck);
             }
             else
             {
-                res = await _api.ReportRankedResultAsync(matchId, opponentSub, classId, result);
+                res = await _api.ReportRankedResultAsync(matchId, opponentSub, classId, result, deck);
             }
             MatchBridge.ResetCombatStats();
             if (!res.IsSuccess)

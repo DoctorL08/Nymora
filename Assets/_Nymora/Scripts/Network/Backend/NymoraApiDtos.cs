@@ -503,6 +503,7 @@ namespace Nymora.Network.Backend
         public string opponentUserId;
         public string classId;        // classe jouee (pour l'XP par classe)
         public string result;         // "win" | "loss" | "draw"
+        public string[] deck;         // item I : 6 spellIds tech du deck joue (stats sorts/decks)
     }
 
     // S-STATS.b — stats de combat auto-declarees (View-observed). Toutes optionnelles
@@ -525,6 +526,7 @@ namespace Nymora.Network.Backend
         public string classId;
         public string result;
         public RankedReportStats stats;
+        public string[] deck;         // item I : 6 spellIds tech du deck joue (stats sorts/decks)
     }
 
     [Serializable]
