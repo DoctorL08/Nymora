@@ -277,7 +277,8 @@ namespace Quantum
                 {
                     // Tick venin complet = marques * clock Floraison + Marque Sac. BYPASS shield + reduction
                     //   (comme un tick venin standard, sim ligne 2312).
-                    int density = VeninHelpers.GetGlobalDensity(f);
+                    // FIX MIROIR v141 : densite par-equipe de la cible (match la sim Detonation Virulente).
+                    int density = VeninHelpers.GetDensityOnTeam(f, target->PlayerIndex);
                     int dmg = target->VeninStacks * VeninHelpers.GetTickDmgPerMark(density)
                             + StatusHelper.GetMagnitude(target, StatusKind.MarqueSacrificielle, 0);
                     preview = default;

@@ -36,15 +36,16 @@ namespace Quantum
             VeninHelpers.TryTick(f, active, currentTurn);
             if (active->HP <= 0) return; // mort par tick
 
-            int density = VeninHelpers.GetGlobalDensity(f);
-            int tier = VeninHelpers.GetFloraisonTier(density);
-
             // 2. Si active = Necram : reset marks-gained-this-turn + regen tier 2.
             if (active->Class == NymoraClass.Necram)
             {
                 active->PutrefactionMarksGainedThisTurn = 0;
 
-                if (tier >= 1) // tier 2 (Bible : densite 4-6) ou tier 3 (7+)
+                // FIX MIROIR v141 : regen basee sur le venin que CE Necram a applique (ses ennemis),
+                // jamais sur le venin global (qui en miroir incluait le poison adverse).
+                int density = VeninHelpers.GetDensityAppliedByNecram(f, active->PlayerIndex);
+                int tier = VeninHelpers.GetFloraisonTier(density);
+                if (tier >= 1) // tier 2 (densite 3-6) ou tier 3 (7+)
                 {
                     int regen = density * RegenPerMarkAtTier2;
                     int hpBefore = active->HP;
@@ -57,11 +58,9 @@ namespace Quantum
                 return;
             }
 
-            // 3. Si active = ennemi du Necram : halo toxique tier 2+ (rayon 3 Manhattan).
-            if (tier >= 1)
-            {
-                TryApplyHaloOnEnemyTurnStart(f, active);
-            }
+            // 3. Si active = ennemi d'un Necram : halo toxique tier 2+ (rayon 3 Manhattan).
+            //    Le gate de tier est calcule PAR-NECRAM dans le helper (fix miroir v141).
+            TryApplyHaloOnEnemyTurnStart(f, active);
         }
 
         private static void TryApplyHaloOnEnemyTurnStart(Frame f, Combatant* enemy)
@@ -78,6 +77,9 @@ namespace Quantum
                 int dy = nec->GridY - enemy->GridY; if (dy < 0) dy = -dy;
                 int dist = dx + dy;
                 if (dist > HaloRangeManhattan) continue;
+                // FIX MIROIR v141 : halo gate sur la densite de CE Necram (son venin applique),
+                // pas sur la densite globale poolee.
+                if (VeninHelpers.GetFloraisonTier(VeninHelpers.GetDensityAppliedByNecram(f, nec->PlayerIndex)) < 1) continue;
 
                 int hpBefore = enemy->HP;
                 enemy->HP -= HaloDamagePerTurnAtTier2;

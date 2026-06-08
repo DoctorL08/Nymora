@@ -62,6 +62,47 @@ namespace Quantum
         }
 
         /// <summary>
+        /// FIX MIROIR (8 juin / v141) — densite PAR-NECRAM, vue "cote cible".
+        /// Somme des marques venin SUBIES par l'equipe `teamPlayerIndex` (= venin pose par l'ennemi
+        /// de cette equipe). Utilise pour le palier de TICK sur une cible : le tick scale avec le pool
+        /// de venin que SON poisonneur a construit, pas avec le venin global de la map.
+        /// En 1v1 non-miroir : identique a l'ancienne densite globale (l'ennemi non-Necram ne pose
+        /// pas de venin). En miroir : chaque Necram a son propre pool, fini le pooling qui faussait
+        /// les chiffres et la regen.
+        /// </summary>
+        public static int GetDensityOnTeam(Frame f, int teamPlayerIndex)
+        {
+            int density = 0;
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->HP <= 0) continue;
+                if (c->PlayerIndex != teamPlayerIndex) continue;
+                density += c->VeninStacks;
+            }
+            return density;
+        }
+
+        /// <summary>
+        /// FIX MIROIR (8 juin / v141) — densite PAR-NECRAM, vue "cote Necram".
+        /// Somme des marques venin APPLIQUEES par le Necram `necramPlayerIndex` (= venin sur tous ses
+        /// ennemis). Utilise pour la REGEN et le HALO du Necram : il ne profite que de SON poison,
+        /// jamais de celui d'un Necram adverse. En 1v1 non-miroir : identique a la densite globale.
+        /// </summary>
+        public static int GetDensityAppliedByNecram(Frame f, int necramPlayerIndex)
+        {
+            int density = 0;
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->HP <= 0) continue;
+                if (c->PlayerIndex == necramPlayerIndex) continue;
+                density += c->VeninStacks;
+            }
+            return density;
+        }
+
+        /// <summary>
         /// Palier Floraison [0..2] : tier 0 (densite 1-3), tier 1 (4-6), tier 2 (7+).
         /// Retourne -1 si densite = 0 (pas de marque -> tick rien). Pratique pour les
         /// hooks regen / halo toxique.
@@ -137,7 +178,7 @@ namespace Quantum
                 return 0;
             }
 
-            Log.Info($"[Venin] Apply +{applied} marque(s) sur P{target->PlayerIndex} ({before}->{after}). Density global={GetGlobalDensity(f)}");
+            Log.Info($"[Venin] Apply +{applied} marque(s) sur P{target->PlayerIndex} ({before}->{after}). Densite equipe={GetDensityOnTeam(f, target->PlayerIndex)}");
             return applied;
         }
 
@@ -244,7 +285,9 @@ namespace Quantum
             if (target->VeninStacks <= 0) return false;
             if (target->LastVeninTickOnTurn == currentTurn) return false;
 
-            int density = GetGlobalDensity(f);
+            // FIX MIROIR v141 : palier de tick base sur le venin SUBI par l'equipe de la cible
+            // (= le pool du Necram qui l'a empoisonnee), pas la densite globale poolee.
+            int density = GetDensityOnTeam(f, target->PlayerIndex);
             int dmgPerMark = GetTickDmgPerMark(density);
             if (dmgPerMark <= 0) return false;
             int totalDmg = target->VeninStacks * dmgPerMark;
@@ -305,6 +348,9 @@ namespace Quantum
                 {
                     if (necram->Class != NymoraClass.Necram) continue;
                     if (necram->HP <= 0) continue;
+                    // FIX MIROIR v141 : ne soigne QUE le Necram proprietaire du venin qui tick
+                    // (= l'ennemi de la cible empoisonnee), jamais un Necram du camp de la cible.
+                    if (necram->PlayerIndex == target->PlayerIndex) continue;
                     int healPerTick = StatusHelper.GetMagnitude(necram, StatusKind.SymbioseMorbide, 0);
                     if (healPerTick <= 0) continue;
                     int necramHpBefore = necram->HP;

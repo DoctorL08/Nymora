@@ -2309,7 +2309,8 @@ namespace Quantum
                         && dvC->HP > 0
                         && dvC->VeninStacks > 0)
                     {
-                        int dvDensity = VeninHelpers.GetGlobalDensity(f);
+                        // FIX MIROIR v141 : palier base sur le venin subi par la cible (pool du caster).
+                        int dvDensity = VeninHelpers.GetDensityOnTeam(f, dvC->PlayerIndex);
                         int dvPerMark = VeninHelpers.GetTickDmgPerMark(dvDensity);
                         int dvMarqueSac = StatusHelper.GetMagnitude(dvC, StatusKind.MarqueSacrificielle, 0);
                         int dvTotal = dvC->VeninStacks * dvPerMark + dvMarqueSac;
@@ -2326,6 +2327,8 @@ namespace Quantum
                         while (dvSymFilter.NextUnsafe(out EntityRef _, out Combatant* dvNec))
                         {
                             if (dvNec->Class != NymoraClass.Necram || dvNec->HP <= 0) continue;
+                            // FIX MIROIR v141 : seul le caster (proprietaire du venin) est soigne.
+                            if (dvNec->PlayerIndex != caster->PlayerIndex) continue;
                             int dvHealPerTick = StatusHelper.GetMagnitude(dvNec, StatusKind.SymbioseMorbide, 0);
                             if (dvHealPerTick <= 0) continue;
                             int dvNecBefore = dvNec->HP;
@@ -2762,7 +2765,8 @@ namespace Quantum
                     }
 
                     int vfStacks = vfTarget->VeninStacks;
-                    int vfDensity = VeninHelpers.GetGlobalDensity(f);
+                    // FIX MIROIR v141 : palier base sur le venin subi par la cible (pool du caster).
+                    int vfDensity = VeninHelpers.GetDensityOnTeam(f, vfTarget->PlayerIndex);
                     int vfDmgPerMark = VeninHelpers.GetTickDmgPerMark(vfDensity);
                     int vfBaseDmg = vfStacks * vfDmgPerMark;
                     int vfMarqueSacBonus = StatusHelper.GetMagnitude(vfTarget, StatusKind.MarqueSacrificielle, 0);
@@ -2785,6 +2789,8 @@ namespace Quantum
                     {
                         if (vfNec->Class != NymoraClass.Necram) continue;
                         if (vfNec->HP <= 0) continue;
+                        // FIX MIROIR v141 : seul le caster (proprietaire du venin) est soigne.
+                        if (vfNec->PlayerIndex != caster->PlayerIndex) continue;
                         int vfHealPerTick = StatusHelper.GetMagnitude(vfNec, StatusKind.SymbioseMorbide, 0);
                         if (vfHealPerTick <= 0) continue;
                         int vfHealAmount = vfHealPerTick * SpellRegistry.VirusFatalMultNum / SpellRegistry.VirusFatalMultDen;

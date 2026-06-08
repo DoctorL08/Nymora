@@ -335,7 +335,12 @@ namespace Nymora.Core.Data
         //   (gate sim + indicateur "1t" grise dans la barre + description).
         // v140 (7 juin 2026 bis) — Nerf buffs Soulrender : Peau de Fer bonus melee 30 -> 10,
         //   Sang Bouillant prochaine frappe 30 -> 15, Frenesie +10% -> +5% dgts.
-        public const int CombatRulesVersion = 140;
+        // v141 (8 juin 2026) — FIX BUGS MIROIR Necram : densite venin PAR-NECRAM au lieu de poolee
+        //   (GetDensityOnTeam / GetDensityAppliedByNecram). Tick/regen/halo/Detonation/Virus Fatal/preview
+        //   lisent le pool du bon Necram ; heal Symbiose Morbide scopé au proprietaire du venin (x3 sites).
+        //   En 1v1 non-miroir : comportement identique. Le tier 3 (densite 7+) n'est plus atteignable en
+        //   1v1 (c'etait un artefact du pooling miroir). Virus Fatal reste gate sur 6 PT, pas la densite.
+        public const int CombatRulesVersion = 141;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";
