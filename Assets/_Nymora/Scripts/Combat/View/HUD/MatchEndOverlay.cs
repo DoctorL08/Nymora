@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Text;
 using Nymora.Combat.Replay;
 using Nymora.Core.Data;
@@ -59,11 +60,13 @@ namespace Nymora.Combat.View.HUD
 
         private bool _built;
         private bool _shown;
+        private bool _pendingShow; // item F : reveal différé pendant l'anim du floating text signature
         private bool _replaySavedThisMatch;
-        // Snapshot des params Refresh pour OnReturnToHubClicked.
+        // Snapshot des params Refresh pour OnReturnToHubClicked + le reveal différé.
         private int _localPlayerIndex;
         private int _winnerPlayerIndex;
         private bool _isPvpMatch;
+        private int _turnNumber;
 
         private void Awake()
         {
@@ -220,14 +223,51 @@ namespace Nymora.Combat.View.HUD
         {
             if (phase != Quantum.CombatPhase.MatchEnd)
             {
-                if (_shown) Hide();
+                if (_shown || _pendingShow) Hide();
                 return;
             }
-            if (_shown) return; // déjà affiché, idempotent
+            if (_shown || _pendingShow) return; // déjà affiché OU reveal différé en cours, idempotent
 
             _localPlayerIndex = localPlayerIndex;
             _winnerPlayerIndex = winnerPlayerIndex;
             _isPvpMatch = isPvpMatch;
+            _turnNumber = turnNumber;
+
+            // Item mineur F (9 juin) — si le kill final vient d'une signature, son floating text
+            // "SMASH!!" est encore en cours d'anim : on RETARDE l'overlay jusqu'à sa fin (sinon
+            // l'écran victoire/défaite le masque avant qu'il se termine).
+            if (FloatingTextManager.IsSignatureTextActive)
+            {
+                _pendingShow = true;
+                StartCoroutine(RevealAfterSignature());
+                return;
+            }
+
+            RevealNow();
+        }
+
+        // Attend la fin de l'anim du floating text signature (cap de sécurité), puis révèle l'overlay.
+        private IEnumerator RevealAfterSignature()
+        {
+            float safety = 0f;
+            while (FloatingTextManager.IsSignatureTextActive && _pendingShow && safety < 4f)
+            {
+                safety += Time.unscaledDeltaTime;
+                yield return null;
+            }
+            if (_pendingShow) // pas annulé entre-temps (ex : Hide si la phase a changé)
+            {
+                _pendingShow = false;
+                RevealNow();
+            }
+        }
+
+        // Construit le contenu (titre/infos/SFX) et affiche l'overlay. Utilise les params snapshottés.
+        private void RevealNow()
+        {
+            int winnerPlayerIndex = _winnerPlayerIndex;
+            int localPlayerIndex = _localPlayerIndex;
+            int turnNumber = _turnNumber;
 
             // S5 spectateur : pas de "local", donc pas de Victoire/Défaite. On nomme le gagnant.
             if (Nymora.Combat.Spectate.LiveSpectateController.LiveSpectateActive)
@@ -303,6 +343,7 @@ namespace Nymora.Combat.View.HUD
         {
             if (_root != null) _root.SetActive(false);
             _shown = false;
+            _pendingShow = false; // annule un reveal différé en cours (RevealAfterSignature)
             _replaySavedThisMatch = false;
         }
 

@@ -80,6 +80,12 @@ namespace Nymora.Combat.View.HUD
         [Tooltip("Décalage vertical (px écran) pour afficher le flottant AU-DESSUS de la cible (pas dessus).")]
         [SerializeField] private float _signatureAboveTargetPx = 120f;
 
+        // Item mineur F (9 juin) — instant (unscaled time) jusqu'auquel un floating text SIGNATURE
+        // ("SMASH!!") est en cours d'animation. Lu par MatchEndOverlay pour retarder l'écran de
+        // victoire/défaite quand le kill final vient d'une signature (sinon l'overlay couvre l'anim).
+        private static float _signatureTextActiveUntil = -999f;
+        public static bool IsSignatureTextActive => Time.unscaledTime < _signatureTextActiveUntil;
+
         private void Awake()
         {
             if (_worldCamera == null) _worldCamera = Camera.main;
@@ -190,6 +196,10 @@ namespace Nymora.Combat.View.HUD
         public void SpawnSignatureHit(Vector3 worldPos, int amount)
         {
             if (amount == 0 || _canvas == null || _worldCamera == null) return;
+
+            // Item mineur F — marque le floating text signature comme actif jusqu'à la fin de son
+            // rise+fondu (même durée que SignatureRiseFade) -> MatchEndOverlay attend cette fin.
+            _signatureTextActiveUntil = Time.unscaledTime + _durationSeconds * _signatureDurationMultiplier;
 
             string num = amount < 0 ? amount.ToString() : "+" + amount;
             var screenPos = _worldCamera.WorldToScreenPoint(worldPos);
