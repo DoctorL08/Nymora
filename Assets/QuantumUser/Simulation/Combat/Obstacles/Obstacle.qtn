@@ -35,7 +35,7 @@ struct ObstacleTile {
 }
 
 singleton component ObstacleSingleton {
-    array<ObstacleTile>[100] Tiles;
+    array<ObstacleTile>[225] Tiles; // 5.4 : MAX 15x15 (stride GridConstants.Width=15), même convention d'index que GridSingleton
 }
 
 // Component porte par chaque entity Obstacle.

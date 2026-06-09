@@ -40,5 +40,5 @@ struct FogTile {
 }
 
 singleton component FogSingleton {
-    array<FogTile>[100] Tiles;
+    array<FogTile>[225] Tiles; // 5.4 : MAX 15x15 (stride GridConstants.Width=15), même convention d'index que GridSingleton
 }

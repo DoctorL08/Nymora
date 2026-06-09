@@ -417,7 +417,15 @@ namespace Nymora.Core.Data
         //   - rotation : EnterTurnStart SAUTE le sous-tour d'un joueur KO (pas de tour pour un mort).
         //   INVARIANT 1v1 : la mort déclenche MatchEnd immédiat (1 seul joueur/équipe) -> cadavre/skip
         //   jamais atteints ; forfait/déco aboutissent au même verdict qu'avant. Comportement identique.
-        public const int CombatRulesVersion = 157;
+        // v158 (9 juin 2026) — Phase 5 brique 5.4a (grille agrandie) : GridConstants 10x10 -> MAX 15x15
+        //   (225, = stride d'index + taille des fixed arrays Grid/Fog/Obstacle .qtn). Dimensions LOGIQUES
+        //   par mode dans GridSingleton.Width/Height (1v1 10 / 2v2 12 / 3v3 15) posées par GridSystem.OnInit
+        //   depuis RuntimeConfig.PlayerCount ; Walkable=1 seulement dans la zone logique (le reste du
+        //   tableau MAX = non-walkable). TargetingResolver énumère la zone logique. View (GridRenderer) :
+        //   GetTileView/TryGetWorldBounds sur dims logiques (cachées au spawn). INVARIANT 1v1 : zone 10x10
+        //   aux mêmes coords + centrage sur 10x10 -> rendu et gameplay strictement identiques. Forme
+        //   irrégulière (carve) + MapAsset + éditeur = sous-briques 5.4b/c/d.
+        public const int CombatRulesVersion = 158;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

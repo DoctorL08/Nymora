@@ -63,9 +63,11 @@ Découpage : **5.1 fondations équipe** → 5.2 rotation N-joueurs + ordre voté
 
 - ✅ **5.3 livrée + commit** (v157) : cadavre-obstacle (mort jamais détruite, garde sa case → bloque mouvement/pathfinding déjà ; LoS bloque maintenant aussi sur cadavre, neutre) ; forfait/déco = **KO du joueur** (pas l'équipe) → `EvaluateTeamMatchEnd` décide ; `EnterTurnStart` **saute le sous-tour d'un KO**. **+ fix intro 5.2** : `ActivePlayerIndex` provisoire = `StartingTeam` à l'OnInit (l'intro « pile ou face » lisait un placeholder 0 → annonçait le mauvais démarreur). Validé 1v1 IA + intro correcte.
 
+- ✅ **5.4a livrée + commit** (v158) : grille MAX **15×15 (225)** (stride/array), dims logiques par mode dans `GridSingleton` (1v1 10 / 2v2 12 / 3v3 15) via `RuntimeConfig.PlayerCount` ; `Walkable` actif seulement dans la zone logique ; `TargetingResolver` + View (`GridRenderer`) sur dims logiques. INVARIANT 1v1 : zone 10×10 mêmes coords → **identique**. Reste 5.4b (MapAsset Quantum : masque irrégulier + spawns) → 5.4c (éditeur) → 5.4d (View forme irrégulière).
+
 ## Prochaine action
 
-**Phase 5 brique 5.4 — grille agrandie + maps irrégulières + éditeur** : agrandir l'array grille au cap 3v3, `MapAsset` (forme `Walkable` bord-irrégulier + spawns groupés par équipe), Editor Script `NymoraMapEditor` pour peindre la map ; 1 map 2v2 dessinée. (Le 1v1 garde sa 10x10.)
+**Phase 5 brique 5.4b — `MapAsset` Quantum (masque Walkable irrégulier + spawns par équipe) + chargement sim**, puis 5.4c (éditeur) / 5.4d (View). Ancienne note : grille agrandie + maps irrégulières + éditeur : agrandir l'array grille au cap 3v3, `MapAsset` (forme `Walkable` bord-irrégulier + spawns groupés par équipe), Editor Script `NymoraMapEditor` pour peindre la map ; 1 map 2v2 dessinée. (Le 1v1 garde sa 10x10.)
 
 ---
 

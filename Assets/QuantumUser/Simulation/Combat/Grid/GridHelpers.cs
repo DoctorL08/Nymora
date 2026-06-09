@@ -7,13 +7,28 @@ namespace Quantum
     // dans Grid.qtn / Fog.qtn / Obstacle.qtn (array<...>[Count]) — toute modification
     // implique regeneration du DSL Quantum + bump CombatRulesVersion.
     //
-    // POLISH-5e (17 mai) : 15x17=255 -> 10x10=100 pour caler l'arene losange de la map
-    // background Map_Combat_1. Spawn positions ajustees dans CombatantSystem.
+    // POLISH-5e (17 mai) : 15x17=255 -> 10x10=100 pour caler l'arene losange.
+    // 5.4 (2v2/3v3) : Width/Height = dimension MAX = 15x15 (225) pour contenir la plus grande
+    //   map (3v3). C'est AUSSI le STRIDE d'index (Index = y*Width + x) et la taille du fixed array.
+    //   Les modes plus petits (1v1 10x10, 2v2 12x12) sont des SOUS-RÉGIONS logiques de ce tableau ;
+    //   leur forme (rectangulaire par défaut, irrégulière via MapAsset en 5.4c) est portée par le
+    //   masque Walkable. Les dimensions LOGIQUES par map vivent dans GridSingleton.Width/Height
+    //   (la View se centre dessus -> le 1v1 reste rendu en 10x10, identique).
     public static class GridConstants
     {
-        public const int Width = 10;
-        public const int Height = 10;
-        public const int Count = Width * Height;
+        public const int Width = 15;  // MAX = stride d'index = taille fixe du tableau
+        public const int Height = 15;
+        public const int Count = Width * Height; // 225 (< 255, sous la limite Quantum)
+
+        // 5.4 — Zone jouable LOGIQUE (rectangle de base) selon le nombre de joueurs du combat.
+        //   1v1 -> 10x10 (inchangé), 2v2 -> 12x12, 3v3 -> 15x15. Posée dans GridSingleton.Width/Height
+        //   par GridSystem.OnInit. Le MapAsset (5.4c) viendra carve la forme irrégulière par-dessus.
+        public static void LogicalDims(int playerCount, out int width, out int height)
+        {
+            if (playerCount >= 6)      { width = 15; height = 15; } // 3v3
+            else if (playerCount >= 4) { width = 12; height = 12; } // 2v2
+            else                       { width = 10; height = 10; } // 1v1 (défaut)
+        }
     }
 
     public static unsafe class GridHelpers

@@ -48,7 +48,10 @@ struct Tile {
 // (FogSingleton, cf Combat/Fog/Fog.qtn) pour eviter de gonfler GridSingleton.
 
 singleton component GridSingleton {
+    // 5.4 — Width/Height = dimensions LOGIQUES de la map courante (1v1 10x10, 2v2 12x12, 3v3 15x15),
+    //   posées par GridSystem.OnInit. La View se centre dessus. Le tableau Tiles est dimensionné au
+    //   MAX (15x15 = 225, cf GridConstants) ; l'index reste y*GridConstants.Width + x (stride 15).
     Int32 Width;
     Int32 Height;
-    array<Tile>[100] Tiles;
+    array<Tile>[225] Tiles;
 }

@@ -28,6 +28,12 @@ namespace Nymora.Combat.View
 
         private GameObject[] _tiles;
 
+        // 5.4 — Dimensions LOGIQUES de la map courante (zone jouable), lues depuis GridSingleton au
+        //   spawn. ≠ GridConstants.Width/Height (= MAX 15x15 du tableau sim). GetTileView /
+        //   TryGetWorldBounds s'en servent pour rester cohérents avec le rendu (le 1v1 reste 10x10).
+        private int _logicalWidth;
+        private int _logicalHeight;
+
         /// <summary>Largeur monde d'une case iso (depuis GridSettings). 0 si settings manquant.
         /// Utilisé par le contour de case d'équipe (MirrorOutlineHelper) pour tracer le losange.</summary>
         public float TileWorldWidth => _settings != null ? _settings.TileWorldWidth : 0f;
@@ -66,6 +72,8 @@ namespace Nymora.Combat.View
             int height = grid.Height;
             int count = width * height;
 
+            _logicalWidth = width;   // 5.4 — cache pour GetTileView / TryGetWorldBounds
+            _logicalHeight = height;
             _tiles = new GameObject[count];
 
             Vector3 centerOffset = _settings.CenterGrid
@@ -174,8 +182,10 @@ namespace Nymora.Combat.View
             bounds = default;
             if (_settings == null) return false;
 
-            int w = Quantum.GridConstants.Width;
-            int h = Quantum.GridConstants.Height;
+            // 5.4 — clamp caméra sur les dims LOGIQUES une fois la grille spawn (la map réelle),
+            //   fallback sur le MAX (const) avant le spawn. Le 1v1 (10x10) reste cadré comme avant.
+            int w = _tiles != null ? _logicalWidth : Quantum.GridConstants.Width;
+            int h = _tiles != null ? _logicalHeight : Quantum.GridConstants.Height;
             float tw = _settings.TileWorldWidth;
             float th = _settings.TileWorldHeight;
             Vector3 offset = _settings.CenterGrid
@@ -206,16 +216,11 @@ namespace Nymora.Combat.View
         public TileView GetTileView(int gx, int gy)
         {
             if (_tiles == null) return null;
-            int width = (_settings != null) ? 0 : 0; // pas necessaire ici, on a la singleton via la frame
-            // POLISH-5e (17 mai) : remplace les hardcoded 15/17 par GridConstants pour eviter
-            // de fork avec la dimension Quantum a chaque resize.
-            int gridWidth = Quantum.GridConstants.Width;
-            int gridHeight = Quantum.GridConstants.Height;
-            if (gx < 0 || gx >= gridWidth || gy < 0 || gy >= gridHeight) return null;
-            int idx = gy * gridWidth + gx;
-            // Securite : si la grille a ete resize (GridConstants change) sans re-spawn,
-            // on protege contre un index out of range.
-            if (idx >= _tiles.Length) return null;
+            // 5.4 — on indexe sur les dims LOGIQUES (celles utilisées au spawn pour `_tiles`),
+            //   pas sur GridConstants.Width (= MAX 15). Sinon le stride ne correspond plus au
+            //   tableau _tiles et le hover/highlight pointe la mauvaise case.
+            if (gx < 0 || gx >= _logicalWidth || gy < 0 || gy >= _logicalHeight) return null;
+            int idx = gy * _logicalWidth + gx;
             if (idx < 0 || idx >= _tiles.Length) return null;
             var go = _tiles[idx];
             return go != null ? go.GetComponent<TileView>() : null;

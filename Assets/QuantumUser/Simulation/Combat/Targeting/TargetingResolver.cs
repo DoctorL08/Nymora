@@ -67,9 +67,16 @@ namespace Quantum
             count = 0;
             if (rangeMax < rangeMin) return;
 
-            for (int y = 0; y < GridConstants.Height; y++)
+            // 5.4 — borne l'énumération à la zone jouable LOGIQUE (GridSingleton.Width/Height) et non
+            //   au tableau MAX (15x15), sinon le preview de portée afficherait des cases hors-map. En
+            //   1v1 (10x10) -> mêmes cases qu'avant. L'index reste y*GridConstants.Width + x (stride 15).
+            var grid = f.Unsafe.GetPointerSingleton<GridSingleton>();
+            int logicalW = grid->Width;
+            int logicalH = grid->Height;
+
+            for (int y = 0; y < logicalH; y++)
             {
-                for (int x = 0; x < GridConstants.Width; x++)
+                for (int x = 0; x < logicalW; x++)
                 {
                     int dx = x - casterX; if (dx < 0) dx = -dx;
                     int dy = y - casterY; if (dy < 0) dy = -dy;

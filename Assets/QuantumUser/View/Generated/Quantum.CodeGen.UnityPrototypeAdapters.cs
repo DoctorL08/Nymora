@@ -178,8 +178,8 @@ namespace Quantum.Prototypes.Unity {
   public unsafe partial class GridSingletonPrototype : Quantum.QuantumUnityPrototypeAdapter<Quantum.Prototypes.GridSingletonPrototype> {
     public Int32 Width;
     public Int32 Height;
-    [ArrayLengthAttribute(100)]
-    public Quantum.Prototypes.Unity.TilePrototype[] Tiles = new Quantum.Prototypes.Unity.TilePrototype[100];
+    [ArrayLengthAttribute(225)]
+    public Quantum.Prototypes.Unity.TilePrototype[] Tiles = new Quantum.Prototypes.Unity.TilePrototype[225];
     partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.GridSingletonPrototype prototype);
     public override Quantum.Prototypes.GridSingletonPrototype Convert(Quantum.QuantumEntityPrototypeConverter converter) {
       var result = new Quantum.Prototypes.GridSingletonPrototype();
@@ -217,8 +217,8 @@ namespace Quantum.Prototypes.Unity {
   }
   [System.SerializableAttribute()]
   public unsafe partial class ObstacleSingletonPrototype : Quantum.QuantumUnityPrototypeAdapter<Quantum.Prototypes.ObstacleSingletonPrototype> {
-    [ArrayLengthAttribute(100)]
-    public Quantum.Prototypes.Unity.ObstacleTilePrototype[] Tiles = new Quantum.Prototypes.Unity.ObstacleTilePrototype[100];
+    [ArrayLengthAttribute(225)]
+    public Quantum.Prototypes.Unity.ObstacleTilePrototype[] Tiles = new Quantum.Prototypes.Unity.ObstacleTilePrototype[225];
     partial void ConvertUser(Quantum.QuantumEntityPrototypeConverter converter, ref Quantum.Prototypes.ObstacleSingletonPrototype prototype);
     public override Quantum.Prototypes.ObstacleSingletonPrototype Convert(Quantum.QuantumEntityPrototypeConverter converter) {
       var result = new Quantum.Prototypes.ObstacleSingletonPrototype();
