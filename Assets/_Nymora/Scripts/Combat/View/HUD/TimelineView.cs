@@ -9,78 +9,81 @@ using UnityEngine.UI;
 namespace Nymora.Combat.View.HUD
 {
     /// <summary>
-    /// Timeline bas-droite : cadre avec les 2 sprites IDLE ANIMES des combatants cote a
-    /// cote (refacto 19 mai — anciennement portraits 128px statiques). Le combatant actif
-    /// est mis en evidence (cadre jaune + alpha plein), l'inactif est grise.
+    /// Timeline bas-droite : cadre avec les sprites IDLE ANIMES des combatants cote a cote.
+    /// Le combatant actif est mis en evidence (cadre clair + alpha plein) ; les autres sont
+    /// teintes par EQUIPE (bleu = equipe 0, rouge = equipe 1) et legerement grises.
     ///
-    /// Skins (31 mai) : si un joueur a equipe un skin combat, la timeline joue les IdleFrames
-    /// du SKIN (resolu depuis CosmeticSkinCatalog via le SkinId du RuntimePlayer, comme le
-    /// CombatantRenderer / le lobby pre-combat) ; fallback sur les frames de la classe sinon.
+    /// 5.5d (2v2/3v3, 9 juin) — refonte N slots. Anciennement 2 slots hardcodes P0/P1 ;
+    /// desormais un slot par PlayerIndex (jusqu'a TurnConstants.MaxPlayers=6), construits a la
+    /// demande selon CombatState.PlayerCount. INVARIANT 1v1 : 2 slots, rendu identique (le slot
+    /// actif passe en cadre clair ; en 1v1 chaque joueur EST sa propre equipe -> couleur d'equipe
+    /// = bleu/rouge comme avant via TeamId == PlayerIndex).
     ///
-    /// Auto-init complet : si _slot0Root/_slot1Root sont null, le TimelineView spawn sa
-    /// propre structure Container + 2 Slots + Image portraits a l'Awake. Lorenzo n'a qu'a
-    /// poser le component sur un GameObject UI dans la zone bas-droite du HUD.
+    /// Skins (31 mai) : si un joueur a equipe un skin combat, la timeline joue les IdleFrames du
+    /// SKIN (resolu depuis CosmeticSkinCatalog via le SkinId du RuntimePlayer) ; fallback classe.
+    ///
+    /// Auto-init complet : le TimelineView spawn sa propre structure Container + Slots a la
+    /// premiere Refresh. Lorenzo n'a qu'a poser le component sur un GameObject UI bas-droite.
     /// </summary>
     public class TimelineView : MonoBehaviour
     {
-        [Header("Refs optionnelles (auto-spawn si null)")]
-        [SerializeField] private RectTransform _slot0Root;
-        [SerializeField] private RectTransform _slot1Root;
-        [SerializeField] private Image _portrait0;
-        [SerializeField] private Image _portrait1;
-        [SerializeField] private Image _slot0Frame;
-        [SerializeField] private Image _slot1Frame;
-        [SerializeField] private TMP_Text _legacyLabel; // ancien texte P0/P1, hide si auto-spawn
-
         [Header("Style (re-skin DA hub : monochrome)")]
         [SerializeField] private Vector2 _slotSize = new Vector2(124f, 144f);
         [SerializeField] private float _slotSpacing = 12f;
         [SerializeField] private Color _frameActive = new Color(0.93f, 0.94f, 0.96f, 1f);   // accent clair = actif
-        [SerializeField] private Color _frameInactive = new Color(0.16f, 0.165f, 0.185f, 1f); // surface carte
+        [SerializeField] private Color _frameInactive = new Color(0.16f, 0.165f, 0.185f, 1f); // surface carte (mort / vide)
         [SerializeField] private Color _portraitActive = Color.white;
         [SerializeField] private Color _portraitInactive = new Color(0.55f, 0.55f, 0.58f, 1f);
         [SerializeField] private int _frameBorderPx = 4;
 
+        [Tooltip("5.5d — couleur de cadre des combatants de l'EQUIPE 0 (hors tour actif). Le combatant " +
+                 "actif passe en _frameActive (clair) quelle que soit son equipe.")]
+        [SerializeField] private Color _frameTeam0 = new Color(0.30f, 0.55f, 0.95f, 1f); // bleu
+        [Tooltip("5.5d — couleur de cadre des combatants de l'EQUIPE 1 (hors tour actif).")]
+        [SerializeField] private Color _frameTeam1 = new Color(0.92f, 0.34f, 0.34f, 1f); // rouge
+
         [Tooltip("Patch UI combat 8 juin — hauteur (px) de la bande HP affichée sous chaque portrait " +
-                 "de la timeline (remplace les panneaux d'infos haut-gauche/droite). Mets 0 pour ne pas " +
-                 "afficher de bande HP.")]
+                 "de la timeline. Mets 0 pour ne pas afficher de bande HP.")]
         [SerializeField] private float _hpStripHeight = 30f;
 
         [Tooltip("Patch UI combat 8 juin (3b) — hauteur (px) des chips de statuts affichées au-dessus " +
                  "de chaque portrait. Mets 0 pour désactiver les chips.")]
         [SerializeField] private float _chipHeight = 28f;
 
-        private CombatUISpriteAnimator _animator0;
-        private CombatUISpriteAnimator _animator1;
-        // Patch UI combat 8 juin — libellés HP/MaxHP sous chaque portrait (lecture d'un coup d'œil).
-        private TMP_Text _hp0;
-        private TMP_Text _hp1;
-        // Patch UI combat 8 juin (3b) — rangées de chips de statuts (pool réutilisé chaque frame, 0 GC).
+        [Header("B8 (22 mai) — Position")]
+        [Tooltip("Remonte la timeline de N px pour loger le bouton Abandonner en dessous. " +
+                 "Applique une fois au chargement. Mets 0 pour ne pas bouger.")]
+        [SerializeField] private float _verticalNudge = 80f;
+
+        private const int MaxSlots = 6;  // 3v3
         private const int MaxChips = 10;
-        private RectTransform _chipRow0;
-        private RectTransform _chipRow1;
-        private readonly List<StatusChip> _chips0 = new List<StatusChip>(MaxChips);
-        private readonly List<StatusChip> _chips1 = new List<StatusChip>(MaxChips);
+
+        // 5.5d — un slot par joueur (PlayerIndex). Construits a la demande (EnsureSlots).
+        private sealed class TeamSlot
+        {
+            public RectTransform Root;
+            public Image Frame;
+            public Image Portrait;
+            public CombatUISpriteAnimator Anim;
+            public TMP_Text Hp;
+            public RectTransform ChipRow;
+            public readonly List<StatusChip> Chips = new List<StatusChip>(MaxChips);
+            // Etat courant cache pour le tooltip hover.
+            public Combatant Combatant;
+            public bool Has;
+            public string SkinId = "";
+        }
+
+        private readonly List<TeamSlot> _slots = new List<TeamSlot>(MaxSlots);
+        private RectTransform _container;
+        private int _currentTurnNumber;
+
         private Dictionary<NymoraClass, NymoraClassDefinition> _classByEnum;
 
         // Skins combat : catalogue charge a la demande (meme chemin Resources que CombatantRenderer).
         private const string SkinCatalogResourcePath = "Cosmetics/CosmeticSkinCatalog";
         private CosmeticSkinCatalog _skinCatalog;
         private bool _skinCatalogLoaded;
-        private string _p0SkinId = "";
-        private string _p1SkinId = "";
-
-        // Combatants courants caches pour le tooltip (cf Refresh).
-        private Combatant _currentP0;
-        private bool _hasP0;
-        private Combatant _currentP1;
-        private bool _hasP1;
-        private int _currentTurnNumber;
-
-        [Header("B8 (22 mai) — Position")]
-        [Tooltip("Remonte la timeline de N px pour loger le bouton Abandonner en dessous. " +
-                 "Applique une fois au chargement. Mets 0 pour ne pas bouger.")]
-        [SerializeField] private float _verticalNudge = 80f;
 
         private void Awake()
         {
@@ -91,20 +94,12 @@ namespace Nymora.Combat.View.HUD
                 selfRt.anchoredPosition += new Vector2(0f, _verticalNudge);
             }
 
-            // Auto-find le label legacy si pas drag-drop dans Inspector. Sans ce cleanup,
-            // l'ancien TMP "P0 | P1" hardcode dans la scene reste visible sous les nouveaux
-            // slots animes (fix 19 mai).
-            if (_legacyLabel == null)
-            {
-                _legacyLabel = GetComponentInChildren<TMP_Text>(true);
-            }
-            if (_legacyLabel != null) _legacyLabel.gameObject.SetActive(false);
-            EnsureSlots();
+            // Cache l'ancien label legacy "P0 | P1" hardcode dans la scene s'il existe (fix 19 mai).
+            // Lu AVANT de construire nos slots (qui ajoutent leurs propres TMP_Text).
+            var legacyLabel = GetComponentInChildren<TMP_Text>(true);
+            if (legacyLabel != null) legacyLabel.gameObject.SetActive(false);
 
-            // Re-skin DA hub : cadres arrondis (sprite généré au runtime). ApplySlot ne change
-            // que la couleur du cadre -> la forme arrondie persiste.
-            if (_slot0Frame != null) CombatUiKit.ApplyRounded(_slot0Frame, 10f);
-            if (_slot1Frame != null) CombatUiKit.ApplyRounded(_slot1Frame, 10f);
+            EnsureContainer();
         }
 
         /// <summary>
@@ -113,7 +108,7 @@ namespace Nymora.Combat.View.HUD
         /// </summary>
         public void Init(NymoraClassDefinition[] classDefinitions)
         {
-            _classByEnum = new Dictionary<NymoraClass, NymoraClassDefinition>(5);
+            _classByEnum = new Dictionary<NymoraClass, NymoraClassDefinition>(6);
             if (classDefinitions == null) return;
             foreach (var def in classDefinitions)
             {
@@ -123,36 +118,49 @@ namespace Nymora.Combat.View.HUD
             }
         }
 
-        public void Refresh(int activePlayerIndex, NymoraClass p0Class, NymoraClass p1Class)
-        {
-            EnsureSlots();
-            ApplySlot(_slot0Frame, _portrait0, _animator0, p0Class, _p0SkinId, activePlayerIndex == 0);
-            ApplySlot(_slot1Frame, _portrait1, _animator1, p1Class, _p1SkinId, activePlayerIndex == 1);
-        }
-
         /// <summary>
-        /// Surcharge avec les Combatant structs complets — necessaire pour le tooltip hover
-        /// qui affiche HP/Ressource/Statuses/Marque. Appelee par CombatHUDController.OnUpdateView.
-        /// Les SkinId (RuntimePlayer, sync Quantum) pilotent le visuel : skin equipe > classe.
+        /// 5.5d — Refresh N joueurs. Les tableaux de DONNEES (byPlayer/present/skinByPlayer) sont
+        /// indexes PAR PlayerIndex. `order` donne l'ORDRE D'AFFICHAGE = la séquence de jeu du round
+        /// (TurnOrder : A0, B0, A1, B1...) : le slot d'écran `k` montre le joueur `order[k]`, donc le
+        /// highlight du joueur actif progresse de gauche à droite. `present[i]` = un Combatant existe.
+        /// Appelee chaque frame par CombatHUDController.OnUpdateView.
         /// </summary>
-        public void RefreshWithCombatants(int activePlayerIndex, Combatant p0, bool hasP0, Combatant p1, bool hasP1, int turnNumber, string p0SkinId, string p1SkinId)
+        public void RefreshTeam(int activePlayerIndex, Combatant[] byPlayer, bool[] present, string[] skinByPlayer, int[] order, int playerCount, int turnNumber)
         {
-            _currentP0 = p0; _hasP0 = hasP0;
-            _currentP1 = p1; _hasP1 = hasP1;
             _currentTurnNumber = turnNumber;
-            _p0SkinId = p0SkinId ?? "";
-            _p1SkinId = p1SkinId ?? "";
-            NymoraClass p0Cls = hasP0 ? p0.Class : NymoraClass.None;
-            NymoraClass p1Cls = hasP1 ? p1.Class : NymoraClass.None;
-            Refresh(activePlayerIndex, p0Cls, p1Cls);
+            int count = Mathf.Clamp(playerCount, 0, MaxSlots);
+            EnsureSlots(count);
 
-            // Patch UI combat 8 juin — HP/MaxHP sous chaque portrait (remplace les panneaux haut G/D).
-            SetHpLabel(_hp0, hasP0, p0, activePlayerIndex == 0);
-            SetHpLabel(_hp1, hasP1, p1, activePlayerIndex == 1);
+            for (int k = 0; k < _slots.Count; k++)
+            {
+                var slot = _slots[k];
+                bool show = k < count;
+                if (slot.Root != null && slot.Root.gameObject.activeSelf != show)
+                    slot.Root.gameObject.SetActive(show);
+                if (!show) continue;
 
-            // Patch UI combat 8 juin (3b) — chips de statuts (malus/bonus) au-dessus de chaque portrait.
-            RefreshChips(_chipRow0, _chips0, hasP0, p0);
-            RefreshChips(_chipRow1, _chips1, hasP1, p1);
+                // Le slot d'écran k affiche le joueur à la position k de l'ordre de jeu.
+                int pi = (order != null && k < order.Length) ? order[k] : k;
+                if (byPlayer == null || pi < 0 || pi >= byPlayer.Length) pi = k;
+
+                bool has = present != null && pi < present.Length && present[pi];
+                Combatant c = (byPlayer != null && pi < byPlayer.Length) ? byPlayer[pi] : default;
+                string skinId = (skinByPlayer != null && pi < skinByPlayer.Length) ? (skinByPlayer[pi] ?? "") : "";
+                slot.Combatant = c; slot.Has = has; slot.SkinId = skinId;
+
+                bool isActive = pi == activePlayerIndex;
+                bool dead = has && c.HP <= 0;
+                NymoraClass cls = has ? c.Class : NymoraClass.None;
+
+                // Cadre : actif (vivant) = clair ; mort/vide = surface grise ; sinon couleur d'equipe.
+                Color frameCol = (!has || dead) ? _frameInactive
+                               : isActive ? _frameActive
+                               : (c.TeamId == 0 ? _frameTeam0 : _frameTeam1);
+
+                ApplySlot(slot.Frame, slot.Portrait, slot.Anim, cls, skinId, isActive && !dead, frameCol);
+                SetHpLabel(slot.Hp, has, c, isActive);
+                RefreshChips(slot.ChipRow, slot.Chips, has, c);
+            }
         }
 
         private void RefreshChips(RectTransform row, List<StatusChip> pool, bool has, in Combatant c)
@@ -161,7 +169,7 @@ namespace Nymora.Combat.View.HUD
             int used = 0;
             if (has)
             {
-                // 1) VENIN Necram — champ dédié VeninStacks (PAS dans Statuses[]). C'était l'état manquant.
+                // 1) VENIN Necram — champ dédié VeninStacks (PAS dans Statuses[]).
                 if (c.VeninStacks > 0)
                 {
                     EmitChip(row, pool, ref used, $"VENx{c.VeninStacks}", StatusIconInfo.Polarity.Malus);
@@ -268,21 +276,11 @@ namespace Nymora.Combat.View.HUD
 
         internal void OnSlotHoverEnter(int slotIndex)
         {
-            string text;
-            RectTransform anchor;
-            if (slotIndex == 0)
-            {
-                if (!_hasP0) return;
-                text = TimelineSlotTooltipBuilder.Build(_currentP0, _currentTurnNumber);
-                anchor = _slot0Root;
-            }
-            else
-            {
-                if (!_hasP1) return;
-                text = TimelineSlotTooltipBuilder.Build(_currentP1, _currentTurnNumber);
-                anchor = _slot1Root;
-            }
-            PassiveTooltipView.Instance.ShowAbove(text, anchor);
+            if (slotIndex < 0 || slotIndex >= _slots.Count) return;
+            var slot = _slots[slotIndex];
+            if (!slot.Has) return;
+            string text = TimelineSlotTooltipBuilder.Build(slot.Combatant, _currentTurnNumber);
+            PassiveTooltipView.Instance.ShowAbove(text, slot.Root);
         }
 
         internal void OnSlotHoverExit()
@@ -290,9 +288,9 @@ namespace Nymora.Combat.View.HUD
             PassiveTooltipView.Instance.Hide();
         }
 
-        private void ApplySlot(Image frame, Image portrait, CombatUISpriteAnimator anim, NymoraClass cls, string skinId, bool isActive)
+        private void ApplySlot(Image frame, Image portrait, CombatUISpriteAnimator anim, NymoraClass cls, string skinId, bool isActive, Color frameColor)
         {
-            if (frame != null) frame.color = isActive ? _frameActive : _frameInactive;
+            if (frame != null) frame.color = frameColor;
             if (portrait == null) return;
 
             NymoraClassDefinition def = null;
@@ -348,9 +346,9 @@ namespace Nymora.Combat.View.HUD
             return skin;
         }
 
-        private void EnsureSlots()
+        private void EnsureContainer()
         {
-            if (_slot0Root != null && _slot1Root != null) return;
+            if (_container != null) return;
 
             var container = new GameObject("Container",
                 typeof(RectTransform), typeof(HorizontalLayoutGroup), typeof(ContentSizeFitter));
@@ -362,7 +360,6 @@ namespace Nymora.Combat.View.HUD
             containerRt.anchorMax = new Vector2(1f, 0.5f);
             containerRt.pivot = new Vector2(1f, 0.5f);
             containerRt.anchoredPosition = Vector2.zero;
-            // sizeDelta calc auto via ContentSizeFitter selon les slots
             var hlg = container.GetComponent<HorizontalLayoutGroup>();
             hlg.spacing = _slotSpacing;
             hlg.childAlignment = TextAnchor.MiddleRight;
@@ -373,15 +370,23 @@ namespace Nymora.Combat.View.HUD
             var fitter = container.GetComponent<ContentSizeFitter>();
             fitter.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
             fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+            _container = containerRt;
+        }
 
-            _slot0Root = BuildSlot(container.transform, "Slot_P0", 0, out _slot0Frame, out _portrait0, out _animator0, out _hp0);
-            _slot1Root = BuildSlot(container.transform, "Slot_P1", 1, out _slot1Frame, out _portrait1, out _animator1, out _hp1);
-
-            // Patch UI combat 8 juin (3b) — rangée de chips de statuts au-dessus de chaque portrait.
-            if (_chipHeight > 0f)
+        // 5.5d — construit les slots manquants jusqu'a `count` (lazy, reutilises ensuite).
+        private void EnsureSlots(int count)
+        {
+            EnsureContainer();
+            while (_slots.Count < count)
             {
-                _chipRow0 = BuildChipRow(_slot0Root, "Chips_P0");
-                _chipRow1 = BuildChipRow(_slot1Root, "Chips_P1");
+                int idx = _slots.Count;
+                var slot = new TeamSlot();
+                slot.Root = BuildSlot(_container, $"Slot_P{idx}", idx, out slot.Frame, out slot.Portrait, out slot.Anim, out slot.Hp);
+                if (_chipHeight > 0f) slot.ChipRow = BuildChipRow(slot.Root, $"Chips_P{idx}");
+                // Re-skin DA hub : cadre arrondi (sprite généré au runtime). La couleur est repeinte
+                // chaque frame par ApplySlot ; la forme arrondie persiste.
+                if (slot.Frame != null) CombatUiKit.ApplyRounded(slot.Frame, 10f);
+                _slots.Add(slot);
             }
         }
 

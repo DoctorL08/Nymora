@@ -138,6 +138,25 @@ namespace Quantum
             return true;
         }
 
+        /// <summary>
+        /// 5.5d (View) — copie l'ORDRE DE JEU (séquence de PlayerIndex du round) du fixed buffer
+        /// TurnOrder vers `dest`. Lecture seule, exposée pour la timeline (asmdef View = pas
+        /// d'unsafe, ne peut pas indexer le fixed buffer directement). N'altère rien -> pas de
+        /// changement de règles. Copie min(PlayerCount, dest.Length, MaxPlayers) entrées ; le
+        /// reste de `dest` est laissé tel quel par l'appelant.
+        /// </summary>
+        public static void CopyTurnOrder(ref CombatState state, int[] dest)
+        {
+            if (dest == null) return;
+            int n = state.PlayerCount;
+            if (n > TurnConstants.MaxPlayers) n = TurnConstants.MaxPlayers;
+            if (n > dest.Length) n = dest.Length;
+            fixed (CombatState* p = &state)
+            {
+                for (int i = 0; i < n; i++) dest[i] = p->TurnOrder[i];
+            }
+        }
+
         /// <summary>Tri par insertion déterministe de paires (clé, valeur) parallèles, par clé
         /// croissante puis valeur (PlayerIndex) croissante en cas d'égalité. n petit (≤ 3).</summary>
         private static void InsertionSortByKey(int* keys, int* vals, int count)

@@ -401,17 +401,24 @@ namespace Nymora.Combat.View.HUD
             _isLocalTurn = localTurn;
             if (!localTurn && _armedSpell.HasValue) Disarm();
 
-            // Filter combatants une seule fois ; cache localement P0/P1 et le combatant local.
+            // Filter combatants une seule fois ; cache localement P0/P1, le combatant local, et
+            // les buffers par PlayerIndex pour la timeline N portraits (5.5d).
             Combatant p0 = default, p1 = default;
             bool hasP0 = false, hasP1 = false;
             Combatant local = default;
             bool hasLocal = false;
+            System.Array.Clear(_tlPresent, 0, _tlPresent.Length); // reset présence (slots sans Combatant)
             var filter = frame.Filter<Combatant>();
             while (filter.Next(out EntityRef _, out Combatant c))
             {
                 if (c.PlayerIndex == 0) { p0 = c; hasP0 = true; }
                 if (c.PlayerIndex == 1) { p1 = c; hasP1 = true; }
                 if (c.PlayerIndex == controlPlayer) { local = c; hasLocal = true; }
+                if (c.PlayerIndex >= 0 && c.PlayerIndex < _tlByPlayer.Length)
+                {
+                    _tlByPlayer[c.PlayerIndex] = c;
+                    _tlPresent[c.PlayerIndex] = true;
+                }
             }
 
             // Ratio HP de l'ennemi (1v1) — pour le coût PA effectif (bonus Appel du Sang Soulrender
@@ -440,14 +447,26 @@ namespace Nymora.Combat.View.HUD
             // Passif (combattant qu'on controle)
             if (_passive != null) { if (hasLocal) _passive.Refresh(local); else _passive.Clear(); }
 
-            // Timeline (sprites idle animes P0/P1 + highlight actif — refacto 19 mai)
-            // + cache des combatants pour le tooltip hover (phase + statuses + marques).
-            // Skin equipe par joueur (RuntimePlayer.SkinId, sync Quantum) -> visuel skinné dans la timeline.
+            // Timeline N portraits (5.5d) : un slot par PlayerIndex (1v1 = 2, 2v2 = 4, 3v3 = 6),
+            // teinte par equipe (TeamId) + highlight actif + HP + chips + tooltip hover.
+            // Skin equipe par joueur (RuntimePlayer.SkinId, sync Quantum) -> visuel skinné.
             if (_timeline != null)
             {
-                string p0Skin = hasP0 ? frame.GetPlayerData((PlayerRef)p0.PlayerIndex)?.SkinId : null;
-                string p1Skin = hasP1 ? frame.GetPlayerData((PlayerRef)p1.PlayerIndex)?.SkinId : null;
-                _timeline.RefreshWithCombatants(activePlayer, p0, hasP0, p1, hasP1, state.TurnNumber, p0Skin, p1Skin);
+                int playerCount = state.PlayerCount > 0 ? state.PlayerCount : _tlByPlayer.Length;
+                if (playerCount > _tlByPlayer.Length) playerCount = _tlByPlayer.Length;
+                for (int i = 0; i < playerCount; i++)
+                    _tlSkin[i] = _tlPresent[i] ? frame.GetPlayerData((PlayerRef)i)?.SkinId : null;
+
+                // Ordre d'affichage. Modes ÉQUIPE (2v2/3v3) : ordre de jeu (TurnOrder A0,B0,A1,B1) ->
+                // le highlight progresse de gauche à droite. 1v1 (count<=2) ou ordre pas encore figé :
+                // identité PlayerIndex (P0 à gauche) -> rendu 1v1 strictement inchangé (non-régression).
+                bool useTurnOrder = playerCount > 2 && state.TurnOrderBuilt != 0;
+                if (useTurnOrder)
+                    TurnSystem.CopyTurnOrder(ref state, _tlOrder);
+                else
+                    for (int i = 0; i < _tlOrder.Length; i++) _tlOrder[i] = i;
+
+                _timeline.RefreshTeam(activePlayer, _tlByPlayer, _tlPresent, _tlSkin, _tlOrder, playerCount, state.TurnNumber);
             }
 
             // B5 (22 mai) — Bandeau de tour TRANSITOIRE anime au changement de tour. Trigger
@@ -757,6 +776,14 @@ namespace Nymora.Combat.View.HUD
         private bool _hasCachedLocal;
         private int _cachedEnemyHpRatio = 100;
         private int _cachedTurnNumber;
+
+        // 5.5d (2v2/3v3) — buffers par PlayerIndex pour la timeline N portraits. Champs (pas de
+        // (ré)allocation par frame -> 0 GC dans OnUpdateView). Remplis dans le filter loop.
+        private readonly Combatant[] _tlByPlayer = new Combatant[Quantum.TurnConstants.MaxPlayers];
+        private readonly bool[] _tlPresent = new bool[Quantum.TurnConstants.MaxPlayers];
+        private readonly string[] _tlSkin = new string[Quantum.TurnConstants.MaxPlayers];
+        // 5.5d — ordre d'affichage = ordre de jeu (TurnOrder : A0,B0,A1,B1). Rempli depuis le sim.
+        private readonly int[] _tlOrder = new int[Quantum.TurnConstants.MaxPlayers];
 
         /// <summary>
         /// Coût PA EFFECTIF d'un sort, réplique managée de EffectiveStats.GetPACost (sim) :
