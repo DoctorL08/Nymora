@@ -281,11 +281,14 @@ namespace Quantum
                 // (mode strict neutre) -> toute unite bloque.
                 EntityRef occE = GridHelpers.GetOccupant(f, cx, cy);
                 if (occE != EntityRef.None
-                    && f.Unsafe.TryGetPointer<Combatant>(occE, out var occC)
-                    && occC->HP > 0
-                    && (casterTeamId < 0 || occC->TeamId != casterTeamId)) // 5.1 : unité ennemie bloque, alliée non
+                    && f.Unsafe.TryGetPointer<Combatant>(occE, out var occC))
                 {
-                    return false;
+                    // 5.3 — un CADAVRE (HP<=0, mode équipe) reste un obstacle NEUTRE : il bloque la
+                    //   LoS pour tout le monde (alliés du mort inclus). En 1v1 la mort = MatchEnd
+                    //   donc jamais rencontré (non-régression).
+                    if (occC->HP <= 0) return false;
+                    // 5.1 — unité VIVANTE : ennemie bloque, alliée non (mode neutre strict bloque tout).
+                    if (casterTeamId < 0 || occC->TeamId != casterTeamId) return false;
                 }
                 // Case intermediaire : check obstacle bloquant.
                 EntityRef obsE = GetObstacleAt(f, cx, cy);

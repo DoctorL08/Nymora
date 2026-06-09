@@ -48,7 +48,11 @@ namespace Quantum
             //   L'ordre complet (TurnOrder) est figé plus tard, une fois TOUS les Combatants spawnés
             //   (OnPlayerAdded est séquentiel) -> cf TryBuildTurnOrder. ActivePlayerIndex = placeholder.
             state->StartingTeam = state->IsBotMatch == 1 ? 0 : f.RNG->Next(0, 2);
-            state->ActivePlayerIndex = 0;
+            // ActivePlayerIndex provisoire = StartingTeam : en 1v1 (TeamId == slot) c'est EXACTEMENT
+            //   le joueur qui commence -> l'intro "pile ou face" (qui lit ActivePlayerIndex AVANT le
+            //   build de TurnOrder) annonce le bon démarreur. Le build le confirme à la même valeur
+            //   (TurnOrder[0]) -> aucun flicker. En 2v2/3v3 il sera affiné au build (rang 0 voté).
+            state->ActivePlayerIndex = state->StartingTeam;
             state->TurnOrderBuilt = 0;
 
             // PATCH 22 mai (test designer) — Intro "pile ou face" CASUAL : on reste en PreMatch
@@ -154,6 +158,38 @@ namespace Quantum
             }
         }
 
+        /// <summary>
+        /// 5.3 — KO le combattant du joueur `playerIndex` (HP=0) SANS détruire l'entité ni libérer
+        /// sa case : son corps reste en CADAVRE-OBSTACLE (bloque mouvement + LoS). Retourne true si
+        /// un combattant vivant a bien été tué (false si introuvable ou déjà mort = idempotent).
+        /// Utilisé par forfait / déconnexion. La fin de match « dernière équipe debout » est ensuite
+        /// décidée par EvaluateTeamMatchEnd.
+        /// </summary>
+        private static bool KillCombatantByPlayerIndex(Frame f, int playerIndex)
+        {
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->PlayerIndex != playerIndex) continue;
+                if (c->HP <= 0) return false; // déjà mort
+                c->HP = 0;
+                return true;
+            }
+            return false;
+        }
+
+        /// <summary>5.3 — Le joueur `playerIndex` est-il KO (HP&lt;=0) ? true aussi si aucun Combatant
+        /// (slot absent). Sert à sauter le sous-tour d'un mort dans la rotation.</summary>
+        private static bool IsPlayerDead(Frame f, int playerIndex)
+        {
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->PlayerIndex == playerIndex) return c->HP <= 0;
+            }
+            return true;
+        }
+
         public override void Update(Frame f)
         {
             var state = f.Unsafe.GetPointerSingleton<CombatState>();
@@ -166,24 +202,24 @@ namespace Quantum
                 if (!TryBuildTurnOrder(f, state)) return;
             }
 
-            // B8 (22 mai) — Abandon volontaire. Si un slot envoie ForfeitCommand, il perd
-            // immediatement et l'autre joueur gagne (1v1). Verifie chaque tick, hors MatchEnd.
-            // Fonctionne en IA (Lorenzo slot 0 forfait -> bot gagne = defaite) et en casual PvP.
+            // B8 (22 mai) / 5.3 — Abandon volontaire. Le forfait KO le JOUEUR (HP=0, son corps reste
+            // en cadavre-obstacle) ; il ne fait PLUS perdre toute l'équipe. L'équipe continue en
+            // infériorité, et EvaluateTeamMatchEnd (juste après) décide d'une éventuelle fin de match
+            // « dernière équipe debout ». En 1v1 : KO du seul joueur de l'équipe -> l'autre équipe
+            // gagne, comportement identique à avant.
             if (state->CurrentPhase != CombatPhase.MatchEnd)
             {
                 for (int slot = 0; slot < state->PlayerCount; slot++)
                 {
                     if (f.GetPlayerCommand(slot) is ForfeitCommand)
                     {
-                        // 1v1 : l'autre slot gagne. 5.3 retravaillera le forfait/deco en mode
-                        // equipe (= KO du joueur seul, l'equipe continue en inferiorite).
-                        int winner = (slot == 0) ? 1 : 0;
-                        state->WinnerPlayerIndex = winner;
-                        int winnerTeam = TeamHelper.ResolveTeamId(f, winner);
-                        state->WinnerTeamId = winnerTeam >= 0 ? winnerTeam : winner;
-                        state->CurrentPhase = CombatPhase.MatchEnd;
-                        Log.Info($"[TurnSystem] Forfait par P{slot} -> P{winner} (Team {state->WinnerTeamId}) gagne.");
-                        return;
+                        if (KillCombatantByPlayerIndex(f, slot))
+                        {
+                            Log.Info($"[TurnSystem] Forfait de P{slot} -> KO (cadavre). L'équipe continue.");
+                            // Si c'était son sous-tour, on le termine immédiatement.
+                            if (state->ActivePlayerIndex == slot && state->CurrentPhase == CombatPhase.TurnActive)
+                                state->CurrentPhase = CombatPhase.TurnEnd;
+                        }
                     }
                 }
             }
@@ -319,14 +355,17 @@ namespace Quantum
             if (state->CurrentPhase == CombatPhase.MatchEnd) return;
 
             int disconnectedSlot = player;
-            // En 1v1 : si slot 0 disconnect, slot 1 wins, et vice versa. 5.3 : en equipe, le
-            // deco devient un cadavre-obstacle (KO du joueur), l'equipe continue en inferiorite.
-            int otherSlot = (disconnectedSlot == 0) ? 1 : 0;
-            state->WinnerPlayerIndex = otherSlot;
-            int otherTeam = TeamHelper.ResolveTeamId(f, otherSlot);
-            state->WinnerTeamId = otherTeam >= 0 ? otherTeam : otherSlot;
-            state->CurrentPhase = CombatPhase.MatchEnd;
-            Log.Info($"[TurnSystem] Player P{disconnectedSlot} disconnected — P{otherSlot} (Team {state->WinnerTeamId}) wins by forfait.");
+            // 5.3 — la déconnexion KO le JOUEUR (cadavre-obstacle), elle ne fait plus perdre toute
+            //   l'équipe : les coéquipiers continuent en infériorité. EvaluateTeamMatchEnd décide
+            //   ensuite d'une éventuelle fin « dernière équipe debout ». En 1v1 : KO du seul joueur
+            //   de l'équipe -> l'autre équipe gagne (comportement identique à avant).
+            if (KillCombatantByPlayerIndex(f, disconnectedSlot))
+            {
+                Log.Info($"[TurnSystem] Déconnexion de P{disconnectedSlot} -> KO (cadavre). L'équipe continue.");
+                if (state->ActivePlayerIndex == disconnectedSlot && state->CurrentPhase == CombatPhase.TurnActive)
+                    state->CurrentPhase = CombatPhase.TurnEnd;
+            }
+            EvaluateTeamMatchEnd(f, state, "disconnect");
         }
 
         /// <summary>
@@ -361,6 +400,18 @@ namespace Quantum
                     c->DamageTakenThisRound = 0;
                 }
             }
+
+            // 5.3 — Si le joueur actif est KO (cadavre, mode équipe), on SAUTE son sous-tour : pas de
+            //   reset PA/PM, pas de passif, pas de timer. Transition directe vers TurnEnd, qui fera
+            //   les hooks de fin de round (no-op sur un mort) puis avancera la rotation jusqu'au
+            //   prochain joueur vivant. En 1v1 la mort déclenche MatchEnd -> ce cas n'arrive jamais.
+            if (IsPlayerDead(f, state->ActivePlayerIndex))
+            {
+                Log.Info($"[TurnSystem] Sous-tour de P{state->ActivePlayerIndex} sauté (KO).");
+                state->CurrentPhase = CombatPhase.TurnEnd;
+                return;
+            }
+
             state->TurnTimerTicks = TurnConstants.GetTurnDurationTicks(f);
 
             // Reset PA/PM du joueur actif (Bible V7.1 : debut de tour = ressources fraiches).

@@ -408,7 +408,16 @@ namespace Nymora.Core.Data
         //   commandes par slot. INVARIANT 1v1 : meme draw RNG (Next(0,2)) + TurnOrder=[start,autre] ->
         //   comportement strictement identique. La FSM de tour attend que tous les Combatants soient
         //   spawnes (TryBuildTurnOrder) avant de juger forfait/MatchEnd.
-        public const int CombatRulesVersion = 156;
+        // v157 (9 juin 2026) — Phase 5 brique 5.3 (cadavre-obstacle + forfait/déco par joueur) :
+        //   - mort = le Combatant N'EST PAS détruit et garde sa case -> CADAVRE-OBSTACLE (le mouvement
+        //     et le pathfinding bloquent déjà sur tout occupant). LoS : HasLineOfSight bloque désormais
+        //     aussi sur un cadavre (HP<=0), obstacle NEUTRE pour tous.
+        //   - forfait/déconnexion = KO du JOUEUR (HP=0, cadavre) au lieu de faire perdre toute l'équipe ;
+        //     l'équipe continue en infériorité, EvaluateTeamMatchEnd décide du « dernière équipe debout ».
+        //   - rotation : EnterTurnStart SAUTE le sous-tour d'un joueur KO (pas de tour pour un mort).
+        //   INVARIANT 1v1 : la mort déclenche MatchEnd immédiat (1 seul joueur/équipe) -> cadavre/skip
+        //   jamais atteints ; forfait/déco aboutissent au même verdict qu'avant. Comportement identique.
+        public const int CombatRulesVersion = 157;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";
