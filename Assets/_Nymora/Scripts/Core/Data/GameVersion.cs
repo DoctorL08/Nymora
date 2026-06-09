@@ -425,7 +425,14 @@ namespace Nymora.Core.Data
         //   GetTileView/TryGetWorldBounds sur dims logiques (cachées au spawn). INVARIANT 1v1 : zone 10x10
         //   aux mêmes coords + centrage sur 10x10 -> rendu et gameplay strictement identiques. Forme
         //   irrégulière (carve) + MapAsset + éditeur = sous-briques 5.4b/c/d.
-        public const int CombatRulesVersion = 158;
+        // v159 (9 juin 2026) — Phase 5 brique 5.4b (MapAsset Quantum) : AssetObject NymoraCombatMap
+        //   (Width/Height + masque Walkable irrégulier + Spawns par équipe/rang) référencé par
+        //   RuntimeConfig.CombatMap (AssetRef = GUID synchronisé, chargé localement -> déterministe).
+        //   GridSystem.OnInit applique la forme/dims de la map si présente (sinon zone rectangulaire
+        //   LogicalDims) ; CombatantSystem spawn aux points (Team,Rank) de la map (sinon hardcodé).
+        //   Code DORMANT en 1v1 (aucune map -> Id invalide -> fallback) : comportement identique.
+        //   Pas de .qtn modifié (AssetObject + RuntimeConfig = C# pur). L'éditeur (5.4c) crée les maps.
+        public const int CombatRulesVersion = 159;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

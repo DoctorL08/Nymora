@@ -25,5 +25,12 @@
         //   chaque scène (1v1 : non posé -> 0 -> TurnSystem.OnInit retombe sur 2). Le bootstrap équipe
         //   (scènes 41/42, brique 5.5) le met à 4 ou 6. Pilote la longueur du round + le build TurnOrder.
         public int PlayerCount;
+
+        // 5.4b (2v2/3v3) — Map de combat (forme irrégulière + spawns). AssetRef = un GUID synchronisé ;
+        //   chaque client charge le même AssetObject NymoraCombatMap localement (déterministe). Posé par
+        //   le bootstrap équipe (scènes 41/42, brique 5.5) depuis le MapAsset authoré par l'éditeur (5.4c).
+        //   NON posé en 1v1 (Id invalide) -> GridSystem retombe sur la zone rectangulaire LogicalDims et
+        //   CombatantSystem sur les spawns hardcodés -> 1v1 inchangé.
+        public AssetRef<NymoraCombatMap> CombatMap;
     }
 }

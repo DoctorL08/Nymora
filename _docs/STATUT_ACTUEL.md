@@ -65,9 +65,11 @@ Découpage : **5.1 fondations équipe** → 5.2 rotation N-joueurs + ordre voté
 
 - ✅ **5.4a livrée + commit** (v158) : grille MAX **15×15 (225)** (stride/array), dims logiques par mode dans `GridSingleton` (1v1 10 / 2v2 12 / 3v3 15) via `RuntimeConfig.PlayerCount` ; `Walkable` actif seulement dans la zone logique ; `TargetingResolver` + View (`GridRenderer`) sur dims logiques. INVARIANT 1v1 : zone 10×10 mêmes coords → **identique**. Reste 5.4b (MapAsset Quantum : masque irrégulier + spawns) → 5.4c (éditeur) → 5.4d (View forme irrégulière).
 
+- ✅ **5.4b livrée + commit** (v159) : `AssetObject NymoraCombatMap` (dims + masque Walkable irrégulier + spawns par équipe/rang) référencé par `RuntimeConfig.CombatMap` (AssetRef = GUID synchronisé → déterministe). `GridSystem` applique la forme si map présente (sinon rectangle), `CombatantSystem` spawn aux points (Team,Rank). Dormant en 1v1 (fallback) → identique. Pas de `.qtn` (C# pur). Compile OK + 1v1 IA OK.
+
 ## Prochaine action
 
-**Phase 5 brique 5.4b — `MapAsset` Quantum (masque Walkable irrégulier + spawns par équipe) + chargement sim**, puis 5.4c (éditeur) / 5.4d (View). Ancienne note : grille agrandie + maps irrégulières + éditeur : agrandir l'array grille au cap 3v3, `MapAsset` (forme `Walkable` bord-irrégulier + spawns groupés par équipe), Editor Script `NymoraMapEditor` pour peindre la map ; 1 map 2v2 dessinée. (Le 1v1 garde sa 10x10.)
+**Phase 5 brique 5.4c — éditeur `NymoraMapEditor`** (EditorWindow Unity) : peindre le masque Walkable (forme irrégulière bord-only) + placer les spawns groupés par équipe → créer/éditer un asset `NymoraCombatMap` ; dessiner 1 map 2v2. Puis 5.4d (View : centrage dims logiques + rendu forme irrégulière, ne pas instancier les tuiles non-walkable). : agrandir l'array grille au cap 3v3, `MapAsset` (forme `Walkable` bord-irrégulier + spawns groupés par équipe), Editor Script `NymoraMapEditor` pour peindre la map ; 1 map 2v2 dessinée. (Le 1v1 garde sa 10x10.)
 
 ---
 

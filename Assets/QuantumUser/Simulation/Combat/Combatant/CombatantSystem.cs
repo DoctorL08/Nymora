@@ -87,6 +87,26 @@ namespace Quantum
             int x = slot == 0 ? P1SpawnX : (tutorialClose ? TutorialP2SpawnX : P2SpawnX);
             int y = slot == 0 ? P1SpawnY : (tutorialClose ? TutorialP2SpawnY : P2SpawnY);
 
+            // 5.4b — Si la config porte une MAP, le spawn vient du point (Team, Rank) authoré dans
+            //   l'éditeur (groupés par équipe). Sinon (1v1) on garde les coords hardcodées ci-dessus.
+            if (f.RuntimeConfig != null && f.RuntimeConfig.CombatMap.Id.IsValid)
+            {
+                var map = f.FindAsset<NymoraCombatMap>(f.RuntimeConfig.CombatMap.Id);
+                if (map != null && map.Spawns != null)
+                {
+                    int rank = teamOrder >= 0 ? teamOrder : 0;
+                    for (int s = 0; s < map.Spawns.Length; s++)
+                    {
+                        if (map.Spawns[s].Team == teamId && map.Spawns[s].Rank == rank)
+                        {
+                            x = map.Spawns[s].X;
+                            y = map.Spawns[s].Y;
+                            break;
+                        }
+                    }
+                }
+            }
+
             SpawnCombatant(f, playerIndex: slot, teamId: teamId, teamOrder: teamOrder, nymoraClass: nymoraClass, x: x, y: y);
             string modeTag = f.RuntimeConfig.IsBotMatch ? "IA" : "PvP";
             Log.Info($"[CombatantSystem] {modeTag} spawn slot {slot} class {nymoraClass} at ({x},{y})");
