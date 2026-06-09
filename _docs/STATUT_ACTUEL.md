@@ -78,7 +78,19 @@ Découpage : **5.1 fondations équipe** → 5.2 rotation N-joueurs + ordre voté
 **Bilan 5.5 (jouable en hot-seat local, scène 41) :** 4 combattants spawnent par (Team,Rank) ; input pilote le joueur actif ; ordre A0/B0/A1/B1 (alternance stricte, timeline ordonnée par TurnOrder) ; HUD N portraits teintés par équipe ; chaque joueur caste SON deck (cache par joueur) + déplacement/zone de sort suivent l'actif.
 
 **Prochaine brique : 5.6 — pré-combat vote capitaine** (l'ordre intra-équipe `TeamOrder` est déjà câblé bout-en-bout, défaut = PlayerIndex ; reste l'UI de vote). Puis 5.7 matchmaking 2v2 (backend) → 5.8 polish.
-⚠️ Reliquat connu hot-seat (non bloquant) : visibilité brouillard / pièges Nightseer utilise encore « slot 0 = moi » (`LocalPlayerResolver.LocalOwns`) → à adapter à l'actif si gênant en playtest.
+
+### ⏳ RELIQUAT (non résolu — à reprendre, NE PAS oublier)
+**Vision des pièges Nightseer en équipe (2v2/3v3).** Règle voulue par Lorenzo (9 juin) :
+- **Par défaut, TOUS les joueurs voient les pièges du Nightseer** (déjà le cas dans le code committé `TrapView`, condition `owner == viewer || !NightseerPassif.TrapsInvisibleForOwner`).
+- **En dernière phase du passif Nightseer** (PR 5, `TrapsInvisibleForOwner`), les pièges disparaissent **POUR LES ENNEMIS UNIQUEMENT** : le Nightseer **ET son allié** doivent continuer à les voir. Actuellement seul le propriétaire les garde → **l'allié les perd à tort** = LE BUG à corriger.
+
+⚠️ **Tentatives du 9 juin INFRUCTUEUSES, toutes révoquées** (revert à l'état 5.5e committé) :
+1. Changement GLOBAL de perspective (`LocalPlayerResolver.Resolve` → joueur actif via un `HotSeatActivePlayer`) → a repointé le **brouillard** et **masqué les pièges du Nightseer**. Mauvaise piste.
+2. Fix chirurgical `TrapView` (viewer = `ResolveControllable(ActivePlayerIndex)` + condition d'équipe via `TeamHelper.AreEnemiesByPlayerIndex`) → résultat observé : **plus personne ne voit les pièges, même pas le Nightseer**. « t'y es pas ».
+
+➡️ **Avant de re-tenter** : Lorenzo dit « renseigne-toi sur les combats 1v1 » — comprendre EXACTEMENT le modèle de visibilité pièges 1v1 actuel (qui marche) avant de l'étendre à l'équipe, sans casser le cas par défaut. La cible = ajouter UNIQUEMENT « l'allié garde la vue en dernière phase », rien d'autre.
+
+(Reliquat antérieur, non bloquant : brouillard `FogOfWarView` en hot-seat = perspective slot 0 — laissé tel quel, NE PAS y toucher tant que le point pièges n'est pas clarifié.)
 
 **Reprise 9 juin (après /clear) — diagnostic + fixes :**
 - ⚠️ **La scène 41 avait le MAUVAIS bootstrap** : `CombatBootstrapIA` (hérité du clone de 30_CombatIA), PAS `CombatBootstrap2v2`. Le swap n'avait jamais été appliqué → en Play, le garde `ExpectedSceneName=30_CombatIA` faisait tout skip (0 spawn). **Corrigé** : composant remplacé par `CombatBootstrap2v2` (refs TeamQuantumMap=QuantumMap_2v2, CombatMap=CombatMap_2v2, SpellCatalog, SessionConfig, classes Soulrender/Nightseer/Colossar/Necram).
@@ -98,4 +110,4 @@ Découpage : **5.1 fondations équipe** → 5.2 rotation N-joueurs + ordre voté
 
 ---
 
-*Dernière mise à jour : 9 juin 2026 (brique 5.5 2v2 hot-seat COMPLÈTE a→e, next 5.6).*
+*Dernière mise à jour : 9 juin 2026 (5.5 complète ; reliquat vision pièges équipe à reprendre ; session stoppée).*
