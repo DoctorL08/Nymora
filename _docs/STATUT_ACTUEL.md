@@ -71,9 +71,14 @@ Découpage : **5.1 fondations équipe** → 5.2 rotation N-joueurs + ordre voté
 
 - ✅ **5.4d livrée + commit** : `GridRenderer` n'instancie que les cases walkable (`GridHelpers.IsWalkable`) → rend la forme irrégulière. View-only, 1v1 identique (rectangle plein). **Brique 5.4 COMPLÈTE** (a grille / b MapAsset / c éditeur / d rendu).
 
-## Phase 5 brique 5.5 (scène 2v2) — 5.5a/b/c LIVRÉS + VALIDÉS (commit `77c27f3`, v160)
+## Phase 5 brique 5.5 (scène 2v2 hot-seat) — ✅ COMPLÈTE & VALIDÉE (commits 77c27f3 / 8faf6d2 / bda59ff)
 
-**Sous-découpage 5.5 :** 5.5a bootstrap ✅ → 5.5b input hot-seat ✅ → 5.5c scène ✅ → **5.5d HUD 4 portraits (NEXT)**.
+**Sous-découpage 5.5 :** 5.5a bootstrap ✅ → 5.5b input hot-seat ✅ → 5.5c scène ✅ → 5.5d HUD N portraits + ordre de jeu ✅ → 5.5e barre par-classe + previews suivant l'actif ✅. **CombatRulesVersion = 160** (seul bump = fix spawn cap ; tout le reste = pur View / read-only).
+
+**Bilan 5.5 (jouable en hot-seat local, scène 41) :** 4 combattants spawnent par (Team,Rank) ; input pilote le joueur actif ; ordre A0/B0/A1/B1 (alternance stricte, timeline ordonnée par TurnOrder) ; HUD N portraits teintés par équipe ; chaque joueur caste SON deck (cache par joueur) + déplacement/zone de sort suivent l'actif.
+
+**Prochaine brique : 5.6 — pré-combat vote capitaine** (l'ordre intra-équipe `TeamOrder` est déjà câblé bout-en-bout, défaut = PlayerIndex ; reste l'UI de vote). Puis 5.7 matchmaking 2v2 (backend) → 5.8 polish.
+⚠️ Reliquat connu hot-seat (non bloquant) : visibilité brouillard / pièges Nightseer utilise encore « slot 0 = moi » (`LocalPlayerResolver.LocalOwns`) → à adapter à l'actif si gênant en playtest.
 
 **Reprise 9 juin (après /clear) — diagnostic + fixes :**
 - ⚠️ **La scène 41 avait le MAUVAIS bootstrap** : `CombatBootstrapIA` (hérité du clone de 30_CombatIA), PAS `CombatBootstrap2v2`. Le swap n'avait jamais été appliqué → en Play, le garde `ExpectedSceneName=30_CombatIA` faisait tout skip (0 spawn). **Corrigé** : composant remplacé par `CombatBootstrap2v2` (refs TeamQuantumMap=QuantumMap_2v2, CombatMap=CombatMap_2v2, SpellCatalog, SessionConfig, classes Soulrender/Nightseer/Colossar/Necram).
@@ -93,4 +98,4 @@ Découpage : **5.1 fondations équipe** → 5.2 rotation N-joueurs + ordre voté
 
 ---
 
-*Dernière mise à jour : 9 juin 2026 (5.5a/b/c livrés + validés, next 5.5d).*
+*Dernière mise à jour : 9 juin 2026 (brique 5.5 2v2 hot-seat COMPLÈTE a→e, next 5.6).*
