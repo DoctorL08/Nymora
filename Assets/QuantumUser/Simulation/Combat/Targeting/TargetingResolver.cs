@@ -155,15 +155,19 @@ namespace Quantum
             bool occupied = occupant != EntityRef.None;
             bool isCaster = occupied && occupant == casterEntity;
 
-            // Determine si l'occupant est allie/ennemi du caster (en 1v1 = simplement PlayerIndex different).
+            // 5.1 (2v2/3v3) — allie/ennemi se decide sur l'EQUIPE (TeamId), plus le PlayerIndex.
+            //   On lit le TeamId du caster via casterEntity (fallback casterPlayerIndex = 1v1).
             bool isAlly = false;
             bool isEnemy = false;
             if (occupied && !isCaster)
             {
                 if (f.Unsafe.TryGetPointer<Combatant>(occupant, out Combatant* other))
                 {
-                    isAlly = other->PlayerIndex == casterPlayerIndex;
-                    isEnemy = other->PlayerIndex != casterPlayerIndex;
+                    int casterTeamId = casterPlayerIndex;
+                    if (f.Unsafe.TryGetPointer<Combatant>(casterEntity, out Combatant* casterC))
+                        casterTeamId = casterC->TeamId;
+                    isAlly = other->TeamId == casterTeamId;
+                    isEnemy = other->TeamId != casterTeamId;
                 }
             }
 

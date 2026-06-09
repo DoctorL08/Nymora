@@ -72,7 +72,7 @@ namespace Quantum
             {
                 if (nec->Class != NymoraClass.Necram) continue;
                 if (nec->HP <= 0) continue;
-                if (nec->PlayerIndex == enemy->PlayerIndex) continue;
+                if (TeamHelper.SameTeam(nec, enemy)) continue; // 5.1 : halo uniquement sur ennemis du Necram
                 int dx = nec->GridX - enemy->GridX; if (dx < 0) dx = -dx;
                 int dy = nec->GridY - enemy->GridY; if (dy < 0) dy = -dy;
                 int dist = dx + dy;

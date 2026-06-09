@@ -50,6 +50,15 @@ enum IsoFacing : Byte
 component Combatant
 {
     Int32 PlayerIndex;
+
+    // 5.1 (2v2/3v3) — Identifiant d'EQUIPE. En 1v1 : TeamId == PlayerIndex (chaque joueur est
+    //   sa propre equipe) -> les predicats "ennemi = TeamId different" donnent EXACTEMENT le
+    //   meme resultat que les anciens checks PlayerIndex (non-regression 1v1 garantie). En
+    //   2v2/3v3 : 0 ou 1 (deux camps), plusieurs PlayerIndex partagent un TeamId. Set au spawn
+    //   (CombatantSystem) depuis RuntimePlayer.TeamId (fallback = slot si non fourni = 1v1).
+    //   Tous les checks allie/ennemi passent par TeamHelper (predicats centralises).
+    Int32 TeamId;
+
     NymoraClass Class;
 
     // Stats Bible V7.1 — caps fixes par classe, valeurs courantes mutables.

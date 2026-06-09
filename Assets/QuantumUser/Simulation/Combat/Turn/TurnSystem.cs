@@ -27,6 +27,7 @@ namespace Quantum
             state->TurnTimerTicks = 0;
             state->SubTurnInRound = 0; // 2.14 : 1er sous-tour du round 1
             state->WinnerPlayerIndex = -1; // 2.16.c.i : -1 = match en cours / pas de winner
+            state->WinnerTeamId = -1;      // 5.1 : -1 = match en cours / draw
 
             // 4.14.b — Copie le flag mode IA/PvP depuis RuntimeConfig vers le CombatState.
             // AISystem.Update lira state->IsBotMatch pour decider d'agir ou non.
@@ -73,10 +74,14 @@ namespace Quantum
                 {
                     if (f.GetPlayerCommand(slot) is ForfeitCommand)
                     {
+                        // 1v1 : l'autre slot gagne. 5.3 retravaillera le forfait/deco en mode
+                        // equipe (= KO du joueur seul, l'equipe continue en inferiorite).
                         int winner = (slot == 0) ? 1 : 0;
                         state->WinnerPlayerIndex = winner;
+                        int winnerTeam = TeamHelper.ResolveTeamId(f, winner);
+                        state->WinnerTeamId = winnerTeam >= 0 ? winnerTeam : winner;
                         state->CurrentPhase = CombatPhase.MatchEnd;
-                        Log.Info($"[TurnSystem] Forfait par P{slot} -> P{winner} gagne.");
+                        Log.Info($"[TurnSystem] Forfait par P{slot} -> P{winner} (Team {state->WinnerTeamId}) gagne.");
                         return;
                     }
                 }
@@ -143,34 +148,64 @@ namespace Quantum
         /// </summary>
         private static void CheckMatchEndOnDeath(Frame f, CombatState* state)
         {
+            EvaluateTeamMatchEnd(f, state, "early");
+        }
+
+        /// <summary>
+        /// 5.1 (2v2/3v3) — Fin de match "DERNIERE EQUIPE DEBOUT". Remplace l'ancien check
+        /// "aliveCount &lt;= 1" (dernier JOUEUR vivant), faux des qu'une equipe a plusieurs membres.
+        ///
+        /// Regle : le match se termine quand AU PLUS UNE equipe a encore un membre vivant.
+        ///   - 1 equipe survivante -> WinnerTeamId = elle, WinnerPlayerIndex = un de ses membres vivants.
+        ///   - 0 (double-KO simultane, ex Sang Coagule croise) -> draw (les deux a -1).
+        ///
+        /// INVARIANT 1v1 : 2 combattants = 2 equipes. Quand l'un meurt, une seule equipe reste
+        /// vivante -> meme verdict qu'avant, WinnerPlayerIndex = le survivant. Double-KO -> draw.
+        ///
+        /// Le guard totalCount &gt;= 2 reste CRITIQUE (OnPlayerAdded sequentiel : on ne juge pas
+        /// tant que moins de 2 Combatants sont spawnes, sinon faux MatchEnd au lancement).
+        /// </summary>
+        private static void EvaluateTeamMatchEnd(Frame f, CombatState* state, string tag)
+        {
             if (state->CurrentPhase == CombatPhase.MatchEnd) return;
 
-            int aliveCount = 0;
             int totalCount = 0;
-            int lastAlivePlayer = -1;
+            int aliveCount = 0;
+            int firstAliveTeam = -1;
+            int repAlivePlayer = -1;
+            bool multipleTeamsAlive = false;
+
             var filter = f.Filter<Combatant>();
             while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
             {
                 totalCount++;
-                if (c->HP > 0)
+                if (c->HP <= 0) continue;
+                aliveCount++;
+                if (firstAliveTeam < 0)
                 {
-                    aliveCount++;
-                    lastAlivePlayer = c->PlayerIndex;
+                    firstAliveTeam = c->TeamId;
+                    repAlivePlayer = c->PlayerIndex;
+                }
+                else if (c->TeamId != firstAliveTeam)
+                {
+                    multipleTeamsAlive = true;
                 }
             }
 
-            // Skip tant que les 2 Combatants ne sont pas spawned (PvP OnPlayerAdded sequentiel).
+            // Skip tant que tous les Combatants attendus ne sont pas spawnes (OnPlayerAdded sequentiel).
             if (totalCount < 2) return;
 
-            if (aliveCount <= 1)
-            {
-                state->WinnerPlayerIndex = aliveCount == 1 ? lastAlivePlayer : -1;
-                state->CurrentPhase = CombatPhase.MatchEnd;
-                string verdict = state->WinnerPlayerIndex >= 0
-                    ? $"Winner: P{state->WinnerPlayerIndex}"
-                    : "Draw (double KO)";
-                Log.Info($"[TurnSystem] MATCH END (early) — {verdict} (round {state->TurnNumber}, aliveCount={aliveCount})");
-            }
+            // Plus d'une equipe encore en vie : le match continue.
+            if (multipleTeamsAlive) return;
+
+            // Au plus une equipe debout -> fin de match.
+            state->WinnerTeamId = aliveCount >= 1 ? firstAliveTeam : -1;
+            state->WinnerPlayerIndex = aliveCount >= 1 ? repAlivePlayer : -1;
+            state->CurrentPhase = CombatPhase.MatchEnd;
+            string verdict = state->WinnerTeamId >= 0
+                ? $"Winner: Team {state->WinnerTeamId} (P{state->WinnerPlayerIndex})"
+                : "Draw (double KO)";
+            Log.Info($"[TurnSystem] MATCH END ({tag}) — {verdict} (round {state->TurnNumber}, alive={aliveCount}/{totalCount})");
         }
 
         public void OnPlayerDisconnected(Frame f, PlayerRef player)
@@ -183,11 +218,14 @@ namespace Quantum
             if (state->CurrentPhase == CombatPhase.MatchEnd) return;
 
             int disconnectedSlot = player;
-            // En 1v1 : si slot 0 disconnect, slot 1 wins, et vice versa.
+            // En 1v1 : si slot 0 disconnect, slot 1 wins, et vice versa. 5.3 : en equipe, le
+            // deco devient un cadavre-obstacle (KO du joueur), l'equipe continue en inferiorite.
             int otherSlot = (disconnectedSlot == 0) ? 1 : 0;
             state->WinnerPlayerIndex = otherSlot;
+            int otherTeam = TeamHelper.ResolveTeamId(f, otherSlot);
+            state->WinnerTeamId = otherTeam >= 0 ? otherTeam : otherSlot;
             state->CurrentPhase = CombatPhase.MatchEnd;
-            Log.Info($"[TurnSystem] Player P{disconnectedSlot} disconnected — P{otherSlot} wins by forfait.");
+            Log.Info($"[TurnSystem] Player P{disconnectedSlot} disconnected — P{otherSlot} (Team {state->WinnerTeamId}) wins by forfait.");
         }
 
         /// <summary>
@@ -514,31 +552,10 @@ namespace Quantum
                 //   aux hooks correspondants (FogHelpers / handlers de marque).
             }
 
-            // 2.16.c.i — MATCH END check : si au moins un combattant a HP=0, fin du combat.
-            // Le vainqueur est le dernier vivant ; en cas de double KO (e.g. Sang Coagule tick
-            // simultane), WinnerPlayerIndex reste -1 (draw).
-            int aliveCount = 0;
-            int lastAlivePlayer = -1;
-            var matchEndFilter = f.Filter<Combatant>();
-            while (matchEndFilter.NextUnsafe(out EntityRef _, out Combatant* c))
-            {
-                if (c->HP > 0)
-                {
-                    aliveCount++;
-                    lastAlivePlayer = c->PlayerIndex;
-                }
-            }
-
-            if (aliveCount <= 1)
-            {
-                state->WinnerPlayerIndex = aliveCount == 1 ? lastAlivePlayer : -1;
-                state->CurrentPhase = CombatPhase.MatchEnd;
-                string verdict = state->WinnerPlayerIndex >= 0
-                    ? $"Winner: P{state->WinnerPlayerIndex}"
-                    : "Draw (double KO)";
-                Log.Info($"[TurnSystem] MATCH END — {verdict} (round {state->TurnNumber}, aliveCount={aliveCount})");
-                return;
-            }
+            // 2.16.c.i / 5.1 — MATCH END check "derniere equipe debout" (cf EvaluateTeamMatchEnd).
+            // En cas de double KO simultane (e.g. Sang Coagule tick croise), WinnerTeamId reste -1 (draw).
+            EvaluateTeamMatchEnd(f, state, "turn-end");
+            if (state->CurrentPhase == CombatPhase.MatchEnd) return;
 
             // Avance le compteur de sous-tour (wrap a 0 au debut du round suivant).
             state->SubTurnInRound = (state->SubTurnInRound + 1) % TurnConstants.PlayerCount;
@@ -579,7 +596,7 @@ namespace Quantum
                 var enemyFilter = f.Filter<Combatant>();
                 while (enemyFilter.NextUnsafe(out EntityRef _, out Combatant* enemy))
                 {
-                    if (enemy->PlayerIndex == aura->PlayerIndex) continue;
+                    if (TeamHelper.SameTeam(enemy, aura)) continue; // 5.1 : aura uniquement sur ennemis
                     if (enemy->HP <= 0) continue;
                     int adx = enemy->GridX - aura->GridX;
                     int ady = enemy->GridY - aura->GridY;

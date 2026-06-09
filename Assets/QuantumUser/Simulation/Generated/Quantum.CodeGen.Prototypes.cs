@@ -58,6 +58,7 @@ namespace Quantum.Prototypes {
     public Int32 TurnTimerTicks;
     public Int32 SubTurnInRound;
     public Int32 WinnerPlayerIndex;
+    public Int32 WinnerTeamId;
     public Int32 IsBotMatch;
     partial void MaterializeUser(Frame frame, ref Quantum.CombatState result, in PrototypeMaterializationContext context);
     public override Boolean AddToEntity(FrameBase f, EntityRef entity, in PrototypeMaterializationContext context) {
@@ -72,6 +73,7 @@ namespace Quantum.Prototypes {
         result.TurnTimerTicks = this.TurnTimerTicks;
         result.SubTurnInRound = this.SubTurnInRound;
         result.WinnerPlayerIndex = this.WinnerPlayerIndex;
+        result.WinnerTeamId = this.WinnerTeamId;
         result.IsBotMatch = this.IsBotMatch;
         MaterializeUser(frame, ref result, in context);
     }
@@ -80,6 +82,7 @@ namespace Quantum.Prototypes {
   [Quantum.Prototypes.Prototype(typeof(Quantum.Combatant))]
   public unsafe class CombatantPrototype : ComponentPrototype<Quantum.Combatant> {
     public Int32 PlayerIndex;
+    public Int32 TeamId;
     public Quantum.QEnum8<NymoraClass> Class;
     public Int32 HP;
     public Int32 MaxHP;
@@ -144,6 +147,7 @@ namespace Quantum.Prototypes {
     }
     public void Materialize(Frame frame, ref Quantum.Combatant result, in PrototypeMaterializationContext context = default) {
         result.PlayerIndex = this.PlayerIndex;
+        result.TeamId = this.TeamId;
         result.Class = this.Class;
         result.HP = this.HP;
         result.MaxHP = this.MaxHP;

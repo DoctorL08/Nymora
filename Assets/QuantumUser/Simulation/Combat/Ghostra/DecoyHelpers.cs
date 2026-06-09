@@ -514,12 +514,14 @@ namespace Quantum
         public static bool HasEnemyDecoyAt(Frame f, int casterPlayerIndex, int x, int y)
         {
             if (casterPlayerIndex < 0) return false;
+            int casterTeam = TeamHelper.ResolveTeamId(f, casterPlayerIndex); // 5.1 : raisonne par équipe
+            if (casterTeam < 0) casterTeam = casterPlayerIndex;              // fallback 1v1
             var filter = f.Filter<Combatant>();
             while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
             {
                 if (c->Class != NymoraClass.Ghostra) continue;
                 if (c->HP <= 0) continue;
-                if (c->PlayerIndex == casterPlayerIndex) continue; // skip Ghostra allié/self
+                if (c->TeamId == casterTeam) continue; // 5.1 : skip Ghostra alliée/self (seuls les leurres ENNEMIS bloquent)
                 for (int i = 0; i < MaxDecoys; i++)
                 {
                     if (c->Decoys[i].Kind == DecoyKind.None) continue;
@@ -566,12 +568,14 @@ namespace Quantum
             outGhostra = null;
             outSlotIndex = -1;
             if (casterPlayerIndex < 0) return false;
+            int casterTeam = TeamHelper.ResolveTeamId(f, casterPlayerIndex); // 5.1 : raisonne par équipe
+            if (casterTeam < 0) casterTeam = casterPlayerIndex;              // fallback 1v1
             var filter = f.Filter<Combatant>();
             while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
             {
                 if (c->Class != NymoraClass.Ghostra) continue;
                 if (c->HP <= 0) continue;
-                if (c->PlayerIndex == casterPlayerIndex) continue; // skip Ghostra allié/self
+                if (c->TeamId == casterTeam) continue; // 5.1 : skip Ghostra alliée/self
                 int slot = FindSlotAtPosition(c, x, y);
                 if (slot >= 0)
                 {
@@ -593,12 +597,14 @@ namespace Quantum
         {
             outGhostra = null;
             outSlotIndex = -1;
+            int targetTeam = TeamHelper.ResolveTeamId(f, targetCamp); // 5.1 : leurres de l'ÉQUIPE ciblée
+            if (targetTeam < 0) targetTeam = targetCamp;              // fallback 1v1
             var filter = f.Filter<Combatant>();
             while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
             {
                 if (c->Class != NymoraClass.Ghostra) continue;
                 if (c->HP <= 0) continue;
-                if (c->PlayerIndex != targetCamp) continue;
+                if (c->TeamId != targetTeam) continue; // 5.1 : Ghostra du camp ciblé
                 int slot = FindSlotAtPosition(c, x, y);
                 if (slot >= 0)
                 {

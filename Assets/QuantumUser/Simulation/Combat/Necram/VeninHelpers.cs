@@ -72,12 +72,17 @@ namespace Quantum
         /// </summary>
         public static int GetDensityOnTeam(Frame f, int teamPlayerIndex)
         {
+            // 5.1 — densité de venin SUBIE par l'ÉQUIPE de `teamPlayerIndex` (somme des stacks de
+            //   tous ses membres). En 1v1 team == playerIndex -> identique. En 2v2/3v3 : agrège
+            //   le poison porté par les 2-3 alliés (palier de tick par équipe, cohérent v141).
+            int team = TeamHelper.ResolveTeamId(f, teamPlayerIndex);
+            if (team < 0) team = teamPlayerIndex; // fallback 1v1
             int density = 0;
             var filter = f.Filter<Combatant>();
             while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
             {
                 if (c->HP <= 0) continue;
-                if (c->PlayerIndex != teamPlayerIndex) continue;
+                if (c->TeamId != team) continue;
                 density += c->VeninStacks;
             }
             return density;
@@ -91,12 +96,16 @@ namespace Quantum
         /// </summary>
         public static int GetDensityAppliedByNecram(Frame f, int necramPlayerIndex)
         {
+            // 5.1 — venin appliqué par CE Necram = venin porté par l'équipe ENNEMIE (classes uniques
+            //   par équipe -> 1 Necram/équipe -> tout le poison adverse vient de lui). Skip son camp.
+            int necramTeam = TeamHelper.ResolveTeamId(f, necramPlayerIndex);
+            if (necramTeam < 0) necramTeam = necramPlayerIndex; // fallback 1v1
             int density = 0;
             var filter = f.Filter<Combatant>();
             while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
             {
                 if (c->HP <= 0) continue;
-                if (c->PlayerIndex == necramPlayerIndex) continue;
+                if (c->TeamId == necramTeam) continue;
                 density += c->VeninStacks;
             }
             return density;
@@ -225,7 +234,6 @@ namespace Quantum
         {
             if (deadTarget == null || deadTarget->VeninStacks <= 0) return false;
             int amount = deadTarget->VeninStacks;
-            int deadCamp = deadTarget->PlayerIndex;
 
             // Trouver l'autre ennemi du Necram (= allie du target mort) vivant le plus proche
             // en Manhattan.
@@ -235,7 +243,7 @@ namespace Quantum
             while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
             {
                 if (c->HP <= 0) continue;
-                if (c->PlayerIndex != deadCamp) continue; // doit etre ennemi du Necram
+                if (c->TeamId != deadTarget->TeamId) continue; // 5.1 : allié du mort = même équipe (ennemi du Necram)
                 // skip le target mort lui-meme (HP==0 deja filtre, mais on garde par securite si appel
                 // intervient avant que HP soit set a 0).
                 if (c->GridX == deadTarget->GridX && c->GridY == deadTarget->GridY && c->PlayerIndex == deadTarget->PlayerIndex)
@@ -365,9 +373,9 @@ namespace Quantum
                 {
                     if (necram->Class != NymoraClass.Necram) continue;
                     if (necram->HP <= 0) continue;
-                    // FIX MIROIR v141 : ne soigne QUE le Necram proprietaire du venin qui tick
-                    // (= l'ennemi de la cible empoisonnee), jamais un Necram du camp de la cible.
-                    if (necram->PlayerIndex == target->PlayerIndex) continue;
+                    // FIX MIROIR v141 / 5.1 : ne soigne QUE le Necram ENNEMI de la cible empoisonnée
+                    // (propriétaire du venin), jamais un Necram du camp de la cible.
+                    if (TeamHelper.SameTeam(necram, target)) continue;
                     int healPerTick = StatusHelper.GetMagnitude(necram, StatusKind.SymbioseMorbide, 0);
                     if (healPerTick <= 0) continue;
                     int necramHpBefore = necram->HP;
@@ -398,7 +406,7 @@ namespace Quantum
             {
                 if (c->Class != NymoraClass.Necram) continue;
                 if (c->HP <= 0) continue;
-                if (c->PlayerIndex == targetPlayerIndex) continue; // owner = Necram d'en face (pas la cible/son camp)
+                if (!TeamHelper.AreEnemiesByPlayerIndex(f, targetPlayerIndex, c->PlayerIndex)) continue; // 5.1 : owner = Necram ENNEMI de la cible
                 int alreadyGained = c->PutrefactionMarksGainedThisTurn;
                 int remainingCap = PutrefactionGainCapPerNecramTurn - alreadyGained;
                 if (remainingCap <= 0) return;
@@ -424,7 +432,7 @@ namespace Quantum
             {
                 if (c->Class != NymoraClass.Necram) continue;
                 if (c->HP <= 0) continue;
-                if (c->PlayerIndex == targetPlayerIndex) continue; // owner = Necram d'en face (pas la cible/son camp)
+                if (!TeamHelper.AreEnemiesByPlayerIndex(f, targetPlayerIndex, c->PlayerIndex)) continue; // 5.1 : owner = Necram ENNEMI de la cible
                 int before = c->Resource;
                 c->Resource = before + PutrefactionGainPerTickGlobal > maxRes
                     ? maxRes

@@ -562,7 +562,7 @@ namespace Quantum
             ref DamagePreviewResult p)
         {
             if (!p.Valid) return;
-            if (target->PlayerIndex == caster->PlayerIndex) return;
+            if (TeamHelper.SameTeam(target, caster)) return; // 5.1 : pas de surplus sur allié/self
 
             int totalTrapDmg = 0;
             // AoE croix de 5 centrée sur la cible (Détonation Onirique).
@@ -602,7 +602,7 @@ namespace Quantum
         private static void AddSalveTrapBonus(Frame f, Combatant* caster, Combatant* target, ref DamagePreviewResult p)
         {
             if (!p.Valid) return;
-            if (target->PlayerIndex == caster->PlayerIndex) return;
+            if (TeamHelper.SameTeam(target, caster)) return; // 5.1 : pas de bonus pièges sur allié/self
 
             int trapCount = 0;
             for (int dy = -1; dy <= 1; dy++)

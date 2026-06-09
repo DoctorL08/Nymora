@@ -71,17 +71,25 @@ namespace Quantum
                 ? runtimePlayer.ClassId
                 : NymoraClass.Soulrender; // fallback safe si bootstrap n'a pas set ClassId
 
+            // 5.1 — EQUIPE : fournie par le bootstrap equipe (2v2/3v3) via RuntimePlayer.TeamId.
+            //   Non fournie (sentinelle -1 = bootstraps 1v1 Casual/IA) -> fallback = slot.
+            //   En 1v1 : team == slot == PlayerIndex -> les predicats TeamHelper restent
+            //   strictement equivalents aux anciens checks PlayerIndex (non-regression).
+            int teamId = (runtimePlayer != null && runtimePlayer.TeamId >= 0)
+                ? runtimePlayer.TeamId
+                : slot;
+
             // Tuto : mannequin (slot 1) rapproché à 3 cases du joueur (slot 0 inchangé).
             bool tutorialClose = f.RuntimeConfig.TutorialPassiveBot && slot == 1;
             int x = slot == 0 ? P1SpawnX : (tutorialClose ? TutorialP2SpawnX : P2SpawnX);
             int y = slot == 0 ? P1SpawnY : (tutorialClose ? TutorialP2SpawnY : P2SpawnY);
 
-            SpawnCombatant(f, playerIndex: slot, nymoraClass: nymoraClass, x: x, y: y);
+            SpawnCombatant(f, playerIndex: slot, teamId: teamId, nymoraClass: nymoraClass, x: x, y: y);
             string modeTag = f.RuntimeConfig.IsBotMatch ? "IA" : "PvP";
             Log.Info($"[CombatantSystem] {modeTag} spawn slot {slot} class {nymoraClass} at ({x},{y})");
         }
 
-        private static EntityRef SpawnCombatant(Frame f, int playerIndex, NymoraClass nymoraClass, int x, int y)
+        private static EntityRef SpawnCombatant(Frame f, int playerIndex, int teamId, NymoraClass nymoraClass, int x, int y)
         {
             int maxHP = CombatantStats.GetMaxHP(nymoraClass);
             int maxPA = CombatantStats.GetMaxPA(nymoraClass);
@@ -90,6 +98,7 @@ namespace Quantum
             var combatantData = new Combatant
             {
                 PlayerIndex = playerIndex,
+                TeamId = teamId, // 5.1 — appartenance d'equipe (1v1 : == playerIndex)
                 Class = nymoraClass,
                 MaxHP = maxHP,
                 HP = maxHP,

@@ -261,7 +261,7 @@ namespace Quantum
                     var ckFilter = f.Filter<Combatant>();
                     while (ckFilter.NextUnsafe(out EntityRef _, out Combatant* eC))
                     {
-                        if (eC->PlayerIndex == caster->PlayerIndex) continue;
+                        if (TeamHelper.SameTeam(eC, caster)) continue; // 5.1 : ennemi en zone uniquement
                         if (eC->HP <= 0) continue;
                         int dxCk = eC->GridX - cxCk;
                         int dyCk = eC->GridY - cyCk;
@@ -516,7 +516,7 @@ namespace Quantum
                 EntityRef dvGateTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
                 bool dvHasMarked = dvGateTarget != EntityRef.None
                     && f.Unsafe.TryGetPointer<Combatant>(dvGateTarget, out Combatant* dvGateC)
-                    && dvGateC->PlayerIndex != caster->PlayerIndex
+                    && TeamHelper.AreEnemies(dvGateC, caster) // 5.1 : cible ennemie
                     && dvGateC->HP > 0
                     && dvGateC->VeninStacks > 0;
                 if (!dvHasMarked)
@@ -542,7 +542,7 @@ namespace Quantum
                 EntityRef esTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
                 if (esTarget == EntityRef.None
                     || !f.Unsafe.TryGetPointer<Combatant>(esTarget, out Combatant* esTargetC)
-                    || esTargetC->PlayerIndex == caster->PlayerIndex
+                    || TeamHelper.SameTeam(esTargetC, caster) // 5.1 : cible ennemie requise
                     || esTargetC->HP <= 0
                     || !DecoyHelpers.TryPlanEveilAutoTeleport(f, caster, esTargetC, out eveilSlot, out eveilLeurreX, out eveilLeurreY, out eveilDorsal))
                 {
@@ -759,16 +759,17 @@ namespace Quantum
                         ? FogHelpers.GetTerrainOwnerMask(f, bcx, bcy) : (byte)0;
                     GridHelpers.SetTerrain(f, bcx, bcy, TerrainKind.BrumeToxique,
                         SpellRegistry.BrumeToxiqueTurns, currentTurn, ownerPlayerIndex: -1);
+                    // 5.1 — masque clé sur l'ÉQUIPE (bit 0/1 = team 0/1) : 2 équipes => 2 bits exacts.
                     FogHelpers.SetTerrainOwnerMask(f, bcx, bcy,
-                        (byte)(brumePrevMask | (1 << caster->PlayerIndex)));
+                        (byte)(brumePrevMask | (1 << caster->TeamId)));
 
                     EntityRef bocc = GridHelpers.GetOccupant(f, bcx, bcy);
                     if (bocc == EntityRef.None || bocc == casterEntity) continue;
                     if (!f.Unsafe.TryGetPointer<Combatant>(bocc, out Combatant* boccC)) continue;
                     if (boccC->HP <= 0) continue;
-                    // Patch 8 juin — owner-based : on marque tout occupant qui n'est PAS du camp du
-                    // caster (= proprietaire de la Brume). Un Necram adverse est donc marque aussi.
-                    if (boccC->PlayerIndex == caster->PlayerIndex) continue;
+                    // Patch 8 juin / 5.1 — owner-based : on marque tout occupant ENNEMI (camp ≠ caster).
+                    // Un Necram adverse est marqué aussi ; alliés/self épargnés (pas de tir allié).
+                    if (TeamHelper.SameTeam(boccC, caster)) continue;
                     VeninHelpers.ApplyMark(f, boccC, SpellRegistry.BrumeToxiqueMarksOnHit, currentTurn);
                 }
                 Log.Info($"[Spell] Brume Toxique posée centrée ({cmd.TargetX},{cmd.TargetY}), 9 cases, {SpellRegistry.BrumeToxiqueTurns} rounds (zone marques + tick majoré, sans dégâts directs)");
@@ -856,6 +857,10 @@ namespace Quantum
                     }
                     if (!f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC)) continue;
                     if (target == casterEntity) continue; // pas d'auto-damage offensif
+                    // 5.1 (2v2/3v3) — PAS DE TIR ALLIÉ : un allié pris dans l'AoE d'un sort offensif est
+                    //   immunisé (décision 9 juin). En 1v1 sans effet (aucun allié). SameTeam couvre aussi
+                    //   le caster (déjà filtré ligne au-dessus) — inoffensif.
+                    if (TeamHelper.SameTeam(targetC, caster)) continue;
 
                     // 2.15.a — Nightseer per-cell damage variants. dmgThisTarget part du BASE non buffé
                     //   (effectiveDmg) ; les buffs offensifs du caster (Pacte/Peau de Fer/Frénésie/Affût/
@@ -1178,7 +1183,7 @@ namespace Quantum
                     if (isMeleeAttackForCarapace
                         && shieldAbsorbedThisHit > 0
                         && StatusHelper.Has(targetC, StatusKind.CarapaceVisqueuse)
-                        && caster->PlayerIndex != targetC->PlayerIndex
+                        && TeamHelper.AreEnemies(caster, targetC)
                         && caster->HP > 0)
                     {
                         int attackerStacksBefore = caster->VeninStacks;
@@ -1203,7 +1208,7 @@ namespace Quantum
                     if (isMeleeAttackForCarapace
                         && dmgThisTarget > 0
                         && StatusHelper.Has(targetC, StatusKind.LinceulDOmbres)
-                        && caster->PlayerIndex != targetC->PlayerIndex
+                        && TeamHelper.AreEnemies(caster, targetC)
                         && caster->HP > 0)
                     {
                         int ripostDmgBase = StatusHelper.GetMagnitude(targetC, StatusKind.LinceulDOmbres,
@@ -1249,7 +1254,7 @@ namespace Quantum
                         //   cible <40% PV (pre-dmg), heal 20% des dgts qui passent. Remplace l'ancien
                         //   +1 PM / bypass bouclier. Via HealHelper (respecte AntiHealShield + ÷2 soin).
                         if (caster->Class == NymoraClass.Soulrender
-                            && caster->PlayerIndex != targetC->PlayerIndex
+                            && TeamHelper.AreEnemies(caster, targetC)
                             && targetHPRatioPreDmg < SpellRegistry.AppelDuSangPalierRageOuverte
                             && caster->HP > 0)
                         {
@@ -1539,7 +1544,7 @@ namespace Quantum
                 EntityRef nueeTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
                 if (nueeTarget != EntityRef.None
                     && f.Unsafe.TryGetPointer<Combatant>(nueeTarget, out Combatant* nueeC)
-                    && nueeC->PlayerIndex != caster->PlayerIndex
+                    && TeamHelper.AreEnemies(nueeC, caster) // 5.1
                     && nueeC->HP > 0)
                 {
                     int nueeBefore = nueeC->VeninStacks;
@@ -1695,7 +1700,7 @@ namespace Quantum
                         EntityRef target = GridHelpers.GetOccupant(f, cx, cy);
                         if (target == EntityRef.None || target == casterEntity) continue;
                         if (!f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetC)) continue;
-                        if (targetC->PlayerIndex == caster->PlayerIndex) continue; // skip allies (1v1 = N/A, mais futur-proof)
+                        if (TeamHelper.SameTeam(targetC, caster)) continue; // 5.1 : skip alliés/self
 
                         int pmMalus = (targetC->HP * 2 < targetC->MaxHP) ? 2 : 1;
                         StatusHelper.Apply(targetC, StatusKind.MovementMalus, magnitude: pmMalus, turnsLeft: 1, currentTurn);
@@ -2049,7 +2054,7 @@ namespace Quantum
                         // le pipeline standard donc on rebranche le hook ici manuellement.
                         if (shieldAbsorbedByChargeBrutale > 0
                             && StatusHelper.Has(hitC, StatusKind.CarapaceVisqueuse)
-                            && caster->PlayerIndex != hitC->PlayerIndex
+                            && TeamHelper.AreEnemies(caster, hitC)
                             && caster->HP > 0)
                         {
                             int attackerStacksBeforeC = caster->VeninStacks;
@@ -2065,7 +2070,7 @@ namespace Quantum
                         // rebranche le hook ici manuellement. Trigger meme si shield Linceul absorbe
                         // tout (l'attaque a touche : on est entre dans ce bloc avec dmg>=0 incoming).
                         if (StatusHelper.Has(hitC, StatusKind.LinceulDOmbres)
-                            && caster->PlayerIndex != hitC->PlayerIndex
+                            && TeamHelper.AreEnemies(caster, hitC)
                             && caster->HP > 0)
                         {
                             int ripostDmgBaseCB = StatusHelper.GetMagnitude(hitC, StatusKind.LinceulDOmbres,
@@ -2163,7 +2168,7 @@ namespace Quantum
                     if (evTarget != EntityRef.None
                         && f.Unsafe.TryGetPointer<Combatant>(evTarget, out Combatant* evTargetC)
                         && evTargetC->HP > 0
-                        && evTargetC->PlayerIndex != caster->PlayerIndex
+                        && TeamHelper.AreEnemies(evTargetC, caster) // 5.1
                         && !StatusHelper.Has(evTargetC, StatusKind.DotImmune))
                     {
                         StatusHelper.Apply(evTargetC, StatusKind.PlaieOuverte,
@@ -2270,7 +2275,7 @@ namespace Quantum
                         EntityRef adjTarget = GridHelpers.GetOccupant(f, nx, ny);
                         if (adjTarget == EntityRef.None || adjTarget == casterEntity) continue;
                         if (!f.Unsafe.TryGetPointer<Combatant>(adjTarget, out Combatant* adjC)) continue;
-                        if (adjC->PlayerIndex == caster->PlayerIndex) continue; // skip alliés (1v1 = N/A)
+                        if (TeamHelper.SameTeam(adjC, caster)) continue; // 5.1 : skip alliés/self
                         PushAndTrigger(f, adjC, adjTarget, casterXRE, casterYRE,
                             SpellRegistry.RepliEpineuxPush, currentTurn, caster);
                         Log.Info($"[Spell] Repli Épineux : push {SpellRegistry.RepliEpineuxPush} sur P{adjC->PlayerIndex}");
@@ -2289,7 +2294,7 @@ namespace Quantum
                     EntityRef target = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
                     if (target != EntityRef.None
                         && f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetInoc)
-                        && targetInoc->PlayerIndex != caster->PlayerIndex
+                        && TeamHelper.AreEnemies(targetInoc, caster) // 5.1
                         && targetInoc->HP > 0)
                     {
                         VeninHelpers.ApplyMark(f, targetInoc, SpellRegistry.InoculationMarksApplied, currentTurn);
@@ -2306,7 +2311,7 @@ namespace Quantum
                     EntityRef dvTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
                     if (dvTarget != EntityRef.None
                         && f.Unsafe.TryGetPointer<Combatant>(dvTarget, out Combatant* dvC)
-                        && dvC->PlayerIndex != caster->PlayerIndex
+                        && TeamHelper.AreEnemies(dvC, caster) // 5.1
                         && dvC->HP > 0
                         && dvC->VeninStacks > 0)
                     {
@@ -2354,7 +2359,7 @@ namespace Quantum
                     EntityRef target = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
                     if (target != EntityRef.None
                         && f.Unsafe.TryGetPointer<Combatant>(target, out Combatant* targetMS)
-                        && targetMS->PlayerIndex != caster->PlayerIndex
+                        && TeamHelper.AreEnemies(targetMS, caster) // 5.1
                         && targetMS->HP > 0)
                     {
                         StatusHelper.Apply(targetMS, StatusKind.MarqueSacrificielle,
@@ -2393,7 +2398,7 @@ namespace Quantum
                     EntityRef esTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
                     if (esTarget != EntityRef.None
                         && f.Unsafe.TryGetPointer<Combatant>(esTarget, out Combatant* esTargetC)
-                        && esTargetC->PlayerIndex != caster->PlayerIndex
+                        && TeamHelper.AreEnemies(esTargetC, caster) // 5.1
                         && esTargetC->HP > 0)
                     {
                         if (StatusHelper.Has(esTargetC, StatusKind.AnchorImmune))
@@ -2681,7 +2686,7 @@ namespace Quantum
                     while (pulseFilter.NextUnsafe(out EntityRef _, out Combatant* pulseEnemy))
                     {
                         if (pulseEnemy->HP <= 0) continue;
-                        if (pulseEnemy->PlayerIndex == caster->PlayerIndex) continue;
+                        if (TeamHelper.SameTeam(pulseEnemy, caster)) continue; // 5.1 : marques ennemies uniquement
                         int dxP = pulseEnemy->GridX - caster->GridX; if (dxP < 0) dxP = -dxP;
                         int dyP = pulseEnemy->GridY - caster->GridY; if (dyP < 0) dyP = -dyP;
                         int distP = dxP + dyP;
@@ -2719,7 +2724,7 @@ namespace Quantum
                     while (coconFilter.NextUnsafe(out EntityRef _, out Combatant* coconEnemy))
                     {
                         if (coconEnemy->HP <= 0) continue;
-                        if (coconEnemy->PlayerIndex == caster->PlayerIndex) continue;
+                        if (TeamHelper.SameTeam(coconEnemy, caster)) continue; // 5.1 : ennemis uniquement
                         int dxC = coconEnemy->GridX - caster->GridX; if (dxC < 0) dxC = -dxC;
                         int dyC = coconEnemy->GridY - caster->GridY; if (dyC < 0) dyC = -dyC;
                         int distC = dxC + dyC;
@@ -2897,7 +2902,7 @@ namespace Quantum
                         EntityRef adjOcc = GridHelpers.GetOccupant(f, ax, ay);
                         if (adjOcc == EntityRef.None) continue;
                         if (!f.Unsafe.TryGetPointer<Combatant>(adjOcc, out Combatant* adjC)) continue;
-                        if (adjC->PlayerIndex == caster->PlayerIndex) continue; // skip allies/self
+                        if (TeamHelper.SameTeam(adjC, caster)) continue; // 5.1 : skip alliés/self
                         if (adjC->HP <= 0) continue;
                         // Patch 8 juin — DOS à la Ghostra (au lieu de face) : la cible pivote pour tourner
                         //   le dos au caster (= regarde dans la direction OPPOSÉE), préparant un backstab.
@@ -2960,7 +2965,7 @@ namespace Quantum
                     if (moTarget != EntityRef.None
                         && f.Unsafe.TryGetPointer<Combatant>(moTarget, out Combatant* moTargetC)
                         && moTargetC->HP > 0
-                        && moTargetC->PlayerIndex != caster->PlayerIndex)
+                        && TeamHelper.AreEnemies(moTargetC, caster)) // 5.1
                     {
                         StatusHelper.Apply(moTargetC, StatusKind.MarqueDeLOmbre,
                             magnitude: SpellRegistry.MarqueDeLOmbreDmgBonus,
@@ -3064,7 +3069,7 @@ namespace Quantum
                     EntityRef contTarget = GridHelpers.GetOccupant(f, cmd.TargetX, cmd.TargetY);
                     if (contTarget != EntityRef.None
                         && f.Unsafe.TryGetPointer<Combatant>(contTarget, out Combatant* targetCont)
-                        && targetCont->PlayerIndex != caster->PlayerIndex
+                        && TeamHelper.AreEnemies(targetCont, caster) // 5.1
                         && targetCont->HP > 0)
                     {
                         StatusHelper.Apply(targetCont, StatusKind.Contagious, magnitude: 0,
@@ -3836,7 +3841,7 @@ namespace Quantum
                         EntityRef occ = GridHelpers.GetOccupant(f, nx, ny);
                         if (occ == EntityRef.None || occ == casterEntity) continue;
                         if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* ebC)) continue;
-                        if (ebC->PlayerIndex == caster->PlayerIndex || ebC->HP <= 0) continue;
+                        if (TeamHelper.SameTeam(ebC, caster) || ebC->HP <= 0) continue; // 5.1 : skip alliés/self
                         PushAndTrigger(f, ebC, occ, obsX, obsY,
                             SpellRegistry.EboulementPushDistance, currentTurn, caster);
                     }
@@ -3863,7 +3868,7 @@ namespace Quantum
                     var enemyScanFilter = f.Filter<Combatant>();
                     while (enemyScanFilter.NextUnsafe(out EntityRef eEntity, out Combatant* eC))
                     {
-                        if (eC->PlayerIndex == caster->PlayerIndex) continue;
+                        if (TeamHelper.SameTeam(eC, caster)) continue; // 5.1 : ennemis uniquement
                         if (eC->HP <= 0) continue;
                         int dxE = eC->GridX - cxCast;
                         int dyE = eC->GridY - cyCast;

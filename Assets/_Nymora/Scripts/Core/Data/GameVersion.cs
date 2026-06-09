@@ -390,7 +390,16 @@ namespace Nymora.Core.Data
         // v154 (8 juin 2026) — patch list ligne 7 : les sorts panic "low-HP" 1x/match de chaque classe passent
         //   de <30% HP / 4 PA a <50% HP / 2 PA : Dernier Souffle (Soulrender), Evanescence (Nightseer), Dernier
         //   Pas (Ghostra), Cocon Putride (Necram, signature). Represailles (Colossar) etait deja a <50% / 2 PA.
-        public const int CombatRulesVersion = 154;
+        // v155 (9 juin 2026) — Phase 5 brique 5.1 (FONDATIONS 2v2/3v3) :
+        //   Passe A : champ Combatant.TeamId + RuntimePlayer.TeamId + helper central TeamHelper (predicats
+        //     allie/ennemi) + CombatState.WinnerTeamId. Victoire = "derniere EQUIPE debout" (EvaluateTeamMatchEnd).
+        //   Passe B : conversion de TOUS les call-sites allie/ennemi de la sim vers TeamHelper + TIR ALLIE OFF
+        //     (boucle de degats AoE principale, auras Ronces/Halo/Venin, pieges Nightseer, LoS, brume Toxique
+        //     re-clee sur TeamId, leurres Ghostra, Effondrement, Provocation, etc.). Les checks owner/self/active
+        //     player + l'AI (exclue du multi) + helpers View restent en PlayerIndex.
+        //   INVARIANT 1v1 : team == slot == PlayerIndex -> comportement STRICTEMENT identique (non-regression).
+        //   Le tir allie ne s'observe qu'en 2v2/3v3 (validation a la brique 5.5, scenes equipe).
+        public const int CombatRulesVersion = 155;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

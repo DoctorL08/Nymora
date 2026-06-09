@@ -47,7 +47,7 @@ namespace Quantum
             while (filter.NextUnsafe(out EntityRef _, out Combatant* target))
             {
                 if (target->HP <= 0) continue;
-                if (target->PlayerIndex == playerIndex) continue;
+                if (!TeamHelper.IsEnemyOfPlayer(f, playerIndex, target)) continue; // 5.1 : cible ennemie
                 if (target->GridX != cmd.TargetX || target->GridY != cmd.TargetY) continue;
                 int applied = VeninHelpers.ApplyMark(f, target, 1, currentTurn);
                 if (applied == 0)

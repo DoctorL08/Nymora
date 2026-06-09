@@ -2484,7 +2484,7 @@ namespace Quantum
             EntityRef occ = GridHelpers.GetOccupant(f, targetX, targetY);
             if (occ == EntityRef.None) return 100;
             if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* c)) return 100;
-            if (c->PlayerIndex == casterPlayerIndex) return 100; // pas un ennemi
+            if (!TeamHelper.IsEnemyOfPlayer(f, casterPlayerIndex, c)) return 100; // 5.1 : allié/self = pas un ennemi
             if (c->MaxHP <= 0) return 100;
             return c->HP * 100 / c->MaxHP;
         }

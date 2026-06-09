@@ -977,7 +977,7 @@ namespace Quantum {
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct CombatState : Quantum.IComponentSingleton {
-    public const Int32 SIZE = 28;
+    public const Int32 SIZE = 32;
     public const Int32 ALIGNMENT = 4;
     [FieldOffset(0)]
     public CombatPhase CurrentPhase;
@@ -991,6 +991,8 @@ namespace Quantum {
     public Int32 SubTurnInRound;
     [FieldOffset(24)]
     public Int32 WinnerPlayerIndex;
+    [FieldOffset(28)]
+    public Int32 WinnerTeamId;
     [FieldOffset(8)]
     public Int32 IsBotMatch;
     public override readonly Int32 GetHashCode() {
@@ -1002,6 +1004,7 @@ namespace Quantum {
         hash = hash * 31 + TurnTimerTicks.GetHashCode();
         hash = hash * 31 + SubTurnInRound.GetHashCode();
         hash = hash * 31 + WinnerPlayerIndex.GetHashCode();
+        hash = hash * 31 + WinnerTeamId.GetHashCode();
         hash = hash * 31 + IsBotMatch.GetHashCode();
         return hash;
       }
@@ -1015,16 +1018,19 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->TurnNumber);
         serializer.Stream.Serialize(&p->TurnTimerTicks);
         serializer.Stream.Serialize(&p->WinnerPlayerIndex);
+        serializer.Stream.Serialize(&p->WinnerTeamId);
     }
   }
   [StructLayout(LayoutKind.Explicit)]
   public unsafe partial struct Combatant : Quantum.IComponent {
-    public const Int32 SIZE = 840;
+    public const Int32 SIZE = 848;
     public const Int32 ALIGNMENT = 8;
-    [FieldOffset(836)]
+    [FieldOffset(844)]
     private fixed Byte _alignment_padding_[4];
     [FieldOffset(172)]
     public Int32 PlayerIndex;
+    [FieldOffset(636)]
+    public Int32 TeamId;
     [FieldOffset(2)]
     public NymoraClass Class;
     [FieldOffset(52)]
@@ -1047,7 +1053,7 @@ namespace Quantum {
     public Int32 Resource;
     [FieldOffset(112)]
     public Int32 LastResourceGainOnHitTurn;
-    [FieldOffset(648)]
+    [FieldOffset(656)]
     [FramePrinter.FixedArrayAttribute(typeof(Status), 8)]
     private fixed Byte _Statuses_[128];
     [FieldOffset(156)]
@@ -1092,9 +1098,9 @@ namespace Quantum {
     public Int32 EffondrementAnnouncedOnTurn;
     [FieldOffset(88)]
     public Int32 LastEffondrementUsedOnTurn;
-    [FieldOffset(640)]
+    [FieldOffset(648)]
     public EntityRef EffondrementTargetEntity;
-    [FieldOffset(636)]
+    [FieldOffset(640)]
     public Int32 VeninStacks;
     [FieldOffset(124)]
     public Int32 LastVeninTickOnTurn;
@@ -1102,7 +1108,7 @@ namespace Quantum {
     public Int32 PutrefactionMarksGainedThisTurn;
     [FieldOffset(128)]
     public Int32 LastVirusFatalUsedOnTurn;
-    [FieldOffset(776)]
+    [FieldOffset(784)]
     [FramePrinter.FixedArrayAttribute(typeof(DecoySlot), 3)]
     private fixed Byte _Decoys_[60];
     [FieldOffset(108)]
@@ -1153,6 +1159,7 @@ namespace Quantum {
       unchecked { 
         var hash = 3449;
         hash = hash * 31 + PlayerIndex.GetHashCode();
+        hash = hash * 31 + TeamId.GetHashCode();
         hash = hash * 31 + (Byte)Class;
         hash = hash * 31 + HP.GetHashCode();
         hash = hash * 31 + MaxHP.GetHashCode();
@@ -1261,6 +1268,7 @@ namespace Quantum {
         serializer.Stream.Serialize(&p->Resource);
         serializer.Stream.SerializeBuffer(&p->SpellCooldownLastTurn[0], 110);
         serializer.Stream.Serialize(&p->StoicismeExpiresOnTurn);
+        serializer.Stream.Serialize(&p->TeamId);
         serializer.Stream.Serialize(&p->VeninStacks);
         EntityRef.Serialize(&p->EffondrementTargetEntity, serializer);
         FixedArray.Serialize(p->Statuses, serializer, Statics.SerializeStatus);

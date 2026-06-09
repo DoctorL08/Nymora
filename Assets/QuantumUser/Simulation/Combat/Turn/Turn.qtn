@@ -36,7 +36,15 @@ singleton component CombatState
     // 2.16.c.i — Index du joueur vainqueur (-1 si match en cours ou double KO).
     //   Mis a jour par TurnSystem.EnterTurnEnd quand un combattant atteint HP=0.
     //   La View pole ce champ + CombatPhase == MatchEnd pour afficher Victory/Defeat.
+    //   En 2v2/3v3 : = un membre vivant (representant) de l'equipe gagnante. Pour la
+    //   discrimination Victoire/Defaite cote View en mode equipe, preferer WinnerTeamId.
     Int32 WinnerPlayerIndex;
+
+    // 5.1 (2v2/3v3) — EQUIPE gagnante (-1 si match en cours ou draw double-KO). La fin de
+    //   match se decide desormais "derniere EQUIPE debout" (et non dernier joueur). En 1v1 :
+    //   WinnerTeamId == WinnerPlayerIndex (team == slot). La View mode equipe compare ce champ
+    //   au TeamId du joueur local pour afficher Victoire/Defaite.
+    Int32 WinnerTeamId;
 
     // 4.14.b (Phase 4 PvP casu) — Flag mode IA vs PvP.
     //   1 = 30_CombatIA (entrainement vs bot) -> AISystem.Update agit

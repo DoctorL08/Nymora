@@ -18,6 +18,12 @@
         public NymoraClass ClassId;
         public int[] SpellIdValues = new int[6];
 
+        // 5.1 (2v2/3v3) — EQUIPE du joueur (0 ou 1), transmise via Quantum AddPlayer comme ClassId.
+        //   Le bootstrap d'equipe (scenes 2v2/3v3, brique 5.5) la pose AVANT Game.AddPlayer.
+        //   Sentinelle -1 = NON FOURNI -> CombatantSystem retombe sur `slot` (= 1v1, team == slot).
+        //   Les bootstraps 1v1 existants (Casual/IA) ne la touchent pas -> reste -1 -> 1v1 intact.
+        public int TeamId = -1;
+
         // 5.10 (A3) — Cosmétiques équipés du joueur, transmis à TOUS les clients via Quantum
         // AddPlayer (comme ClassId). VIEW-ONLY : jamais lus par la simulation → aucun impact
         // déterministe, pas de bump CombatRulesVersion. Le CombatantRenderer lit ces champs par

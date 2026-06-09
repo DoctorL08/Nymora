@@ -252,6 +252,11 @@ namespace Quantum
         public static bool HasLineOfSight(Frame f, int x0, int y0, int x1, int y1, int casterPlayerIndex = -1)
         {
             if (x0 == x1 && y0 == y1) return true;
+            // 5.1 (2v2/3v3) — on raisonne en EQUIPE : les unités/obstacles ALLIÉS ne bloquent pas
+            //   la LoS du caster, les ENNEMIS oui. Résolu une seule fois ici (pas par case).
+            //   casterPlayerIndex < 0 = mode neutre strict (tout bloque) -> casterTeamId reste < 0.
+            int casterTeamId = casterPlayerIndex < 0 ? -1 : TeamHelper.ResolveTeamId(f, casterPlayerIndex);
+            if (casterPlayerIndex >= 0 && casterTeamId < 0) casterTeamId = casterPlayerIndex; // fallback 1v1
             int dx = x1 > x0 ? x1 - x0 : x0 - x1;
             int dy = y1 > y0 ? y1 - y0 : y0 - y1;
             int sx = x0 < x1 ? 1 : -1;
@@ -278,17 +283,21 @@ namespace Quantum
                 if (occE != EntityRef.None
                     && f.Unsafe.TryGetPointer<Combatant>(occE, out var occC)
                     && occC->HP > 0
-                    && (casterPlayerIndex < 0 || occC->PlayerIndex != casterPlayerIndex))
+                    && (casterTeamId < 0 || occC->TeamId != casterTeamId)) // 5.1 : unité ennemie bloque, alliée non
                 {
                     return false;
                 }
                 // Case intermediaire : check obstacle bloquant.
                 EntityRef obsE = GetObstacleAt(f, cx, cy);
                 if (obsE == EntityRef.None) continue;
-                if (casterPlayerIndex < 0) return false; // mode strict : tout obstacle bloque
+                if (casterTeamId < 0) return false; // mode strict : tout obstacle bloque
                 if (!f.Unsafe.TryGetPointer<Obstacle>(obsE, out var obsP)) return false;
-                if (obsP->OwnerPlayerIndex != casterPlayerIndex) return false; // obstacle ennemi bloque
-                // Sinon obstacle OWN : on traverse (Colossar voit a travers ses propres murs).
+                // 5.1 — obstacle d'équipe ENNEMIE bloque ; obstacle de SON camp (ex: murs du Colossar
+                //   allié) se traverse. Résout le team de l'owner (rare : peu de cases-obstacles).
+                int obsTeam = TeamHelper.ResolveTeamId(f, obsP->OwnerPlayerIndex);
+                if (obsTeam < 0) obsTeam = obsP->OwnerPlayerIndex; // fallback 1v1
+                if (obsTeam != casterTeamId) return false; // obstacle ennemi bloque
+                // Sinon obstacle du MEME camp : on traverse (Colossar voit a travers ses propres murs / ceux de son allié).
             }
             return true; // safety reached (ne devrait pas arriver)
         }

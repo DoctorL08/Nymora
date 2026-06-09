@@ -212,7 +212,7 @@ namespace Quantum
                     EntityRef occ = GridHelpers.GetOccupant(f, cx, cy);
                     if (occ == EntityRef.None) continue;
                     if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* crossed)) continue;
-                    if (crossed->PlayerIndex == combatant->PlayerIndex) continue; // skip allie/self
+                    if (TeamHelper.SameTeam(crossed, combatant)) continue; // 5.1 : skip alliés/self
                     if (crossed->HP <= 0) continue;
                     VeninHelpers.ApplyMark(f, crossed, SpellRegistry.PasSpectralMarksPerCrossing, currentTurn);
                     Log.Info($"[Pas Spectral] Necram P{combatant->PlayerIndex} traverse P{crossed->PlayerIndex} en ({cx},{cy}) : +{SpellRegistry.PasSpectralMarksPerCrossing} marque venin");
@@ -236,7 +236,7 @@ namespace Quantum
                     EntityRef occ = GridHelpers.GetOccupant(f, cx, cy);
                     if (occ == EntityRef.None) continue;
                     if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* crossedEnemy)) continue;
-                    if (crossedEnemy->PlayerIndex == combatant->PlayerIndex) continue; // skip allie/self
+                    if (TeamHelper.SameTeam(crossedEnemy, combatant)) continue; // 5.1 : skip alliés/self
                     if (crossedEnemy->HP <= 0) continue;
                     int hpBeforePAD = crossedEnemy->HP;
                     crossedEnemy->HP -= SpellRegistry.PasAuDelaDorsalDamage;

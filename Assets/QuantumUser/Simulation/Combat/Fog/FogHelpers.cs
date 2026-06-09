@@ -250,8 +250,13 @@ namespace Quantum
         public static bool IsEnemyTerrainAt(Frame f, int x, int y, int playerIndex)
         {
             if (playerIndex < 0) return false;
+            // 5.1 (2v2/3v3) — le masque est désormais clé sur l'ÉQUIPE (bit 0 = team 0, bit 1 = team 1).
+            //   Il y a toujours 2 équipes -> le masque 2 bits reste exact. En 1v1 team == playerIndex
+            //   -> bit identique à avant (non-régression).
+            int team = TeamHelper.ResolveTeamId(f, playerIndex);
+            if (team < 0) team = playerIndex; // fallback 1v1
             int mask = GetTerrainOwnerMask(f, x, y);
-            int enemyBits = mask & ~(1 << playerIndex) & 0x3;
+            int enemyBits = mask & ~(1 << team) & 0x3;
             return enemyBits != 0;
         }
 
@@ -282,7 +287,8 @@ namespace Quantum
             if (trap == TrapKind.None) return false;
             int trapOwner = GetTrapOwner(f, x, y);
             if (trapOwner < 0) return false;
-            if (trapOwner == entererC->PlayerIndex) return false; // pas son propre trap
+            // 5.1 : le piège ne se déclenche pas sur le poseur NI ses alliés (pas de tir allié).
+            if (!TeamHelper.AreEnemiesByPlayerIndex(f, trapOwner, entererC->PlayerIndex)) return false;
 
             // Refonte 29 mai — PIÈGE BONDISSANT : éjecte l'enterer de 3 cases dans la direction stockée
             //   (catapulte), pas de dégâts. Applique Traqué + clear + PR. L'éjection part de la position
@@ -508,7 +514,7 @@ namespace Quantum
                 EntityRef occ = GridHelpers.GetOccupant(f, x, y);
                 if (occ != EntityRef.None
                     && f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* occC)
-                    && occC->PlayerIndex != ownerPlayerIndex && occC->HP > 0)
+                    && TeamHelper.AreEnemiesByPlayerIndex(f, ownerPlayerIndex, occC->PlayerIndex) && occC->HP > 0) // 5.1 : seul un ennemi déclenche
                 {
                     TryTriggerTrapOnEnter(f, occ, occC, x, y, currentTurn);
                 }
@@ -551,6 +557,8 @@ namespace Quantum
         {
             int dmg = Quantum.SpellRegistry.ZoneTrapDetonationSurplusDmg;
             int markTurns = Quantum.SpellRegistry.ChampDeMinesEmpreinteTurns; // 2 tours (durée Traqué piège)
+            int ownerTeam = TeamHelper.ResolveTeamId(f, ownerPlayerIndex); // 5.1 : épargner le camp du poseur
+            if (ownerTeam < 0) ownerTeam = ownerPlayerIndex;               // fallback 1v1
 
             for (int i = 0; i < count; i++)
             {
@@ -560,7 +568,7 @@ namespace Quantum
                 EntityRef occ = GridHelpers.GetOccupant(f, x, y);
                 if (occ == EntityRef.None) continue;
                 if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* victim)) continue;
-                if (victim->PlayerIndex == ownerPlayerIndex || victim->HP <= 0) continue;
+                if (victim->TeamId == ownerTeam || victim->HP <= 0) continue; // 5.1 : pas sur alliés/self
 
                 int hpBefore = victim->HP;
                 victim->HP -= dmg;
@@ -604,6 +612,8 @@ namespace Quantum
             }
             if (trapCount <= 0) return;
             int bonus = trapCount * perTrapBonus;
+            int ownerTeam = TeamHelper.ResolveTeamId(f, ownerPlayerIndex); // 5.1 : épargner le camp du poseur
+            if (ownerTeam < 0) ownerTeam = ownerPlayerIndex;               // fallback 1v1
 
             for (int i = 0; i < count; i++)
             {
@@ -613,7 +623,7 @@ namespace Quantum
                 EntityRef occ = GridHelpers.GetOccupant(f, x, y);
                 if (occ == EntityRef.None) continue;
                 if (!f.Unsafe.TryGetPointer<Combatant>(occ, out Combatant* victim)) continue;
-                if (victim->PlayerIndex == ownerPlayerIndex || victim->HP <= 0) continue;
+                if (victim->TeamId == ownerTeam || victim->HP <= 0) continue; // 5.1 : pas sur alliés/self
 
                 int hpBefore = victim->HP;
                 victim->HP -= bonus;
