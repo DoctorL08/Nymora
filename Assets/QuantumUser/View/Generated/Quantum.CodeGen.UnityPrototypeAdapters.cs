@@ -53,6 +53,7 @@ namespace Quantum.Prototypes.Unity {
   public unsafe partial class CombatantPrototype : Quantum.QuantumUnityPrototypeAdapter<Quantum.Prototypes.CombatantPrototype> {
     public Int32 PlayerIndex;
     public Int32 TeamId;
+    public Int32 TeamOrder;
     public Quantum.QEnum8<NymoraClass> Class;
     public Int32 HP;
     public Int32 MaxHP;
@@ -115,6 +116,7 @@ namespace Quantum.Prototypes.Unity {
       var result = new Quantum.Prototypes.CombatantPrototype();
       converter.Convert(this.PlayerIndex, out result.PlayerIndex);
       converter.Convert(this.TeamId, out result.TeamId);
+      converter.Convert(this.TeamOrder, out result.TeamOrder);
       converter.Convert(this.Class, out result.Class);
       converter.Convert(this.HP, out result.HP);
       converter.Convert(this.MaxHP, out result.MaxHP);

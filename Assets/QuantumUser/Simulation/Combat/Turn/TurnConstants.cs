@@ -7,7 +7,17 @@ namespace Quantum
     public static class TurnConstants
     {
         public const int TurnDurationSeconds = 15;
+
+        // 1v1 = 2 joueurs. CONSERVÉ comme défaut (RuntimeConfig.PlayerCount non fourni -> 2).
+        // ⚠️ NE PLUS l'utiliser pour la LONGUEUR DU ROUND ni la rotation : depuis 5.2 c'est
+        //    CombatState.PlayerCount (dynamique par mode) qui pilote ça, via CombatState.TurnOrder.
         public const int PlayerCount = 2;
+
+        // 5.2 (2v2/3v3) — borne MAX de joueurs d'un combat (3v3 = 6). Sert UNIQUEMENT de borne
+        //   de scan « pour chaque slot » dans les systèmes de commandes (Movement/Spell/Fog/...) :
+        //   un slot vide -> GetPlayerCommand null / aucun Combatant -> no-op, donc balayer 0..5
+        //   est sûr et déterministe même en 1v1. La vraie longueur de round = CombatState.PlayerCount.
+        public const int MaxPlayers = 6;
 
         /// <summary>
         /// PATCH 22 mai (test designer) — Delai d'intro "pile ou face" en combat CASUAL.

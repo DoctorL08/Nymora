@@ -24,6 +24,11 @@
         //   Les bootstraps 1v1 existants (Casual/IA) ne la touchent pas -> reste -1 -> 1v1 intact.
         public int TeamId = -1;
 
+        // 5.2 (2v2/3v3) — RANG du joueur DANS son équipe (0 = 1er à jouer, 1 = 2e, 2 = 3e), fixé par
+        //   le VOTE DU CAPITAINE au pré-combat (brique 5.6). -1 = non fourni -> TurnSystem ordonne par
+        //   PlayerIndex croissant (défaut). Sert à construire CombatState.TurnOrder (alternance équipes).
+        public int TeamOrder = -1;
+
         // 5.10 (A3) — Cosmétiques équipés du joueur, transmis à TOUS les clients via Quantum
         // AddPlayer (comme ClassId). VIEW-ONLY : jamais lus par la simulation → aucun impact
         // déterministe, pas de bump CombatRulesVersion. Le CombatantRenderer lit ces champs par

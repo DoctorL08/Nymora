@@ -59,6 +59,11 @@ component Combatant
     //   Tous les checks allie/ennemi passent par TeamHelper (predicats centralises).
     Int32 TeamId;
 
+    // 5.2 (2v2/3v3) — RANG du joueur DANS son équipe (0 = 1er à jouer du camp, 1 = 2e, 2 = 3e),
+    //   issu du vote du capitaine (RuntimePlayer.TeamOrder, copié au spawn). -1 = non fourni ->
+    //   TurnSystem ordonne par PlayerIndex. Lu UNE FOIS au build de CombatState.TurnOrder.
+    Int32 TeamOrder;
+
     NymoraClass Class;
 
     // Stats Bible V7.1 — caps fixes par classe, valeurs courantes mutables.

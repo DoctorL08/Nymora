@@ -53,4 +53,24 @@ singleton component CombatState
     // OncePerMatchUsedFlags Combatant.qtn ligne 87). Set dans TurnSystem.OnInit
     // depuis f.RuntimeConfig.IsBotMatch. Default 0 = pvp (safe pour Phase 6).
     Int32 IsBotMatch;
+
+    // 5.2 (2v2/3v3) — Nombre de joueurs RÉELS du combat (2 / 4 / 6). Pilote la LONGUEUR DU ROUND
+    //   (nb de sous-tours) et la rotation. Posé depuis RuntimeConfig.PlayerCount à l'OnInit
+    //   (fallback 2 = 1v1), puis confirmé au build de TurnOrder une fois tous les Combatants spawnés.
+    Int32 PlayerCount;
+
+    // 5.2 — ORDRE DE JEU du round = séquence de PlayerIndex (taille = PlayerCount). Alternance
+    //   stricte entre équipes : [équipeA rang0, équipeB rang0, équipeA rang1, équipeB rang1, ...].
+    //   L'ordre INTRA-équipe vient du vote du capitaine (RuntimePlayer.TeamOrder ; défaut = PlayerIndex).
+    //   ActivePlayerIndex = TurnOrder[SubTurnInRound]. Construit une seule fois (TurnOrderBuilt).
+    array<Int32>[6] TurnOrder;
+
+    // 5.2 — Équipe qui commence le round 1 (initiative). Tirée à l'OnInit (RNG, comme avant en 1v1 ;
+    //   IA -> 0 = équipe du joueur). Utilisée au build de TurnOrder (interleave). En 1v1 StartingTeam
+    //   == l'ancien ActivePlayerIndex tiré -> parité déterministe exacte avec l'historique.
+    Int32 StartingTeam;
+
+    // 5.2 — 0 tant que TurnOrder n'est pas construit (tous les Combatants pas encore spawnés —
+    //   OnPlayerAdded est séquentiel). 1 une fois l'ordre figé. La FSM de tour attend ce flag.
+    Int32 TurnOrderBuilt;
 }

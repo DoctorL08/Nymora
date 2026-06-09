@@ -24,7 +24,7 @@ namespace Quantum
             if (!f.TryGetSingleton<CombatState>(out var state)) return;
             if (state.CurrentPhase != CombatPhase.TurnActive) return;
 
-            for (int playerIndex = 0; playerIndex < TurnConstants.PlayerCount; playerIndex++)
+            for (int playerIndex = 0; playerIndex < TurnConstants.MaxPlayers; playerIndex++) // 5.2 : scan tous les slots (vide = no-op)
             {
                 var cmd = f.GetPlayerCommand(playerIndex);
                 switch (cmd)

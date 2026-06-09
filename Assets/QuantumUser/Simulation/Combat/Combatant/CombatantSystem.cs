@@ -79,17 +79,20 @@ namespace Quantum
                 ? runtimePlayer.TeamId
                 : slot;
 
+            // 5.2 — RANG intra-équipe (vote capitaine, brique 5.6). -1 = non fourni -> ordre par PlayerIndex.
+            int teamOrder = runtimePlayer != null ? runtimePlayer.TeamOrder : -1;
+
             // Tuto : mannequin (slot 1) rapproché à 3 cases du joueur (slot 0 inchangé).
             bool tutorialClose = f.RuntimeConfig.TutorialPassiveBot && slot == 1;
             int x = slot == 0 ? P1SpawnX : (tutorialClose ? TutorialP2SpawnX : P2SpawnX);
             int y = slot == 0 ? P1SpawnY : (tutorialClose ? TutorialP2SpawnY : P2SpawnY);
 
-            SpawnCombatant(f, playerIndex: slot, teamId: teamId, nymoraClass: nymoraClass, x: x, y: y);
+            SpawnCombatant(f, playerIndex: slot, teamId: teamId, teamOrder: teamOrder, nymoraClass: nymoraClass, x: x, y: y);
             string modeTag = f.RuntimeConfig.IsBotMatch ? "IA" : "PvP";
             Log.Info($"[CombatantSystem] {modeTag} spawn slot {slot} class {nymoraClass} at ({x},{y})");
         }
 
-        private static EntityRef SpawnCombatant(Frame f, int playerIndex, int teamId, NymoraClass nymoraClass, int x, int y)
+        private static EntityRef SpawnCombatant(Frame f, int playerIndex, int teamId, int teamOrder, NymoraClass nymoraClass, int x, int y)
         {
             int maxHP = CombatantStats.GetMaxHP(nymoraClass);
             int maxPA = CombatantStats.GetMaxPA(nymoraClass);
@@ -99,6 +102,7 @@ namespace Quantum
             {
                 PlayerIndex = playerIndex,
                 TeamId = teamId, // 5.1 — appartenance d'equipe (1v1 : == playerIndex)
+                TeamOrder = teamOrder, // 5.2 — rang intra-équipe (vote capitaine ; -1 = ordre par PlayerIndex)
                 Class = nymoraClass,
                 MaxHP = maxHP,
                 HP = maxHP,

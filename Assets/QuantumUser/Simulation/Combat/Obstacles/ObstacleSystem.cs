@@ -56,7 +56,7 @@ namespace Quantum
             // arrivent).
             if (state.CurrentPhase == CombatPhase.TurnActive)
             {
-                for (int playerIndex = 0; playerIndex < TurnConstants.PlayerCount; playerIndex++)
+                for (int playerIndex = 0; playerIndex < TurnConstants.MaxPlayers; playerIndex++) // 5.2 : scan tous les slots (vide = no-op)
                 {
                     var cmd = f.GetPlayerCommand(playerIndex);
                     if (cmd is DebugSpawnObstacleCommand spawnCmd)

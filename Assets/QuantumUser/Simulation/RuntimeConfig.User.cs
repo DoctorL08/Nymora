@@ -20,5 +20,10 @@
         // JOUEUR (slot 0) : pas de fin de tour automatique, le joueur prend son temps et termine
         // manuellement. N'affecte pas le tour du bot (qui se rend seul). CombatRulesVersion bumpe (85).
         public bool TutorialFreezeTimer;
+
+        // 5.2 (2v2/3v3) — Nombre TOTAL de joueurs du combat (2 / 4 / 6). Posé par le bootstrap de
+        //   chaque scène (1v1 : non posé -> 0 -> TurnSystem.OnInit retombe sur 2). Le bootstrap équipe
+        //   (scènes 41/42, brique 5.5) le met à 4 ou 6. Pilote la longueur du round + le build TurnOrder.
+        public int PlayerCount;
     }
 }

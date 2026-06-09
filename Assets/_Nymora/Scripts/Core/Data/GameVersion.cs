@@ -399,7 +399,16 @@ namespace Nymora.Core.Data
         //     player + l'AI (exclue du multi) + helpers View restent en PlayerIndex.
         //   INVARIANT 1v1 : team == slot == PlayerIndex -> comportement STRICTEMENT identique (non-regression).
         //   Le tir allie ne s'observe qu'en 2v2/3v3 (validation a la brique 5.5, scenes equipe).
-        public const int CombatRulesVersion = 155;
+        // v156 (9 juin 2026) — Phase 5 brique 5.2 (rotation N-joueurs + ordre vote capitaine) :
+        //   CombatState.PlayerCount (dynamique) + TurnOrder[6] + StartingTeam + TurnOrderBuilt ;
+        //   RuntimeConfig.PlayerCount (pose par bootstrap, 1v1=defaut 2) ; RuntimePlayer.TeamOrder +
+        //   Combatant.TeamOrder (rang intra-equipe, vote 5.6, defaut PlayerIndex). La rotation suit
+        //   TurnOrder (alternance stricte entre equipes, ordre intra-equipe par TeamOrder) au lieu d'un
+        //   modulo ; longueur de round = PlayerCount. TurnConstants.MaxPlayers=6 borne les scans de
+        //   commandes par slot. INVARIANT 1v1 : meme draw RNG (Next(0,2)) + TurnOrder=[start,autre] ->
+        //   comportement strictement identique. La FSM de tour attend que tous les Combatants soient
+        //   spawnes (TryBuildTurnOrder) avant de juger forfait/MatchEnd.
+        public const int CombatRulesVersion = 156;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

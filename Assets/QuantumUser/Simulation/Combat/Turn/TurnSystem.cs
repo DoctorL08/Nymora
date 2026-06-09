@@ -34,14 +34,22 @@ namespace Quantum
             // Int32 0/1 cote sim (Quantum .qtn ne supporte pas Bool), bool cote Unity.
             state->IsBotMatch = f.RuntimeConfig.IsBotMatch ? 1 : 0;
 
-            // Initiative round 1.
+            // 5.2 — Nombre de joueurs RÉELS du combat (RuntimeConfig ; fallback 2 = 1v1). Clamp [2, Max].
+            //   Pilote la longueur du round (nb de sous-tours) + le build de TurnOrder.
+            int playerCount = f.RuntimeConfig.PlayerCount;
+            if (playerCount < 2) playerCount = 2;
+            if (playerCount > TurnConstants.MaxPlayers) playerCount = TurnConstants.MaxPlayers;
+            state->PlayerCount = playerCount;
+
+            // Initiative round 1 — on tire l'ÉQUIPE qui commence (il y a TOUJOURS 2 équipes).
             //   - PvP / ranked : tirage aleatoire (Bible V7.1 : random tour 1, alternance ensuite).
-            //     f.RNG->Next(0, max) retourne un int dans [0, max) - donc [0, 2) = 0 ou 1.
-            //   - IA / entrainement (5.12) : le JOUEUR (P0) commence TOUJOURS (deviation volontaire
-            //     de la Bible, reservee au PvE : pas de surprise "le bot joue avant moi" en training).
-            state->ActivePlayerIndex = state->IsBotMatch == 1
-                ? 0
-                : f.RNG->Next(0, TurnConstants.PlayerCount);
+            //     f.RNG->Next(0, 2) = 0 ou 1. ⚠️ MÊME draw qu'avant en 1v1 -> parité déterministe.
+            //   - IA / entrainement : l'équipe du JOUEUR (0) commence TOUJOURS (pas de surprise PvE).
+            //   L'ordre complet (TurnOrder) est figé plus tard, une fois TOUS les Combatants spawnés
+            //   (OnPlayerAdded est séquentiel) -> cf TryBuildTurnOrder. ActivePlayerIndex = placeholder.
+            state->StartingTeam = state->IsBotMatch == 1 ? 0 : f.RNG->Next(0, 2);
+            state->ActivePlayerIndex = 0;
+            state->TurnOrderBuilt = 0;
 
             // PATCH 22 mai (test designer) — Intro "pile ou face" CASUAL : on reste en PreMatch
             // un court delai (timer d'intro stocke dans TurnTimerTicks, GELE cote tour) pendant
@@ -58,19 +66,112 @@ namespace Quantum
                 state->TurnTimerTicks = TurnConstants.GetIntroDelayTicks(f);
             }
 
-            Log.Info($"[TurnSystem] Initiative: Joueur P{state->ActivePlayerIndex} commence le round 1 (phase {state->CurrentPhase})");
+            Log.Info($"[TurnSystem] Init: {playerCount} joueurs, équipe {state->StartingTeam} commence le round 1 (phase {state->CurrentPhase})");
+        }
+
+        /// <summary>
+        /// 5.2 (2v2/3v3) — Construit CombatState.TurnOrder une fois TOUS les Combatants spawnés
+        /// (OnPlayerAdded est séquentiel -> on retente chaque tick tant que le compte est incomplet).
+        ///
+        /// Alternance STRICTE entre les 2 équipes : [équipe qui commence rang0, autre équipe rang0,
+        /// équipe rang1, autre rang1, ...]. L'ordre INTRA-équipe = Combatant.TeamOrder (vote du
+        /// capitaine, brique 5.6 ; défaut -1 -> ordonné par PlayerIndex). Tie-break déterministe
+        /// par PlayerIndex.
+        ///
+        /// INVARIANT 1v1 : 1 joueur par équipe -> TurnOrder = [StartingTeam, autre équipe], soit
+        /// exactement l'ancien comportement (le joueur tiré commence, puis alternance).
+        ///
+        /// Retourne false tant que les PlayerCount Combatants attendus ne sont pas tous présents.
+        /// </summary>
+        private static bool TryBuildTurnOrder(Frame f, CombatState* state)
+        {
+            int expected = state->PlayerCount;
+
+            // Deux buckets (clé = rang intra-équipe, valeur = PlayerIndex) : team0 = équipe qui
+            //   commence (StartingTeam), team1 = l'autre.
+            int* k0 = stackalloc int[TurnConstants.MaxPlayers];
+            int* v0 = stackalloc int[TurnConstants.MaxPlayers];
+            int* k1 = stackalloc int[TurnConstants.MaxPlayers];
+            int* v1 = stackalloc int[TurnConstants.MaxPlayers];
+            int n0 = 0, n1 = 0, total = 0;
+
+            var filter = f.Filter<Combatant>();
+            while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                total++;
+                int rank = c->TeamOrder >= 0 ? c->TeamOrder : c->PlayerIndex;
+                if (c->TeamId == state->StartingTeam)
+                {
+                    if (n0 < TurnConstants.MaxPlayers) { k0[n0] = rank; v0[n0] = c->PlayerIndex; n0++; }
+                }
+                else
+                {
+                    if (n1 < TurnConstants.MaxPlayers) { k1[n1] = rank; v1[n1] = c->PlayerIndex; n1++; }
+                }
+            }
+
+            // Spawn séquentiel pas terminé -> on attend le prochain tick.
+            if (total < expected) return false;
+
+            InsertionSortByKey(k0, v0, n0);
+            InsertionSortByKey(k1, v1, n1);
+
+            // Interleave strict : équipe qui commence, puis l'autre, rang par rang.
+            int idx = 0;
+            int maxRank = n0 > n1 ? n0 : n1;
+            for (int r = 0; r < maxRank; r++)
+            {
+                if (r < n0) state->TurnOrder[idx++] = v0[r];
+                if (r < n1) state->TurnOrder[idx++] = v1[r];
+            }
+
+            state->PlayerCount = idx;                 // compte réel confirmé (= total)
+            state->SubTurnInRound = 0;
+            state->ActivePlayerIndex = idx > 0 ? state->TurnOrder[0] : 0;
+            state->TurnOrderBuilt = 1;
+
+            Log.Info($"[TurnSystem] TurnOrder figé : {idx} joueurs, équipe {state->StartingTeam} commence, 1er = P{state->ActivePlayerIndex}");
+            return true;
+        }
+
+        /// <summary>Tri par insertion déterministe de paires (clé, valeur) parallèles, par clé
+        /// croissante puis valeur (PlayerIndex) croissante en cas d'égalité. n petit (≤ 3).</summary>
+        private static void InsertionSortByKey(int* keys, int* vals, int count)
+        {
+            for (int i = 1; i < count; i++)
+            {
+                int k = keys[i];
+                int v = vals[i];
+                int j = i - 1;
+                while (j >= 0 && (keys[j] > k || (keys[j] == k && vals[j] > v)))
+                {
+                    keys[j + 1] = keys[j];
+                    vals[j + 1] = vals[j];
+                    j--;
+                }
+                keys[j + 1] = k;
+                vals[j + 1] = v;
+            }
         }
 
         public override void Update(Frame f)
         {
             var state = f.Unsafe.GetPointerSingleton<CombatState>();
 
+            // 5.2 — On FIGE toute la logique de tour tant que les PlayerCount Combatants ne sont pas
+            //   tous spawnés (OnPlayerAdded séquentiel) : on construit TurnOrder dès qu'ils sont là,
+            //   sinon on attend. Empêche tout faux MatchEnd / forfait évalué sur un combat incomplet.
+            if (state->CurrentPhase != CombatPhase.MatchEnd && state->TurnOrderBuilt == 0)
+            {
+                if (!TryBuildTurnOrder(f, state)) return;
+            }
+
             // B8 (22 mai) — Abandon volontaire. Si un slot envoie ForfeitCommand, il perd
             // immediatement et l'autre joueur gagne (1v1). Verifie chaque tick, hors MatchEnd.
             // Fonctionne en IA (Lorenzo slot 0 forfait -> bot gagne = defaite) et en casual PvP.
             if (state->CurrentPhase != CombatPhase.MatchEnd)
             {
-                for (int slot = 0; slot < TurnConstants.PlayerCount; slot++)
+                for (int slot = 0; slot < state->PlayerCount; slot++)
                 {
                     if (f.GetPlayerCommand(slot) is ForfeitCommand)
                     {
@@ -362,7 +463,7 @@ namespace Quantum
                 }
             }
 
-            Log.Info($"[TurnSystem] Round {state->TurnNumber} (sub {state->SubTurnInRound + 1}/{TurnConstants.PlayerCount}) - Joueur P{activePlayer} (timer {state->TurnTimerTicks} ticks)");
+            Log.Info($"[TurnSystem] Round {state->TurnNumber} (sub {state->SubTurnInRound + 1}/{state->PlayerCount}) - Joueur P{activePlayer} (timer {state->TurnTimerTicks} ticks)");
             state->CurrentPhase = CombatPhase.TurnActive;
         }
 
@@ -510,7 +611,7 @@ namespace Quantum
             // (semantique Dofus : "Bible 2 tours" = "2 rounds complets actifs"). Si on
             // decremente a chaque sous-tour, un status "1 tour" expire apres 1 swap de
             // joueur — ce qui n'est PAS l'intention design Bible V7.1.
-            bool isLastSubTurnOfRound = state->SubTurnInRound == TurnConstants.PlayerCount - 1;
+            bool isLastSubTurnOfRound = state->SubTurnInRound == state->PlayerCount - 1;
             if (isLastSubTurnOfRound)
             {
                 // 2.10.a : statuses (Pacte +50%, Riposte Carmin, Peau de Fer, etc.).
@@ -557,12 +658,11 @@ namespace Quantum
             EvaluateTeamMatchEnd(f, state, "turn-end");
             if (state->CurrentPhase == CombatPhase.MatchEnd) return;
 
-            // Avance le compteur de sous-tour (wrap a 0 au debut du round suivant).
-            state->SubTurnInRound = (state->SubTurnInRound + 1) % TurnConstants.PlayerCount;
-
-            // Alternance stricte des 2 joueurs (1v1 en Phase 2). Pour 2v2/3v3 (Phase 6),
-            // la rotation devra suivre l'ordre d'initiative et non un simple modulo.
-            state->ActivePlayerIndex = (state->ActivePlayerIndex + 1) % TurnConstants.PlayerCount;
+            // 5.2 — Avance le sous-tour (wrap a 0 au debut du round suivant) puis lit le joueur actif
+            //   dans TurnOrder. Alternance stricte entre équipes en 2v2/3v3 ; en 1v1 TurnOrder = 2
+            //   entrées -> comportement identique à l'ancien modulo.
+            state->SubTurnInRound = (state->SubTurnInRound + 1) % state->PlayerCount;
+            state->ActivePlayerIndex = state->TurnOrder[state->SubTurnInRound];
             state->CurrentPhase = CombatPhase.TurnStart;
         }
 
