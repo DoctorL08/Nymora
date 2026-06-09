@@ -69,9 +69,11 @@ Découpage : **5.1 fondations équipe** → 5.2 rotation N-joueurs + ordre voté
 
 - ✅ **5.4c livrée + commit** : éditeur `Nymora > Combat > Map Editor` (peindre la forme Walkable + placer les spawns par équipe/rang → asset `NymoraCombatMap`). **Map `Assets/CombatMap_2v2.asset` dessinée par Lorenzo** (12×12). Outil éditeur pur (pas de runtime/version).
 
+- ✅ **5.4d livrée + commit** : `GridRenderer` n'instancie que les cases walkable (`GridHelpers.IsWalkable`) → rend la forme irrégulière. View-only, 1v1 identique (rectangle plein). **Brique 5.4 COMPLÈTE** (a grille / b MapAsset / c éditeur / d rendu).
+
 ## Prochaine action
 
-**Phase 5 brique 5.4d — View : rendu de la forme irrégulière** : `GridRenderer` n'instancie que les cases **walkable** (lit le masque de `GridSingleton`) au lieu d'un rectangle plein → la map carved s'affiche correctement. (Le centrage sur dims logiques est déjà fait en 5.4a.) Puis Phase 5.5 (scène `41_CombatRanked2v2` + bootstrap équipe qui pose `RuntimeConfig.CombatMap`). : agrandir l'array grille au cap 3v3, `MapAsset` (forme `Walkable` bord-irrégulier + spawns groupés par équipe), Editor Script `NymoraMapEditor` pour peindre la map ; 1 map 2v2 dessinée. (Le 1v1 garde sa 10x10.)
+**Phase 5 brique 5.5 — scène `41_CombatRanked2v2`** (grosse brique, plan avant code) : bootstrap équipe 4 joueurs (pose `RuntimeConfig.PlayerCount=4` + `CombatMap` = CombatMap_2v2 + TeamId/TeamOrder par joueur), spawn aux points de la map, HUD 4 portraits (couleurs allié/ennemi), affichage de la forme irrégulière. C'est là que le 2v2 devient jouable et que tout (5.1→5.4) converge visuellement. : agrandir l'array grille au cap 3v3, `MapAsset` (forme `Walkable` bord-irrégulier + spawns groupés par équipe), Editor Script `NymoraMapEditor` pour peindre la map ; 1 map 2v2 dessinée. (Le 1v1 garde sa 10x10.)
 
 ---
 

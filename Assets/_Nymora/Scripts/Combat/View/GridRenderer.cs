@@ -80,10 +80,18 @@ namespace Nymora.Combat.View
                 ? IsoProjection.CenterOffset(width, height, _settings.TileWorldWidth, _settings.TileWorldHeight)
                 : Vector3.zero;
 
+            int instantiated = 0;
             for (int y = 0; y < height; y++)
             {
                 for (int x = 0; x < width; x++)
                 {
+                    // 5.4d — on n'instancie QUE les cases jouables (walkable). Les cases carvées
+                    //   (hors-forme, masque Walkable=0) ne reçoivent pas de tuile -> c'est ce qui
+                    //   dessine la map IRRÉGULIÈRE. En 1v1 / maps rectangulaires, toute la zone
+                    //   logique est walkable -> rendu identique (rectangle plein). Le slot _tiles
+                    //   reste null pour une case non jouable (GetTileView renvoie null, déjà géré).
+                    if (!GridHelpers.IsWalkable(frame, x, y)) continue;
+
                     Vector3 worldPos = IsoProjection.GridToWorld(
                         x, y, _settings.TileWorldWidth, _settings.TileWorldHeight) + centerOffset;
 
@@ -103,10 +111,11 @@ namespace Nymora.Combat.View
                     }
 
                     _tiles[y * width + x] = go;
+                    instantiated++;
                 }
             }
 
-            Debug.Log($"[Nymora.GridRenderer] Grille {width}x{height} = {count} tiles instanciees.");
+            Debug.Log($"[Nymora.GridRenderer] Grille {width}x{height} : {instantiated} tiles jouables instanciees (sur {count} cases logiques).");
         }
 
 #if UNITY_EDITOR
