@@ -10,18 +10,18 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: -1722638350, guid: b156eeaae3f741b40af66649a4748430, type: 3}
-  m_Name: QuantumMap
+  m_Name: QuantumMap_2v2
   m_EditorClassIdentifier: 
   Identifier:
-    Path: QuantumUser/Resources/QuantumMap
+    Path: QuantumUser/Resources/QuantumMap_2v2
     Guid:
-      Value: 426656525288901384
+      Value: 2667787782883921036
   UserAsset:
     Id:
       Value: 0
-  Scene: 41_CombatRanked2v2_BACKUP_20260609_133131
-  ScenePath: Assets/_Nymora/Scenes/41_CombatRanked2v2_BACKUP_20260609_133131.unity
-  SceneGuid: 5fda759a825b23548ada4843af991683
+  Scene: 41_CombatRanked2v2
+  ScenePath: Assets/_Nymora/Scenes/41_CombatRanked2v2.unity
+  SceneGuid: f0d46fbdad389cf4abb62ec97ee809a5
   WorldSize: 256
   BucketsCount: 16
   BucketsSubdivisions: 8
@@ -32,7 +32,7 @@ MonoBehaviour:
   TriangleMeshCellSize: -1
   StaticColliders3DTrianglesData:
     Id:
-      Value: 407833120966855439
+      Value: 407833120966855440
   SerializeTrianglesMetadata: 0
   GridSizeX: 64
   GridSizeY: 64

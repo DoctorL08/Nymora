@@ -27,3 +27,12 @@ MonoBehaviour:
   - Asset: {fileID: 11400000, guid: 3de6fb04166440d49720262d0984fca6, type: 2}
     Guid:
       Value: 426656525288901385
+  - Asset: {fileID: 11400000, guid: e6373363cd9edec4fb4b42cf76bb60d7, type: 2}
+    Guid:
+      Value: 6666581961844445568
+  - Asset: {fileID: 11400000, guid: 2a885e7ae6b8fe14190a154863ccca5b, type: 2}
+    Guid:
+      Value: 874176018553869347
+  - Asset: {fileID: 11400000, guid: ea84731fe78950543ad0bfc26ce0f33e, type: 2}
+    Guid:
+      Value: 2667787782883921036

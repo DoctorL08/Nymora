@@ -71,10 +71,28 @@ Découpage : **5.1 fondations équipe** → 5.2 rotation N-joueurs + ordre voté
 
 - ✅ **5.4d livrée + commit** : `GridRenderer` n'instancie que les cases walkable (`GridHelpers.IsWalkable`) → rend la forme irrégulière. View-only, 1v1 identique (rectangle plein). **Brique 5.4 COMPLÈTE** (a grille / b MapAsset / c éditeur / d rendu).
 
-## Prochaine action
+## 🛑 REPRISE ICI — Phase 5 brique 5.5 (scène 2v2) EN COURS
 
-**Phase 5 brique 5.5 — scène `41_CombatRanked2v2`** (grosse brique, plan avant code) : bootstrap équipe 4 joueurs (pose `RuntimeConfig.PlayerCount=4` + `CombatMap` = CombatMap_2v2 + TeamId/TeamOrder par joueur), spawn aux points de la map, HUD 4 portraits (couleurs allié/ennemi), affichage de la forme irrégulière. C'est là que le 2v2 devient jouable et que tout (5.1→5.4) converge visuellement. : agrandir l'array grille au cap 3v3, `MapAsset` (forme `Walkable` bord-irrégulier + spawns groupés par équipe), Editor Script `NymoraMapEditor` pour peindre la map ; 1 map 2v2 dessinée. (Le 1v1 garde sa 10x10.)
+**Checkpoint posé le 9 juin (session longue, Lorenzo fait /clear).** Tout 5.1→5.4 est livré, validé 1v1, commité. On est au milieu de **5.5 (scène 2v2 hot-seat local)**.
+
+**Sous-découpage 5.5 :** 5.5a bootstrap (✅ codé) → 5.5b input hot-seat (À FAIRE) → 5.5c scène (✅ tool + scène créée) → 5.5d HUD 4 portraits (À FAIRE).
+
+**Fait (commité au checkpoint) :**
+- `CombatBootstrap2v2.cs` (5.5a) : Local, AddPlayer ×4, équipe 0=slots 0,1 / équipe 1=slots 2,3, pose `PlayerCount=4` + `CombatMap` + `IsBotMatch=false` sur le clone ; slot 0 = deck hub, slots 1-3 = classes Inspector (défaut Soulrender/Nightseer/Colossar/Necram).
+- `CreateRanked2v2SceneTool.cs` (5.5c) : menu `Nymora > Setup > Create 2v2 Combat Scene` (clone 30_CombatIA → 41_CombatRanked2v2 + crée `QuantumMap_2v2` dédiée repointée scène 41 + guid valide via `AssetGuid.NewGuid()`) + menu `Regenerate QuantumMap_2v2 (fix guid)`.
+- Scène `41_CombatRanked2v2.unity` créée, `QuantumMap_2v2.asset` créée (guid valide), `CombatMap_2v2.asset` (map 12×12 dessinée par Lorenzo).
+- Câblage scène par Lorenzo : `CombatBootstrap2v2` sur le GO `QuantumDebugRunner` (ex-QuantumRunnerLocalDebug retiré), refs Map/TeamQuantumMap=QuantumMap_2v2, CombatMap=CombatMap_2v2, SpellCatalog, classes OK.
+
+**⚠️ À VÉRIFIER À LA REPRISE (Lorenzo était perdu, pas encore testé en Play) :**
+1. **RuntimeConfig dédié** : le bootstrap 2v2 doit pointer un `RuntimeConfigCombat2v2` (dupliqué), PAS le `RuntimeConfigCombatIA` partagé — sinon le 1v1 IA hériterait de `CombatMap_2v2`/PlayerCount et casserait. Le bootstrap IA ne reset pas `CombatMap`/`PlayerCount` sur son clone.
+2. **Premier test = Play la scène 41**, objectif RENDU UNIQUEMENT : la map carved s'affiche + les 4 combattants spawnent aux points de la map (2 bleus / 2 rouges). Pas encore jouable (input hot-seat = 5.5b).
+
+**Prochaines étapes après validation du rendu :**
+- **5.5b — input hot-seat** : le contrôleur d'input (`CombatInputController` / `LocalPlayerResolver`) doit piloter le **joueur ACTIF** (`state.ActivePlayerIndex`), pas le slot 0. Il faut aussi que `CombatInputController` reconnaisse `CombatBootstrap2v2.Instance` pour NE PAS auto-add (cf check `bootstrapHandlesAddPlayer`). Caméra/preview suivent l'actif.
+- **5.5d — HUD 4 portraits** : timeline 4 combattants + HP + couleurs allié/ennemi.
+
+**Note technique :** fichier parasite `StackOverflowException` à la racine du repo (jamais commité — à supprimer un jour). Gizmo grille GridRenderer dessine 15×15 (max) en édition (cosmétique, à fixer en 5.4d-bis si gênant).
 
 ---
 
-*Dernière mise à jour : 9 juin 2026.*
+*Dernière mise à jour : 9 juin 2026 (checkpoint mi-5.5).*
