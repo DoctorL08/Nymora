@@ -67,9 +67,11 @@ Découpage : **5.1 fondations équipe** → 5.2 rotation N-joueurs + ordre voté
 
 - ✅ **5.4b livrée + commit** (v159) : `AssetObject NymoraCombatMap` (dims + masque Walkable irrégulier + spawns par équipe/rang) référencé par `RuntimeConfig.CombatMap` (AssetRef = GUID synchronisé → déterministe). `GridSystem` applique la forme si map présente (sinon rectangle), `CombatantSystem` spawn aux points (Team,Rank). Dormant en 1v1 (fallback) → identique. Pas de `.qtn` (C# pur). Compile OK + 1v1 IA OK.
 
+- ✅ **5.4c livrée + commit** : éditeur `Nymora > Combat > Map Editor` (peindre la forme Walkable + placer les spawns par équipe/rang → asset `NymoraCombatMap`). **Map `Assets/CombatMap_2v2.asset` dessinée par Lorenzo** (12×12). Outil éditeur pur (pas de runtime/version).
+
 ## Prochaine action
 
-**Phase 5 brique 5.4c — éditeur `NymoraMapEditor`** (EditorWindow Unity) : peindre le masque Walkable (forme irrégulière bord-only) + placer les spawns groupés par équipe → créer/éditer un asset `NymoraCombatMap` ; dessiner 1 map 2v2. Puis 5.4d (View : centrage dims logiques + rendu forme irrégulière, ne pas instancier les tuiles non-walkable). : agrandir l'array grille au cap 3v3, `MapAsset` (forme `Walkable` bord-irrégulier + spawns groupés par équipe), Editor Script `NymoraMapEditor` pour peindre la map ; 1 map 2v2 dessinée. (Le 1v1 garde sa 10x10.)
+**Phase 5 brique 5.4d — View : rendu de la forme irrégulière** : `GridRenderer` n'instancie que les cases **walkable** (lit le masque de `GridSingleton`) au lieu d'un rectangle plein → la map carved s'affiche correctement. (Le centrage sur dims logiques est déjà fait en 5.4a.) Puis Phase 5.5 (scène `41_CombatRanked2v2` + bootstrap équipe qui pose `RuntimeConfig.CombatMap`). : agrandir l'array grille au cap 3v3, `MapAsset` (forme `Walkable` bord-irrégulier + spawns groupés par équipe), Editor Script `NymoraMapEditor` pour peindre la map ; 1 map 2v2 dessinée. (Le 1v1 garde sa 10x10.)
 
 ---
 
