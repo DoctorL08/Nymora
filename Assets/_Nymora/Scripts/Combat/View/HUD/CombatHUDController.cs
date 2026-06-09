@@ -385,6 +385,70 @@ namespace Nymora.Combat.View.HUD
             }
         }
 
+        // 5.5e — Recharge _testDeck + _signatureSpell depuis le RuntimePlayer du joueur `playerIndex`
+        //   (deck sync Quantum) + la signature de sa classe, puis re-bind la barre. Utilisé en hot-seat
+        //   2v2/3v3 pour que chaque joueur retrouve SON deck quand c'est son tour.
+        // 5.5e — remplit le cache de deck du joueur `pi`. Si SpellIdValues est vide (ex : scène
+        //   lancée hors hub -> RuntimePlayer slot 0 sans deck), fallback sur le deck PAR DÉFAUT de la
+        //   classe (6 premiers sorts non-signature) pour ne jamais afficher une barre vide.
+        private void FillDeckCache(int pi, int[] spellIdValues, NymoraClass cls)
+        {
+            var dest = _deckCache[pi];
+            bool anyNonZero = false;
+            for (int i = 0; i < 6; i++)
+            {
+                int v = (spellIdValues != null && i < spellIdValues.Length) ? spellIdValues[i] : 0;
+                dest[i] = (SpellId)v;
+                if (v != 0) anyNonZero = true;
+            }
+            if (!anyNonZero) FillClassDefaultDeck(dest, cls);
+        }
+
+        // 5.5e — écrit dans `dest` le deck par défaut d'une classe (6 premiers sorts non-signature).
+        private void FillClassDefaultDeck(SpellId[] dest, NymoraClass quantumCls)
+        {
+            for (int i = 0; i < 6; i++) dest[i] = SpellId.None;
+            if (_spellCatalog == null || quantumCls == NymoraClass.None) return;
+            var coreCls = (Nymora.Core.Enums.NymoraClass)(byte)quantumCls;
+            var list = _spellCatalog.FindByClass(coreCls, includeSignature: false);
+            for (int i = 0; i < 6 && i < list.Count; i++)
+                if (list[i] != null) dest[i] = (SpellId)list[i].QuantumSpellIdValue;
+        }
+
+        /// <summary>Rebind la barre depuis le cache de deck du joueur actif (+ signature de sa classe).
+        /// False si le deck n'est pas encore caché (l'appelant réessaiera la frame suivante).</summary>
+        private bool RebindActivePlayerDeckFromCache(int playerIndex)
+        {
+            if (playerIndex < 0 || playerIndex >= _deckCache.Length || !_deckCached[playerIndex]) return false;
+
+            // Hot-seat : localTurn reste vrai en permanence -> le désarmement auto au changement de
+            // tour ne s'applique pas. On désarme ici tout sort resté armé par le joueur précédent.
+            if (_armedSpell.HasValue) Disarm();
+
+            var src = _deckCache[playerIndex];
+            for (int i = 0; i < _testDeck.Length; i++) _testDeck[i] = i < 6 ? src[i] : SpellId.None;
+
+            NymoraClass cls = (playerIndex < _tlPresent.Length && _tlPresent[playerIndex])
+                ? _tlByPlayer[playerIndex].Class : NymoraClass.None;
+            _signatureSpell = ResolveSignatureFor(cls);
+
+            BindSlots();
+            return true;
+        }
+
+        // 5.5e — SpellId de la signature d'une classe (catégorie Signature du catalogue). Garde la
+        //   valeur courante si catalogue absent / classe inconnue (fallback sûr).
+        private SpellId ResolveSignatureFor(NymoraClass quantumCls)
+        {
+            if (_spellCatalog == null || quantumCls == NymoraClass.None) return _signatureSpell;
+            var coreCls = (Nymora.Core.Enums.NymoraClass)(byte)quantumCls;
+            var list = _spellCatalog.FindByClass(coreCls, includeSignature: true);
+            for (int i = 0; i < list.Count; i++)
+                if (list[i] != null && list[i].Category == Nymora.Core.Enums.SpellCategory.Signature)
+                    return (SpellId)list[i].QuantumSpellIdValue;
+            return _signatureSpell;
+        }
+
         private void OnUpdateView(QuantumGame game)
         {
             var frame = game.Frames.Verified;
@@ -446,6 +510,29 @@ namespace Nymora.Combat.View.HUD
 
             // Passif (combattant qu'on controle)
             if (_passive != null) { if (hasLocal) _passive.Refresh(local); else _passive.Clear(); }
+
+            // 5.5e — HOT-SEAT 2v2/3v3 : la barre de sorts suit le DECK du joueur actif (chaque joueur
+            //   son deck + sa signature de classe). Rebind uniquement au changement de joueur actif.
+            //   Gate _debugAllPlayersControllable : en IA / 1v1 PvP (=false) la barre reste celle du
+            //   joueur local (comportement inchangé, non-régression).
+            if (_debugAllPlayersControllable)
+            {
+                // Remplit le cache de deck de chaque joueur présent dès qu'il est lisible (sur
+                // n'importe quelle frame). Découple le rebind du timing de GetPlayerData.
+                for (int pi = 0; pi < _deckCache.Length; pi++)
+                {
+                    if (_deckCached[pi] || !_tlPresent[pi]) continue;
+                    var rpd = frame.GetPlayerData((PlayerRef)pi);
+                    if (rpd == null) continue;
+                    FillDeckCache(pi, rpd.SpellIdValues, _tlByPlayer[pi].Class);
+                    _deckCached[pi] = true;
+                }
+
+                // Rebind la barre sur le deck (caché) du joueur actif au changement de tour.
+                // Ne valide _lastDeckPlayer que si le cache est prêt -> retry sinon.
+                if (activePlayer != _lastDeckPlayer && RebindActivePlayerDeckFromCache(activePlayer))
+                    _lastDeckPlayer = activePlayer;
+            }
 
             // Timeline N portraits (5.5d) : un slot par PlayerIndex (1v1 = 2, 2v2 = 4, 3v3 = 6),
             // teinte par equipe (TeamId) + highlight actif + HP + chips + tooltip hover.
@@ -784,6 +871,20 @@ namespace Nymora.Combat.View.HUD
         private readonly string[] _tlSkin = new string[Quantum.TurnConstants.MaxPlayers];
         // 5.5d — ordre d'affichage = ordre de jeu (TurnOrder : A0,B0,A1,B1). Rempli depuis le sim.
         private readonly int[] _tlOrder = new int[Quantum.TurnConstants.MaxPlayers];
+        // 5.5e — hot-seat : dernier joueur actif pour lequel la barre de sorts a été (re)bindée.
+        private int _lastDeckPlayer = -1;
+        // 5.5e — cache du deck (6 SpellId) par joueur. Rempli dès que GetPlayerData est lisible
+        //   (n'importe quelle frame, pas seulement à la transition de tour où il peut renvoyer null),
+        //   puis stable. La barre se re-bind DEPUIS ce cache -> plus de barre vide au round 2.
+        private readonly SpellId[][] _deckCache = NewDeckCache();
+        private readonly bool[] _deckCached = new bool[Quantum.TurnConstants.MaxPlayers];
+
+        private static SpellId[][] NewDeckCache()
+        {
+            var a = new SpellId[Quantum.TurnConstants.MaxPlayers][];
+            for (int i = 0; i < a.Length; i++) a[i] = new SpellId[6];
+            return a;
+        }
 
         /// <summary>
         /// Coût PA EFFECTIF d'un sort, réplique managée de EffectiveStats.GetPACost (sim) :

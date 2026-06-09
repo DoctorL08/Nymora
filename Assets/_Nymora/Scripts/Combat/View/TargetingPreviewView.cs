@@ -139,11 +139,11 @@ namespace Nymora.Combat.View
             var frame = game.Frames.Verified;
             if (!frame.TryGetSingleton<CombatState>(out var state)) return;
 
-            // Perspective JOUEUR (PvP comme IA) : la range castable est autour du combattant du
-            // joueur LOCAL (slot reseau en PvP, slot 0 en IA). Le sort n'est de toute facon armable
-            // que pendant le tour du joueur local (gate CombatHUDController), donc jamais de preview
-            // de ciblage cote bot.
-            int casterPlayerIndex = LocalPlayerResolver.Resolve();
+            // Perspective JOUEUR : la range castable est autour du combattant du joueur LOCAL
+            // (slot reseau en PvP, slot 0 en IA). Le sort n'est de toute facon armable que pendant
+            // le tour du joueur local (gate CombatHUDController), donc jamais de preview cote bot.
+            // 5.5e — en hot-seat équipe, le « joueur local » = le joueur ACTIF (tous locaux).
+            int casterPlayerIndex = LocalPlayerResolver.ResolveControllable(state.ActivePlayerIndex);
 
             // Trouve le caster = combattant du joueur (actif en IA, local en PvP).
             int casterX = -1, casterY = -1;

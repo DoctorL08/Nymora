@@ -153,10 +153,13 @@ namespace Nymora.Combat.Bootstrap
             Log("SessionRunner started.");
 
             // AddPlayer ×4. Équipe 0 = slots 0,1 / Équipe 1 = slots 2,3. Rang intra-équipe 0 puis 1.
+            // Slot 0 = deck du hub (DeckBridge). Slots 1-3 = deck PAR DÉFAUT de leur classe (5.5e) :
+            //   6 premiers sorts non-signature du catalogue -> chaque joueur peut caster en hot-seat
+            //   (la signature reste gérée par classe côté HUD, hors SpellIdValues).
             AddTeamPlayer(slot: 0, teamId: 0, teamOrder: 0, cls: ResolveSlot0ClassId(), spells: ResolveSlot0Spells(), nick: "P0 (A1)", useLocalCosmetics: true);
-            AddTeamPlayer(slot: 1, teamId: 0, teamOrder: 1, cls: Team0Player1, spells: new int[6], nick: "P1 (A2)", useLocalCosmetics: false);
-            AddTeamPlayer(slot: 2, teamId: 1, teamOrder: 0, cls: Team1Player0, spells: new int[6], nick: "P2 (B1)", useLocalCosmetics: false);
-            AddTeamPlayer(slot: 3, teamId: 1, teamOrder: 1, cls: Team1Player1, spells: new int[6], nick: "P3 (B2)", useLocalCosmetics: false);
+            AddTeamPlayer(slot: 1, teamId: 0, teamOrder: 1, cls: Team0Player1, spells: BuildDefaultDeck(Team0Player1), nick: "P1 (A2)", useLocalCosmetics: false);
+            AddTeamPlayer(slot: 2, teamId: 1, teamOrder: 0, cls: Team1Player0, spells: BuildDefaultDeck(Team1Player0), nick: "P2 (B1)", useLocalCosmetics: false);
+            AddTeamPlayer(slot: 3, teamId: 1, teamOrder: 1, cls: Team1Player1, spells: BuildDefaultDeck(Team1Player1), nick: "P3 (B2)", useLocalCosmetics: false);
         }
 
         private void AddTeamPlayer(int slot, int teamId, int teamOrder, QuantumNymoraClass cls, int[] spells, string nick, bool useLocalCosmetics)
@@ -195,6 +198,19 @@ namespace Nymora.Combat.Bootstrap
                 var def = SpellCatalog.FindBySpellId(ids[i]);
                 if (def != null) result[i] = def.QuantumSpellIdValue;
             }
+            return result;
+        }
+
+        // 5.5e — deck par défaut d'une classe (6 premiers sorts NON-signature du catalogue). Sert aux
+        //   slots 1-3 du hot-seat (pas de deck hub) pour qu'ils puissent caster. Vide si catalogue absent.
+        private int[] BuildDefaultDeck(QuantumNymoraClass cls)
+        {
+            var result = new int[6];
+            if (SpellCatalog == null) return result;
+            var coreCls = (NymoraClassEnum)(byte)cls;
+            var list = SpellCatalog.FindByClass(coreCls, includeSignature: false);
+            for (int i = 0; i < 6 && i < list.Count; i++)
+                if (list[i] != null) result[i] = list[i].QuantumSpellIdValue;
             return result;
         }
 

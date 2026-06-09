@@ -132,7 +132,9 @@ namespace Nymora.Combat.View.HUD
             // le combattant du joueur LOCAL, et UNIQUEMENT pendant son tour. LocalPlayerResolver
             // renvoie le slot reseau en PvP et 0 en IA (le bot = slot adverse) -> plus de preview
             // de la portee du bot pendant son tour.
-            int casterPlayerIndex = LocalPlayerResolver.Resolve();
+            // 5.5e — en hot-seat équipe, le « joueur local » = le joueur ACTIF (tous locaux) -> la
+            // portée s'affiche autour du combattant dont c'est le tour. Le gate devient un no-op.
+            int casterPlayerIndex = LocalPlayerResolver.ResolveControllable(state.ActivePlayerIndex);
             if (state.ActivePlayerIndex != casterPlayerIndex) return;
 
             int casterX = -1, casterY = -1, casterPM = 0;

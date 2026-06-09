@@ -49310,13 +49310,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d8262d01e80546f46a2b3b1187b35b33, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _slot0Root: {fileID: 0}
-  _slot1Root: {fileID: 0}
-  _portrait0: {fileID: 0}
-  _portrait1: {fileID: 0}
-  _slot0Frame: {fileID: 0}
-  _slot1Frame: {fileID: 0}
-  _legacyLabel: {fileID: 0}
   _slotSize: {x: 124, y: 144}
   _slotSpacing: 12
   _frameActive: {r: 0.93, g: 0.94, b: 0.96, a: 1}
@@ -49324,6 +49317,8 @@ MonoBehaviour:
   _portraitActive: {r: 1, g: 1, b: 1, a: 1}
   _portraitInactive: {r: 0.55, g: 0.55, b: 0.58, a: 1}
   _frameBorderPx: 3
+  _frameTeam0: {r: 0.3, g: 0.55, b: 0.95, a: 1}
+  _frameTeam1: {r: 0.92, g: 0.34, b: 0.34, a: 1}
   _hpStripHeight: 30
   _chipHeight: 28
   _verticalNudge: 80

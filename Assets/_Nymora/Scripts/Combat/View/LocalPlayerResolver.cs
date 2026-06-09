@@ -29,6 +29,18 @@ namespace Nymora.Combat.View
         }
 
         /// <summary>
+        /// 5.5e — Joueur « contrôlé » pour les PREVIEWS (zone de sort / portée de déplacement).
+        /// En HOT-SEAT équipe (CombatBootstrap2v2 présent), TOUS les joueurs sont locaux et l'input
+        /// pilote l'ACTIF -> la preview s'ancre sur le joueur dont c'est le tour. Sinon (1v1 / IA /
+        /// PvP Casual) = Resolve() (slot local), comportement inchangé.
+        /// </summary>
+        public static int ResolveControllable(int activePlayerIndex)
+        {
+            if (CombatBootstrap2v2.Instance != null) return activePlayerIndex;
+            return Resolve();
+        }
+
+        /// <summary>
         /// True si le client LOCAL possede le joueur `playerIndex`. Source de verite robuste
         /// (cf piege Quantum PlayerRef != slot suppose) :
         ///   - ONLINE (CombatBootstrapCasual present) : lit les PlayerRef locaux directement
