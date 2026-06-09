@@ -122,7 +122,10 @@ namespace Nymora.Combat.View
             // cote CombatantSystem.OnPlayerAdded).
             bool isPvp = frame.RuntimeConfig != null && !frame.RuntimeConfig.IsBotMatch;
             bool hasIABootstrap = Nymora.Combat.Bootstrap.CombatBootstrapIA.Instance != null;
-            bool bootstrapHandlesAddPlayer = isPvp || hasIABootstrap;
+            // 5.5b — bootstrap équipe (2v2/3v3) : les 4 à 6 joueurs sont AddPlayer EN LOCAL sur
+            //   ce seul client (hot-seat). À distinguer du PvP Casual (1 slot local par client).
+            bool hasTeamBootstrap = Nymora.Combat.Bootstrap.CombatBootstrap2v2.Instance != null;
+            bool bootstrapHandlesAddPlayer = isPvp || hasIABootstrap || hasTeamBootstrap;
 
             if (_autoAddLocalPlayers && !bootstrapHandlesAddPlayer)
             {
@@ -132,6 +135,16 @@ namespace Nymora.Combat.View
                 }
                 Debug.LogWarning($"[Nymora.CombatInput] Auto-add fallback : {_autoAddPlayerCount} RuntimePlayer empty (pas de CombatBootstrap detecte). " +
                                  "Spawn en Soulrender par defaut. Pour avoir la classe choisie en hub : remplacer QuantumRunnerLocalDebug par CombatBootstrapIA dans la scene 30_CombatIA.");
+            }
+            else if (hasTeamBootstrap)
+            {
+                // 5.5b — HOT-SEAT 2v2/3v3 : CombatBootstrap2v2 a AddPlayer les 4 (ou 6) slots EN
+                //   LOCAL sur ce client. Lorenzo joue le combattant dont c'est le tour -> l'input
+                //   pilote state.ActivePlayerIndex (réutilise le chemin "all movable" : senderPlayer
+                //   = ActivePlayerIndex et splitscreenSlot = ce même index, car TOUS les slots sont
+                //   locaux ici). Aucune résolution LocalPlayerSlot (pas de Casual en hot-seat).
+                _debugAllPlayersMovable = true;
+                Debug.Log("[Nymora.CombatInput] Mode HOT-SEAT 2v2/3v3 (CombatBootstrap2v2) — input pilote le joueur ACTIF (_debugAllPlayersMovable=true).");
             }
             else if (hasIABootstrap)
             {

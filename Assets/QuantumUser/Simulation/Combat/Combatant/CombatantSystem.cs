@@ -3,8 +3,8 @@ namespace Quantum
     using Photon.Deterministic;
 
     /// <summary>
-    /// Spawn les 2 combattants au demarrage du combat — via ISignalOnPlayerAdded pour
-    /// les DEUX modes (IA et PvP).
+    /// Spawn les combattants au demarrage du combat — via ISignalOnPlayerAdded pour
+    /// tous les modes (IA, PvP 1v1, et 2v2/3v3 jusqu'a MaxPlayers=6 depuis la brique 5.5).
     ///
     /// 2.2 — spawn hardcoded P0=Ghostra/P1=Soulrender en OnInit (test 1 seul client).
     /// 4.14.d — split OnInit (IA hardcoded) / OnPlayerAdded (PvP via RuntimePlayer).
@@ -54,10 +54,12 @@ namespace Quantum
             if (!firstTime) return;
 
             int slot = player;
-            // 1v1 cap : ignorer les slots > 1 (defensive, MaxPlayers Photon room = 2 deja).
-            if (slot < 0 || slot > 1)
+            // 5.5 (2v2/3v3) — cap relevé de 1v1 (slot>1) à MaxPlayers (6). En 1v1 seuls les
+            //   slots 0/1 arrivent (non-régression) ; en 2v2 les slots 2/3 (équipe 1) spawnent
+            //   désormais aussi. Borne défensive : un slot hors [0,MaxPlayers) reste ignoré.
+            if (slot < 0 || slot >= TurnConstants.MaxPlayers)
             {
-                Log.Warn($"[CombatantSystem] OnPlayerAdded slot {slot} hors range 1v1 — ignore.");
+                Log.Warn($"[CombatantSystem] OnPlayerAdded slot {slot} hors range [0,{TurnConstants.MaxPlayers}) — ignore.");
                 return;
             }
 

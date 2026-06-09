@@ -296,6 +296,17 @@ namespace Nymora.Combat.View.HUD
                 return;
             }
 
+            // 5.5b — HOT-SEAT 2v2/3v3 : tous les slots sont locaux sur ce client. Le HUD suit le
+            //   joueur ACTIF (gate « mon tour », bouton Fin de tour, activation de la barre de sorts)
+            //   via _debugAllPlayersControllable -> ResolveControlPlayer renvoie ActivePlayerIndex.
+            //   Pas de Casual à résoudre. (NB : barre de sorts par-classe + timeline 4 portraits = 5.5d.)
+            if (Nymora.Combat.Bootstrap.CombatBootstrap2v2.Instance != null)
+            {
+                _debugAllPlayersControllable = true;
+                Debug.Log("[CombatHUDController] Mode HOT-SEAT 2v2/3v3 (CombatBootstrap2v2) — HUD suit le joueur ACTIF (_debugAllPlayersControllable=true).");
+                return;
+            }
+
             var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
             if (bootstrap == null)
             {

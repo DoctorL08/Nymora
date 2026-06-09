@@ -34553,6 +34553,10 @@ MonoBehaviour:
     IsBotMatch: 1
     TutorialPassiveBot: 0
     TutorialFreezeTimer: 0
+    PlayerCount: 0
+    CombatMap:
+      Id:
+        Value: 0
   UseRandomSeed: 0
   SessionConfig: {fileID: 0}
   LocalPlayers: []
@@ -34592,7 +34596,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 796018058}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8b4dcfaaf7dd8074bb383b94ac0cff1d, type: 3}
+  m_Script: {fileID: 11500000, guid: c21d2787d1771ae49a21ff759c9d509b, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   RuntimeConfig:
@@ -34609,10 +34613,18 @@ MonoBehaviour:
     IsBotMatch: 1
     TutorialPassiveBot: 0
     TutorialFreezeTimer: 0
+    PlayerCount: 0
+    CombatMap:
+      Id:
+        Value: 499420832442994182
   SessionConfig: {fileID: 11400000, guid: f2ad71dea21e38743ba513154f5914e6, type: 2}
-  IAMap: {fileID: 0}
+  TeamQuantumMap: {fileID: 11400000, guid: ea84731fe78950543ad0bfc26ce0f33e, type: 2}
+  CombatMap: {fileID: 11400000, guid: 393d156db2c7c824cad28f596c95f544, type: 2}
   SpellCatalog: {fileID: 11400000, guid: c42fe7c9f9037c040bc3b27f45edb65f, type: 2}
-  BotClass: 1
+  Team0Player0: 1
+  Team0Player1: 2
+  Team1Player0: 3
+  Team1Player1: 4
   VerboseLog: 1
 --- !u!1 &885939971
 GameObject:
@@ -35331,8 +35343,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _settings: {fileID: 11400000, guid: e28dde8a0c27b744889dfe45f498a670, type: 2}
   _tilePrefab: {fileID: 3250198526460401575, guid: 3d4fed04954d22849b8aa6c602dc99f7, type: 3}
-  _tileColorEven: {r: 0.85, g: 0.85, b: 0.85, a: 0.05882353}
-  _tileColorOdd: {r: 0.75, g: 0.75, b: 0.75, a: 0.05882353}
+  _tileColorEven: {r: 0.85, g: 0.85, b: 0.85, a: 0.80784315}
+  _tileColorOdd: {r: 0.75, g: 0.75, b: 0.75, a: 0.80784315}
   _drawGridGizmos: 1
   _gridGizmoColor: {r: 1, g: 0.9, b: 0.3, a: 0.7}
 --- !u!4 &932372493
@@ -51542,7 +51554,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!212 &2043161162
 SpriteRenderer:
   m_ObjectHideFlags: 0

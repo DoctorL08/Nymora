@@ -19,9 +19,9 @@ MonoBehaviour:
   UserAsset:
     Id:
       Value: 0
-  Scene: 41_CombatRanked2v2_BACKUP_20260609_133131
-  ScenePath: Assets/_Nymora/Scenes/41_CombatRanked2v2_BACKUP_20260609_133131.unity
-  SceneGuid: 5fda759a825b23548ada4843af991683
+  Scene: 33_CombatCasual
+  ScenePath: Assets/_Nymora/Scenes/33_CombatCasual.unity
+  SceneGuid: f4c67066bdcd66f49a947694ab0aaaac
   WorldSize: 256
   BucketsCount: 16
   BucketsSubdivisions: 8

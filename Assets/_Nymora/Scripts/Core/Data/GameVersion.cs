@@ -432,7 +432,12 @@ namespace Nymora.Core.Data
         //   LogicalDims) ; CombatantSystem spawn aux points (Team,Rank) de la map (sinon hardcodé).
         //   Code DORMANT en 1v1 (aucune map -> Id invalide -> fallback) : comportement identique.
         //   Pas de .qtn modifié (AssetObject + RuntimeConfig = C# pur). L'éditeur (5.4c) crée les maps.
-        public const int CombatRulesVersion = 159;
+        // v160 (9 juin 2026) — Phase 5 brique 5.5 (scène 2v2 hot-seat) : CombatantSystem.OnPlayerAdded
+        //   levait un cap 1v1 résiduel (slot>1 ignoré) -> en 2v2 les slots 2/3 (équipe 1) ne spawnaient
+        //   jamais (seuls 2 combattants sur 4). Cap relevé à TurnConstants.MaxPlayers (6). INVARIANT 1v1 :
+        //   seuls les slots 0/1 arrivent -> comportement strictement identique. Permet enfin le spawn des
+        //   4 combattants 2v2 aux points (Team,Rank) de la CombatMap.
+        public const int CombatRulesVersion = 160;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";
