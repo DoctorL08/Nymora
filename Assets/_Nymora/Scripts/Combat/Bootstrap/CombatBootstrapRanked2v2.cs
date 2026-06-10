@@ -163,6 +163,14 @@ namespace Nymora.Combat.Bootstrap
             Client = await MatchmakingExtensions.ConnectToRoomAsync(matchmakingArgs);
             Log($"Room '{matchId}' connectée. ActorNumber={Client.LocalPlayer.ActorNumber} IsMaster={Client.LocalPlayer.IsMasterClient}");
 
+            // 5.7-C — Lobby CAPITAINE : le capitaine de chaque équipe ordonne son équipe (player
+            //   property Photon "to"), chaque client en déduit son rang AVANT AddPlayer (le TeamOrder
+            //   fige TurnOrder côté sim). Tourne ICI (room connectée, session Quantum PAS démarrée ->
+            //   le lobby pompe Client.Service() lui-même). Anti-hang interne -> rang par défaut.
+            localTeamOrder = await RunCaptainOrderLobbyAsync(localTeam, localTeamOrder, ct);
+            if (ct.IsCancellationRequested) return;
+            Log($"Ordre capitaine résolu : rang local = {localTeamOrder}.");
+
             // Clone config + map + 4 joueurs.
             var runtimeConfig = new QuantumUnityJsonSerializer().CloneConfig(RuntimeConfig);
             if (TeamQuantumMap != null) runtimeConfig.Map = TeamQuantumMap;
@@ -247,6 +255,32 @@ namespace Nymora.Combat.Bootstrap
                 foreach (var p in players)
                     if (p.Sub == mySub && !string.IsNullOrEmpty(p.DisplayName)) return p.DisplayName;
             return Match2v2Bridge.LocalEmail ?? Match2v2Bridge.LocalSub ?? "Joueur";
+        }
+
+        // 5.7-C — Lobby capitaine : instancie NetworkTeamOrderLobby (View), lui passe le client Photon
+        //   + le roster, et await le rang local résolu (ordre du capitaine, ou defaultRank si timeout/erreur).
+        private async Task<int> RunCaptainOrderLobbyAsync(int localTeam, int defaultRank, CancellationToken ct)
+        {
+            var roster = Match2v2Bridge.Players;
+            string localSub = Match2v2Bridge.LocalSub;
+            if (roster == null || string.IsNullOrEmpty(localSub) || Client == null) return defaultRank;
+
+            bool isCaptain = false;
+            foreach (var p in roster) if (p.Sub == localSub) { isCaptain = p.IsCaptain; break; }
+
+            var go = new GameObject("NetworkTeamOrderLobby");
+            var lobby = go.AddComponent<Nymora.Combat.View.PreCombatLobby.NetworkTeamOrderLobby>();
+            try
+            {
+                return await lobby.RunAsync(Client, roster, localTeam, localSub, isCaptain, defaultRank, ct);
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[CombatBootstrapRanked2v2] Lobby capitaine échec : {ex.Message} -> ordre par défaut.");
+                if (go != null) Destroy(go);
+                return defaultRank;
+            }
         }
 
         // Rang du joueur local dans son équipe = son index parmi les joueurs de même équipe (ordre roster).
