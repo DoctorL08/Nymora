@@ -75,6 +75,10 @@ namespace Nymora.Hub
         public event Action<string, string, string> OnRankedMatchFound;        // matchId, opponentSub, opponentDisplayName
         public event Action<int> OnRankedQueueJoined;                          // mmr (ack entree en file)
         public event Action OnRankedQueueLeft;                                 // ack sortie de file
+        // 5.7 — Matchmaking ranked 2v2
+        public event Action<string, int, RankedTeamPlayer[]> OnRanked2v2MatchFound; // matchId, myTeam, players(4)
+        public event Action<int> OnRanked2v2QueueJoined;                        // avgMmr (ack entree en file 2v2)
+        public event Action OnRanked2v2QueueLeft;                              // ack sortie de file 2v2
         // 6.3 — MMR mis a jour apres un match ranked settle.
         public event Action<MmrUpdateData> OnMmrUpdated;
         // Joueurs en ligne — compteur de users distincts, push live par le backend
@@ -173,7 +177,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, ClanBannerUpdated, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate, OnlineCount, MatchesList, SpectateInit, SpectateChunk, SpectateEnd, ForceDisconnect }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, ClanBannerUpdated, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate, OnlineCount, MatchesList, SpectateInit, SpectateChunk, SpectateEnd, RankedMatch2v2Found, Ranked2v2QueueJoined, Ranked2v2QueueLeft, ForceDisconnect }
 
         private struct IncomingEvent
         {
@@ -246,6 +250,10 @@ namespace Nymora.Hub
             public string SpecHeader;
             public int SpecSeq;
             public string SpecData;
+            // 5.7 — ranked 2v2
+            public RankedTeamPlayer[] Players2v2;
+            public int MyTeam;
+            public int AvgMmr2v2;
         }
 
         private void Awake()
@@ -516,6 +524,18 @@ namespace Nymora.Hub
                     }
                     case "RANKED_MATCH_FOUND":
                     {
+                        // 5.7 — variante 2v2 : payload aplati (players[].team + myTeam) ≠ 1v1 (opponents).
+                        if (msg.payload?.mode == "2v2")
+                        {
+                            _queue.Enqueue(new IncomingEvent
+                            {
+                                Kind = EventKind.RankedMatch2v2Found,
+                                ChallengeId = msg.payload?.matchId ?? "",
+                                MyTeam = msg.payload?.myTeam ?? 0,
+                                Players2v2 = msg.payload?.players,
+                            });
+                            break;
+                        }
                         var ropps = msg.payload?.opponents;
                         if (ropps == null || ropps.Length < 2) break;
                         _queue.Enqueue(new IncomingEvent
@@ -537,6 +557,12 @@ namespace Nymora.Hub
                     }
                     case "RANKED_QUEUE_JOINED":
                         _queue.Enqueue(new IncomingEvent { Kind = EventKind.RankedQueueJoined, Mmr = msg.payload?.mmr ?? 0 });
+                        break;
+                    case "RANKED_2V2_QUEUE_JOINED":
+                        _queue.Enqueue(new IncomingEvent { Kind = EventKind.Ranked2v2QueueJoined, AvgMmr2v2 = msg.payload?.avgMmr ?? 0 });
+                        break;
+                    case "RANKED_2V2_QUEUE_LEFT":
+                        _queue.Enqueue(new IncomingEvent { Kind = EventKind.Ranked2v2QueueLeft });
                         break;
                     case "RANKED_QUEUE_LEFT":
                         _queue.Enqueue(new IncomingEvent { Kind = EventKind.RankedQueueLeft });
@@ -875,6 +901,12 @@ namespace Nymora.Hub
             public int rankedGames;
             public int rankedWins;
             public int rankedLosses;
+            // 5.7 — ranked 2v2 (RANKED_MATCH_FOUND mode '2v2' + acks file). Payload aplati.
+            public string mode;
+            public int myTeam;
+            public RankedTeamPlayer[] players;
+            public int groupSize;
+            public int avgMmr;
             // Joueurs en ligne
             public int count;
             // S2 spectateur — liste des matchs en cours (MATCHES_LIST)
@@ -902,6 +934,17 @@ namespace Nymora.Hub
             public string email;
             // POLISH-7 (20 mai) — push par le backend dans MATCH_READY.opponents[]
             public string displayName;
+        }
+
+        // 5.7 — joueur d'un match 2v2 (RANKED_MATCH_FOUND mode '2v2'), payload APLATI (team par joueur).
+        //   Public + serializable : sert au JSON ET au passage dans l'event OnRanked2v2MatchFound.
+        [Serializable]
+        public class RankedTeamPlayer
+        {
+            public string sub;
+            public string email;
+            public string displayName;
+            public int team;
         }
 
         private void Update()
@@ -967,6 +1010,16 @@ namespace Nymora.Hub
                         OnRankedMatchFound?.Invoke(ev.ChallengeId, oppSub, oppDisplayName);
                         break;
                     }
+                    case EventKind.RankedMatch2v2Found:
+                        Debug.Log($"[ChatClient] RANKED_MATCH_FOUND 2v2 matchId={ev.ChallengeId} myTeam={ev.MyTeam} players={ev.Players2v2?.Length ?? 0}");
+                        OnRanked2v2MatchFound?.Invoke(ev.ChallengeId, ev.MyTeam, ev.Players2v2 ?? System.Array.Empty<RankedTeamPlayer>());
+                        break;
+                    case EventKind.Ranked2v2QueueJoined:
+                        OnRanked2v2QueueJoined?.Invoke(ev.AvgMmr2v2);
+                        break;
+                    case EventKind.Ranked2v2QueueLeft:
+                        OnRanked2v2QueueLeft?.Invoke();
+                        break;
                     case EventKind.RankedQueueJoined:
                         OnRankedQueueJoined?.Invoke(ev.Mmr);
                         break;
@@ -1156,6 +1209,38 @@ namespace Nymora.Hub
         {
             if (!IsConnected) return;
             await SendJsonAsync("{\"type\":\"DEQUEUE_RANKED\"}");
+        }
+
+        // ====== Brique 5.7 — Matchmaking ranked 2v2 ======
+
+        /// <summary>Rejoint la file ranked 2v2 en SOLO, ou en DUO premade si partyMembers fourni
+        /// (userIds des coéquipiers, 1 max en 2v2). MMR lu côté serveur.</summary>
+        public async void SendEnqueueRanked2v2(string[] partyMembers = null)
+        {
+            if (!IsConnected) return;
+            if (partyMembers == null || partyMembers.Length == 0)
+            {
+                await SendJsonAsync("{\"type\":\"ENQUEUE_RANKED_2V2\"}");
+                return;
+            }
+            var sb = new System.Text.StringBuilder();
+            sb.Append("{\"type\":\"ENQUEUE_RANKED_2V2\",\"payload\":{\"partyMembers\":[");
+            for (int i = 0; i < partyMembers.Length; i++)
+            {
+                if (i > 0) sb.Append(',');
+                string m = partyMembers[i] ?? "";
+                m = m.Replace("\\", "\\\\").Replace("\"", "\\\""); // userIds = UUID, escape défensif
+                sb.Append('"').Append(m).Append('"');
+            }
+            sb.Append("]}}");
+            await SendJsonAsync(sb.ToString());
+        }
+
+        /// <summary>Quitte la file de matchmaking ranked 2v2.</summary>
+        public async void SendDequeueRanked2v2()
+        {
+            if (!IsConnected) return;
+            await SendJsonAsync("{\"type\":\"DEQUEUE_RANKED_2V2\"}");
         }
 
         // ====== Brique S2 — Spectateur : liste des matchs en cours ======
