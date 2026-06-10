@@ -5,6 +5,21 @@
 
 ---
 
+## ⏸️ SESSION EN ATTENTE — reprise ce soir (10 juin) : TEST 2v2 RÉSEAU
+
+**État : 2v2 réseau jouable bout-en-bout (A+B livrés), 11 commits LOCAUX non poussés.** Backend matchmaking 2v2 déjà déployé prod. Scène 41 déjà patchée (bootstrap réseau présent, refs clonées).
+
+**À la reprise (avant le test à 4 clients) :**
+1. **Vérifier que la console Unity compile vert** (~11 fichiers touchés sans compile local — si erreur, la corriger en premier).
+2. **Build standalone ×4.** Chaque testeur : **une classe DIFFÉRENTE** (unicité non imposée encore).
+3. Flux : Hub → Arène → **Ranked 2v2 → Chercher** (×4) → appairage → combat réseau scène 41 → **VICTOIRE/DÉFAITE par équipe**.
+4. Limites attendues : pas de vote capitaine (ordre par défaut), pas d'ELO (MMR inchangé). → briques **C** et **D** ensuite.
+5. **Push GitHub uniquement quand Lorenzo le dit** (pour l'instant tout est local).
+
+**Après le test :** corriger ce qui sort, puis attaquer **C (vote capitaine réseau)** + **D (settle ELO 2v2)**. Détails complets dans la section Phase 5 brique 5.7 plus bas.
+
+---
+
 ## Où on en est (8 juin 2026)
 
 - **Pré-alpha fermée terminée et réussie** : 60+ joueurs enregistrés, retours positifs.
@@ -98,7 +113,7 @@ Décision Lorenzo : **solo + duo premade fusionnables**, objectif **2v2 réseau 
 - ⏳ **5.7 client (reste)** — sous-briques, chacune testée à 2-4 clients :
   - ✅ **A — code-complet** (commits `d35ab0a`/`fd73492`/`8b0e2bd`) : `Match2v2Bridge` + `HubChatClient` (parse 2v2 aplati + events + `SendEnqueueRanked2v2`/`Dequeue`) + `HubMatchTransition` (remplit le bridge → scène 41) + **file 2v2 dans le menu moderne** (`HubMenuShell` : carte « Ranked 2v2 » activée, écran matchmaking mode `_mmMode`). Backend payload aplati redéployé. ⚠️ Pas encore testé en Play. ⚠️ Charger la scène 41 lance ENCORE le **hot-seat** (bootstrap réseau = B) → A valide le round-trip matchmaking, pas le combat réseau.
   - ✅ **B — code-complet** (commits `a1d5d1c`/`990e873`) : `CombatBootstrapRanked2v2` (room Photon MaxPlayers=4, AddPlayer local avec TeamId/TeamOrder + deck, poll PlayerRef ; calqué Casual ; s'active si `Match2v2Bridge` rempli). Hot-seat `CombatBootstrap2v2` skip si match appairé. `LocalPlayerResolver`/`CombatInputController`/`CombatHUDController` reconnaissent le réseau 2v2 (1 combattant local/client). **Écran fin de match team-aware** (VICTOIRE/DÉFAITE par équipe via `TeamHelper`). Editor tool `Nymora > Setup > Patch Ranked 2v2 Bootstrap`. ⚠️ Pas encore testé.
-    - ⚠️⚠️ **PRÉREQUIS TEST** : lancer **`Nymora > Setup > Patch Ranked 2v2 Bootstrap`** scène 41 ouverte **+ sauver la scène** (ajoute le bootstrap réseau). Sinon les joueurs appairés chargent le hot-seat (combat non connecté).
+    - ✅ **PRÉREQUIS TEST FAIT** : `Nymora > Setup > Patch Ranked 2v2 Bootstrap` déjà appliqué sur la scène 41 (composant `CombatBootstrapRanked2v2` présent, refs clonées, commit `590a909`).
     - Limitations attendues : **pas de vote capitaine** (ordre par défaut = rang roster) ni **d'ELO** (MMR inchangé) ; **classes-uniques non imposées** (les 4 testeurs coordonnent : 1 classe différente chacun).
   - ⏳ **C** (DIFFÉRÉ) : lobby pré-combat réseau 4 joueurs + vote capitaine (le panneau 5.6 → réseau via player properties). Non bloquant (ordre par défaut OK).
   - ⏳ **D** (DIFFÉRÉ) : settle ELO perso + MMR moyen 2v2 (backend 4-way + report). Non bloquant pour jouer.
