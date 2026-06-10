@@ -84,6 +84,16 @@ namespace Nymora.Hub
         // 5.7-D2 — MMR 2v2 (ladder separe) mis a jour apres un settle ranked 2v2. Meme payload
         //   que MMR_UPDATED ; reutilise MmrUpdateData.
         public event Action<MmrUpdateData> OnMmr2v2Updated;
+        // 5.7-D2 — cache du dernier MMR2V2_UPDATED non encore affiche en chat. Le settle 2v2 (consensus
+        //   cross-equipe) peut tomber pendant que CE joueur est encore en COMBAT (aucun HubMatchResultDisplay
+        //   abonne) -> on le memorise pour l'afficher au retour hub. TryTake le consomme une seule fois.
+        private MmrUpdateData? _pendingMmr2v2;
+        public bool TryTakePendingMmr2v2(out MmrUpdateData data)
+        {
+            if (_pendingMmr2v2.HasValue) { data = _pendingMmr2v2.Value; _pendingMmr2v2 = null; return true; }
+            data = default;
+            return false;
+        }
         // Joueurs en ligne — compteur de users distincts, push live par le backend
         // (ONLINE_COUNT) au connect/disconnect de n'importe qui. Cache la derniere valeur
         // recue (OnlineCount) pour les vues qui apparaissent apres le push (ex : retour hub).
@@ -1053,15 +1063,19 @@ namespace Nymora.Hub
                         });
                         break;
                     case EventKind.Mmr2v2Updated:
-                        OnMmr2v2Updated?.Invoke(new MmrUpdateData
+                    {
+                        var d2v2 = new MmrUpdateData
                         {
                             Mmr = ev.Mmr,
                             Delta = ev.MmrDelta,
                             RankedGames = ev.RankedGames,
                             RankedWins = ev.RankedWins,
                             RankedLosses = ev.RankedLosses,
-                        });
+                        };
+                        _pendingMmr2v2 = d2v2; // cache pour l'affichage au retour hub (settle pendant le combat)
+                        OnMmr2v2Updated?.Invoke(d2v2);
                         break;
+                    }
                     case EventKind.OnlineCount:
                         OnlineCount = ev.OnlineCountValue;
                         OnOnlineCountChanged?.Invoke(OnlineCount);

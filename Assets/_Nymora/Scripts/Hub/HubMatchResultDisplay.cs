@@ -116,6 +116,12 @@ namespace Nymora.Hub
                 yield break;
             }
             ReportRanked2v2Async(matchId, myTeam, won ? "win" : "loss", classId, roster, deck).Forget();
+
+            // 5.7-D2 — si le settle 2v2 est tombé PENDANT le combat (déclenché par les autres joueurs),
+            //   l'event MMR2V2_UPDATED a été reçu sans abonné côté hub -> on l'affiche depuis le cache.
+            //   Sinon (ce client déclenche le settle au report ci-dessus), l'event live l'affichera.
+            if (HubChatClient.Instance != null && HubChatClient.Instance.TryTakePendingMmr2v2(out var pendingMmr2v2))
+                ShowMmr2v2Line(pendingMmr2v2);
         }
 
         private async UniTask ReportRanked2v2Async(string matchId, int myTeam, string result, string classId,
@@ -140,8 +146,14 @@ namespace Nymora.Hub
             // une fois l'équipe adverse aussi reportée (consensus cross-équipe).
         }
 
-        // 5.7-D2 — affiche le nouveau rang/MMR 2v2 (ladder séparé) au settle du match 2v2.
+        // 5.7-D2 — affiche le nouveau rang/MMR 2v2 (ladder séparé) au settle du match 2v2 (event live).
         private void HandleMmr2v2Updated(HubChatClient.MmrUpdateData d)
+        {
+            ShowMmr2v2Line(d);
+            HubChatClient.Instance?.TryTakePendingMmr2v2(out _); // consomme le cache -> pas de ré-affichage au prochain retour hub
+        }
+
+        private void ShowMmr2v2Line(HubChatClient.MmrUpdateData d)
         {
             string sign = d.Delta >= 0 ? "+" : "";
             string deltaColor = d.Delta >= 0 ? "#88ff88" : "#ff8888";
