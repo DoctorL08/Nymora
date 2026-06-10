@@ -79,10 +79,10 @@ namespace Nymora.Combat.View.HUD
             var brt = (RectTransform)bannerGo.transform;
             brt.anchorMin = new Vector2(0.5f, 1f); brt.anchorMax = new Vector2(0.5f, 1f); brt.pivot = new Vector2(0.5f, 1f);
             brt.anchoredPosition = new Vector2(0f, -120f);
-            brt.sizeDelta = new Vector2(900f, 64f);
+            brt.sizeDelta = new Vector2(900f, 48f);
             _banner = bannerGo.AddComponent<TextMeshProUGUI>();
             _banner.alignment = TextAlignmentOptions.Center;
-            _banner.fontSize = 44f;
+            _banner.fontSize = 30f;
             _banner.fontStyle = FontStyles.Bold;
             _banner.color = new Color(1f, 0.5f, 0.45f, 1f);
             _banner.raycastTarget = false;
@@ -115,8 +115,8 @@ namespace Nymora.Combat.View.HUD
                 _redFilter.enabled = active;
                 if (active)
                 {
-                    // Pulsation douce, plus discrète (0.05 -> 0.12 alpha) — moins rougeâtre (retour Lorenzo).
-                    float a = 0.085f + 0.035f * Mathf.Sin(Time.unscaledTime * 2.2f);
+                    // Pulsation très discrète (0.025 -> 0.075 alpha) — encore moins rougeâtre (retour Lorenzo).
+                    float a = 0.05f + 0.025f * Mathf.Sin(Time.unscaledTime * 2.2f);
                     var col = _redFilter.color; col.a = a; _redFilter.color = col;
                 }
             }
