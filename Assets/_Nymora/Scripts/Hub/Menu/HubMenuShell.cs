@@ -73,6 +73,8 @@ namespace Nymora.Hub.Menu
 
         // Matchmaking ranked (réutilise les events de file de HubChatClient)
         private bool _searching;
+        // 5.7 — mode de la file ranked en cours : "1v1" (défaut) ou "2v2". Posé par la carte de mode.
+        private string _mmMode = "1v1";
         private TextMeshProUGUI _mmStatus;
         // Recherche en arrière-plan : la file backend continue de tourner même menu fermé
         // / écran quitté. _searchStartTime sert au chrono du bandeau flottant.
@@ -174,6 +176,9 @@ namespace Nymora.Hub.Menu
                 chat.OnRankedQueueJoined += HandleQueueJoined;
                 chat.OnRankedMatchFound += HandleMatchFound;
                 chat.OnRankedQueueLeft += HandleQueueLeft;
+                chat.OnRanked2v2QueueJoined += HandleQueueJoined2v2;
+                chat.OnRanked2v2MatchFound += HandleMatchFound2v2;
+                chat.OnRanked2v2QueueLeft += HandleQueueLeft2v2;
                 chat.OnOnlineCountChanged += HandleOnlineCount;
                 // Le 1er push ONLINE_COUNT peut être arrivé avant ce Start (ou avant un retour
                 // hub) : on lit la dernière valeur cachée par le client.
@@ -196,6 +201,9 @@ namespace Nymora.Hub.Menu
                 chat.OnRankedQueueJoined -= HandleQueueJoined;
                 chat.OnRankedMatchFound -= HandleMatchFound;
                 chat.OnRankedQueueLeft -= HandleQueueLeft;
+                chat.OnRanked2v2QueueJoined -= HandleQueueJoined2v2;
+                chat.OnRanked2v2MatchFound -= HandleMatchFound2v2;
+                chat.OnRanked2v2QueueLeft -= HandleQueueLeft2v2;
                 chat.OnOnlineCountChanged -= HandleOnlineCount;
                 chat.OnMatchesList -= HandleMatchesList; // S2 spectateur (sub seulement si popup ouvert, mais safe)
             }
@@ -534,8 +542,9 @@ namespace Nymora.Hub.Menu
             MakeModeCard(row, "Entraînement", "Affronte l'IA", true,
                 () => { if (_searching) CancelSearch(); Close(); if (HubArenaPanel.Instance != null) HubArenaPanel.Instance.StartTraining(); }, "mode_training");
             MakeModeCard(row, "Ranked 1v1", "Classé · 1 contre 1", true,
-                () => ShowScreen("matchmaking"), "mode_1v1", showRank: true);
-            MakeModeCard(row, "Ranked 2v2", "Bientôt disponible", false, null, "mode_2v2", showRank: true);
+                () => { _mmMode = "1v1"; ShowScreen("matchmaking"); }, "mode_1v1", showRank: true);
+            MakeModeCard(row, "Ranked 2v2", "Classé · 2 contre 2", true,
+                () => { _mmMode = "2v2"; ShowScreen("matchmaking"); }, "mode_2v2", showRank: true);
             MakeModeCard(row, "Ranked 3v3", "Bientôt disponible", false, null, "mode_3v3", showRank: true);
 
             _currentScreen = holder.gameObject;
@@ -630,7 +639,7 @@ namespace Nymora.Hub.Menu
             prt.sizeDelta = new Vector2(640f, 340f);
             prt.anchoredPosition = Vector2.zero;
 
-            var title = _f.MakeText("Title", prt, "Recherche classée 1v1", _theme.FontSizeHeader, _theme.TextPrimary, _theme.FontBold, TextAlignmentOptions.Center);
+            var title = _f.MakeText("Title", prt, _mmMode == "2v2" ? "Recherche classée 2v2" : "Recherche classée 1v1", _theme.FontSizeHeader, _theme.TextPrimary, _theme.FontBold, TextAlignmentOptions.Center);
             title.raycastTarget = false;
             var trt = title.rectTransform;
             trt.anchorMin = new Vector2(0.5f, 1f); trt.anchorMax = new Vector2(0.5f, 1f); trt.pivot = new Vector2(0.5f, 1f);
@@ -711,13 +720,15 @@ namespace Nymora.Hub.Menu
             _searching = true;
             _searchStartTime = Time.unscaledTime; // démarre le chrono du bandeau flottant
             SetMmStatus("Connexion à la file classée...");
-            chat.SendEnqueueRanked();
+            if (_mmMode == "2v2") chat.SendEnqueueRanked2v2();
+            else chat.SendEnqueueRanked();
         }
 
         private void CancelSearch()
         {
             _searching = false;
-            HubChatClient.Instance?.SendDequeueRanked();
+            if (_mmMode == "2v2") HubChatClient.Instance?.SendDequeueRanked2v2();
+            else HubChatClient.Instance?.SendDequeueRanked();
             RefreshSearchOverlay(); // masque le bandeau immédiatement (pas d'attente d'ack)
         }
 
@@ -740,6 +751,28 @@ namespace Nymora.Hub.Menu
             _searching = false;
             RefreshSearchOverlay();
             if (_currentScreenId == "matchmaking") SetMmStatus("File quittée.");
+        }
+
+        // 5.7 — handlers de la file 2v2 (mêmes overlays/écran que le 1v1, mais events distincts).
+        private void HandleQueueJoined2v2(int avgMmr)
+        {
+            if (_mmMode == "2v2" && _searching && _currentScreenId == "matchmaking")
+                SetMmStatus($"Recherche d'une partie 2v2... (MMR {avgMmr})\nEn attente de 3 autres joueurs ; la fenêtre s'élargit avec le temps.");
+        }
+
+        private void HandleMatchFound2v2(string matchId, int myTeam, HubChatClient.RankedTeamPlayer[] players)
+        {
+            _searching = false; // la transition vers la scène 41 est pilotée par HubMatchTransition
+            RefreshSearchOverlay();
+            if (_currentScreenId == "matchmaking")
+                SetMmStatus($"Partie 2v2 trouvée — Équipe {(char)('A' + myTeam)} !\nLancement du combat...");
+        }
+
+        private void HandleQueueLeft2v2()
+        {
+            _searching = false;
+            RefreshSearchOverlay();
+            if (_mmMode == "2v2" && _currentScreenId == "matchmaking") SetMmStatus("File quittée.");
         }
 
         // ===== Overlay hub : compteur en ligne + bandeau de recherche en arrière-plan =====
