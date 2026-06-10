@@ -113,7 +113,11 @@ namespace Nymora.Combat.Bootstrap
 
             string matchId = Match2v2Bridge.PendingMatchId;
             int localTeam = Match2v2Bridge.LocalTeam;
+            // Auth/ClientId Photon = identité technique (email/sub, unique). Le PSEUDO affiché en combat
+            //   (PlayerNickname, sync à tous les clients) = le displayName du roster -> chaque combattant
+            //   montre son vrai nom au lieu du défaut "Bot" du tooltip (modèle binaire 1v1 inexistant ici).
             string playerName = Match2v2Bridge.LocalEmail ?? Match2v2Bridge.LocalSub ?? "anon";
+            string displayName = ResolveLocalDisplayName();
             int localTeamOrder = ResolveLocalTeamOrder(localTeam);
 
             // Pré-clean (mirror Casual).
@@ -202,7 +206,7 @@ namespace Nymora.Combat.Bootstrap
             //   l'appartenance ; le PlayerRef global est attribué par Quantum à la réception.
             var localPlayer = new RuntimePlayer
             {
-                PlayerNickname = playerName,
+                PlayerNickname = displayName,
                 ClassId = ResolveClassIdForLocalPlayer(),
                 SpellIdValues = ResolveSpellIdValuesForLocalPlayer(),
                 TeamId = localTeam,
@@ -231,6 +235,18 @@ namespace Nymora.Combat.Bootstrap
                 await Task.Yield();
             }
             Debug.LogError("[CombatBootstrapRanked2v2] TIMEOUT : GetLocalPlayers() vide après AddPlayer. LocalPlayerSlot reste -1.");
+        }
+
+        // Pseudo affiché en combat = displayName du joueur local dans le roster (match par Sub).
+        //   Fallback email/sub si absent. Sert au tooltip combat (PlayerNickname synchronisé).
+        private string ResolveLocalDisplayName()
+        {
+            var players = Match2v2Bridge.Players;
+            string mySub = Match2v2Bridge.LocalSub;
+            if (players != null && !string.IsNullOrEmpty(mySub))
+                foreach (var p in players)
+                    if (p.Sub == mySub && !string.IsNullOrEmpty(p.DisplayName)) return p.DisplayName;
+            return Match2v2Bridge.LocalEmail ?? Match2v2Bridge.LocalSub ?? "Joueur";
         }
 
         // Rang du joueur local dans son équipe = son index parmi les joueurs de même équipe (ordre roster).

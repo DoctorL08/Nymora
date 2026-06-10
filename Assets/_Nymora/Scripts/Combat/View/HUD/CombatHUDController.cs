@@ -280,26 +280,19 @@ namespace Nymora.Combat.View.HUD
 
             var frame = game?.Frames?.Verified;
             if (frame == null || frame.RuntimeConfig == null) return;
-            bool isPvp = !frame.RuntimeConfig.IsBotMatch;
-            if (!isPvp)
-            {
-                // IA : perspective JOUEUR (slot 0 = humain, slot 1 = bot drive par AISystem).
-                // On coupe le "drive both" debug -> la barre de sorts reste celle du joueur et
-                // se grise pendant le tour du bot (cf gate _isLocalTurn). Skip si raw-dev sans
-                // bootstrap IA (on garde alors le debug pour piloter les 2 cote editeur).
-                if (Nymora.Combat.Bootstrap.CombatBootstrapIA.Instance != null)
-                {
-                    _localPlayerIndex = 0;
-                    _debugAllPlayersControllable = false;
-                    Debug.Log("[CombatHUDController] Mode IA (CombatBootstrapIA) — perspective joueur : _localPlayerIndex=0, _debugAllPlayersControllable=false.");
-                }
-                return;
-            }
+
+            // FIX 10 juin (barre de sorts réseau 2v2) — les modes ÉQUIPE sont identifiés par leur
+            //   bootstrap dédié, PAS par IsBotMatch. On les teste AVANT le gate isPvp/IA. Bug d'origine :
+            //   si le RuntimeConfig de la scène 2v2 portait IsBotMatch coché (ou non forcé à false au
+            //   runtime), le HUD entrait dans la branche IA et `return` -> il ne posait jamais
+            //   _debugAllPlayersControllable=false en réseau -> la valeur restait à son défaut TRUE ->
+            //   la barre de sorts suivait le joueur ACTIF (joueur 0) sur TOUS les clients (le Soulrender
+            //   voyait la barre du Nightseer). Le CombatInputController testait déjà le réseau hors du
+            //   gate isPvp -> c'est pourquoi le DÉPLACEMENT marchait mais pas la barre de sorts.
 
             // 5.5b — HOT-SEAT 2v2/3v3 : tous les slots sont locaux sur ce client. Le HUD suit le
             //   joueur ACTIF (gate « mon tour », bouton Fin de tour, activation de la barre de sorts)
             //   via _debugAllPlayersControllable -> ResolveControlPlayer renvoie ActivePlayerIndex.
-            //   Pas de Casual à résoudre. (NB : barre de sorts par-classe + timeline 4 portraits = 5.5d.)
             if (Nymora.Combat.Bootstrap.CombatBootstrap2v2.Instance != null)
             {
                 _debugAllPlayersControllable = true;
@@ -314,6 +307,23 @@ namespace Nymora.Combat.View.HUD
             {
                 if (net2v2.LocalPlayerSlot >= 0) ApplyLocalPlayerSlot(net2v2.LocalPlayerSlot);
                 else net2v2.LocalPlayerSlotResolved += ApplyLocalPlayerSlot;
+                Debug.Log("[CombatHUDController] Mode RÉSEAU 2v2 (CombatBootstrapRanked2v2) — résolution LocalPlayerSlot (comme Casual).");
+                return;
+            }
+
+            bool isPvp = !frame.RuntimeConfig.IsBotMatch;
+            if (!isPvp)
+            {
+                // IA : perspective JOUEUR (slot 0 = humain, slot 1 = bot drive par AISystem).
+                // On coupe le "drive both" debug -> la barre de sorts reste celle du joueur et
+                // se grise pendant le tour du bot (cf gate _isLocalTurn). Skip si raw-dev sans
+                // bootstrap IA (on garde alors le debug pour piloter les 2 cote editeur).
+                if (Nymora.Combat.Bootstrap.CombatBootstrapIA.Instance != null)
+                {
+                    _localPlayerIndex = 0;
+                    _debugAllPlayersControllable = false;
+                    Debug.Log("[CombatHUDController] Mode IA (CombatBootstrapIA) — perspective joueur : _localPlayerIndex=0, _debugAllPlayersControllable=false.");
+                }
                 return;
             }
 
@@ -525,9 +535,13 @@ namespace Nymora.Combat.View.HUD
 
             // 5.5e — HOT-SEAT 2v2/3v3 : la barre de sorts suit le DECK du joueur actif (chaque joueur
             //   son deck + sa signature de classe). Rebind uniquement au changement de joueur actif.
-            //   Gate _debugAllPlayersControllable : en IA / 1v1 PvP (=false) la barre reste celle du
-            //   joueur local (comportement inchangé, non-régression).
-            if (_debugAllPlayersControllable)
+            //   Gate sur le marqueur HOT-SEAT (CombatBootstrap2v2.Instance), PAS sur le flag
+            //   _debugAllPlayersControllable : ce dernier est surchargé (défaut TRUE) et peut rester à
+            //   true en réseau si la détection de mode échoue -> la barre se mettait alors à suivre le
+            //   joueur actif (joueur 0) sur tous les clients (bug 10 juin). En réseau 2v2 / 1v1 / IA,
+            //   CombatBootstrap2v2.Instance == null -> la barre garde le deck LOCAL (ApplyDeckBridge en
+            //   Awake), comportement correct par construction quel que soit l'état du flag.
+            if (Nymora.Combat.Bootstrap.CombatBootstrap2v2.Instance != null)
             {
                 // Remplit le cache de deck de chaque joueur présent dès qu'il est lisible (sur
                 // n'importe quelle frame). Découple le rebind du timing de GetPlayerData.

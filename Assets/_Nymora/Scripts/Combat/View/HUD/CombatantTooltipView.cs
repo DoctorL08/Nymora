@@ -247,6 +247,12 @@ namespace Nymora.Combat.View.HUD
             string pseudo = isLocal ? PlayerProfileBridge.LocalPseudo : PlayerProfileBridge.OpponentPseudo;
             string clan   = isLocal ? PlayerProfileBridge.LocalClan   : PlayerProfileBridge.OpponentClan;
 
+            // 2v2/3v3 — PlayerProfileBridge est binaire (local/adversaire), il ne couvre que le 1v1 et
+            //   n'est pas rempli en équipe -> chaque non-local tombait sur "Bot". Fallback : le pseudo
+            //   SYNCHRONISÉ du RuntimePlayer de ce slot (posé par le bootstrap, identique sur tous les
+            //   clients) -> chaque combattant affiche son vrai nom. Non-régressif 1v1 (bridge prioritaire).
+            if (string.IsNullOrEmpty(pseudo)) pseudo = ResolveSyncedNickname(slot);
+
             if (string.IsNullOrEmpty(pseudo))
             {
                 pseudo = isLocal ? "Joueur" : "Bot";
@@ -260,6 +266,21 @@ namespace Nymora.Combat.View.HUD
             string shieldLine = BuildShieldLine(entity);
             string previewLine = BuildSpellPreviewLine(entity);
             return clanLine + pseudoLine + hpLine + shieldLine + previewLine;
+        }
+
+        /// <summary>
+        /// Pseudo SYNCHRONISÉ du joueur d'un slot, lu depuis son RuntimePlayer.PlayerNickname (posé
+        /// par le bootstrap, identique sur tous les clients). Source de vérité par-combattant pour le
+        /// 2v2/3v3 (où le modèle binaire PlayerProfileBridge ne s'applique pas). Null si indisponible.
+        /// </summary>
+        private static string ResolveSyncedNickname(int slot)
+        {
+            var runner = QuantumRunner.Default;
+            if (runner == null || runner.Game == null) return null;
+            var frame = runner.Game.Frames.Verified;
+            if (frame == null) return null;
+            var rp = frame.GetPlayerData((PlayerRef)slot);
+            return rp != null ? rp.PlayerNickname : null;
         }
 
         /// <summary>
