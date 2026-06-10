@@ -437,7 +437,12 @@ namespace Nymora.Core.Data
         //   jamais (seuls 2 combattants sur 4). Cap relevé à TurnConstants.MaxPlayers (6). INVARIANT 1v1 :
         //   seuls les slots 0/1 arrivent -> comportement strictement identique. Permet enfin le spawn des
         //   4 combattants 2v2 aux points (Team,Rank) de la CombatMap.
-        public const int CombatRulesVersion = 160;
+        // v161 (11 juin 2026) — Phase 2 MORT SUBITE (anti-antijeu). Dérivé de TurnNumber (aucun champ
+        //   [Networked]) : avertissement rounds 23-24, mort subite round 25 (purge tout le terrain en
+        //   gardant les positions + ressources maxxées), poison d'arène +100/round (vrais dégâts), et
+        //   chaque joueur boosté à 12 PA / 4 PM + ressources max pendant la mort subite. Hook
+        //   TurnSystem.EnterTurnStart + helper SuddenDeath.
+        public const int CombatRulesVersion = 161;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";

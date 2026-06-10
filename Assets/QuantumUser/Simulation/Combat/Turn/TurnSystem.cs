@@ -418,6 +418,13 @@ namespace Quantum
                 {
                     c->DamageTakenThisRound = 0;
                 }
+
+                // Phase 2 — MORT SUBITE : au DÉBUT du round. Entrée (round 25, 1×) = purge terrain +
+                //   ressources maxxées ; puis poison d'arène croissant (round >= 25) à tous les vivants.
+                //   Si le poison tue le joueur actif, le bloc IsPlayerDead ci-dessous saute son sous-tour
+                //   et CheckMatchEndOnDeath (chaque tick) tranche la fin de match.
+                if (state->TurnNumber == SuddenDeath.ActivateRound) SuddenDeath.OnActivate(f);
+                if (SuddenDeath.IsActive(state->TurnNumber)) SuddenDeath.ApplyPoison(f, state->TurnNumber);
             }
 
             // 5.3 — Si le joueur actif est KO (cadavre, mode équipe), on SAUTE son sous-tour : pas de
@@ -530,6 +537,10 @@ namespace Quantum
                     // Ghostra active. Pas d'effet continu type halo Necram — le passif
                     // Angle 1/2/3 est conditionnel (sur dorsal hit, gere dans SpellSystem en 3.7).
                     GhostraPassif.OnSubTurnStart(f, combatant, state->TurnNumber);
+
+                    // Phase 2 — MORT SUBITE : le joueur actif démarre BOOSTÉ (12 PA / 4 PM + ressources
+                    //   de classe au max), par-dessus les resets/malus ci-dessus (sursaut pour conclure).
+                    if (SuddenDeath.IsActive(state->TurnNumber)) SuddenDeath.ApplyBoost(combatant);
                 }
             }
 
