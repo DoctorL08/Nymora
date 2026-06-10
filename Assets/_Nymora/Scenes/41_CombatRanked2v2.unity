@@ -34611,7 +34611,7 @@ MonoBehaviour:
     SystemsConfig:
       Id:
         Value: 1785059092662275871
-    IsBotMatch: 1
+    IsBotMatch: 0
     TutorialPassiveBot: 0
     TutorialFreezeTimer: 0
     PlayerCount: 0
@@ -34622,10 +34622,10 @@ MonoBehaviour:
   TeamQuantumMap: {fileID: 11400000, guid: ea84731fe78950543ad0bfc26ce0f33e, type: 2}
   CombatMap: {fileID: 11400000, guid: 393d156db2c7c824cad28f596c95f544, type: 2}
   SpellCatalog: {fileID: 11400000, guid: c42fe7c9f9037c040bc3b27f45edb65f, type: 2}
-  Team0Player0: 1
-  Team0Player1: 2
-  Team1Player0: 3
-  Team1Player1: 4
+  Team0Player0: 0
+  Team0Player1: 0
+  Team1Player0: 0
+  Team1Player1: 0
   VerboseLog: 1
 --- !u!114 &796018062
 MonoBehaviour:

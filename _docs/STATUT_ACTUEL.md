@@ -44,7 +44,11 @@ Découpage : E1 lobby deck 4 joueurs → E2 classes dans le panneau capitaine �
 - ✅ **E2 — classes dans le panneau capitaine CODE-COMPLET** (commit jeu `1fd8cdd`) : `NetworkTeamOrderLobby` affiche la classe de chaque membre (lue depuis la prop `ec` publiée en E1), rafraîchie chaque frame.
 - ✅ **E3 — pile ou face team-aware CODE-COMPLET** (commit jeu `1fd8cdd`) : `CoinFlipIntroView` ne jouait QU'EN Casual (gate `CombatBootstrapCasual.Instance`) → aucune anim en 2v2 ; désormais joue aussi en équipe et annonce l'**ÉQUIPE** qui commence (A=pile/équipe 0, B=face/équipe 1, + « (ton équipe) » si `StartingTeam==Match2v2Bridge.LocalTeam`). 1v1 inchangé.
 
-**Séquence pré-combat 2v2 complète (code)** : deck (E1) → ordre capitaine + classes (C/E2) → pile ou face « Équipe A/B » (E3) → combat. **À valider à 4 clients** (+ `.meta` de `NetworkDeckLobby` généré par Unity à l'import).
+**Séquence pré-combat 2v2 complète (code)** : deck (E1) → ordre capitaine + classes (C/E2) → pile ou face « Équipe A/B » (E3) → combat. **À valider à 4 clients.**
+
+- 🔧 **Fix E1 (11 juin, commit `5760845`) — testé à 4 testeurs → bug → corrigé** : le deck choisi dans le lobby 2v2 ne s'appliquait pas à la barre de sorts (le HUD applique le deck du HUB en `Awake`, AVANT le lobby) → ajout de `CombatHUDController.ReapplyDeckFromBridge()` après le choix (comme le 1v1 Casual). **À RE-TESTER** : le deck choisi au lobby 2v2 = celui en barre au combat.
+
+> **Fin de session 11 juin** : journée énorme — 2v2 réseau complet (D ELO/MMR backend déployé prod + C vote capitaine + E pré-combat séquencé), **Phase 2 Mort subite (v161)**, fix deck E1. ClientErrorReporter = déjà existant/câblé (doublon annulé). 2 sessions de validation en attente (2v2 à 4 testeurs + mort subite 1v1). Tout poussé sur GitHub.
 - Puis **5.8 polish**, puis **3v3** (réutilise 5.1→5.3 + 5.6 générique).
 - **Push GitHub uniquement quand Lorenzo le dit** (côté jeu ; le backend est déjà poussé/déployé par Claude).
 
