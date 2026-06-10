@@ -86,7 +86,24 @@ Panneau pré-combat hot-seat **panneau unique** (pas de notion de capitaine en h
 - `CombatBootstrap2v2` : le vote précède les `AddPlayer` (TeamOrder fige TurnOrder) ; **fallback ordre par défaut** anti-hang (~1,5 s sans panneau).
 - `PreCombatOrderPanel` (auto-instancié scènes 2v2/3v3, procédural) : 2 colonnes d'équipes, réordon ▲/▼ par membre, « Lancer le combat ». **DA hub** (`CombatUiKit` monochrome + coins arrondis + police Ari runtime + layout groups, façon `MatchEndOverlay`) ; flèches = sprite `direction_arrow` pivoté (pas de glyphe que la police Ari ne porte pas) ; lève le voile de chargement (`SignalReady`) car le démarrage est retardé derrière le vote. Générique N-joueurs → prêt pour 3v3.
 
-**Prochaine brique : 5.7 — matchmaking 2v2 (backend)** → puis 5.8 polish. Puis 3v3 (réutilise 5.1→5.3 + 5.6 générique).
+## Phase 5 brique 5.7 (matchmaking 2v2 réseau) — EN COURS (10 juin)
+
+Décision Lorenzo : **solo + duo premade fusionnables**, objectif **2v2 réseau end-to-end** (livré par paliers qui compilent/se valident, pas en un bloc).
+
+- ✅ **5.7 backend — DÉPLOYÉ PROD & VALIDÉ** (repo `nymora-backend`, commit `cb96fa8`, push + `deploy.sh` OK, `{"status":"ok"}` + `[Matchmaking2v2] Tick started`, 0 erreur).
+  - `matchmaking2v2Service.ts` : file Redis par **groupe** (solo/duo), MMR moyen, fenêtre adaptative ; `planMatch()` PUR cherche 4 joueurs contigus en MMR puis 2 équipes équilibrées en préservant les duos (`[duo,duo]`/`[duo,solo,solo]`/`[solo×4 → extrêmes vs milieu]`).
+  - `wsServer.ts` : `ENQUEUE_RANKED_2V2`/`DEQUEUE_RANKED_2V2` + `dispatchRanked2v2Match` (`RANKED_MATCH_FOUND` mode `'2v2'`, `myTeam` + `teams`) + tick 2s + dequeue au disconnect. **Pas de migration Prisma** (Redis only) → additif, zéro impact 1v1/hub.
+  - `npm run test:matchmaking2v2` : test PUR sans Redis, **12/12 vert**.
+
+- ⏳ **5.7 client (reste)** — sous-briques, chacune testée à 2-4 clients :
+  - **A** (EN COURS) : bouton file 2v2 au hub + `Match2v2Bridge` + handler `RANKED_MATCH_FOUND` mode 2v2 → transition scène 41.
+  - **B** : `CombatBootstrapRanked2v2` réseau (room Photon MaxPlayers=4, AddPlayer avec TeamId, poll PlayerRef) — calqué sur `CombatBootstrapCasual`.
+  - **C** : lobby pré-combat réseau 4 joueurs + vote capitaine (le panneau 5.6 passe en réseau via player properties).
+  - **D** : settle ELO perso + MMR moyen 2v2.
+
+> ⚠️ Repo backend : **clone canonique = `C:\Users\Lorenzo\Documents\nymora-backend`** (à jour). Le `Unity\Nymora\backend` est un **clone PÉRIMÉ** à ignorer (supprimable).
+
+Puis 5.8 polish. Puis 3v3 (réutilise 5.1→5.3 + 5.6 générique).
 
 ### ✅ RÉSOLU (10 juin) — Vision des pièges Nightseer en équipe (2v2/3v3)
 **Vraie cause trouvée :** ce n'était PAS la logique `show`, mais le **garde de spawn basé sur les coins**. `TrapView/TerrainView/FogOfWarView.TrySpawnOverlays` faisaient `if (GetTileView(0,0) == null || GetTileView(dernier) == null) return;`. En map 2v2 **irrégulière (bord-only)** les coins sont **carvés** → `GetTileView` = null → le spawn avortait à chaque frame → **aucun overlay créé → personne ne voyait aucun piège** (ni terrain, ni brouillard) en 2v2, quelle que soit la phase.
