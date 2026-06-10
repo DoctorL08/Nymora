@@ -164,9 +164,12 @@ namespace Nymora.Combat.View
 
         private void TrySpawnOverlays()
         {
-            var tile00 = _gridRenderer.GetTileView(0, 0);
-            var tileLast = _gridRenderer.GetTileView(_width - 1, _height - 1);
-            if (tile00 == null || tileLast == null) return;
+            // 5.5 (maps irrégulières) — NE PLUS gater sur les coins (0,0)/(dernier) : en map
+            //   irrégulière bord-only ces cases sont souvent CARVÉES -> GetTileView=null -> le spawn
+            //   ne se faisait JAMAIS et AUCUN piège n'était visible en 2v2 (bug observé). On attend
+            //   juste que GridRenderer ait instancié sa grille ; les cases carvées sont sautées
+            //   case par case ci-dessous (tile == null -> continue).
+            if (!_gridRenderer.TilesSpawned) return;
 
             int count = _width * _height;
             _overlayGOs = new GameObject[count];
@@ -281,7 +284,12 @@ namespace Nymora.Combat.View
             if (!frame.TryGetSingleton<CombatState>(out var state)) return;
             if (!frame.TryGetSingleton<FogSingleton>(out _)) return;
 
-            int viewer = _forcedViewerPlayer >= 0 ? _forcedViewerPlayer : LocalPlayerResolver.Resolve();
+            // Hot-seat 2v2/3v3 : POV = ÉQUIPE ACTIVE (le joueur dont c'est le tour), comme l'input /
+            //   deck / previews depuis 5.5. 1v1 / IA / PvP / spectateur / replay : ResolveControllable
+            //   retombe sur Resolve() (slot LOCAL) -> POV strictement inchangé hors hot-seat.
+            int viewer = _forcedViewerPlayer >= 0
+                ? _forcedViewerPlayer
+                : LocalPlayerResolver.ResolveControllable(state.ActivePlayerIndex);
             // Spectateur (B, 8 juin) : ne voit JAMAIS les pièges Nightseer (ni rune, ni flèche, ni
             // compteur, ni contour) -> show forcé false sur toutes les cases.
             bool spectating = Nymora.Combat.Spectate.LiveSpectateController.LiveSpectateActive;
@@ -298,13 +306,23 @@ namespace Nymora.Combat.View
                     TrapKind kind = FogHelpers.GetTrapKind(frame, x, y);
                     int owner = FogHelpers.GetTrapOwner(frame, x, y);
                     // Refonte 29 mai — pièges VISIBLES par défaut, visibilité DYNAMIQUE (pas de voile) :
-                    //   le propriétaire voit toujours ses pièges ; l'adversaire les voit SAUF si le
-                    //   Nightseer propriétaire est ACTUELLEMENT en phase 3 (PR 5) -> tous ses pièges
-                    //   (même posés avant 5/5) disparaissent totalement, et réapparaissent s'il redescend.
-                    //   Le filtre ne tourne que sur les cases à piège ennemi (rares).
-                    bool show = !spectating
-                                && kind != TrapKind.None
-                                && (owner == viewer || !NightseerPassif.TrapsInvisibleForOwner(frame, owner));
+                    //   le CAMP du poseur (le Nightseer ET son allié) voit toujours ses pièges ; le camp
+                    //   ADVERSE les voit SAUF si le Nightseer propriétaire est ACTUELLEMENT en phase 3
+                    //   (PR 5) -> tous ses pièges (même posés avant 5/5) disparaissent POUR LES ENNEMIS,
+                    //   et réapparaissent s'il redescend.
+                    // 5.5 (2v2/3v3) — « owner == viewer » (soi SEUL) devient « même camp que owner »
+                    //   (soi + allié) via TeamHelper : l'allié garde la vue en dernière phase. En 1v1,
+                    //   TeamId == PlayerIndex -> AreEnemiesByPlayerIndex se réduit EXACTEMENT à
+                    //   « owner == viewer » -> NON-RÉGRESSIF. Les scans O(n) (camp + phase) ne tournent
+                    //   que sur les rares cases à piège (gardés par kind != None), pas sur toute la grille.
+                    bool show = false;
+                    if (!spectating && kind != TrapKind.None)
+                    {
+                        bool viewerIsOwnerCamp = owner == viewer
+                            || !TeamHelper.AreEnemiesByPlayerIndex(frame, owner, viewer);
+                        show = viewerIsOwnerCamp
+                               || !NightseerPassif.TrapsInvisibleForOwner(frame, owner);
+                    }
 
                     bool wasActive = _overlayGOs[idx].activeSelf;
                     bool kindOrOwnerChanged = _currentKind[idx] != kind || _currentOwner[idx] != owner;

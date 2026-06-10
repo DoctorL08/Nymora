@@ -79,18 +79,17 @@ Découpage : **5.1 fondations équipe** → 5.2 rotation N-joueurs + ordre voté
 
 **Prochaine brique : 5.6 — pré-combat vote capitaine** (l'ordre intra-équipe `TeamOrder` est déjà câblé bout-en-bout, défaut = PlayerIndex ; reste l'UI de vote). Puis 5.7 matchmaking 2v2 (backend) → 5.8 polish.
 
-### ⏳ RELIQUAT (non résolu — à reprendre, NE PAS oublier)
-**Vision des pièges Nightseer en équipe (2v2/3v3).** Règle voulue par Lorenzo (9 juin) :
-- **Par défaut, TOUS les joueurs voient les pièges du Nightseer** (déjà le cas dans le code committé `TrapView`, condition `owner == viewer || !NightseerPassif.TrapsInvisibleForOwner`).
-- **En dernière phase du passif Nightseer** (PR 5, `TrapsInvisibleForOwner`), les pièges disparaissent **POUR LES ENNEMIS UNIQUEMENT** : le Nightseer **ET son allié** doivent continuer à les voir. Actuellement seul le propriétaire les garde → **l'allié les perd à tort** = LE BUG à corriger.
+> Reliquat vision pièges équipe = **RÉSOLU le 10 juin** (cf section dédiée plus bas).
 
-⚠️ **Tentatives du 9 juin INFRUCTUEUSES, toutes révoquées** (revert à l'état 5.5e committé) :
-1. Changement GLOBAL de perspective (`LocalPlayerResolver.Resolve` → joueur actif via un `HotSeatActivePlayer`) → a repointé le **brouillard** et **masqué les pièges du Nightseer**. Mauvaise piste.
-2. Fix chirurgical `TrapView` (viewer = `ResolveControllable(ActivePlayerIndex)` + condition d'équipe via `TeamHelper.AreEnemiesByPlayerIndex`) → résultat observé : **plus personne ne voit les pièges, même pas le Nightseer**. « t'y es pas ».
+### ✅ RÉSOLU (10 juin) — Vision des pièges Nightseer en équipe (2v2/3v3)
+**Vraie cause trouvée :** ce n'était PAS la logique `show`, mais le **garde de spawn basé sur les coins**. `TrapView/TerrainView/FogOfWarView.TrySpawnOverlays` faisaient `if (GetTileView(0,0) == null || GetTileView(dernier) == null) return;`. En map 2v2 **irrégulière (bord-only)** les coins sont **carvés** → `GetTileView` = null → le spawn avortait à chaque frame → **aucun overlay créé → personne ne voyait aucun piège** (ni terrain, ni brouillard) en 2v2, quelle que soit la phase.
 
-➡️ **Avant de re-tenter** : Lorenzo dit « renseigne-toi sur les combats 1v1 » — comprendre EXACTEMENT le modèle de visibilité pièges 1v1 actuel (qui marche) avant de l'étendre à l'équipe, sans casser le cas par défaut. La cible = ajouter UNIQUEMENT « l'allié garde la vue en dernière phase », rien d'autre.
+**Fix (pur View, pas de bump CombatRulesVersion) :**
+- `GridRenderer.TilesSpawned` (nouvelle prop, signal de dispo **irrégulier-safe**) ; les 3 vues gatent dessus au lieu des coins (cases carvées sautées case par case, déjà géré).
+- `TrapView` : visibilité dernière phase passée de « soi seul » (`owner == viewer`) à « **même camp** » (`!TeamHelper.AreEnemiesByPlayerIndex`) → l'allié garde la vue. POV hot-seat = **équipe active** (`ResolveControllable(ActivePlayerIndex)`). NON-RÉGRESSIF en 1v1 (TeamId==PlayerIndex).
+- `TerrainView` + `FogOfWarView` : même garde de spawn corrigé (Sang Coagulé/Vapeur Carmin/Voile étaient invisibles pareil). FogOfWarView : **spawn seulement**, perspective slot 0 NON touchée.
 
-(Reliquat antérieur, non bloquant : brouillard `FogOfWarView` en hot-seat = perspective slot 0 — laissé tel quel, NE PAS y toucher tant que le point pièges n'est pas clarifié.)
+**Validé en jeu (10 juin) :** par défaut tous voient ; en phase 3 NS+allié voient, ennemis non ; 1v1 IA inchangé.
 
 **Reprise 9 juin (après /clear) — diagnostic + fixes :**
 - ⚠️ **La scène 41 avait le MAUVAIS bootstrap** : `CombatBootstrapIA` (hérité du clone de 30_CombatIA), PAS `CombatBootstrap2v2`. Le swap n'avait jamais été appliqué → en Play, le garde `ExpectedSceneName=30_CombatIA` faisait tout skip (0 spawn). **Corrigé** : composant remplacé par `CombatBootstrap2v2` (refs TeamQuantumMap=QuantumMap_2v2, CombatMap=CombatMap_2v2, SpellCatalog, SessionConfig, classes Soulrender/Nightseer/Colossar/Necram).

@@ -93,10 +93,11 @@ namespace Nymora.Combat.View.Animation
 
         private void TrySpawnOverlays()
         {
-            // Verifie que toutes les tiles sont spawnees cote View.
-            var tile00 = _gridRenderer.GetTileView(0, 0);
-            var tileLast = _gridRenderer.GetTileView(_width - 1, _height - 1);
-            if (tile00 == null || tileLast == null) return;
+            // 5.5 (maps irrégulières) — attendre que GridRenderer ait instancié sa grille, SANS
+            //   gater sur les coins (carvés en map irrégulière bord-only -> sinon les overlays de
+            //   terrain ne spawnaient jamais en 2v2, même bug que TrapView). Cases carvées sautées
+            //   ci-dessous (tile == null -> continue).
+            if (!_gridRenderer.TilesSpawned) return;
 
             int count = _width * _height;
             _overlayGOs = new GameObject[count];

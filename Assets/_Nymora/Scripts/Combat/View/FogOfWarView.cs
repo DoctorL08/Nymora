@@ -102,9 +102,11 @@ namespace Nymora.Combat.View
 
         private void TrySpawnOverlays()
         {
-            var tile00 = _gridRenderer.GetTileView(0, 0);
-            var tileLast = _gridRenderer.GetTileView(_width - 1, _height - 1);
-            if (tile00 == null || tileLast == null) return;
+            // 5.5 (maps irrégulières) — attendre la grille SANS gater sur les coins (carvés en map
+            //   bord-only -> sinon les overlays de brouillard ne spawnaient pas en 2v2). Structurel
+            //   uniquement : ne touche PAS la perspective slot 0 du brouillard. Cases carvées sautées
+            //   ci-dessous (tile == null -> continue).
+            if (!_gridRenderer.TilesSpawned) return;
 
             int count = _width * _height;
             _overlayGOs = new GameObject[count];

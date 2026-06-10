@@ -219,6 +219,15 @@ namespace Nymora.Combat.View
         }
 
         /// <summary>
+        /// 5.5 — True dès que la grille a été instanciée (tableau `_tiles` alloué au spawn).
+        /// Signal de disponibilité IRRÉGULIER-SAFE : contrairement à un test sur les coins
+        /// (GetTileView(0,0)/(dernier)), il ne suppose PAS que les coins existent — en map
+        /// irrégulière (bord-only) les coins sont souvent carvés. Les overlays par-case
+        /// (TrapView/TerrainView) gatent leur spawn là-dessus, puis sautent les cases carvées.
+        /// </summary>
+        public bool TilesSpawned => _tiles != null;
+
+        /// <summary>
         /// Recupere le TileView a une position grille donnee. Retourne null si hors bornes
         /// ou si la grille n'a pas encore ete spawn.
         /// </summary>
