@@ -608,17 +608,24 @@ namespace Nymora.Hub.Menu
         private async void RefreshArenaRankBadges()
         {
             if (_arenaRankBadges.Count == 0) return;
-            int mmr = HubLeaderboardPanel.Instance != null
-                ? await HubLeaderboardPanel.Instance.FetchLocalMmrAsync()
-                : -1;
+            // 5.7-D2 — ladders SÉPARÉS : la carte Ranked 1v1 affiche le MMR 1v1, la carte Ranked 2v2
+            //   le MMR 2v2 (avant, les deux montraient le MMR 1v1 -> le badge 2v2 ne bougeait jamais).
+            var (mmr1v1, mmr2v2) = HubLeaderboardPanel.Instance != null
+                ? await HubLeaderboardPanel.Instance.FetchLocalMmrsAsync()
+                : (-1, -1);
             if (_currentScreenId != "arena") return; // écran quitté pendant le fetch
-            if (mmr < 0) return;                       // MMR indisponible : badges restent vides
 
-            var tier = RankLadder.Resolve(mmr);
-            var icon = RankLadder.ResolveIcon(mmr);
-            var color = ParseHex(tier.HexColor, _theme.TextPrimary);
-            foreach (var (img, nameLabel, mmrLabel) in _arenaRankBadges)
+            // Ordre des badges = ordre d'ajout des cartes : [0] Ranked 1v1, [1] Ranked 2v2, [2] Ranked 3v3.
+            //   3v3 (à venir) réutilisera le ladder 2v2 -> placeholder sur mmr2v2.
+            int[] perBadge = { mmr1v1, mmr2v2, mmr2v2 };
+            for (int i = 0; i < _arenaRankBadges.Count; i++)
             {
+                int mmr = i < perBadge.Length ? perBadge[i] : -1;
+                var (img, nameLabel, mmrLabel) = _arenaRankBadges[i];
+                if (mmr < 0) continue; // MMR indisponible : ce badge reste vide
+                var tier = RankLadder.Resolve(mmr);
+                var icon = RankLadder.ResolveIcon(mmr);
+                var color = ParseHex(tier.HexColor, _theme.TextPrimary);
                 if (img != null && icon != null) { img.sprite = icon; img.enabled = true; }
                 if (nameLabel != null) { nameLabel.text = tier.Name; nameLabel.color = color; }
                 if (mmrLabel != null) mmrLabel.text = $"{mmr} MMR";
@@ -974,17 +981,19 @@ namespace Nymora.Hub.Menu
                     labels[i].color = (i == idx) ? _theme.TextPrimary : _theme.TextSecondary;
                 }
 
-            if (idx == 0) LoadLeaderboard1v1();
-            else { ClearLeaderboardRows(); ShowLbStatus($"Classement {ids[idx]} — bientôt disponible."); }
+            if (idx == 0) LoadLeaderboardMode(false);      // 1v1
+            else if (idx == 1) LoadLeaderboardMode(true);  // 5.7-D2 — 2v2 (ladder séparé)
+            else { ClearLeaderboardRows(); ShowLbStatus($"Classement {ids[idx]} — bientôt disponible."); } // 3v3 à venir
         }
 
-        private async void LoadLeaderboard1v1()
+        // 5.7-D2 — chargement du classement selon le mode (1v1 ou 2v2, ladder séparé côté backend).
+        private async void LoadLeaderboardMode(bool team2v2)
         {
             ClearLeaderboardRows();
             ShowLbStatus("Chargement du classement...");
             if (HubLeaderboardPanel.Instance == null) { ShowLbStatus("Classement indisponible."); return; }
 
-            var (entries, error) = await HubLeaderboardPanel.Instance.GetLeaderboardEntriesAsync(100);
+            var (entries, error) = await HubLeaderboardPanel.Instance.GetLeaderboardEntriesAsync(100, team2v2);
             if (_currentScreenId != "leaderboard") return; // écran changé pendant le fetch
             if (entries == null) { ShowLbStatus(error); return; }
 

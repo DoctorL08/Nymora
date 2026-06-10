@@ -62,6 +62,11 @@ namespace Nymora.Network.Backend
         public int rankedGames;
         public int rankedWins;
         public int rankedLosses;
+        // 5.7-D2 — ladder 2v2 SÉPARÉ (badge de rang de la carte Ranked 2v2).
+        public int mmr2v2;
+        public int ranked2v2Games;
+        public int ranked2v2Wins;
+        public int ranked2v2Losses;
         // Tutoriel T6 — false => le client propose le tuto au login (pop-up onboarding).
         public bool tutorialCompleted;
         public string createdAt;   // ISO string
@@ -541,6 +546,26 @@ namespace Nymora.Network.Backend
     {
         public string status;         // "pending" | "settled" | "already_settled" | "conflict"
         public int yourNewMmr;        // valable si status == "settled"
+    }
+
+    // ====== Brique 5.7-D2 — Resultat ranked 2v2 (ladder SEPARE, POST /ranked2v2/report-result) ======
+
+    [Serializable]
+    public class Ranked2v2RosterEntry
+    {
+        public string userId;         // sub d'un des 4 joueurs
+        public int team;              // 0 | 1
+    }
+
+    [Serializable]
+    public class Ranked2v2ReportBody
+    {
+        public string matchId;
+        public int myTeam;            // 0 | 1
+        public string result;         // "win" | "loss" (pas de nul en 2v2)
+        public string classId;        // classe jouee par le joueur LOCAL (XP par classe)
+        public Ranked2v2RosterEntry[] roster; // les 4 joueurs (sub + team) pour le settle ELO team-avg
+        public string[] deck;         // 6 spellIds tech du deck joue (optionnel)
     }
 
     // ====== Brique 6.5 — Saison ======

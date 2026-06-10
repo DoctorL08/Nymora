@@ -81,6 +81,9 @@ namespace Nymora.Hub
         public event Action OnRanked2v2QueueLeft;                              // ack sortie de file 2v2
         // 6.3 — MMR mis a jour apres un match ranked settle.
         public event Action<MmrUpdateData> OnMmrUpdated;
+        // 5.7-D2 — MMR 2v2 (ladder separe) mis a jour apres un settle ranked 2v2. Meme payload
+        //   que MMR_UPDATED ; reutilise MmrUpdateData.
+        public event Action<MmrUpdateData> OnMmr2v2Updated;
         // Joueurs en ligne — compteur de users distincts, push live par le backend
         // (ONLINE_COUNT) au connect/disconnect de n'importe qui. Cache la derniere valeur
         // recue (OnlineCount) pour les vues qui apparaissent apres le push (ex : retour hub).
@@ -177,7 +180,7 @@ namespace Nymora.Hub
 
         public bool IsConnected => _ws != null && _ws.State == WebSocketState.Open;
 
-        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, ClanBannerUpdated, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate, OnlineCount, MatchesList, SpectateInit, SpectateChunk, SpectateEnd, RankedMatch2v2Found, Ranked2v2QueueJoined, Ranked2v2QueueLeft, ForceDisconnect }
+        private enum EventKind { Connected, Disconnected, Welcome, Message, Whisper, IncomingChallenge, ChallengeSent, ChallengeResponse, MatchReady, RankedMatchFound, RankedQueueJoined, RankedQueueLeft, MmrUpdated, ReportSent, ModerationNotice, IncomingFriendRequest, FriendRequestSent, FriendRequestResponse, FriendRemoved, FriendsOnlineList, FriendOnline, FriendOffline, IncomingClanInvite, ClanInviteResponse, ClanMemberJoined, ClanMemberRoleChanged, ClanMemberLeft, ClanDisbanded, ClanBannerUpdated, XpAwarded, ClassLevelUp, AchievementProgress, AchievementUnlocked, DeckChanged, WalletUpdate, OnlineCount, MatchesList, SpectateInit, SpectateChunk, SpectateEnd, RankedMatch2v2Found, Ranked2v2QueueJoined, Ranked2v2QueueLeft, Mmr2v2Updated, ForceDisconnect }
 
         private struct IncomingEvent
         {
@@ -571,6 +574,18 @@ namespace Nymora.Hub
                         _queue.Enqueue(new IncomingEvent
                         {
                             Kind = EventKind.MmrUpdated,
+                            Mmr = msg.payload?.mmr ?? 0,
+                            MmrDelta = msg.payload?.mmrDelta ?? 0,
+                            RankedGames = msg.payload?.rankedGames ?? 0,
+                            RankedWins = msg.payload?.rankedWins ?? 0,
+                            RankedLosses = msg.payload?.rankedLosses ?? 0,
+                        });
+                        break;
+                    case "MMR2V2_UPDATED":
+                        // 5.7-D2 — settle ranked 2v2 (ladder separe). Meme payload que MMR_UPDATED.
+                        _queue.Enqueue(new IncomingEvent
+                        {
+                            Kind = EventKind.Mmr2v2Updated,
                             Mmr = msg.payload?.mmr ?? 0,
                             MmrDelta = msg.payload?.mmrDelta ?? 0,
                             RankedGames = msg.payload?.rankedGames ?? 0,
@@ -1028,6 +1043,16 @@ namespace Nymora.Hub
                         break;
                     case EventKind.MmrUpdated:
                         OnMmrUpdated?.Invoke(new MmrUpdateData
+                        {
+                            Mmr = ev.Mmr,
+                            Delta = ev.MmrDelta,
+                            RankedGames = ev.RankedGames,
+                            RankedWins = ev.RankedWins,
+                            RankedLosses = ev.RankedLosses,
+                        });
+                        break;
+                    case EventKind.Mmr2v2Updated:
+                        OnMmr2v2Updated?.Invoke(new MmrUpdateData
                         {
                             Mmr = ev.Mmr,
                             Delta = ev.MmrDelta,

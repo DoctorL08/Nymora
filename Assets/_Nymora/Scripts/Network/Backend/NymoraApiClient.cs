@@ -326,9 +326,25 @@ namespace Nymora.Network.Backend
         public UniTask<ApiResult<SeasonResponse>> GetSeasonAsync(CancellationToken ct = default)
             => GetJsonAsync<SeasonResponse>("/ranked/season", requireAuth: true, ct);
 
-        /// <summary>GET /ranked/leaderboard — top joueurs par MMR.</summary>
+        /// <summary>GET /ranked/leaderboard — top joueurs par MMR (1v1).</summary>
         public UniTask<ApiResult<LeaderboardResponse>> GetLeaderboardAsync(int limit = 100, CancellationToken ct = default)
             => GetJsonAsync<LeaderboardResponse>($"/ranked/leaderboard?limit={limit}", requireAuth: true, ct);
+
+        // ====== Brique 5.7-D2 — Ranked 2v2 (ladder separe) ======
+
+        /// <summary>POST /ranked2v2/report-result — reporte le resultat d'un match ranked 2v2.
+        /// Le backend settle par consensus CROSS-EQUIPE (>=1 report coherent de chaque equipe) :
+        /// ELO perso vs moyenne adverse (mmr2v2) + XP/Nymos + push WS MMR2V2_UPDATED.</summary>
+        public UniTask<ApiResult<RankedReportResponse>> ReportRanked2v2ResultAsync(
+            string matchId, int myTeam, string result, string classId, Ranked2v2RosterEntry[] roster,
+            string[] deck = null, CancellationToken ct = default)
+            => PostJsonAsync<RankedReportResponse>("/ranked2v2/report-result",
+                new Ranked2v2ReportBody { matchId = matchId, myTeam = myTeam, result = result, classId = classId, roster = roster, deck = deck },
+                requireAuth: true, ct);
+
+        /// <summary>GET /ranked2v2/leaderboard — top joueurs par MMR 2v2 (ladder separe).</summary>
+        public UniTask<ApiResult<LeaderboardResponse>> Get2v2LeaderboardAsync(int limit = 100, CancellationToken ct = default)
+            => GetJsonAsync<LeaderboardResponse>($"/ranked2v2/leaderboard?limit={limit}", requireAuth: true, ct);
 
         // ====== Brique 5.7 — Battle Pass ======
 

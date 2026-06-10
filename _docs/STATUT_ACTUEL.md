@@ -5,18 +5,22 @@
 
 ---
 
-## ⏸️ SESSION EN ATTENTE — reprise ce soir (10 juin) : TEST 2v2 RÉSEAU
+## ✅ SESSION 10 juin — 1er TEST 2v2 RÉSEAU 4 CLIENTS validé (à 4 vrais testeurs)
 
-**État : 2v2 réseau jouable bout-en-bout (A+B livrés), 11 commits LOCAUX non poussés.** Backend matchmaking 2v2 déjà déployé prod. Scène 41 déjà patchée (bootstrap réseau présent, refs clonées).
+**Le match 2v2 réseau a tourné bout-en-bout** (matchmaking → combat 4 joueurs → tours alternés équipes). 2 bugs trouvés en jeu, **les 2 corrigés et validés** (commit local `3284d99`) :
 
-**À la reprise (avant le test à 4 clients) :**
-1. **Vérifier que la console Unity compile vert** (~11 fichiers touchés sans compile local — si erreur, la corriger en premier).
-2. **Build standalone ×4.** Chaque testeur : **une classe DIFFÉRENTE** (unicité non imposée encore).
-3. Flux : Hub → Arène → **Ranked 2v2 → Chercher** (×4) → appairage → combat réseau scène 41 → **VICTOIRE/DÉFAITE par équipe**.
-4. Limites attendues : pas de vote capitaine (ordre par défaut), pas d'ELO (MMR inchangé). → briques **C** et **D** ensuite.
-5. **Push GitHub uniquement quand Lorenzo le dit** (pour l'instant tout est local).
+- ✅ **CORRIGÉ + VALIDÉ — barre de sorts** : tous les clients voyaient le deck du joueur ACTIF (joueur 0) au lieu du leur. Cause = `CombatHUDController.OnGameStartedResolveLocalSlot` testait le gate `isPvp`/IA AVANT le réseau 2v2 → `_debugAllPlayersControllable` restait à son défaut `true`. Fix : modes équipe testés avant le gate + barre-suit-l-actif gatée sur le marqueur hot-seat. **(commit local `3284d99`, pur View.)**
+- ✅ **CORRIGÉ (à valider) — pseudo « Bot »** : le tooltip combat lisait `PlayerProfileBridge` (binaire 1v1) non rempli en 2v2. Fix : le bootstrap réseau pose le vrai displayName dans `RuntimePlayer.PlayerNickname` (sync Quantum), le tooltip le lit en fallback. **(même commit `3284d99`.)**
+- ✅ **RÉSOLU — gemmes PA/PM** : après rebuild unique avec `3284d99`, les badges rubis PA/PM s'affichent pour tout le monde (l'asymétrie venait d'un build pas à jour côté équipe affectée, pas d'un bug de résolution — le log Kyami montrait déjà une résolution parfaite).
 
-**Après le test :** corriger ce qui sort, puis attaquer **C (vote capitaine réseau)** + **D (settle ELO 2v2)**. Détails complets dans la section Phase 5 brique 5.7 plus bas.
+**Statut : 2v2 RÉSEAU A+B VALIDÉ bout-en-bout** (matchmaking → combat 4 joueurs → tours alternés → barre/pseudo/gemmes corrects → victoire/défaite par équipe). Reste **C + D** pour compléter le ranked 2v2.
+
+**Prochaines briques (2v2 réseau) :**
+- ✅ **D1 — settle ELO/MMR 2v2 BACKEND : DÉPLOYÉ + VALIDÉ PROD** (commits backend `d9342ea`/`a0a5536`). **Ladder 2v2 SÉPARÉ du 1v1** : champs `Profile.mmr2v2/ranked2v2Games/Wins/Losses/seasonPeak2v2Mmr` (migration `20260610000000` appliquée prod). Matchmaking 2v2 lit `mmr2v2`. `POST /ranked2v2/report-result` (consensus cross-équipe `ranked2v2ResultRegistry`) + `settleRanked2v2Match` (ELO perso vs moyenne adverse `compute2v2MmrChanges`, pur/testé 13/13). **Récompenses BONUS** : win 250 XP / 120 Nymos, loss 100 / 60 + BP/quêtes/succès. Push WS `MMR2V2_UPDATED`. `GET /ranked2v2/leaderboard`. Pas de nul. Healthcheck prod OK, 0 erreur.
+- ✅ **D2 — client CODE-COMPLET (à valider en jeu, NON commité)** : (D2a) report au retour hub — `Match2v2ResultBridge` (combat→hub) rempli par `MatchEndOverlay.OnReturnToHubClicked` (chemin 2v2 si `Match2v2Bridge.HasPendingMatch`, verdict team-aware) → `HubMatchResultDisplay` POST `/ranked2v2/report-result` (`ReportRanked2v2ResultAsync`) + ligne `[CLASSÉ 2v2] VICTOIRE/DÉFAITE` ; event WS `MMR2V2_UPDATED` (`HubChatClient` enum/parse/dispatch + `OnMmr2v2Updated`) → system line rang 2v2. (D2b) onglet **2v2** du leaderboard du menu (`HubMenuShell.SelectLbTab` idx 1 → `LoadLeaderboardMode(true)` → `Get2v2LeaderboardAsync`) ; les onglets 1v1/2v2/3v3 existaient déjà (2v2 était « bientôt dispo »). Pas de stats de combat dans le report 2v2 v1 (défaut sûr). **À builder + valider en jeu** (un match 2v2 → ligne [CLASSÉ 2v2] + MMR 2v2 qui bouge + onglet leaderboard 2v2 peuplé). Fichiers : `Match2v2ResultBridge.cs` (nouveau), `MatchEndOverlay.cs`, `NymoraApiClient.cs`, `NymoraApiDtos.cs`, `HubChatClient.cs`, `HubMatchResultDisplay.cs`, `HubLeaderboardPanel.cs`, `HubMenuShell.cs`.
+- ⏳ **C — vote capitaine réseau** : lobby pré-combat 4 joueurs + ordre intra-équipe voté (réseau). Non bloquant (ordre par défaut OK).
+- Puis **5.8 polish**, puis **3v3** (réutilise 5.1→5.3 + 5.6 générique).
+- **Push GitHub uniquement quand Lorenzo le dit** (côté jeu ; le backend est déjà poussé/déployé par Claude).
 
 ---
 

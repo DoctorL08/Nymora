@@ -36,8 +36,10 @@ namespace Nymora.Hub
             if (chat != null)
             {
                 chat.OnMmrUpdated += HandleMmrUpdated;
+                chat.OnMmr2v2Updated += HandleMmr2v2Updated; // 5.7-D2 — settle ranked 2v2 (ladder séparé)
                 // 6.3.b — feedback XP/Nymos ranked piloté par les events WS du backend
-                // (le backend award et push ; on affiche). Filtré sur source/reason "ranked".
+                // (le backend award et push ; on affiche). Filtré sur source/reason "ranked"
+                // -> couvre aussi "ranked2v2_*" (StartsWith "ranked").
                 chat.OnXpAwarded += HandleXpAwarded;
                 chat.OnWalletUpdate += HandleWalletUpdate;
             }
@@ -49,6 +51,7 @@ namespace Nymora.Hub
             if (chat != null)
             {
                 chat.OnMmrUpdated -= HandleMmrUpdated;
+                chat.OnMmr2v2Updated -= HandleMmr2v2Updated;
                 chat.OnXpAwarded -= HandleXpAwarded;
                 chat.OnWalletUpdate -= HandleWalletUpdate;
             }
@@ -77,8 +80,75 @@ namespace Nymora.Hub
 
         private void Start()
         {
+            // 5.7-D2 — un match est soit 1v1 (MatchBridge) soit 2v2 (Match2v2ResultBridge), jamais
+            //   les deux. Le 2v2 a son propre chemin (verdict d'équipe + roster -> report 4-way).
+            if (Match2v2ResultBridge.HasPendingResult)
+            {
+                StartCoroutine(Display2v2AfterEndOfFrame());
+                return;
+            }
             if (!MatchBridge.HasPendingResult) return;
             StartCoroutine(DisplayAfterEndOfFrame());
+        }
+
+        // 5.7-D2 — Affiche la ligne de résultat 2v2 + reporte au backend (POST /ranked2v2/report-result).
+        private IEnumerator Display2v2AfterEndOfFrame()
+        {
+            yield return new WaitForEndOfFrame();
+
+            bool won = Match2v2ResultBridge.LocalWon;
+            string matchId = Match2v2ResultBridge.MatchId;
+            int myTeam = Match2v2ResultBridge.MyTeam;
+            var roster = Match2v2ResultBridge.Roster;
+            string classId = !string.IsNullOrEmpty(Match2v2ResultBridge.ClassId) ? Match2v2ResultBridge.ClassId : ResolveClassId();
+            string[] deck = Match2v2ResultBridge.Deck;
+            Match2v2ResultBridge.Reset();
+
+            string color = won ? "#88ff88" : "#ff8888";
+            string label = won ? "VICTOIRE" : "DÉFAITE";
+            var line = $"<color={color}>[CLASSÉ 2v2] {label}</color>";
+            Debug.Log($"[HubMatchResultDisplay] {line} (matchId={SafeShortId(matchId)} team={myTeam})");
+            if (_chatUI != null) _chatUI.AppendSystemLineExternal(line);
+
+            if (_api == null || roster == null || roster.Length != 4 || string.IsNullOrEmpty(matchId))
+            {
+                Debug.LogWarning($"[HubMatchResultDisplay] Report 2v2 impossible (api={_api != null}, roster={(roster != null ? roster.Length : 0)}, matchId='{SafeShortId(matchId)}').");
+                yield break;
+            }
+            ReportRanked2v2Async(matchId, myTeam, won ? "win" : "loss", classId, roster, deck).Forget();
+        }
+
+        private async UniTask ReportRanked2v2Async(string matchId, int myTeam, string result, string classId,
+                                                   Match2v2Bridge.Player[] roster, string[] deck)
+        {
+            string token = HubChatClient.Instance?.DevToken;
+            if (string.IsNullOrEmpty(token)) return;
+            _api.SetBearerToken(token);
+
+            var apiRoster = new Ranked2v2RosterEntry[roster.Length];
+            for (int i = 0; i < roster.Length; i++)
+                apiRoster[i] = new Ranked2v2RosterEntry { userId = roster[i].Sub, team = roster[i].Team };
+
+            var res = await _api.ReportRanked2v2ResultAsync(matchId, myTeam, result, classId, apiRoster, deck);
+            if (!res.IsSuccess)
+            {
+                Debug.LogWarning($"[HubMatchResultDisplay] ReportRanked2v2Result failed: {res.StatusCode} {res.ErrorMessage}");
+                return;
+            }
+            Debug.Log($"[HubMatchResultDisplay] Ranked 2v2 report → status={res.Data.status} (matchId={SafeShortId(matchId)})");
+            // MMR 2v2 + XP + Nymos arrivent via WS (MMR2V2_UPDATED / XP_AWARDED / WALLET_UPDATE)
+            // une fois l'équipe adverse aussi reportée (consensus cross-équipe).
+        }
+
+        // 5.7-D2 — affiche le nouveau rang/MMR 2v2 (ladder séparé) au settle du match 2v2.
+        private void HandleMmr2v2Updated(HubChatClient.MmrUpdateData d)
+        {
+            string sign = d.Delta >= 0 ? "+" : "";
+            string deltaColor = d.Delta >= 0 ? "#88ff88" : "#ff8888";
+            var line = $"<color=#cdb4ff>[CLASSÉ 2v2]</color> {RankLadder.ColoredName(d.Mmr)} <color=#cdb4ff>— MMR {d.Mmr}</color> " +
+                       $"<color={deltaColor}>({sign}{d.Delta})</color> <color=#999999>— {d.RankedWins}V / {d.RankedLosses}D</color>";
+            Debug.Log($"[HubMatchResultDisplay] {line}");
+            if (_chatUI != null) _chatUI.AppendSystemLineExternal(line);
         }
 
         private IEnumerator DisplayAfterEndOfFrame()

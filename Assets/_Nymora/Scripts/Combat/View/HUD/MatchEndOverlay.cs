@@ -442,7 +442,19 @@ namespace Nymora.Combat.View.HUD
         /// </summary>
         private void OnReturnToHubClicked()
         {
-            if (_isPvpMatch)
+            if (_isPvpMatch && Match2v2Bridge.HasPendingMatch)
+            {
+                // 5.7-D2 — match RANKED 2v2 : verdict team-aware + roster figé -> report 2v2 au hub
+                //   (HubMatchResultDisplay POST /ranked2v2/report-result). Pas de nul en 2v2.
+                bool localWon = _winnerPlayerIndex >= 0 && LocalIsWinner(_winnerPlayerIndex, _localPlayerIndex);
+                string classId = !string.IsNullOrEmpty(DeckBridge.PendingClassId) ? DeckBridge.PendingClassId : null;
+                string[] deck = DeckBridge.HasPending ? DeckBridge.PendingSpellIds : null;
+                Match2v2ResultBridge.Set(Match2v2Bridge.PendingMatchId, Match2v2Bridge.LocalTeam, localWon,
+                                         Match2v2Bridge.Players, classId, deck);
+                Debug.Log($"[Nymora.HUD] Retour Hub clique (RANKED 2v2) — localWon={localWon} " +
+                          $"matchId={Match2v2Bridge.PendingMatchId} myTeam={Match2v2Bridge.LocalTeam}");
+            }
+            else if (_isPvpMatch)
             {
                 MatchResult result;
                 if (_winnerPlayerIndex < 0) result = MatchResult.Draw;

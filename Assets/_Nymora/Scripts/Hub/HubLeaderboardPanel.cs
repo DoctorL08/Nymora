@@ -82,14 +82,15 @@ namespace Nymora.Hub
         /// </summary>
         /// <summary>Fetch brut des entrées du classement. Renvoie (entries, null) si OK, sinon
         /// (null, message d'erreur lisible). Utilisé par le rendu en lignes du menu moderne.</summary>
-        public async UniTask<(LeaderboardEntry[] entries, string error)> GetLeaderboardEntriesAsync(int limit)
+        public async UniTask<(LeaderboardEntry[] entries, string error)> GetLeaderboardEntriesAsync(int limit, bool team2v2 = false)
         {
             if (_api == null) return (null, "Backend non configuré.");
             string token = HubChatClient.Instance?.DevToken;
             if (string.IsNullOrEmpty(token)) return (null, "Non connecté.");
             _api.SetBearerToken(token);
 
-            var res = await _api.GetLeaderboardAsync(limit);
+            // 5.7-D2 — ladder 2v2 SÉPARÉ (mmr2v2). team2v2=false -> classement 1v1 (inchangé).
+            var res = team2v2 ? await _api.Get2v2LeaderboardAsync(limit) : await _api.GetLeaderboardAsync(limit);
             if (!res.IsSuccess) return (null, $"Erreur classement ({res.StatusCode}).");
 
             var entries = res.Data?.entries;
@@ -110,6 +111,19 @@ namespace Nymora.Hub
             _api.SetBearerToken(token);
             var res = await _api.GetProfileMeAsync();
             return res.IsSuccess && res.Data != null ? res.Data.mmr : -1;
+        }
+
+        /// <summary>5.7-D2 — MMR 1v1 ET 2v2 (ladders séparés) en un seul /profile/me, pour les badges
+        /// de rang des cartes Arène (la carte Ranked 2v2 affiche son propre MMR). (-1,-1) si indispo.</summary>
+        public async UniTask<(int mmr1v1, int mmr2v2)> FetchLocalMmrsAsync()
+        {
+            if (_api == null) return (-1, -1);
+            string token = HubChatClient.Instance?.DevToken;
+            if (string.IsNullOrEmpty(token)) return (-1, -1);
+            _api.SetBearerToken(token);
+            var res = await _api.GetProfileMeAsync();
+            if (!res.IsSuccess || res.Data == null) return (-1, -1);
+            return (res.Data.mmr, res.Data.mmr2v2);
         }
 
         public async UniTask<string> GetLeaderboardTextAsync(int limit)
