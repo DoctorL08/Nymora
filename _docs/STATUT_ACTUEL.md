@@ -77,9 +77,16 @@ Découpage : **5.1 fondations équipe** → 5.2 rotation N-joueurs + ordre voté
 
 **Bilan 5.5 (jouable en hot-seat local, scène 41) :** 4 combattants spawnent par (Team,Rank) ; input pilote le joueur actif ; ordre A0/B0/A1/B1 (alternance stricte, timeline ordonnée par TurnOrder) ; HUD N portraits teintés par équipe ; chaque joueur caste SON deck (cache par joueur) + déplacement/zone de sort suivent l'actif.
 
-**Prochaine brique : 5.6 — pré-combat vote capitaine** (l'ordre intra-équipe `TeamOrder` est déjà câblé bout-en-bout, défaut = PlayerIndex ; reste l'UI de vote). Puis 5.7 matchmaking 2v2 (backend) → 5.8 polish.
-
 > Reliquat vision pièges équipe = **RÉSOLU le 10 juin** (cf section dédiée plus bas).
+
+## Phase 5 brique 5.6 (vote d'ordre pré-combat) — ✅ COMPLÈTE & VALIDÉE (10 juin)
+
+Panneau pré-combat hot-seat **panneau unique** (pas de notion de capitaine en hot-seat ; le vrai vote par-capitaine réseau = 5.7). Pur View, **pas de bump CombatRulesVersion**.
+- `TeamOrderVote` (bridge statique Bootstrap⇄View, façon `DeckBridge`) : le bootstrap publie le roster + await ; le panneau Submit l'ordre (TeamOrder par PlayerSlot).
+- `CombatBootstrap2v2` : le vote précède les `AddPlayer` (TeamOrder fige TurnOrder) ; **fallback ordre par défaut** anti-hang (~1,5 s sans panneau).
+- `PreCombatOrderPanel` (auto-instancié scènes 2v2/3v3, procédural) : 2 colonnes d'équipes, réordon ▲/▼ par membre, « Lancer le combat ». **DA hub** (`CombatUiKit` monochrome + coins arrondis + police Ari runtime + layout groups, façon `MatchEndOverlay`) ; flèches = sprite `direction_arrow` pivoté (pas de glyphe que la police Ari ne porte pas) ; lève le voile de chargement (`SignalReady`) car le démarrage est retardé derrière le vote. Générique N-joueurs → prêt pour 3v3.
+
+**Prochaine brique : 5.7 — matchmaking 2v2 (backend)** → puis 5.8 polish. Puis 3v3 (réutilise 5.1→5.3 + 5.6 générique).
 
 ### ✅ RÉSOLU (10 juin) — Vision des pièges Nightseer en équipe (2v2/3v3)
 **Vraie cause trouvée :** ce n'était PAS la logique `show`, mais le **garde de spawn basé sur les coins**. `TrapView/TerrainView/FogOfWarView.TrySpawnOverlays` faisaient `if (GetTileView(0,0) == null || GetTileView(dernier) == null) return;`. En map 2v2 **irrégulière (bord-only)** les coins sont **carvés** → `GetTileView` = null → le spawn avortait à chaque frame → **aucun overlay créé → personne ne voyait aucun piège** (ni terrain, ni brouillard) en 2v2, quelle que soit la phase.

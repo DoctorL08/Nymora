@@ -109,6 +109,12 @@ namespace Nymora.Combat.Bootstrap
             QuantumRunner.ShutdownAll();
             await Task.Yield();
 
+            // 5.6 — vote d'ordre de jeu (panneau pré-combat). DOIT précéder les AddPlayer car le
+            //   TeamOrder fige TurnOrder côté sim. Bloque jusqu'au choix de Lorenzo ; sécurité
+            //   anti-hang : ordre par défaut (rang = ordre des slots) si aucun panneau ne répond.
+            int[] votedOrder = await ResolveTeamOrderAsync(ct);
+            if (ct.IsCancellationRequested) return;
+
             Log("MODE HOT-SEAT LOCAL 2v2 — 4 joueurs ajoutés en local sur ce client.");
 
             // Clone config + bind map dédiée + données de match.
@@ -156,11 +162,54 @@ namespace Nymora.Combat.Bootstrap
             // Slot 0 = deck du hub (DeckBridge). Slots 1-3 = deck PAR DÉFAUT de leur classe (5.5e) :
             //   6 premiers sorts non-signature du catalogue -> chaque joueur peut caster en hot-seat
             //   (la signature reste gérée par classe côté HUD, hors SpellIdValues).
-            AddTeamPlayer(slot: 0, teamId: 0, teamOrder: 0, cls: ResolveSlot0ClassId(), spells: ResolveSlot0Spells(), nick: "P0 (A1)", useLocalCosmetics: true);
-            AddTeamPlayer(slot: 1, teamId: 0, teamOrder: 1, cls: Team0Player1, spells: BuildDefaultDeck(Team0Player1), nick: "P1 (A2)", useLocalCosmetics: false);
-            AddTeamPlayer(slot: 2, teamId: 1, teamOrder: 0, cls: Team1Player0, spells: BuildDefaultDeck(Team1Player0), nick: "P2 (B1)", useLocalCosmetics: false);
-            AddTeamPlayer(slot: 3, teamId: 1, teamOrder: 1, cls: Team1Player1, spells: BuildDefaultDeck(Team1Player1), nick: "P3 (B2)", useLocalCosmetics: false);
+            // TeamOrder = ordre voté (5.6) si présent, sinon défaut (slot 0/2 -> rang 0, slot 1/3 -> rang 1).
+            AddTeamPlayer(slot: 0, teamId: 0, teamOrder: OrderFor(votedOrder, 0, 0), cls: ResolveSlot0ClassId(), spells: ResolveSlot0Spells(), nick: "P0 (A1)", useLocalCosmetics: true);
+            AddTeamPlayer(slot: 1, teamId: 0, teamOrder: OrderFor(votedOrder, 1, 1), cls: Team0Player1, spells: BuildDefaultDeck(Team0Player1), nick: "P1 (A2)", useLocalCosmetics: false);
+            AddTeamPlayer(slot: 2, teamId: 1, teamOrder: OrderFor(votedOrder, 2, 0), cls: Team1Player0, spells: BuildDefaultDeck(Team1Player0), nick: "P2 (B1)", useLocalCosmetics: false);
+            AddTeamPlayer(slot: 3, teamId: 1, teamOrder: OrderFor(votedOrder, 3, 1), cls: Team1Player1, spells: BuildDefaultDeck(Team1Player1), nick: "P3 (B2)", useLocalCosmetics: false);
         }
+
+        // 5.6 — Roster du vote (4 joueurs : slot, équipe, libellé classe), connu sans le runner
+        //   (Inspector + deck du hub pour le slot 0). Sert au panneau pré-combat pour afficher
+        //   chaque équipe et permettre la réorganisation.
+        private TeamOrderVote.VoteSlot[] BuildVoteRoster()
+        {
+            return new[]
+            {
+                new TeamOrderVote.VoteSlot { PlayerSlot = 0, TeamId = 0, Label = ResolveSlot0ClassId().ToString() },
+                new TeamOrderVote.VoteSlot { PlayerSlot = 1, TeamId = 0, Label = Team0Player1.ToString() },
+                new TeamOrderVote.VoteSlot { PlayerSlot = 2, TeamId = 1, Label = Team1Player0.ToString() },
+                new TeamOrderVote.VoteSlot { PlayerSlot = 3, TeamId = 1, Label = Team1Player1.ToString() },
+            };
+        }
+
+        // 5.6 — Ouvre le vote et attend le choix. Grâce anti-hang : si aucun panneau ne prend la
+        //   main (Acknowledged) sous ~1.5s, on retombe sur l'ordre par défaut. Sinon on attend le
+        //   clic « Lancer le combat » sans timeout (Lorenzo prend le temps qu'il veut).
+        private async Task<int[]> ResolveTeamOrderAsync(CancellationToken ct)
+        {
+            var voteTask = TeamOrderVote.Request(BuildVoteRoster());
+            float grace = 0f;
+            while (!TeamOrderVote.Acknowledged && !voteTask.IsCompleted && grace < 1.5f)
+            {
+                if (ct.IsCancellationRequested) return null;
+                await Task.Yield();
+                grace += Time.unscaledDeltaTime;
+            }
+            if (!TeamOrderVote.Acknowledged && !voteTask.IsCompleted)
+            {
+                Log("Aucun panneau d'ordre pré-combat -> ordre par défaut (rang = ordre des slots).");
+                TeamOrderVote.Cancel();
+                return null;
+            }
+            int[] order = await voteTask;
+            Log(order == null ? "Vote annulé -> ordre par défaut." : "Ordre d'équipe voté reçu.");
+            return order;
+        }
+
+        // 5.6 — TeamOrder à appliquer pour un slot : l'ordre voté si présent, sinon le rang par défaut.
+        private static int OrderFor(int[] votedOrder, int slot, int defaultRank)
+            => (votedOrder != null && slot >= 0 && slot < votedOrder.Length) ? votedOrder[slot] : defaultRank;
 
         private void AddTeamPlayer(int slot, int teamId, int teamOrder, QuantumNymoraClass cls, int[] spells, string nick, bool useLocalCosmetics)
         {
