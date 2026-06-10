@@ -111,6 +111,7 @@ namespace Nymora.Hub
                     Email = players[i].email,
                     DisplayName = players[i].displayName,
                     Team = players[i].team,
+                    IsCaptain = players[i].captain, // 5.7-C
                 };
             }
             Match2v2Bridge.SetPendingMatch(matchId, myTeam, bridgePlayers, chat?.MyUserId, chat?.MyEmail);

@@ -960,6 +960,7 @@ namespace Nymora.Hub
             public string email;
             public string displayName;
             public int team;
+            public bool captain; // 5.7-C — capitaine de l'équipe (ordonne l'équipe au pré-combat réseau)
         }
 
         private void Update()

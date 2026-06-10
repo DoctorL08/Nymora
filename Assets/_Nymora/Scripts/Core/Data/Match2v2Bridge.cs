@@ -21,6 +21,7 @@ namespace Nymora.Core.Data
             public string Email;
             public string DisplayName;
             public int Team; // 0 ou 1
+            public bool IsCaptain; // 5.7-C — capitaine de l'équipe (ordonne l'équipe au pré-combat réseau)
         }
 
         public static string PendingMatchId { get; private set; }
