@@ -346,6 +346,16 @@ namespace Nymora.Network.Backend
         public UniTask<ApiResult<LeaderboardResponse>> Get2v2LeaderboardAsync(int limit = 100, CancellationToken ct = default)
             => GetJsonAsync<LeaderboardResponse>($"/ranked2v2/leaderboard?limit={limit}", requireAuth: true, ct);
 
+        // ====== Analytics D4 — remontee d'erreurs client ======
+
+        /// <summary>POST /telemetry/error — remonte un batch d'erreurs client (Unity) au dashboard admin.
+        /// Auth requise (attribue au joueur), PAS de versionGuard cote backend (on capte meme un vieux client).</summary>
+        public UniTask<ApiResult<TelemetryErrorResponse>> ReportClientErrorsAsync(
+            string appVersion, ClientErrorItem[] errors, CancellationToken ct = default)
+            => PostJsonAsync<TelemetryErrorResponse>("/telemetry/error",
+                new ClientErrorBatchBody { appVersion = appVersion, errors = errors },
+                requireAuth: true, ct);
+
         // ====== Brique 5.7 — Battle Pass ======
 
         public UniTask<ApiResult<BattlePassMeResponse>> GetBattlePassAsync(CancellationToken ct = default)
