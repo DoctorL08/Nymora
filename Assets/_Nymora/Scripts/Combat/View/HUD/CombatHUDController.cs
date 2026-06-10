@@ -307,6 +307,16 @@ namespace Nymora.Combat.View.HUD
                 return;
             }
 
+            // 5.7 — RÉSEAU 2v2 : 1 combattant local par client (comme Casual). Résout LocalPlayerSlot
+            //   via le bootstrap réseau (event si CallbackGameStarted précède AddPlayer/GetLocalPlayers).
+            var net2v2 = Nymora.Combat.Bootstrap.CombatBootstrapRanked2v2.Instance;
+            if (net2v2 != null)
+            {
+                if (net2v2.LocalPlayerSlot >= 0) ApplyLocalPlayerSlot(net2v2.LocalPlayerSlot);
+                else net2v2.LocalPlayerSlotResolved += ApplyLocalPlayerSlot;
+                return;
+            }
+
             var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
             if (bootstrap == null)
             {
@@ -336,6 +346,8 @@ namespace Nymora.Combat.View.HUD
 
             var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
             if (bootstrap != null) bootstrap.LocalPlayerSlotResolved -= ApplyLocalPlayerSlot;
+            var net2v2 = Nymora.Combat.Bootstrap.CombatBootstrapRanked2v2.Instance;
+            if (net2v2 != null) net2v2.LocalPlayerSlotResolved -= ApplyLocalPlayerSlot;
         }
 
         /// <summary>

@@ -81,6 +81,14 @@ namespace Nymora.Combat.Bootstrap
                 Log($"Skip : component dans '{gameObject.scene.name}' mais réservé à '{ExpectedSceneName}'.");
                 return;
             }
+            // 5.7 — si un match 2v2 APPAIRÉ est en attente (via matchmaking/Match2v2Bridge), c'est le
+            //   bootstrap RÉSEAU (CombatBootstrapRanked2v2) qui pilote. Le hot-seat ne s'active qu'en
+            //   Play direct (test local sans matchmaking).
+            if (Match2v2Bridge.HasPendingMatch)
+            {
+                Log("Match 2v2 appairé en attente -> hot-seat skip (bootstrap réseau prend la main).");
+                return;
+            }
 
             Instance = this;
             _cts = new CancellationTokenSource();

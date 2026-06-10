@@ -25,6 +25,9 @@ namespace Nymora.Combat.View
         {
             var casual = CombatBootstrapCasual.Instance;
             if (casual != null && casual.LocalPlayerSlot >= 0) return casual.LocalPlayerSlot;
+            // 5.7 — réseau 2v2 : chaque client contrôle UN combattant (comme Casual).
+            var net2v2 = CombatBootstrapRanked2v2.Instance;
+            if (net2v2 != null && net2v2.LocalPlayerSlot >= 0) return net2v2.LocalPlayerSlot;
             return 0;
         }
 
@@ -53,7 +56,7 @@ namespace Nymora.Combat.View
         /// </summary>
         public static bool LocalOwns(QuantumGame game, int playerIndex)
         {
-            if (CombatBootstrapCasual.Instance != null)
+            if (CombatBootstrapCasual.Instance != null || CombatBootstrapRanked2v2.Instance != null)
             {
                 if (game != null)
                 {

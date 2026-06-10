@@ -125,7 +125,9 @@ namespace Nymora.Combat.View
             // 5.5b — bootstrap équipe (2v2/3v3) : les 4 à 6 joueurs sont AddPlayer EN LOCAL sur
             //   ce seul client (hot-seat). À distinguer du PvP Casual (1 slot local par client).
             bool hasTeamBootstrap = Nymora.Combat.Bootstrap.CombatBootstrap2v2.Instance != null;
-            bool bootstrapHandlesAddPlayer = isPvp || hasIABootstrap || hasTeamBootstrap;
+            // 5.7 — réseau 2v2 : 1 combattant local par client (comme Casual), bootstrap dédié.
+            bool hasNet2v2 = Nymora.Combat.Bootstrap.CombatBootstrapRanked2v2.Instance != null;
+            bool bootstrapHandlesAddPlayer = isPvp || hasIABootstrap || hasTeamBootstrap || hasNet2v2;
 
             if (_autoAddLocalPlayers && !bootstrapHandlesAddPlayer)
             {
@@ -145,6 +147,16 @@ namespace Nymora.Combat.View
                 //   locaux ici). Aucune résolution LocalPlayerSlot (pas de Casual en hot-seat).
                 _debugAllPlayersMovable = true;
                 Debug.Log("[Nymora.CombatInput] Mode HOT-SEAT 2v2/3v3 (CombatBootstrap2v2) — input pilote le joueur ACTIF (_debugAllPlayersMovable=true).");
+            }
+            else if (hasNet2v2)
+            {
+                // 5.7 — RÉSEAU 2v2 : comme Casual, on ne contrôle QUE notre combattant local. On
+                //   résout LocalPlayerSlot via le bootstrap réseau (event si pas encore prêt, car
+                //   CallbackGameStarted peut précéder AddPlayer/GetLocalPlayers).
+                var net2v2 = Nymora.Combat.Bootstrap.CombatBootstrapRanked2v2.Instance;
+                if (net2v2.LocalPlayerSlot >= 0) ApplyLocalPlayerSlot(net2v2.LocalPlayerSlot);
+                else net2v2.LocalPlayerSlotResolved += ApplyLocalPlayerSlot;
+                Debug.Log("[Nymora.CombatInput] Mode RÉSEAU 2v2 (CombatBootstrapRanked2v2) — résolution LocalPlayerSlot (comme Casual).");
             }
             else if (hasIABootstrap)
             {
@@ -204,6 +216,8 @@ namespace Nymora.Combat.View
 
             var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
             if (bootstrap != null) bootstrap.LocalPlayerSlotResolved -= ApplyLocalPlayerSlot;
+            var net2v2 = Nymora.Combat.Bootstrap.CombatBootstrapRanked2v2.Instance;
+            if (net2v2 != null) net2v2.LocalPlayerSlotResolved -= ApplyLocalPlayerSlot;
         }
 
         private void Update()
