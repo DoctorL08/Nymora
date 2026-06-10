@@ -96,8 +96,8 @@ Décision Lorenzo : **solo + duo premade fusionnables**, objectif **2v2 réseau 
   - `npm run test:matchmaking2v2` : test PUR sans Redis, **12/12 vert**.
 
 - ⏳ **5.7 client (reste)** — sous-briques, chacune testée à 2-4 clients :
-  - **A** (EN COURS) : bouton file 2v2 au hub + `Match2v2Bridge` + handler `RANKED_MATCH_FOUND` mode 2v2 → transition scène 41.
-  - **B** : `CombatBootstrapRanked2v2` réseau (room Photon MaxPlayers=4, AddPlayer avec TeamId, poll PlayerRef) — calqué sur `CombatBootstrapCasual`.
+  - ✅ **A — code-complet** (commits `d35ab0a`/`fd73492`/`8b0e2bd`) : `Match2v2Bridge` + `HubChatClient` (parse 2v2 aplati + events + `SendEnqueueRanked2v2`/`Dequeue`) + `HubMatchTransition` (remplit le bridge → scène 41) + **file 2v2 dans le menu moderne** (`HubMenuShell` : carte « Ranked 2v2 » activée, écran matchmaking mode `_mmMode`). Backend payload aplati redéployé. ⚠️ Pas encore testé en Play. ⚠️ Charger la scène 41 lance ENCORE le **hot-seat** (bootstrap réseau = B) → A valide le round-trip matchmaking, pas le combat réseau.
+  - **B** (NEXT) : `CombatBootstrapRanked2v2` réseau (room Photon MaxPlayers=4, AddPlayer avec TeamId, poll PlayerRef) — calqué sur `CombatBootstrapCasual` ; lit `Match2v2Bridge`. Remplace le hot-seat dans la scène 41.
   - **C** : lobby pré-combat réseau 4 joueurs + vote capitaine (le panneau 5.6 passe en réseau via player properties).
   - **D** : settle ELO perso + MMR moyen 2v2.
 
