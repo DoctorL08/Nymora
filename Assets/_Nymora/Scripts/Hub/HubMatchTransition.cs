@@ -114,9 +114,10 @@ namespace Nymora.Hub
                 };
             }
             Match2v2Bridge.SetPendingMatch(matchId, myTeam, bridgePlayers, chat?.MyUserId, chat?.MyEmail);
-            // 1v1 MatchBridge marqué ranked pour réutiliser le settle existant côté retour hub (le
-            //   settle 2v2 dédié = sous-brique D ; ici on garde au moins le flag classé).
-            MatchBridge.SetRanked(true);
+            // NB : on NE marque PAS MatchBridge.IsRanked ici. Le settle 1v1 (report-result avec UN
+            //   seul opponent) n'a pas de sens en 2v2 et déclencherait une erreur en fin de match.
+            //   Le settle 2v2 dédié (ELO perso + MMR moyen) = sous-brique D, à venir. En attendant,
+            //   le match 2v2 est jouable mais n'impacte pas le MMR.
 
             if (_logVerbose) Debug.Log($"[HubMatchTransition] Match2v2Bridge set matchId={matchId} myTeam={myTeam} " +
                                        $"players={bridgePlayers.Length} deck={deck.classId}/'{deck.name}'. Transition vers '{_ranked2v2SceneName}'.");

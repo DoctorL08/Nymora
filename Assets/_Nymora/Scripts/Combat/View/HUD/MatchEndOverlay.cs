@@ -293,13 +293,13 @@ namespace Nymora.Combat.View.HUD
             string title;
             Color titleColor;
             if (winnerPlayerIndex < 0) { title = "MATCH NUL"; titleColor = _drawColor; }
-            else if (winnerPlayerIndex == localPlayerIndex) { title = "VICTOIRE"; titleColor = _victoryColor; }
+            else if (LocalIsWinner(winnerPlayerIndex, localPlayerIndex)) { title = "VICTOIRE"; titleColor = _victoryColor; }
             else { title = "DÉFAITE"; titleColor = _defeatColor; }
 
             if (_builtTitle != null) { _builtTitle.text = title; _builtTitle.color = titleColor; }
 
             MatchResult result = winnerPlayerIndex < 0 ? MatchResult.Draw
-                : winnerPlayerIndex == localPlayerIndex ? MatchResult.Victory : MatchResult.Defeat;
+                : LocalIsWinner(winnerPlayerIndex, localPlayerIndex) ? MatchResult.Victory : MatchResult.Defeat;
             if (_builtInfo != null) _builtInfo.text = BuildInfoText(result, turnNumber);
 
             // SFX + musique de fin (une fois, garanti par _shown).
@@ -307,7 +307,7 @@ namespace Nymora.Combat.View.HUD
             if (audio != null)
             {
                 if (winnerPlayerIndex < 0) { /* nul : pas de stinger dédié */ }
-                else if (winnerPlayerIndex == localPlayerIndex)
+                else if (LocalIsWinner(winnerPlayerIndex, localPlayerIndex))
                 {
                     audio.PlaySfx(Nymora.Core.Audio.SoundId.Victory);
                     audio.PlayMusic(Nymora.Core.Audio.SoundId.MusicVictory);
@@ -423,6 +423,18 @@ namespace Nymora.Combat.View.HUD
             }
         }
 
+        // 5.7 — Le joueur local fait-il partie de l'ÉQUIPE gagnante ? Team-aware via TeamHelper
+        //   (le winner est UN membre de l'équipe survivante ; en 2v2 le coéquipier doit voir VICTOIRE).
+        //   Non-régressif en 1v1 : AreEnemiesByPlayerIndex(winner, local) == (winner != local).
+        private static bool LocalIsWinner(int winnerPlayerIndex, int localPlayerIndex)
+        {
+            if (winnerPlayerIndex < 0) return false;
+            var frame = QuantumRunner.Default?.Game?.Frames?.Verified;
+            if (frame != null)
+                return !Quantum.TeamHelper.AreEnemiesByPlayerIndex(frame, winnerPlayerIndex, localPlayerIndex);
+            return winnerPlayerIndex == localPlayerIndex; // fallback si frame indisponible
+        }
+
         /// <summary>
         /// 4.14.g — Retour Hub. En PvP : set le resultat dans MatchBridge (consume cote hub par
         /// HubMatchResultDisplay = ligne chat + report ranked). En IA : pas de SetMatchResult.
@@ -434,7 +446,7 @@ namespace Nymora.Combat.View.HUD
             {
                 MatchResult result;
                 if (_winnerPlayerIndex < 0) result = MatchResult.Draw;
-                else if (_winnerPlayerIndex == _localPlayerIndex) result = MatchResult.Victory;
+                else if (LocalIsWinner(_winnerPlayerIndex, _localPlayerIndex)) result = MatchResult.Victory;
                 else result = MatchResult.Defeat;
 
                 string matchId = MatchBridge.PendingMatchId;
