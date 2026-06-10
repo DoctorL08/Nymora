@@ -568,31 +568,6 @@ namespace Nymora.Network.Backend
         public string[] deck;         // 6 spellIds tech du deck joue (optionnel)
     }
 
-    // ====== Analytics D4 — remontee d'erreurs CLIENT (POST /telemetry/error) ======
-
-    [Serializable]
-    public class ClientErrorItem
-    {
-        public string message;        // message d'erreur (tronque cote client)
-        public string stack;          // stack trace (optionnel)
-        public string scene;          // scene Unity au moment de l'erreur (= "route" cote backend)
-        public string level;          // "error" | "fatal"
-        public int count;             // nb d'occurrences dedupliquees (>= 1)
-    }
-
-    [Serializable]
-    public class ClientErrorBatchBody
-    {
-        public string appVersion;     // version du client (GameVersion.Current)
-        public ClientErrorItem[] errors;
-    }
-
-    [Serializable]
-    public class TelemetryErrorResponse
-    {
-        public int received;
-    }
-
     // ====== Brique 6.5 — Saison ======
 
     [Serializable]
