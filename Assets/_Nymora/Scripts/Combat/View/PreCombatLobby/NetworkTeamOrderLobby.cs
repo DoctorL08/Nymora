@@ -66,6 +66,7 @@ namespace Nymora.Combat.View.PreCombatLobby
             while (!ct.IsCancellationRequested)
             {
                 _client?.Service(); // pompe Photon (indispensable avant StartAsync)
+                RefreshRows(); // 5.7-E2 — met à jour les classes révélées (player property "ec" du lobby de deck)
 
                 if (_localIsCaptain && _confirmed && !_published) PublishOrder();
 
@@ -237,7 +238,32 @@ namespace Nymora.Combat.View.PreCombatLobby
         private void RefreshRows()
         {
             for (int i = 0; i < _rowLabels.Count && i < _members.Count; i++)
-                _rowLabels[i].text = $"<color=#{ColorUtility.ToHtmlStringRGB(CombatUiKit.TextMuted)}>{i + 1}.</color>   {_members[i].label}";
+            {
+                // 5.7-E2 — affiche la CLASSE révélée à côté du nom (lue depuis la prop "ec" du lobby de deck).
+                string cls = ResolveClassForSub(_members[i].sub);
+                string clsTag = string.IsNullOrEmpty(cls)
+                    ? ""
+                    : $"   <color=#{ColorUtility.ToHtmlStringRGB(CombatUiKit.TextSecondary)}>{cls}</color>";
+                _rowLabels[i].text =
+                    $"<color=#{ColorUtility.ToHtmlStringRGB(CombatUiKit.TextMuted)}>{i + 1}.</color>   {_members[i].label}{clsTag}";
+            }
+        }
+
+        // 5.7-E2 — classe d'un joueur, lue depuis la player property "ec" publiée au lobby de deck (E1).
+        //   null tant que le joueur ne l'a pas publiée.
+        private string ResolveClassForSub(string sub)
+        {
+            var room = _client?.CurrentRoom;
+            if (room?.Players == null) return null;
+            foreach (var kv in room.Players)
+            {
+                var cp = kv.Value?.CustomProperties;
+                if (cp == null) continue;
+                if (cp.ContainsKey(NetworkDeckLobby.KeySub) && cp[NetworkDeckLobby.KeySub] is string s && s == sub
+                    && cp.ContainsKey(NetworkDeckLobby.KeyClass) && cp[NetworkDeckLobby.KeyClass] is string c)
+                    return c;
+            }
+            return null;
         }
 
         // ===== Helpers UI compacts =====

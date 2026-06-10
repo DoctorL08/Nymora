@@ -67,6 +67,8 @@ namespace Nymora.Combat.View.HUD
         private int _starter = -1; // slot GLOBAL du joueur qui commence (deterministe)
         private string _localPseudo;
         private string _opponentPseudo;
+        private bool _isTeamMatch;  // 5.7-E3 — 2v2/3v3 : on annonce l'ÉQUIPE qui commence (pas un joueur)
+        private int _startingTeam;  // 5.7-E3 — équipe qui démarre (0 = A = PILE, 1 = B = FACE), depuis CombatState
 
         // Instance courante (une seule a la fois). Evite les doublons si sceneLoaded refire.
         private static CoinFlipIntroView _current;
@@ -120,8 +122,12 @@ namespace Nymora.Combat.View.HUD
         {
             if (_played) return; // anti double-trigger (Awake safety + CallbackGameStarted)
 
-            // Belt-and-suspenders : ne joue qu'en casual reel (bootstrap casual present).
-            if (Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance == null) { Destroy(gameObject); return; }
+            // Joue en 1v1 Casual ET en ÉQUIPE 2v2/3v3 (réseau ou hot-seat). Sinon (spectateur/replay/
+            //   raw-play sans bootstrap) : skip. 5.7-E3 — avant, gate Casual-only -> aucune anim en 2v2.
+            bool hasCasual = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance != null;
+            bool hasNet2v2 = Nymora.Combat.Bootstrap.CombatBootstrapRanked2v2.Instance != null;
+            bool hasHotSeat = Nymora.Combat.Bootstrap.CombatBootstrap2v2.Instance != null;
+            if (!hasCasual && !hasNet2v2 && !hasHotSeat) { Destroy(gameObject); return; }
 
             var frame = game.Frames.Verified;
             if (frame == null || !frame.TryGetSingleton<CombatState>(out var state)) { Destroy(gameObject); return; }
@@ -134,6 +140,8 @@ namespace Nymora.Combat.View.HUD
             // "toi/adversaire". On resout le slot local plus tard, au moment de la revelation
             // (apres le spin), quand il est garanti pret (cf PlayIntro).
             _starter = state.ActivePlayerIndex;
+            _isTeamMatch = state.PlayerCount > 2; // 5.7-E3 — 2v2/3v3 -> annonce par ÉQUIPE
+            _startingTeam = state.StartingTeam;
 
             _localPseudo = string.IsNullOrEmpty(PlayerProfileBridge.LocalPseudo) ? "Toi" : PlayerProfileBridge.LocalPseudo;
             _opponentPseudo = string.IsNullOrEmpty(PlayerProfileBridge.OpponentPseudo) ? "Adversaire" : PlayerProfileBridge.OpponentPseudo;
@@ -238,35 +246,47 @@ namespace Nymora.Combat.View.HUD
                 yield return null;
             }
 
-            // --- Resolution du slot LOCAL au moment de la revelation ---
-            // En PvP, CombatBootstrapCasual.LocalPlayerSlot peut n'etre resolu qu'apres le
-            // GameStarted (AddPlayer reseau async). On attend ici qu'il soit pret (timeout 1s)
-            // avant de decider qui est "toi". Le spin (1.5s) laisse largement le temps.
-            float waited = 0f;
-            var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
-            while (bootstrap != null && bootstrap.LocalPlayerSlot < 0 && waited < 1.0f)
+            // --- Résolution "qui commence" (PILE = équipe/joueur 0, FACE = 1), deterministe ---
+            bool starterIsPile;
+            string resultLine;
+            if (_isTeamMatch)
             {
-                waited += Time.unscaledDeltaTime;
-                yield return null;
+                // 5.7-E3 — 2v2/3v3 : on annonce l'ÉQUIPE qui démarre (A = équipe 0, B = équipe 1).
+                starterIsPile = _startingTeam == 0;
+                int localTeam = Nymora.Combat.Bootstrap.CombatBootstrapRanked2v2.Instance != null
+                    ? Nymora.Core.Data.Match2v2Bridge.LocalTeam : -1; // hot-seat : pas de "ton équipe"
+                bool myTeamStarts = localTeam >= 0 && _startingTeam == localTeam;
+                string teamName = _startingTeam == 0 ? "ÉQUIPE A" : "ÉQUIPE B";
+                string teamColor = starterIsPile ? ColorHexPile : ColorHexFace;
+                string teamTag = myTeamStarts ? "  <size=60%>(ton équipe)</size>" : "";
+                resultLine = $"<color={teamColor}>{teamName}</color> commence !{teamTag}";
             }
-            int localSlot = LocalPlayerResolver.Resolve();
-            _winnerIsLocal = _starter == localSlot;
+            else
+            {
+                // 1v1 : attend le slot LOCAL (PvP async, CombatBootstrapCasual) puis "toi/adversaire".
+                float waited = 0f;
+                var bootstrap = Nymora.Combat.Bootstrap.CombatBootstrapCasual.Instance;
+                while (bootstrap != null && bootstrap.LocalPlayerSlot < 0 && waited < 1.0f)
+                {
+                    waited += Time.unscaledDeltaTime;
+                    yield return null;
+                }
+                int localSlot = LocalPlayerResolver.Resolve();
+                _winnerIsLocal = _starter == localSlot;
+                starterIsPile = _starter == 0;
+                string winnerPseudo = _winnerIsLocal ? _localPseudo : _opponentPseudo;
+                string colorHex = starterIsPile ? ColorHexPile : ColorHexFace;
+                string youTag = _winnerIsLocal ? "  <size=60%>(toi)</size>" : "";
+                resultLine = $"<color={colorHex}>{winnerPseudo}</color> commence !{youTag}";
+            }
 
-            // --- Atterrissage sur la face ABSOLUE du starter (PILE=P0, FACE=P1) ---
-            // Identique sur les 2 clients (le starter est un slot global deterministe).
-            bool starterIsPile = _starter == 0;
+            // --- Atterrissage sur la face du starter (identique sur tous les clients : deterministe) ---
             SetCoinFace(starterIsPile);
             _coinRect.localScale = Vector3.one;
-            // Petit "pop" d'atterrissage.
             yield return StartCoroutine(CoinPop());
 
             // --- Phase 2 : bandeau resultat ---
-            // La piece est identique partout ; seul le bandeau est "personnalise" : chaque client
-            // affiche le pseudo correct du starter + un tag "(toi)" si c'est le joueur local.
-            string winnerPseudo = _winnerIsLocal ? _localPseudo : _opponentPseudo;
-            string colorHex = starterIsPile ? ColorHexPile : ColorHexFace;
-            string youTag = _winnerIsLocal ? "  <size=60%>(toi)</size>" : "";
-            _resultText.text = $"<color={colorHex}>{winnerPseudo}</color> commence !{youTag}";
+            _resultText.text = resultLine;
             yield return new WaitForSecondsRealtime(ResultHold);
 
             // --- Phase 3 : fondu de sortie ---
