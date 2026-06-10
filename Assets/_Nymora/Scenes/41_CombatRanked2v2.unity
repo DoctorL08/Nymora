@@ -34514,6 +34514,7 @@ GameObject:
   - component: {fileID: 796018060}
   - component: {fileID: 796018059}
   - component: {fileID: 796018061}
+  - component: {fileID: 796018062}
   m_Layer: 0
   m_Name: QuantumDebugRunner
   m_TagString: Untagged
@@ -34625,6 +34626,45 @@ MonoBehaviour:
   Team0Player1: 2
   Team1Player0: 3
   Team1Player1: 4
+  VerboseLog: 1
+--- !u!114 &796018062
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 796018058}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 597efee6b7ffa3f49b8f6814ec09ce47, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  RuntimeConfig:
+    Seed: 0
+    Map:
+      Id:
+        Value: 426656525288901385
+    SimulationConfig:
+      Id:
+        Value: 2787071698916023345
+    SystemsConfig:
+      Id:
+        Value: 1785059092662275871
+    IsBotMatch: 1
+    TutorialPassiveBot: 0
+    TutorialFreezeTimer: 0
+    PlayerCount: 0
+    CombatMap:
+      Id:
+        Value: 499420832442994182
+  SessionConfig: {fileID: 11400000, guid: f2ad71dea21e38743ba513154f5914e6, type: 2}
+  TeamQuantumMap: {fileID: 11400000, guid: ea84731fe78950543ad0bfc26ce0f33e, type: 2}
+  CombatMap: {fileID: 11400000, guid: 393d156db2c7c824cad28f596c95f544, type: 2}
+  SpellCatalog: {fileID: 11400000, guid: c42fe7c9f9037c040bc3b27f45edb65f, type: 2}
+  ServerSettings: {fileID: 0}
+  FixedRegion: eu
+  AppVersion: 0.1.0
+  ConnectTimeoutSec: 30
   VerboseLog: 1
 --- !u!1 &885939971
 GameObject:
