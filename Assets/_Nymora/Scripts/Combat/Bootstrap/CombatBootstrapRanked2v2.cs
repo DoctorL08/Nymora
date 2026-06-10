@@ -286,6 +286,10 @@ namespace Nymora.Combat.Bootstrap
                 if (chosen != null)
                 {
                     DeckBridge.SetPendingDeck(chosen.ClassId, chosen.SpellIds, chosen.Name);
+                    // E1 fix — le HUD a appliqué le deck du HUB en Awake (avant ce lobby) ; on RÉ-APPLIQUE
+                    //   le deck choisi pour que la barre de sorts affiche les 6 sorts du lobby (comme le 1v1
+                    //   Casual après son lobby). Sinon la barre reste sur le deck sélectionné au hub.
+                    Nymora.Combat.View.HUD.CombatHUDController.Instance?.ReapplyDeckFromBridge();
                     Log($"Lobby de deck : deck choisi='{chosen.Name}' (class={chosen.ClassId}).");
                 }
             }
