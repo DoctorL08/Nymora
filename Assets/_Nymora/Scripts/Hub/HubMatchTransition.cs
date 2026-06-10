@@ -23,6 +23,8 @@ namespace Nymora.Hub
         [SerializeField] private string _combatSceneName = "33_CombatCasual";
         // 6.2.b — scene chargee pour un match CLASSE (ranked 1v1).
         [SerializeField] private string _rankedSceneName = "40_CombatRanked1v1";
+        // 5.7 — scene chargee pour un match CLASSE 2v2 (reseau).
+        [SerializeField] private string _ranked2v2SceneName = "41_CombatRanked2v2";
         [SerializeField, Range(0f, 10f)] private float _transitionDelaySeconds = 2f;
         [SerializeField] private bool _logVerbose = true;
 
@@ -34,6 +36,7 @@ namespace Nymora.Hub
             {
                 HubChatClient.Instance.OnMatchReady += HandleMatchReady;
                 HubChatClient.Instance.OnRankedMatchFound += HandleRankedMatchFound;
+                HubChatClient.Instance.OnRanked2v2MatchFound += HandleRanked2v2MatchFound;
             }
         }
 
@@ -43,6 +46,7 @@ namespace Nymora.Hub
             {
                 HubChatClient.Instance.OnMatchReady -= HandleMatchReady;
                 HubChatClient.Instance.OnRankedMatchFound -= HandleRankedMatchFound;
+                HubChatClient.Instance.OnRanked2v2MatchFound -= HandleRanked2v2MatchFound;
             }
         }
 
@@ -53,6 +57,72 @@ namespace Nymora.Hub
         // Matchmaking ranked (6.2) -> scene ranked, classe (impacte le MMR en 6.3).
         private void HandleRankedMatchFound(string matchId, string opponentSub, string opponentDisplayName)
             => BeginMatchTransition(matchId, opponentSub, opponentDisplayName, ranked: true, _rankedSceneName);
+
+        // 5.7 (sous-brique A) — Matchmaking ranked 2v2 -> remplit Match2v2Bridge (matchId, mon
+        //   équipe, les 4 joueurs) + DeckBridge, puis charge la scène réseau 41. Pas de lobby
+        //   pré-combat ici (sous-brique C) : le bootstrap réseau 2v2 (B) lira DeckBridge + le bridge.
+        private async void HandleRanked2v2MatchFound(string matchId, int myTeam, HubChatClient.RankedTeamPlayer[] players)
+        {
+            if (_transitionInProgress)
+            {
+                if (_logVerbose) Debug.LogWarning($"[HubMatchTransition] Transition déjà en cours, match 2v2 ignoré (matchId={matchId})");
+                return;
+            }
+            _transitionInProgress = true;
+            Nymora.Core.Audio.NymoraAudioManager.Instance?.PlaySfx(Nymora.Core.Audio.SoundId.MatchFound);
+
+            // Vérif deck équipé (même garde que le 1v1 : sans deck, le bootstrap spawnerait injouable).
+            var dbp = HubDeckBuilderPanel.Instance;
+            if (dbp == null)
+            {
+                Debug.LogError($"[HubMatchTransition] HubDeckBuilderPanel.Instance null — match 2v2 {matchId} ANNULE.");
+                _transitionInProgress = false;
+                return;
+            }
+            string selectedClass = SelectedClassPreferences.Get();
+            if (string.IsNullOrEmpty(selectedClass)) selectedClass = "Soulrender";
+            try
+            {
+                await dbp.EnsureClassLoadedAsync(selectedClass);
+            }
+            catch (System.Exception ex)
+            {
+                Debug.LogError($"[HubMatchTransition] EnsureClassLoadedAsync({selectedClass}) échec : {ex.Message} — match 2v2 {matchId} ANNULE.");
+                _transitionInProgress = false;
+                return;
+            }
+            if (dbp.MyDecks == null || dbp.MyDecks.Count == 0 || dbp.SelectedDeck == null)
+            {
+                Debug.LogError($"[HubMatchTransition] Aucun deck '{selectedClass}' équipé — match 2v2 {matchId} ANNULE côté local.");
+                _transitionInProgress = false;
+                return;
+            }
+            var deck = dbp.SelectedDeck;
+            DeckBridge.SetPendingDeck(deck.classId, deck.spellIds, deck.name);
+
+            // Remplit le bridge 2v2 (lu par le bootstrap réseau, sous-brique B).
+            var chat = HubChatClient.Instance;
+            var bridgePlayers = new Match2v2Bridge.Player[players != null ? players.Length : 0];
+            for (int i = 0; i < bridgePlayers.Length; i++)
+            {
+                bridgePlayers[i] = new Match2v2Bridge.Player
+                {
+                    Sub = players[i].sub,
+                    Email = players[i].email,
+                    DisplayName = players[i].displayName,
+                    Team = players[i].team,
+                };
+            }
+            Match2v2Bridge.SetPendingMatch(matchId, myTeam, bridgePlayers, chat?.MyUserId, chat?.MyEmail);
+            // 1v1 MatchBridge marqué ranked pour réutiliser le settle existant côté retour hub (le
+            //   settle 2v2 dédié = sous-brique D ; ici on garde au moins le flag classé).
+            MatchBridge.SetRanked(true);
+
+            if (_logVerbose) Debug.Log($"[HubMatchTransition] Match2v2Bridge set matchId={matchId} myTeam={myTeam} " +
+                                       $"players={bridgePlayers.Length} deck={deck.classId}/'{deck.name}'. Transition vers '{_ranked2v2SceneName}'.");
+
+            await TransitionAsync(_ranked2v2SceneName);
+        }
 
         private async void BeginMatchTransition(string matchId, string opponentSub, string opponentDisplayName,
                                                 bool ranked, string sceneName)
