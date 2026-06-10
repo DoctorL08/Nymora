@@ -97,9 +97,13 @@ Décision Lorenzo : **solo + duo premade fusionnables**, objectif **2v2 réseau 
 
 - ⏳ **5.7 client (reste)** — sous-briques, chacune testée à 2-4 clients :
   - ✅ **A — code-complet** (commits `d35ab0a`/`fd73492`/`8b0e2bd`) : `Match2v2Bridge` + `HubChatClient` (parse 2v2 aplati + events + `SendEnqueueRanked2v2`/`Dequeue`) + `HubMatchTransition` (remplit le bridge → scène 41) + **file 2v2 dans le menu moderne** (`HubMenuShell` : carte « Ranked 2v2 » activée, écran matchmaking mode `_mmMode`). Backend payload aplati redéployé. ⚠️ Pas encore testé en Play. ⚠️ Charger la scène 41 lance ENCORE le **hot-seat** (bootstrap réseau = B) → A valide le round-trip matchmaking, pas le combat réseau.
-  - **B** (NEXT) : `CombatBootstrapRanked2v2` réseau (room Photon MaxPlayers=4, AddPlayer avec TeamId, poll PlayerRef) — calqué sur `CombatBootstrapCasual` ; lit `Match2v2Bridge`. Remplace le hot-seat dans la scène 41.
-  - **C** : lobby pré-combat réseau 4 joueurs + vote capitaine (le panneau 5.6 passe en réseau via player properties).
-  - **D** : settle ELO perso + MMR moyen 2v2.
+  - ✅ **B — code-complet** (commits `a1d5d1c`/`990e873`) : `CombatBootstrapRanked2v2` (room Photon MaxPlayers=4, AddPlayer local avec TeamId/TeamOrder + deck, poll PlayerRef ; calqué Casual ; s'active si `Match2v2Bridge` rempli). Hot-seat `CombatBootstrap2v2` skip si match appairé. `LocalPlayerResolver`/`CombatInputController`/`CombatHUDController` reconnaissent le réseau 2v2 (1 combattant local/client). **Écran fin de match team-aware** (VICTOIRE/DÉFAITE par équipe via `TeamHelper`). Editor tool `Nymora > Setup > Patch Ranked 2v2 Bootstrap`. ⚠️ Pas encore testé.
+    - ⚠️⚠️ **PRÉREQUIS TEST** : lancer **`Nymora > Setup > Patch Ranked 2v2 Bootstrap`** scène 41 ouverte **+ sauver la scène** (ajoute le bootstrap réseau). Sinon les joueurs appairés chargent le hot-seat (combat non connecté).
+    - Limitations attendues : **pas de vote capitaine** (ordre par défaut = rang roster) ni **d'ELO** (MMR inchangé) ; **classes-uniques non imposées** (les 4 testeurs coordonnent : 1 classe différente chacun).
+  - ⏳ **C** (DIFFÉRÉ) : lobby pré-combat réseau 4 joueurs + vote capitaine (le panneau 5.6 → réseau via player properties). Non bloquant (ordre par défaut OK).
+  - ⏳ **D** (DIFFÉRÉ) : settle ELO perso + MMR moyen 2v2 (backend 4-way + report). Non bloquant pour jouer.
+
+**Statut « 2v2 jouable » : A+B livrés → un vrai match 2v2 réseau appairé est jouable de bout en bout (matchmaking → combat 4 joueurs → victoire/défaite par équipe).** Reste C (ordre voté) + D (ELO) en polish méta.
 
 > ⚠️ Repo backend : **clone canonique = `C:\Users\Lorenzo\Documents\nymora-backend`** (à jour). Le `Unity\Nymora\backend` est un **clone PÉRIMÉ** à ignorer (supprimable).
 
