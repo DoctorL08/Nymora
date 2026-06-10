@@ -100,6 +100,13 @@ namespace Nymora.Hub
             var deck = dbp.SelectedDeck;
             DeckBridge.SetPendingDeck(deck.classId, deck.spellIds, deck.name);
 
+            // 5.7-E1 — liste des decks de la classe locale pour le picker du lobby de deck réseau 2v2
+            //   (NetworkDeckLobby). MMR non affiché dans ce lobby (focus = révélation des classes).
+            var lobbyDecks = new System.Collections.Generic.List<PreCombatDeckInfo>(dbp.MyDecks.Count);
+            foreach (var d in dbp.MyDecks)
+                lobbyDecks.Add(new PreCombatDeckInfo(d.id, d.classId, d.name, d.spellIds));
+            PreCombatBridge.Set(lobbyDecks, deck.id, 0);
+
             // Remplit le bridge 2v2 (lu par le bootstrap réseau, sous-brique B).
             var chat = HubChatClient.Instance;
             var bridgePlayers = new Match2v2Bridge.Player[players != null ? players.Length : 0];

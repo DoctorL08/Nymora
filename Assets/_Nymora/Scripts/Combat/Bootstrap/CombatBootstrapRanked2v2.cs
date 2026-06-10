@@ -163,7 +163,13 @@ namespace Nymora.Combat.Bootstrap
             Client = await MatchmakingExtensions.ConnectToRoomAsync(matchmakingArgs);
             Log($"Room '{matchId}' connectée. ActorNumber={Client.LocalPlayer.ActorNumber} IsMaster={Client.LocalPlayer.IsMasterClient}");
 
-            // 5.7-C — Lobby CAPITAINE : le capitaine de chaque équipe ordonne son équipe (player
+            // 5.7-E1 — Étape 1 : lobby de DECK (4 joueurs, classes révélées). Chaque joueur choisit son
+            //   deck ; met à jour DeckBridge AVANT l'AddPlayer. La classe publiée (player property "ec")
+            //   est relue par le vote capitaine (E2). Skip si PreCombatBridge vide (lancement direct).
+            await RunDeckLobbyAsync(localTeam, ct);
+            if (ct.IsCancellationRequested) return;
+
+            // 5.7-C — Étape 2 : Lobby CAPITAINE : le capitaine de chaque équipe ordonne son équipe (player
             //   property Photon "to"), chaque client en déduit son rang AVANT AddPlayer (le TeamOrder
             //   fige TurnOrder côté sim). Tourne ICI (room connectée, session Quantum PAS démarrée ->
             //   le lobby pompe Client.Service() lui-même). Anti-hang interne -> rang par défaut.
@@ -255,6 +261,44 @@ namespace Nymora.Combat.Bootstrap
                 foreach (var p in players)
                     if (p.Sub == mySub && !string.IsNullOrEmpty(p.DisplayName)) return p.DisplayName;
             return Match2v2Bridge.LocalEmail ?? Match2v2Bridge.LocalSub ?? "Joueur";
+        }
+
+        // 5.7-E1 — Lobby de deck : instancie NetworkDeckLobby (View, 4 joueurs), résout le deck choisi
+        //   et met à jour DeckBridge avant l'AddPlayer. Skip si PreCombatBridge vide. Best-effort.
+        private async Task RunDeckLobbyAsync(int localTeam, CancellationToken ct)
+        {
+            if (!PreCombatBridge.HasData)
+            {
+                Log("PreCombatBridge vide -> lobby de deck skip (deck = DeckBridge).");
+                return;
+            }
+            var roster = Match2v2Bridge.Players;
+            string localSub = Match2v2Bridge.LocalSub;
+            string localClass = DeckBridge.HasPending ? DeckBridge.PendingClassId : null;
+            if (roster == null || string.IsNullOrEmpty(localSub) || Client == null) return;
+
+            var go = new GameObject("NetworkDeckLobby");
+            var lobby = go.AddComponent<Nymora.Combat.View.PreCombatLobby.NetworkDeckLobby>();
+            try
+            {
+                var chosen = await lobby.RunAsync(Client, roster, localTeam, localSub, localClass,
+                    PreCombatBridge.AvailableDecks, PreCombatBridge.DefaultDeckId, ct);
+                if (chosen != null)
+                {
+                    DeckBridge.SetPendingDeck(chosen.ClassId, chosen.SpellIds, chosen.Name);
+                    Log($"Lobby de deck : deck choisi='{chosen.Name}' (class={chosen.ClassId}).");
+                }
+            }
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex)
+            {
+                Debug.LogWarning($"[CombatBootstrapRanked2v2] Lobby de deck échec : {ex.Message} -> deck DeckBridge inchangé.");
+                if (go != null) Destroy(go);
+            }
+            finally
+            {
+                PreCombatBridge.Clear();
+            }
         }
 
         // 5.7-C — Lobby capitaine : instancie NetworkTeamOrderLobby (View), lui passe le client Photon
