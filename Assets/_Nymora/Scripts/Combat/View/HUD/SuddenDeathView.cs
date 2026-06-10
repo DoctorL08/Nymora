@@ -115,8 +115,8 @@ namespace Nymora.Combat.View.HUD
                 _redFilter.enabled = active;
                 if (active)
                 {
-                    // Pulsation douce (0.08 -> 0.18 alpha).
-                    float a = 0.13f + 0.05f * Mathf.Sin(Time.unscaledTime * 2.2f);
+                    // Pulsation douce, plus discrète (0.05 -> 0.12 alpha) — moins rougeâtre (retour Lorenzo).
+                    float a = 0.085f + 0.035f * Mathf.Sin(Time.unscaledTime * 2.2f);
                     var col = _redFilter.color; col.a = a; _redFilter.color = col;
                 }
             }
