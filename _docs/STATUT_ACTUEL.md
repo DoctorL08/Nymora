@@ -5,9 +5,11 @@
 
 ---
 
-## ✅ Phase 2 — MORT SUBITE livrée (code, 11 juin) — CombatRulesVersion **161**
+## ✅ Phase 2 — MORT SUBITE livrée + VALIDÉE 1v1 (11 juin) — CombatRulesVersion **162**
 
-Codée pendant que le 2v2 attend sa session de validation (indépendante du réseau, se valide en 1v1). Commit jeu `c…` (mort subite). Dérivée de `TurnNumber` (aucun champ `[Networked]` → pas de régén). **Valeurs verrouillées Lorenzo** : avertissement rounds **23-24** → mort subite **round 25**. À l'entrée (round 25) : **purge tout le terrain** (obstacles + brume/pièges/voiles + terrains + leurres, garde les positions) + ressources maxxées. Round ≥25 : **poison d'arène +100/round** (100, 200, 300… vrais dégâts) + chaque joueur boosté **12 PA / 4 PM + ressources max**. View : filtre rougeâtre + bandeau (`SuddenDeathView`). **À valider en jeu (1v1) + rebuild standalone.** Fichiers : `SuddenDeath.cs` (sim), `TurnSystem.cs` (3 injections `EnterTurnStart`), `GameVersion.cs` (161), `SuddenDeathView.cs`.
+Codée pendant que le 2v2 attend sa session de validation (indépendante du réseau, se valide en 1v1). Dérivée de `TurnNumber` (aucun champ `[Networked]` → pas de régén). **Valeurs verrouillées Lorenzo** : avertissement rounds **23-24** → mort subite **round 25**. À l'entrée (round 25) : **purge tout le terrain** (obstacles + brume/pièges/voiles + terrains, garde les positions) + ressources maxxées. Round ≥25 : **poison d'arène +100/round** (100, 200, 300… vrais dégâts) + chaque joueur boosté **12 PA / 4 PM + ressources max**. View : filtre rougeâtre + bandeau (`SuddenDeathView`). Fichiers : `SuddenDeath.cs` (sim), `TurnSystem.cs` (3 injections `EnterTurnStart`), `GameVersion.cs` (162), `SuddenDeathView.cs`.
+
+**✅ Correctif Ghostra (v162, validé en jeu 11 juin)** : la purge effaçait les leurres Ghostra ET forçait `Resource=max` → désync (compteur 3 sans leurres réels) → l'ulti **Exécution Spectrale** (exige 3 leurres ACTIFS) restait rejetée. Fix : les leurres ne sont plus purgés mais **téléportés dans un coin** (`RelocateGhostraDecoysToCorner`, balayage déterministe depuis (0,0), cases libres ; garde Kind/HP/durée) → Ghostra garde le compte pour l'ulti mais perd l'emprise plateau comme les autres classes perdent leur terrain ; Ghostra **exclue du « max ressource »** (`OnActivate` + `ApplyBoost`) car sa ressource = nombre de leurres (auto-sync). **Décision : on ne redonne PAS 3 leurres d'office** (juste préserver l'existant). **Mort subite 1v1 = VALIDÉE.**
 
 ---
 
@@ -48,7 +50,7 @@ Découpage : E1 lobby deck 4 joueurs → E2 classes dans le panneau capitaine �
 
 - 🔧 **Fix E1 (11 juin, commit `5760845`) — testé à 4 testeurs → bug → corrigé** : le deck choisi dans le lobby 2v2 ne s'appliquait pas à la barre de sorts (le HUD applique le deck du HUB en `Awake`, AVANT le lobby) → ajout de `CombatHUDController.ReapplyDeckFromBridge()` après le choix (comme le 1v1 Casual). **À RE-TESTER** : le deck choisi au lobby 2v2 = celui en barre au combat.
 
-> **Fin de session 11 juin** : journée énorme — 2v2 réseau complet (D ELO/MMR backend déployé prod + C vote capitaine + E pré-combat séquencé), **Phase 2 Mort subite (v161)**, fix deck E1. ClientErrorReporter = déjà existant/câblé (doublon annulé). 2 sessions de validation en attente (2v2 à 4 testeurs + mort subite 1v1). Tout poussé sur GitHub.
+> **Fin de session 11 juin** : journée énorme — 2v2 réseau complet (D ELO/MMR backend déployé prod + C vote capitaine + E pré-combat séquencé), **Phase 2 Mort subite (v161→v162, VALIDÉE 1v1 + fix Ghostra leurres-en-coin)**, fix deck E1. ClientErrorReporter = déjà existant/câblé (doublon annulé). **1 session de validation en attente : 2v2 à 4 testeurs** (mort subite 1v1 = validée). Tout poussé sur GitHub.
 - Puis **5.8 polish**, puis **3v3** (réutilise 5.1→5.3 + 5.6 générique).
 - **Push GitHub uniquement quand Lorenzo le dit** (côté jeu ; le backend est déjà poussé/déployé par Claude).
 

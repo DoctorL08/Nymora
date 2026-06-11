@@ -7,8 +7,10 @@ namespace Quantum
     /// [Networked] ajouté (pas de régén prefab/scène). Paliers (décision Lorenzo 11 juin) :
     ///   - Round 23-24 : AVERTISSEMENT (la View affiche un bandeau, aucun effet gameplay).
     ///   - Round 25 (ENTRÉE, 1×) : purge TOUT le terrain (piliers/murs/failles, brume, pièges, voiles,
-    ///     terrains Soulrender/Necram, leurres) en GARDANT les positions des combattants + ressources
-    ///     de classe maxxées pour les deux équipes.
+    ///     terrains Soulrender/Necram) en GARDANT les positions des combattants + ressources de classe
+    ///     maxxées pour les deux équipes. EXCEPTION Ghostra : ses leurres ne sont PAS purgés (= sa
+    ///     ressource, requise pour l'ulti) mais TÉLÉPORTÉS dans un coin ; et sa ressource n'est pas
+    ///     "maxxée" (elle reflète le nombre de leurres, auto-synchronisé).
     ///   - Round >= 25 : POISON D'ARÈNE croissant (100, 200, 300… VRAIS dégâts = HP direct, ignore
     ///     bouclier/réduction) à tous les vivants au début du round ; et chaque joueur démarre son tour
     ///     à 12 PA / 4 PM + ressources de classe au max (ApplyBoost, appelé au reset du joueur actif).
@@ -38,15 +40,20 @@ namespace Quantum
             PurgeObstacles(f);
             PurgeFog(f);
             PurgeGridTerrain(f);
-            PurgeDecoys(f);
+            RelocateGhostraDecoysToCorner(f); // PAS de purge : les leurres = ressource Ghostra (ulti) -> exil en coin.
 
             var filter = f.Filter<Combatant>();
             while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
             {
                 if (c->HP <= 0) continue;
+                // Ghostra exclu : sa "ressource" = le NOMBRE de leurres actifs (auto-synchronisé via
+                //   DecoyHelpers.CountActive). Forcer GetMaxResource ici la désynchroniserait (compteur
+                //   à 3 sans 3 leurres réels) et son ulti Exécution Spectrale — qui exige 3 leurres
+                //   ACTIFS — resterait injouable. On laisse ses leurres préservés gouverner sa ressource.
+                if (c->Class == NymoraClass.Ghostra) continue;
                 c->Resource = CombatantStats.GetMaxResource(c->Class);
             }
-            Log.Info("[SuddenDeath] MORT SUBITE activée (round 25) : terrain purgé, ressources maxxées.");
+            Log.Info("[SuddenDeath] MORT SUBITE activée (round 25) : terrain purgé, leurres Ghostra exilés en coin, ressources maxxées.");
         }
 
         /// <summary>Poison d'arène : VRAIS dégâts (HP direct, ignore bouclier/réduction) à tous les vivants.</summary>
@@ -69,7 +76,10 @@ namespace Quantum
         {
             c->PA = BoostPA;
             c->PM = BoostPM;
-            c->Resource = CombatantStats.GetMaxResource(c->Class);
+            // Ghostra exclu (cf OnActivate) : sa ressource = nombre de leurres (auto-sync), pas un
+            //   compteur à maxer. On ne lui applique donc que le boost PA/PM.
+            if (c->Class != NymoraClass.Ghostra)
+                c->Resource = CombatantStats.GetMaxResource(c->Class);
         }
 
         // ===== Purge terrain (les combattants GARDENT leur position) =====
@@ -107,13 +117,56 @@ namespace Quantum
             }
         }
 
-        private static void PurgeDecoys(Frame f)
+        private static void RelocateGhostraDecoysToCorner(Frame f)
         {
-            // Leurres Ghostra : stockés dans Combatant.Decoys[] (n'occupent pas la grille) -> clear Kind.
+            // Mort subite : on NE détruit PAS les leurres Ghostra (décision Lorenzo 11 juin). Ce sont sa
+            //   RESSOURCE : l'ulti Exécution Spectrale exige 3 leurres ACTIFS, donc les purger la privait
+            //   injustement de sa signature. À la place on les TÉLÉPORTE dans un coin de la map pour
+            //   retirer l'emprise de plateau (un leurre bloque la vue ennemie + le mouvement sur sa case),
+            //   comme les autres classes perdent murs/pièges/terrains. Kind/HP/SpawnedOnTurn préservés :
+            //   seules les positions changent. Les obstacles sont déjà purgés -> seuls les combattants et
+            //   les leurres déjà replacés bloquent une case de coin.
+            var grid = f.Unsafe.GetPointerSingleton<GridSingleton>();
+            int w = grid->Width;
+            int h = grid->Height;
+
             var filter = f.Filter<Combatant>();
             while (filter.NextUnsafe(out EntityRef _, out Combatant* c))
+            {
+                if (c->Class != NymoraClass.Ghostra) continue;
+                if (c->HP <= 0) continue; // un Ghostra mort : ses leurres ne bloquent déjà rien (HasAnyDecoyAt skip les morts).
                 for (int i = 0; i < 3; i++)
-                    c->Decoys[i].Kind = DecoyKind.None;
+                {
+                    if (c->Decoys[i].Kind == DecoyKind.None) continue;
+                    if (TryFindCornerTile(f, w, h, out int cx, out int cy))
+                    {
+                        c->Decoys[i].PosX = cx;
+                        c->Decoys[i].PosY = cy;
+                        Log.Info($"[SuddenDeath] leurre P{c->PlayerIndex} slot {i} exilé en coin ({cx},{cy})");
+                    }
+                    // Aucune case libre (map saturée, quasi impossible) : le leurre reste où il est.
+                }
+            }
+        }
+
+        /// <summary>
+        /// Première case marchable ET libre (ni combattant ni leurre déjà replacé) en partant du coin
+        /// (0,0), balayage ligne par ligne. Robuste aux maps irrégulières (cases carvées = non walkable,
+        /// sautées). Déterministe -> sûr en Quantum.
+        /// </summary>
+        private static bool TryFindCornerTile(Frame f, int w, int h, out int outX, out int outY)
+        {
+            for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                if (!GridHelpers.IsWalkable(f, x, y)) continue;
+                if (GridHelpers.GetOccupant(f, x, y) != EntityRef.None) continue;
+                if (DecoyHelpers.HasAnyDecoyAt(f, x, y)) continue;
+                outX = x; outY = y;
+                return true;
+            }
+            outX = -1; outY = -1;
+            return false;
         }
     }
 }

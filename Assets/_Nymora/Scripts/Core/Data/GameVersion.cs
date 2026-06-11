@@ -442,7 +442,12 @@ namespace Nymora.Core.Data
         //   gardant les positions + ressources maxxées), poison d'arène +100/round (vrais dégâts), et
         //   chaque joueur boosté à 12 PA / 4 PM + ressources max pendant la mort subite. Hook
         //   TurnSystem.EnterTurnStart + helper SuddenDeath.
-        public const int CombatRulesVersion = 161;
+        // v162 (11 juin 2026) — Mort subite, correctif Ghostra : la purge round 25 effaçait ses leurres
+        //   (= sa ressource) ET forçait Resource=max, ce qui désynchronisait le compteur et rejetait son
+        //   ulti Exécution Spectrale (exige 3 leurres ACTIFS). Fix : leurres NON purgés mais TÉLÉPORTÉS
+        //   dans un coin (retire l'emprise plateau, garde le compte pour l'ulti) ; Ghostra exclue du
+        //   "max ressource" (OnActivate + ApplyBoost) car sa ressource = nombre de leurres (auto-sync).
+        public const int CombatRulesVersion = 162;
 
         /// <summary>Version de la Bible (design doc) que ce code implemente.</summary>
         public const string BibleVersion = "V7.1";
