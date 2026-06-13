@@ -5,6 +5,45 @@
 
 ---
 
+## 🎨 Refonte graphique GHOSTRA (13 juin) — livrée, **pur View, pas de bump CombatRulesVersion**
+
+1re refonte graphique (Ghostra uniquement). Nouveau modèle visuel : **1 skin de base unique** (idle/walk/attack/cast/hurt/death × SE/NE, miroir NW/SW) joué à TOUS les stages + **2 couches d'aura « sandwich »** (back derrière / front devant) allumées aux stages 1 et 2 (1 aura par stage, stage 2 remplace stage 1). Le stage reste piloté par les leurres actifs (0→s0, 1-2→s1, 3→s2).
+
+**Fait :**
+- `CombatantView` : couches d'aura via **`AuraLoopPlayer`** (boucle de `Sprite[]` SANS Animator — un Animator imbriqué sous l'Animator de base cassait l'idle). Garde anti-reset du controller de base. `idle` en **ping-pong 12 frames** (aller-retour), vitesse state **1.0** (= cadence pleine 8 fps comme le hub).
+- **Leurres** (`DecoyView`) : reprennent base + sandwich d'aura **lus sur la `CombatantView` de la vraie Ghostra** (via `CombatantRenderer.GetCombatantView`) → indiscernables, zéro câblage de scène.
+- **Hub** : avatar Ghostra repointé sur le skin de base refonte + **idle ping-pong** aussi (`Ghostra.asset` IdleFrames/WalkFrames).
+- Editor tool **`Nymora > Setup > Build Ghostra Refonte`** : importe/slice (PPU 96, pivot 0.5/0.1) les 20 PNG de `Desktop/Nymora_Graph/Ghostra/Ghostra_refonte/PNG`, génère clips + 2 controllers base (reconstruits **en place**, guid préservé) + bind prefab + retarget hub. Idempotent.
+
+**⏳ RELIQUAT (next session) :**
+- 🐞 **Leurres reprennent PARFOIS l'ancien skin Ghostra** : le fallback sérialisé de `DecoyView` (`_decoyIdleController` etc.) pointe encore les vieux `GhostraStage0/1/2_*` ; utilisé quand la `CombatantView` parente n'est pas encore résolue (timing spawn) → flash d'ancien skin. Fix : repointer le fallback sur `GhostraBase_*` (via les 4 scènes ou la lecture-vue rendue obligatoire), OU virer le fallback.
+- 🐞 **Prefab Ghostra : 6 slots Stage Controller affichés « Missing »** dans l'inspecteur alors que `GhostraBase_SE/NE` sont **valides sur disque** (guid OK, clips OK, pas de collision). Base de données Unity restée stale après le churn delete/recreate des 1ers runs. Workaround : Reimport du dossier `Animations/Ghostra/Refonte` + drag manuel des 2 controllers dans les 6 slots, OU régénérer. Le tool reconstruit désormais en place (ne devrait plus arriver).
+- 🧹 Cleanup possible : anciens `GhostraAuraStage*_*.controller` + `.anim` d'aura (Refonte/) orphelins. ⚠️ NE PAS supprimer `GhostraStage0/1/2_*` (fallback DecoyView des scènes).
+
+---
+
+## 🔜 NEXT — Phase 4 : migration hub Fusion → WebSocket (plan validé 11 juin)
+
+**Choisi pendant que le 2v2 réseau attend sa session de validation à 4 testeurs.** Plan approuvé sur le principe (session stoppée avant de lancer H1 → **reprendre par H1**).
+
+**But** : sortir mouvement + présence du hub de Photon Fusion → relayer sur le backend WS OVH (qui porte déjà chat/matchmaking/challenges/spectate/ONLINE_COUNT). **Libère l'offre Fusion Free 100 CCU « one-app » → réaffectée à Quantum (combat 20 → 100 CCU).** Le hub n'étant pas déterministe, c'est le même modèle Shared Mode (chaque client broadcaste sa position, les autres interpolent) avec le transport WS au lieu de Fusion — l'interp remote est déjà maison (`HubAvatar.Render`).
+
+**Scope Fusion = 2 gros fichiers** : `HubAvatar.cs` (NetworkBehaviour + ~9 `[Networked]` + RpcPlayEmote) et `HubBootstrap.cs` (NetworkRunner Shared). 9 autres fichiers = touches légères. Pur réseau hub → **AUCUN bump CombatRulesVersion**.
+
+**Découpage (brique par brique) :**
+- **H1 backend** : registre présence in-memory + relais position. Messages `HUB_ENTER`/`HUB_MOVE`(throttlé)/`HUB_EMOTE`/`HUB_STATE`/`HUB_LEAVE` → `HUB_ROSTER` + `HUB_PEER_JOINED/MOVE/EMOTE/STATE/LEFT`. Additif sur `nymora-backend/src/websocket/wsServer.ts`. Reco : in-memory (1 node), pas Redis.
+- **H2 client** : `HubPresenceClient` (émet/parse).
+- **H3 client** : `HubAvatar` → MonoBehaviour pur (retire Fusion), distants pilotés par peer events.
+- **H4 client** : `HubBootstrap` sans NetworkRunner ; nettoie les 9 fichiers ; retire Fusion de l'asmdef `Nymora.Hub` ; régén prefab avatar.
+- **H5 backend+client** : filet matchmaking (gate « max matchs concurrents » + file) — *à confirmer : Lorenzo voulait peut-être le sortir du lot et faire H1→H4+H6 d'abord.*
+- **H6 config** : retirer Fusion du hub / réaffecter l'app Photon → **vérifier 100 CCU sur Quantum** + cleanup.
+
+Cf mémoire `project_phase4_hub_ws_migration`.
+
+> ⏳ **Reliquat de tests à valider (rappel)** : spectateur item B (PA/PM/abandon/prévisu/pièges masqués) + deck ranked item I (admin « decks les + joués » se remplit). Et la **grosse session 2v2 à 4 testeurs** (briques C/D/E réseau) reste en attente.
+
+---
+
 ## ✅ Phase 2 — MORT SUBITE livrée + VALIDÉE 1v1 (11 juin) — CombatRulesVersion **162**
 
 Codée pendant que le 2v2 attend sa session de validation (indépendante du réseau, se valide en 1v1). Dérivée de `TurnNumber` (aucun champ `[Networked]` → pas de régén). **Valeurs verrouillées Lorenzo** : avertissement rounds **23-24** → mort subite **round 25**. À l'entrée (round 25) : **purge tout le terrain** (obstacles + brume/pièges/voiles + terrains, garde les positions) + ressources maxxées. Round ≥25 : **poison d'arène +100/round** (100, 200, 300… vrais dégâts) + chaque joueur boosté **12 PA / 4 PM + ressources max**. View : filtre rougeâtre + bandeau (`SuddenDeathView`). Fichiers : `SuddenDeath.cs` (sim), `TurnSystem.cs` (3 injections `EnterTurnStart`), `GameVersion.cs` (162), `SuddenDeathView.cs`.

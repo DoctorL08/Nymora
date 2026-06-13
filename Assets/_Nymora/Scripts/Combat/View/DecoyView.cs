@@ -347,7 +347,12 @@ namespace Nymora.Combat.View
                     // suit visuellement le stage du parent (cohenrence indiscernable Bible).
                     // ownerSkin != null -> le leurre utilise les controllers du SKIN equipe.
                     //   useNE : facing nord -> controller NE (sinon SE), pour le facing parfait des attaques.
-                    SyncStageFromGhostra(go, ghostra, ownerSkin, _decoyUseNE.TryGetValue(key, out var dUseNE) && dUseNE);
+                    //   Refonte Ghostra : lit aussi le sandwich d'aura sur la vue parente (decoySr/flip/tint
+                    //   pour placer + teinter les 2 couches comme le corps du leurre).
+                    bool decoyFlip = decoySr != null && decoySr.flipX;
+                    SyncStageFromGhostra(go, ghostra, ghostraEntity, ownerSkin,
+                        _decoyUseNE.TryGetValue(key, out var dUseNE) && dUseNE,
+                        decoyFlip, localOwnsGhostra, decoySr, ghostraMat);
 
                     // PATCH #6/#7 — familier colle au leurre (meme pet que la Ghostra), teinte
                     // comme le leurre. Indiscernable cote adverse (la vraie Ghostra a aussi le sien).
@@ -444,7 +449,8 @@ namespace Nymora.Combat.View
         /// Fallback descendant si le controller stage demande est null (stage 2 -> stage 1 ->
         /// stage 0 / idle).
         /// </summary>
-        private void SyncStageFromGhostra(GameObject decoyGo, Combatant ghostra, CosmeticSkinDefinition skin, bool useNE)
+        private void SyncStageFromGhostra(GameObject decoyGo, Combatant ghostra, EntityRef ghostraEntity,
+            CosmeticSkinDefinition skin, bool useNE, bool flipX, bool localOwns, SpriteRenderer decoySr, Material ghostraMat)
         {
             var anim = decoyGo.GetComponent<Animator>();
             if (anim == null) return; // mode fallback sprite statique : pas de stage swap
@@ -456,33 +462,112 @@ namespace Nymora.Combat.View
             }
             int stage = active >= 3 ? 2 : active >= 1 ? 1 : 0;
 
-            // Controllers SE (toujours présents) ET NE (facing nord) — skin équipé OU base. Fallback
-            //   descendant de stage. NE absent -> on retombe sur SE (facing horizontal seul).
-            RuntimeAnimatorController se, ne;
-            if (skin != null && skin.HasCombatControllers)
+            // Refonte Ghostra : on lit le visuel directement sur la VUE parente (auto-aligne sur le
+            // skin de base OU un skin cosmetique equipe + porte le sandwich d'aura). Fallback sur les
+            // controllers serialises si la vue n'existe pas encore (timing de spawn).
+            var gview = _combatantRenderer != null ? _combatantRenderer.GetCombatantView(ghostraEntity) : null;
+
+            RuntimeAnimatorController target = gview != null ? gview.GhostraBaseController(useNE) : null;
+            if (target == null)
             {
-                se = stage == 2 ? (skin.Stage2ControllerSE ?? skin.Stage1ControllerSE ?? skin.Stage0ControllerSE)
-                   : stage == 1 ? (skin.Stage1ControllerSE ?? skin.Stage0ControllerSE)
-                   :              skin.Stage0ControllerSE;
-                ne = stage == 2 ? (skin.Stage2ControllerNE ?? skin.Stage1ControllerNE ?? skin.Stage0ControllerNE)
-                   : stage == 1 ? (skin.Stage1ControllerNE ?? skin.Stage0ControllerNE)
-                   :              skin.Stage0ControllerNE;
-            }
-            else
-            {
-                se = stage == 2 ? (_decoyStage2Controller ?? _decoyStage1Controller ?? _decoyIdleController)
-                   : stage == 1 ? (_decoyStage1Controller ?? _decoyIdleController)
-                   :              _decoyIdleController;
-                ne = stage == 2 ? (_decoyStage2ControllerNE ?? _decoyStage1ControllerNE ?? _decoyStage0ControllerNE)
-                   : stage == 1 ? (_decoyStage1ControllerNE ?? _decoyStage0ControllerNE)
-                   :              _decoyStage0ControllerNE;
+                // Fallback : controllers SE (toujours présents) ET NE (facing nord) — skin OU base.
+                RuntimeAnimatorController se, ne;
+                if (skin != null && skin.HasCombatControllers)
+                {
+                    se = stage == 2 ? (skin.Stage2ControllerSE ?? skin.Stage1ControllerSE ?? skin.Stage0ControllerSE)
+                       : stage == 1 ? (skin.Stage1ControllerSE ?? skin.Stage0ControllerSE)
+                       :              skin.Stage0ControllerSE;
+                    ne = stage == 2 ? (skin.Stage2ControllerNE ?? skin.Stage1ControllerNE ?? skin.Stage0ControllerNE)
+                       : stage == 1 ? (skin.Stage1ControllerNE ?? skin.Stage0ControllerNE)
+                       :              skin.Stage0ControllerNE;
+                }
+                else
+                {
+                    se = stage == 2 ? (_decoyStage2Controller ?? _decoyStage1Controller ?? _decoyIdleController)
+                       : stage == 1 ? (_decoyStage1Controller ?? _decoyIdleController)
+                       :              _decoyIdleController;
+                    ne = stage == 2 ? (_decoyStage2ControllerNE ?? _decoyStage1ControllerNE ?? _decoyStage0ControllerNE)
+                       : stage == 1 ? (_decoyStage1ControllerNE ?? _decoyStage0ControllerNE)
+                       :              _decoyStage0ControllerNE;
+                }
+                target = (useNE && ne != null) ? ne : se;
             }
 
-            RuntimeAnimatorController target = (useNE && ne != null) ? ne : se;
             if (target != null && !ReferenceEquals(anim.runtimeAnimatorController, target))
             {
                 anim.runtimeAnimatorController = target;
             }
+
+            // Sandwich d'aura : 2 couches (back/front) clonees sur le leurre, lues sur la vue parente.
+            ApplyDecoyAura(decoyGo, gview, stage, useNE, flipX, localOwns, decoySr, ghostraMat);
+        }
+
+        /// <summary>
+        /// Refonte Ghostra — reproduit le sandwich d'aura de la vraie Ghostra sur le leurre :
+        /// 2 child "AuraBack"/"AuraFront" (cree a la demande), tri ±1 autour du sprite du leurre,
+        /// meme materiau + teinte (cyan caster / opaque adverse) + flipX que le corps. Stage 0 ou
+        /// vue absente -> couches eteintes. View-only, indiscernable cote adverse.
+        /// </summary>
+        private void ApplyDecoyAura(GameObject decoyGo, CombatantView gview, int stage, bool useNE,
+            bool flipX, bool localOwns, SpriteRenderer decoySr, Material ghostraMat)
+        {
+            var (backSr, backPlayer, frontSr, frontPlayer) = EnsureDecoyAuraChildren(decoyGo);
+
+            Sprite[] backFrames = gview != null ? gview.GhostraAuraFrames(stage, false, useNE) : null;
+            Sprite[] frontFrames = gview != null ? gview.GhostraAuraFrames(stage, true, useNE) : null;
+            float fps = gview != null ? gview.AuraFps : 8f;
+
+            Color tint = localOwns
+                ? new Color(_decoyTint.r, _decoyTint.g, _decoyTint.b, _decoyAlpha)
+                : Color.white;
+            int baseOrder = decoySr != null ? decoySr.sortingOrder : _decoySortingOrder;
+            int layer = decoySr != null ? decoySr.sortingLayerID : 0;
+
+            ApplyDecoyAuraLayer(backSr, backPlayer, backFrames, fps, flipX, tint, ghostraMat, layer, baseOrder - 1);
+            ApplyDecoyAuraLayer(frontSr, frontPlayer, frontFrames, fps, flipX, tint, ghostraMat, layer, baseOrder + 1);
+        }
+
+        private static void ApplyDecoyAuraLayer(SpriteRenderer sr, AuraLoopPlayer player, Sprite[] frames, float fps,
+            bool flipX, Color tint, Material mat, int layer, int order)
+        {
+            if (sr == null) return;
+            if (frames == null || frames.Length == 0)
+            {
+                if (player != null) player.Stop();
+                if (sr.enabled) sr.enabled = false;
+                return;
+            }
+            if (!sr.enabled) sr.enabled = true;
+            sr.flipX = flipX;
+            if (sr.color != tint) sr.color = tint;
+            if (mat != null && sr.sharedMaterial != mat) sr.sharedMaterial = mat;
+            sr.sortingLayerID = layer;
+            sr.sortingOrder = order;
+            if (player != null) player.SetClip(frames, fps);
+        }
+
+        private (SpriteRenderer back, AuraLoopPlayer backPlayer, SpriteRenderer front, AuraLoopPlayer frontPlayer)
+            EnsureDecoyAuraChildren(GameObject decoyGo)
+        {
+            var back = FindOrCreateAuraChild(decoyGo, "AuraBack");
+            var front = FindOrCreateAuraChild(decoyGo, "AuraFront");
+            return (back.GetComponent<SpriteRenderer>(), back.GetComponent<AuraLoopPlayer>(),
+                    front.GetComponent<SpriteRenderer>(), front.GetComponent<AuraLoopPlayer>());
+        }
+
+        private static GameObject FindOrCreateAuraChild(GameObject parent, string name)
+        {
+            var t = parent.transform.Find(name);
+            if (t != null) return t.gameObject;
+            var go = new GameObject(name);
+            go.transform.SetParent(parent.transform, false);
+            go.transform.localPosition = Vector3.zero;
+            go.transform.localScale = Vector3.one;
+            var sr = go.AddComponent<SpriteRenderer>();
+            sr.enabled = false;
+            // Pas d'Animator (imbrication interdite) : un AuraLoopPlayer pilote la boucle.
+            go.AddComponent<AuraLoopPlayer>();
+            return go;
         }
 
         /// <summary>

@@ -91,6 +91,58 @@ namespace Nymora.Combat.View
         [Tooltip("AnimatorController stage 2 NE.")]
         [SerializeField] private RuntimeAnimatorController _stage2ControllerNE;
 
+        // ==================================================================================
+        // Refonte Ghostra (juin 2026) — Couches d'AURA "sandwich" par stage.
+        //
+        // Nouveau modele visuel : le skin de BASE (stage 0/1/2 controllers ci-dessus) est
+        // IDENTIQUE aux 3 stages (le tool bind le meme controller de base sur les 3 slots).
+        // La montee en puissance visuelle est portee par 2 couches d'aura qui prennent le
+        // perso en sandwich :
+        //   - AuraBack  : rendu DERRIERE le perso (sortingOrder = base - 1)
+        //   - AuraFront : rendu DEVANT  le perso (sortingOrder = base + 1)
+        // Chaque couche a son propre Animator (boucle ambiante independante du skin de base).
+        //
+        // Mapping (decide 13 juin) : 1 aura PAR stage (stage 2 REMPLACE stage 1, pas de cumul).
+        //   - stage 0 : auras eteintes (renderers disabled)
+        //   - stage 1 : aura stage 1 (back + front)
+        //   - stage 2 : aura stage 2 (back + front)
+        // Facing : memes regles que le skin de base (NE/SE livres, NW/SW = miroir flipX).
+        //
+        // Optionnel : si _auraBack/_auraFront sont null (= toutes les classes sauf Ghostra),
+        // toute la logique d'aura est un no-op. Aucun impact sur Necram/Soulrender/Nightseer/
+        // Colossar.
+        // ==================================================================================
+        // ⚠️ Les couches d'aura n'ont PAS d'Animator : imbriquer un Animator sous l'Animator du
+        // skin de base (tous deux sur "Visual") casse l'anim du parent (l'idle disparaissait). On
+        // pilote donc l'aura via AuraLoopPlayer (boucle de Sprite[] sans Animator).
+        [Header("Couches d'aura par stage (refonte Ghostra — sandwich back/front). Null = pas d'aura.")]
+        [Tooltip("SpriteRenderer de l'aura DERRIERE le perso (sorting = base - 1). Child de Visual.")]
+        [SerializeField] private SpriteRenderer _auraBack;
+        [Tooltip("SpriteRenderer de l'aura DEVANT le perso (sorting = base + 1). Child de Visual.")]
+        [SerializeField] private SpriteRenderer _auraFront;
+        [Tooltip("Lecteur de boucle de l'aura back (sur le meme GO que _auraBack).")]
+        [SerializeField] private AuraLoopPlayer _auraBackPlayer;
+        [Tooltip("Lecteur de boucle de l'aura front.")]
+        [SerializeField] private AuraLoopPlayer _auraFrontPlayer;
+        [Tooltip("Cadence des boucles d'aura (frames/s).")]
+        [SerializeField] private float _auraFps = 8f;
+
+        [Header("Aura stage 1 (frames back/front × SE/NE)")]
+        [SerializeField] private Sprite[] _auraStage1BackSE;
+        [SerializeField] private Sprite[] _auraStage1BackNE;
+        [SerializeField] private Sprite[] _auraStage1FrontSE;
+        [SerializeField] private Sprite[] _auraStage1FrontNE;
+
+        [Header("Aura stage 2 (frames back/front × SE/NE)")]
+        [SerializeField] private Sprite[] _auraStage2BackSE;
+        [SerializeField] private Sprite[] _auraStage2BackNE;
+        [SerializeField] private Sprite[] _auraStage2FrontSE;
+        [SerializeField] private Sprite[] _auraStage2FrontNE;
+
+        // Decalage de tri des couches d'aura relativement au sprite de base.
+        private const int AuraBackSortingDelta = -1;
+        private const int AuraFrontSortingDelta = 1;
+
         [Header("Y offset visuel par stage (workaround pivot Aseprite non standardise)")]
         [Tooltip("Y offset applique au sprite (child Visual) en stage 0. Default 0.")]
         [SerializeField] private float _stage0VisualYOffset = 0f;
@@ -501,6 +553,26 @@ namespace Nymora.Combat.View
                 // petit est plus pres de la camera, donc devant).
                 // Range pour une grille 15x17 : 1000 - 30*10 = 700 (min). Toujours > 0.
                 _sprite.sortingOrder = 1000 - (gx + gy) * 10;
+                UpdateAuraSorting(_sprite.sortingOrder);
+            }
+        }
+
+        /// <summary>
+        /// Refonte Ghostra — place les 2 couches d'aura autour du sprite de base (back derriere,
+        /// front devant) sur le meme sorting layer. No-op si les renderers d'aura sont absents.
+        /// </summary>
+        private void UpdateAuraSorting(int baseOrder)
+        {
+            if (_sprite == null) return;
+            if (_auraBack != null)
+            {
+                _auraBack.sortingLayerID = _sprite.sortingLayerID;
+                _auraBack.sortingOrder = baseOrder + AuraBackSortingDelta;
+            }
+            if (_auraFront != null)
+            {
+                _auraFront.sortingLayerID = _sprite.sortingLayerID;
+                _auraFront.sortingOrder = baseOrder + AuraFrontSortingDelta;
             }
         }
 
@@ -528,6 +600,7 @@ namespace Nymora.Combat.View
             if (_sprite != null)
             {
                 _sprite.sortingOrder = 1000 - (gx + gy) * 10;
+                UpdateAuraSorting(_sprite.sortingOrder);
             }
         }
 
@@ -629,6 +702,11 @@ namespace Nymora.Combat.View
 
             if (_sprite != null) _sprite.flipX = flipX;
 
+            // Refonte Ghostra — (re)pose les 2 couches d'aura selon le stage + la direction.
+            // No-op pour les classes sans aura (renderers null). Fait avant les branches du skin
+            // de base pour que l'aura suive le facing meme si le skin tombe en fallback.
+            ApplyAura(stage, useNE, flipX);
+
             // Y offset visuel par stage (workaround pivot Aseprite non standardise — cf
             // incident Colossar 18 mai ou stage1/2 montaient en Y par rapport au stage0).
             // No-op pour les classes ou les 3 offsets sont a 0 (Necram/Ghostra/Soulrender/
@@ -658,7 +736,15 @@ namespace Nymora.Combat.View
             // Priorite Animator si dispo.
             if (_animator != null && controller != null)
             {
-                _animator.runtimeAnimatorController = controller;
+                // Garde anti-reset : ne re-assigne le controller que s'il change reellement.
+                // Refonte Ghostra : le skin de base est IDENTIQUE aux 3 stages (meme controller
+                // bind sur les 3 slots) ; sans ce garde, chaque changement de stage (gain/perte
+                // de leurre) re-assignerait le meme controller et ferait repartir l'anim a Idle.
+                // Pour les autres classes les controllers de stage DIFFERENT -> garde sans effet.
+                if (_animator.runtimeAnimatorController != controller)
+                {
+                    _animator.runtimeAnimatorController = controller;
+                }
                 if (!_animator.enabled) _animator.enabled = true;
                 return;
             }
@@ -711,6 +797,73 @@ namespace Nymora.Combat.View
             }
             return null;
         }
+
+        // ==================================================================================
+        // Refonte Ghostra — application des couches d'aura "sandwich".
+        // ==================================================================================
+
+        /// <summary>
+        /// (Re)pose les 2 couches d'aura (back + front) pour le stage et la direction donnes.
+        /// stage 0 -> auras eteintes ; stage 1/2 -> boucle du stage correspondant, miroir si W.
+        /// No-op total si les renderers d'aura sont absents (classes hors Ghostra).
+        /// </summary>
+        private void ApplyAura(int stage, bool useNE, bool flipX)
+        {
+            ApplyAuraLayer(_auraBack, _auraBackPlayer, PickAuraBack(stage, useNE), flipX, _auraFps);
+            ApplyAuraLayer(_auraFront, _auraFrontPlayer, PickAuraFront(stage, useNE), flipX, _auraFps);
+        }
+
+        /// <summary>
+        /// Allume/eteint une couche d'aura. frames null/vide -> renderer disabled (stage 0 ou
+        /// direction non livree). Sinon renderer visible + flipX + boucle posee sur le player.
+        /// </summary>
+        private static void ApplyAuraLayer(SpriteRenderer sr, AuraLoopPlayer player, Sprite[] frames, bool flipX, float fps)
+        {
+            if (sr == null) return;
+            if (frames == null || frames.Length == 0)
+            {
+                if (player != null) player.Stop();
+                if (sr.enabled) sr.enabled = false;
+                return;
+            }
+            if (!sr.enabled) sr.enabled = true;
+            sr.flipX = flipX;
+            if (player != null) player.SetClip(frames, fps);
+        }
+
+        private Sprite[] PickAuraBack(int stage, bool useNE)
+        {
+            if (stage <= 0) return null;
+            if (stage == 1) return useNE ? _auraStage1BackNE : _auraStage1BackSE;
+            return useNE ? _auraStage2BackNE : _auraStage2BackSE;
+        }
+
+        private Sprite[] PickAuraFront(int stage, bool useNE)
+        {
+            if (stage <= 0) return null;
+            if (stage == 1) return useNE ? _auraStage1FrontNE : _auraStage1FrontSE;
+            return useNE ? _auraStage2FrontNE : _auraStage2FrontSE;
+        }
+
+        // ----------------------------------------------------------------------------------
+        // Accessors lus par DecoyView : un leurre Ghostra doit etre INDISCERNABLE de la vraie
+        // Ghostra (Bible V7.1). Plutot que de re-cabler les controllers sur chaque scene, le
+        // leurre lit le controller de base + les boucles d'aura directement sur la vue du
+        // combattant parent (suit aussi automatiquement un skin cosmetique equipe).
+        // ----------------------------------------------------------------------------------
+
+        /// <summary>Controller du skin de BASE pour la direction (stage 0 ; identique aux 3 stages
+        /// pour Ghostra, ou skin equipe si ApplySkin a swappe). Lu par les leurres.</summary>
+        public RuntimeAnimatorController GhostraBaseController(bool useNE)
+            => useNE ? _stage0ControllerNE : _stage0ControllerSE;
+
+        /// <summary>Frames de la boucle d'aura (back/front) du stage + direction, ou null (stage 0 /
+        /// classe sans aura). Lu par les leurres pour reproduire le sandwich d'aura de la vraie Ghostra.</summary>
+        public Sprite[] GhostraAuraFrames(int stage, bool front, bool useNE)
+            => front ? PickAuraFront(stage, useNE) : PickAuraBack(stage, useNE);
+
+        /// <summary>Cadence des boucles d'aura (frames/s), pour que les leurres jouent au meme rythme.</summary>
+        public float AuraFps => _auraFps;
 
         private void Update()
         {

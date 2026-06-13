@@ -959,6 +959,13 @@ namespace Nymora.Combat.View
             return null;
         }
 
+        /// <summary>
+        /// Vue d'un combattant (null si inconnue). Lu par DecoyView pour que les leurres Ghostra
+        /// reprennent le controller de base + les boucles d'aura de la vraie Ghostra (indiscernable).
+        /// </summary>
+        public CombatantView GetCombatantView(EntityRef entity)
+            => _views.TryGetValue(entity, out var view) ? view : null;
+
         private GameObject GetPrefabForClass(NymoraClass nymoraClass)
         {
             switch (nymoraClass)
