@@ -5,6 +5,21 @@
 
 ---
 
+## 🎨 Refonte graphique SOULRENDER (14 juin) — livrée + **validée en jeu**, pur View, pas de bump CombatRulesVersion
+
+2e refonte graphique (calque exact du modèle Ghostra). **1 skin de base unique** (idle/walk/attack/cast/hurt/death × SE/NE, miroir NW/SW) joué à TOUS les stages + **2 couches d'aura « sandwich »** (back/front) allumées aux stages 1 et 2 (stage 2 remplace stage 1).
+
+**Différence vs Ghostra** : le stage du Soulrender est piloté par la **Resource (Carnage)** via `ComputeStage` générique (< 40% → s0, < max → s1, == max → s2) — **rien à toucher côté sim**, et **pas de leurres/DecoyView** à gérer.
+
+**Fait :**
+- Editor tool **`Nymora > Setup > Build Soulrender Refonte`** (`Editor/Tools/BuildSoulrenderRefonte.cs`) : importe/slice (PPU 96, pivot 0.5/0.1) les 20 PNG de `Desktop/Nymora_Graph/Soulrender/PNG`, génère clips + 2 controllers base `SoulrenderBase_SE/NE` (reconstruits **en place**, guid préservé) + bind `Combatant_Soulrender` + retarget hub (`Soulrender.asset`). Idempotent.
+- ⚠️ Nommage PNG livré différent : base minuscule `soulrender_base_…`, marche = `walking`, auras `Soulrender_stage{n}_aura_{back,front}_{SE,NE}`. Frames : 6 par anim, **walking = 8**.
+- `idle` ping-pong, auras via `AuraLoopPlayer` (sans Animator imbriqué) — mêmes décisions techniques que la Ghostra.
+- **Tous les tests OK en jeu (14 juin)** : idle/walk/attack/cast/hurt/death SE/NE+miroir, F10 stages 0/1/2, hub.
+- Note : changer le **nb de frames** d'une anim impose de relancer le tool (re-slice + clips) ; un simple touch-up pixel ne nécessite qu'un reimport.
+
+---
+
 ## 🎨 Refonte graphique GHOSTRA (13 juin) — livrée, **pur View, pas de bump CombatRulesVersion**
 
 1re refonte graphique (Ghostra uniquement). Nouveau modèle visuel : **1 skin de base unique** (idle/walk/attack/cast/hurt/death × SE/NE, miroir NW/SW) joué à TOUS les stages + **2 couches d'aura « sandwich »** (back derrière / front devant) allumées aux stages 1 et 2 (1 aura par stage, stage 2 remplace stage 1). Le stage reste piloté par les leurres actifs (0→s0, 1-2→s1, 3→s2).
