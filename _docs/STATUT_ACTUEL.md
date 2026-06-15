@@ -5,6 +5,19 @@
 
 ---
 
+## 🎨 Refonte graphique NIGHTSEER (15 juin) — livrée (code), **à valider en jeu**, pur View, pas de bump CombatRulesVersion
+
+3e refonte graphique, **calque EXACT du modèle Soulrender** (lui-même calque Ghostra). **1 skin de base unique** (idle/walk/attack/cast/hurt/death × SE/NE, miroir NW/SW) joué à TOUS les stages + **2 couches d'aura « sandwich »** (back/front) allumées aux stages 1 et 2 (stage 2 remplace stage 1). `idle` ping-pong, auras via `AuraLoopPlayer` (sans Animator imbriqué).
+
+**Comme Soulrender** : stage piloté par la **Resource (Prescience, cap 5)** via `ComputeStage` générique (< 2 → s0, 2-4 → s1, 5 → s2) — **rien à toucher côté sim**, et **pas de leurres/DecoyView**.
+
+**Fait :**
+- Editor tool **`Nymora > Setup > Build Nightseer Refonte`** (`Editor/Tools/BuildNightseerRefonte.cs`) : importe/slice (PPU 96, pivot 0.5/0.1) les 20 PNG de `Desktop/Nymora_Graph/Nightseer/PNG` (sous-dossiers `stage0/1/2`), génère clips + 2 controllers base `NightseerBase_SE/NE` (reconstruits **en place**, guid préservé) + bind `Combatant_Nightseer` + retarget hub (`Nightseer.asset`). Idempotent.
+- ⚠️ Nommage PNG livré : base en **MAJUSCULE** `Nightseer_base_…` (≠ Soulrender minuscule), marche = `walking`, auras `Nightseer_stage{n}_aura_{back,front}_{SE,NE}`.
+- **À valider en jeu** : lancer le tool → combat IA Nightseer → F10 stages 0/1/2 SE/NE+miroir + avatar hub.
+
+---
+
 ## 🎨 Refonte graphique SOULRENDER (14 juin) — livrée + **validée en jeu**, pur View, pas de bump CombatRulesVersion
 
 2e refonte graphique (calque exact du modèle Ghostra). **1 skin de base unique** (idle/walk/attack/cast/hurt/death × SE/NE, miroir NW/SW) joué à TOUS les stages + **2 couches d'aura « sandwich »** (back/front) allumées aux stages 1 et 2 (stage 2 remplace stage 1).

@@ -18,9 +18,9 @@ MonoBehaviour:
   Tagline: Piegeur mid-range. Pose des marques sur la grille et l'adversaire.
   Lore: "Tireur d'elite spectral. Voit ce que les autres ne voient pas, marque ce
     qu'ils ignorent. Sa Prescience se charge par lecture des futurs probables \u2014
-    chaque marque est un fil tendu. Quand sa cible est Traquee ou Voilee,
-    elle est deja morte avant d'avoir leve son arme. Sa signature Traquenard est
-    l'execution finale du contrat invisible."
+    chaque marque est un fil tendu. Quand sa cible est Traquee ou Voilee, elle est
+    deja morte avant d'avoir leve son arme. Sa signature Traquenard est l'execution
+    finale du contrat invisible."
   BaseHP: 2000
   BaseActionPoints: 8
   BaseMovementPoints: 3
@@ -42,39 +42,47 @@ MonoBehaviour:
   PortraitSprite: {fileID: 21300000, guid: 2dbbd3972343fde4b81be760fc498e48, type: 3}
   IdleAnimator: {fileID: 9100000, guid: c2d62dc7c3e820a4ea3961a373c865f1, type: 2}
   IdleFrames:
-  - {fileID: 1328252117106992369, guid: cf6d6fb761e577d499155f8533fbf0c6, type: 3}
-  - {fileID: 3802929461049852948, guid: cf6d6fb761e577d499155f8533fbf0c6, type: 3}
-  - {fileID: 8812907753666278022, guid: cf6d6fb761e577d499155f8533fbf0c6, type: 3}
-  - {fileID: -6381475113262316848, guid: cf6d6fb761e577d499155f8533fbf0c6, type: 3}
-  - {fileID: -8479992858749583252, guid: cf6d6fb761e577d499155f8533fbf0c6, type: 3}
-  - {fileID: -7049290700756271418, guid: cf6d6fb761e577d499155f8533fbf0c6, type: 3}
+  - {fileID: 4967317426507912408, guid: b86943adfea5e7b4e9bb009513881270, type: 3}
+  - {fileID: -2018124113868208170, guid: b86943adfea5e7b4e9bb009513881270, type: 3}
+  - {fileID: 8091327593730615253, guid: b86943adfea5e7b4e9bb009513881270, type: 3}
+  - {fileID: 7003324444387818001, guid: b86943adfea5e7b4e9bb009513881270, type: 3}
+  - {fileID: -8606199152548100390, guid: b86943adfea5e7b4e9bb009513881270, type: 3}
+  - {fileID: 7466011653045182001, guid: b86943adfea5e7b4e9bb009513881270, type: 3}
+  - {fileID: -8606199152548100390, guid: b86943adfea5e7b4e9bb009513881270, type: 3}
+  - {fileID: 7003324444387818001, guid: b86943adfea5e7b4e9bb009513881270, type: 3}
+  - {fileID: 8091327593730615253, guid: b86943adfea5e7b4e9bb009513881270, type: 3}
+  - {fileID: -2018124113868208170, guid: b86943adfea5e7b4e9bb009513881270, type: 3}
   IdleAnimatorNE: {fileID: 9100000, guid: 405010bb58d12274595173c63426b9fb, type: 2}
   IdleFramesNE:
-  - {fileID: 3338925575780881399, guid: 01acda657dc3b364786606e38bcebb0e, type: 3}
-  - {fileID: 9018954817673033888, guid: 01acda657dc3b364786606e38bcebb0e, type: 3}
-  - {fileID: 1961909689044897137, guid: 01acda657dc3b364786606e38bcebb0e, type: 3}
-  - {fileID: 8338817440262188308, guid: 01acda657dc3b364786606e38bcebb0e, type: 3}
-  - {fileID: -7771897145821278185, guid: 01acda657dc3b364786606e38bcebb0e, type: 3}
-  - {fileID: -6613670367933225961, guid: 01acda657dc3b364786606e38bcebb0e, type: 3}
+  - {fileID: 6294057435214643895, guid: 8f0b5293a2dfd5c43814e7e2da73f355, type: 3}
+  - {fileID: 2100465440516051475, guid: 8f0b5293a2dfd5c43814e7e2da73f355, type: 3}
+  - {fileID: -2143702692044936296, guid: 8f0b5293a2dfd5c43814e7e2da73f355, type: 3}
+  - {fileID: -4905318107865361471, guid: 8f0b5293a2dfd5c43814e7e2da73f355, type: 3}
+  - {fileID: -2458018696460909666, guid: 8f0b5293a2dfd5c43814e7e2da73f355, type: 3}
+  - {fileID: -1319836288471361053, guid: 8f0b5293a2dfd5c43814e7e2da73f355, type: 3}
+  - {fileID: -2458018696460909666, guid: 8f0b5293a2dfd5c43814e7e2da73f355, type: 3}
+  - {fileID: -4905318107865361471, guid: 8f0b5293a2dfd5c43814e7e2da73f355, type: 3}
+  - {fileID: -2143702692044936296, guid: 8f0b5293a2dfd5c43814e7e2da73f355, type: 3}
+  - {fileID: 2100465440516051475, guid: 8f0b5293a2dfd5c43814e7e2da73f355, type: 3}
   IdleFps: 8
   WalkFrames:
-  - {fileID: -1684263906718242810, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
-  - {fileID: 5561657291245834074, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
-  - {fileID: -6205359557107362429, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
-  - {fileID: 2575369598545582745, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
-  - {fileID: 8299183924132334293, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
-  - {fileID: 2394948930253182914, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
-  - {fileID: 3168065129604074460, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
-  - {fileID: -6503324440993320002, guid: 456a3b2f30148d34ab868ea8e58a0a3b, type: 3}
+  - {fileID: -1595543589699622752, guid: db63992c6b5b8054596c33b5d4ccecad, type: 3}
+  - {fileID: -6292238953415952678, guid: db63992c6b5b8054596c33b5d4ccecad, type: 3}
+  - {fileID: 2846945694735147141, guid: db63992c6b5b8054596c33b5d4ccecad, type: 3}
+  - {fileID: -2155004099518785020, guid: db63992c6b5b8054596c33b5d4ccecad, type: 3}
+  - {fileID: -3381520251189219011, guid: db63992c6b5b8054596c33b5d4ccecad, type: 3}
+  - {fileID: -7541310917468389489, guid: db63992c6b5b8054596c33b5d4ccecad, type: 3}
+  - {fileID: -964423808995005585, guid: db63992c6b5b8054596c33b5d4ccecad, type: 3}
+  - {fileID: -3550892428653562657, guid: db63992c6b5b8054596c33b5d4ccecad, type: 3}
   WalkFramesNE:
-  - {fileID: -5907984957340748575, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
-  - {fileID: 6738723069756049342, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
-  - {fileID: 7532091298772099672, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
-  - {fileID: 864527091014207377, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
-  - {fileID: -2540506287818819611, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
-  - {fileID: 4600567609520448530, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
-  - {fileID: -5744509438806935156, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
-  - {fileID: -8650473863939413478, guid: ad4ba9302d4e7464e96a869874ecb05c, type: 3}
+  - {fileID: 3379935471666534361, guid: 7d6232b11a0fd2d499ff9f8194469223, type: 3}
+  - {fileID: -7701082788731294854, guid: 7d6232b11a0fd2d499ff9f8194469223, type: 3}
+  - {fileID: 272856174036458466, guid: 7d6232b11a0fd2d499ff9f8194469223, type: 3}
+  - {fileID: 5105682879936162255, guid: 7d6232b11a0fd2d499ff9f8194469223, type: 3}
+  - {fileID: -6405977963206371912, guid: 7d6232b11a0fd2d499ff9f8194469223, type: 3}
+  - {fileID: 2814532170643421203, guid: 7d6232b11a0fd2d499ff9f8194469223, type: 3}
+  - {fileID: -6314697099059611200, guid: 7d6232b11a0fd2d499ff9f8194469223, type: 3}
+  - {fileID: 2155229878868470316, guid: 7d6232b11a0fd2d499ff9f8194469223, type: 3}
   WalkFps: 12
   HubVisualScale: 1
   HubVisualYOffset: -0.05357143
@@ -86,3 +94,6 @@ MonoBehaviour:
   Stage0CombatYOffset: 0
   Stage1CombatYOffset: 0
   Stage2CombatYOffset: 0
+  DecoyCombatScale: 1
+  DecoyCombatXOffset: 0
+  DecoyCombatYOffset: 0
