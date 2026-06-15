@@ -88,6 +88,8 @@ namespace Nymora.Editor.Tools
         // Vitesse du state Idle = 1.0 : l'idle tourne a la cadence pleine du clip (8 fps), comme
         // dans le hub. (L'ancien 0.4 ralentissait l'idle combat a ~3 fps -> moins fluide que le hub.)
         private const float IdleSpeed = 1.0f;
+        // Garde aligne avec SetAttackSpeed.AttackSpeed (rebuild self-consistent).
+        private const float AttackSpeedMultiplier = 1.5f;
 
         [MenuItem("Nymora/Setup/Build Ghostra Refonte", priority = 40)]
         public static void Run()
@@ -403,6 +405,7 @@ namespace Nymora.Editor.Tools
 
             var attack = sm.AddState("Attack");
             attack.motion = Or(clips.Attack);
+            attack.speed = AttackSpeedMultiplier;
 
             var hurt = sm.AddState("Hurt");
             hurt.motion = Or(clips.Hurt);

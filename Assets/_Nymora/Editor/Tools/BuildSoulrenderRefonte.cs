@@ -78,6 +78,8 @@ namespace Nymora.Editor.Tools
         private const string ParamHurt = "Hurt";
         private const string ParamDeath = "Death";
         private const float IdleSpeed = 1.0f;
+        // Garde aligne avec SetAttackSpeed.AttackSpeed (rebuild self-consistent).
+        private const float AttackSpeedMultiplier = 1.5f;
 
         [MenuItem("Nymora/Setup/Build Soulrender Refonte", priority = 41)]
         public static void Run()
@@ -372,6 +374,7 @@ namespace Nymora.Editor.Tools
 
             var attack = sm.AddState("Attack");
             attack.motion = Or(clips.Attack);
+            attack.speed = AttackSpeedMultiplier;
 
             var hurt = sm.AddState("Hurt");
             hurt.motion = Or(clips.Hurt);

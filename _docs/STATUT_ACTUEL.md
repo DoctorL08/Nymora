@@ -5,6 +5,12 @@
 
 ---
 
+## ⚡ Attaques accélérées 1,5× (15 juin) — pur View, pas de bump CombatRulesVersion
+
+Toutes les anims d'**attaque** passées à **1,5×** (plus nerveuses). Levier = vitesse de l'état `Attack` de l'Animator (pas le fps du clip : keyframes à temps absolus). Tool **`Nymora > Combat > Set Attack Speed`** (`Editor/Tools/SetAttackSpeed.cs`, const `AttackSpeed`) : fixe (valeur absolue → ré-exécutable sans cumul) la vitesse `Attack` sur **tous** les AnimatorControllers de combat (5 classes + 5 skins cosmétiques, 66 controllers). Les 3 Build *_Refonte bakent aussi `AttackSpeedMultiplier=1.5` (rebuild self-consistent). ⚠️ Après un rebuild d'un animator NON-refonte (Colossar/Necram/cosmétique), re-lancer Set Attack Speed. Régler la nervosité = changer la const (+ garder les 3 `AttackSpeedMultiplier` alignés).
+
+---
+
 ## 🎨 Refonte graphique NIGHTSEER (15 juin) — livrée (code), **à valider en jeu**, pur View, pas de bump CombatRulesVersion
 
 3e refonte graphique, **calque EXACT du modèle Soulrender** (lui-même calque Ghostra). **1 skin de base unique** (idle/walk/attack/cast/hurt/death × SE/NE, miroir NW/SW) joué à TOUS les stages + **2 couches d'aura « sandwich »** (back/front) allumées aux stages 1 et 2 (stage 2 remplace stage 1). `idle` ping-pong, auras via `AuraLoopPlayer` (sans Animator imbriqué).
